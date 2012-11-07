@@ -6,9 +6,10 @@ package org.mit.jstreamit;
  * @since 11/7/2012
  */
 public abstract class Joiner<I, O> {
+	public static final int UNLIMITED = Integer.MAX_VALUE;
 	/**
 	 * Returns the number of input channels this Joiner instance may read
-	 * from, or Integer.MAX_VALUE if there is no limit.
+	 * from, or UNLIMITED if there is no limit.
 	 * TODO: maybe this should be part of the rate handling?
 	 * @return
 	 */

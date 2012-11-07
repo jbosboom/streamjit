@@ -16,10 +16,10 @@ public final class Splitjoin<I, O> implements StreamElement<I, O> {
 		if (elems == 0)
 			throw new IllegalArgumentException("Splitjoin without elements");
 		int splitOuts = splitter.outputs();
-		if (splitOuts != Integer.MAX_VALUE && splitOuts != elems)
+		if (splitOuts != Splitter.UNLIMITED && splitOuts != elems)
 			throw new IllegalArgumentException(String.format("Splitter expects %d outputs but %d elements provided", splitOuts, elems));
 		int joinIns = joiner.inputs();
-		if (joinIns != Integer.MAX_VALUE && joinIns != elems)
+		if (joinIns != Joiner.UNLIMITED && joinIns != elems)
 			throw new IllegalArgumentException(String.format("Joiner expects %d inputs but %d elements provided", joinIns, elems));
 		this.splitter = splitter;
 		this.joiner = joiner;

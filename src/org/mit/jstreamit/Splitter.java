@@ -10,9 +10,10 @@ package org.mit.jstreamit;
  * @since 11/7/2012
  */
 public abstract class Splitter<I, O> {
+	public static final int UNLIMITED = Integer.MAX_VALUE;
 	/**
 	 * Returns the number of output channels this Splitter instance may output
-	 * to, or Integer.MAX_VALUE if there is no limit.
+	 * to, or UNLIMITED if there is no limit.
 	 * TODO: maybe this should be part of the rate handling?
 	 * @return
 	 */
