@@ -7,6 +7,9 @@ package org.mit.jstreamit;
  */
 public abstract class Joiner<I, O> {
 	public static final int UNLIMITED = Integer.MAX_VALUE;
+	//TODO: rate information, complicated by the fact that rates might differ
+	//between channels (e.g., weighted-roundrobin splitter)
+	public abstract void work();
 	/**
 	 * Returns the number of input channels this Joiner instance may read
 	 * from, or UNLIMITED if there is no limit.

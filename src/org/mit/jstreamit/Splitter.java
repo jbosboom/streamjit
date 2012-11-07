@@ -11,6 +11,9 @@ package org.mit.jstreamit;
  */
 public abstract class Splitter<I, O> {
 	public static final int UNLIMITED = Integer.MAX_VALUE;
+	//TODO: rate information, complicated by the fact that rates might differ
+	//between channels (e.g., weighted-roundrobin splitter)
+	public abstract void work();
 	/**
 	 * Returns the number of output channels this Splitter instance may output
 	 * to, or UNLIMITED if there is no limit.
