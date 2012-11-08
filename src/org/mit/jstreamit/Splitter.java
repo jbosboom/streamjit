@@ -16,14 +16,18 @@ public abstract class Splitter<I, O> {
 	public abstract void work();
 	/**
 	 * Returns the number of output channels this Splitter instance may output
-	 * to, or UNLIMITED if there is no limit.
+	 * to, or UNLIMITED if any number >= 1 is supported.
 	 * TODO: maybe this should be part of the rate handling?
 	 * @return
 	 */
-	public abstract int outputs();
+	public abstract int supportedOutputs();
 
-	//These don't actually do anything, they're just for the JIT to pattern-match against.
+	//These don't actually do anything, they're just for the JIT to
+	//pattern-match against.  We can't make them abstract because they're final,
+	//but they have to be final so implementations don't think they
+	//can customize them.
 	protected final I pop() {return null;};
 	protected final I peek(int position) {return null;};
 	protected final void push(int channel, O item) {};
+	protected final int outputs() {return 0;};
 }

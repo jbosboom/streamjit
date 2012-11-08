@@ -6,11 +6,7 @@ package org.mit.jstreamit;
  * @since 11/7/2012
  */
 public final class DuplicateSplitter<T> extends Splitter<T, T>{
-	private final int outputs;
-	//TODO: we'd like to use UNLIMITED instead, but we can't write the work
-	//function that way...
-	public DuplicateSplitter(int outputs) {
-		this.outputs = outputs;
+	public DuplicateSplitter() {
 	}
 
 	@Override
@@ -21,7 +17,7 @@ public final class DuplicateSplitter<T> extends Splitter<T, T>{
 	}
 
 	@Override
-	public int outputs() {
-		return outputs;
+	public int supportedOutputs() {
+		return Splitter.UNLIMITED;
 	}
 }

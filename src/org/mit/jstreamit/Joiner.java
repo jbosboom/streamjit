@@ -12,14 +12,18 @@ public abstract class Joiner<I, O> {
 	public abstract void work();
 	/**
 	 * Returns the number of input channels this Joiner instance may read
-	 * from, or UNLIMITED if there is no limit.
+	 * from, or UNLIMITED if any number >= 1 is supported.
 	 * TODO: maybe this should be part of the rate handling?
 	 * @return
 	 */
-	public abstract int inputs();
+	public abstract int supportedInputs();
 
-	//These don't actually do anything, they're just for the JIT to pattern-match against.
+	//These don't actually do anything, they're just for the JIT to
+	//pattern-match against.  We can't make them abstract because they're final,
+	//but they have to be final so implementations don't think they
+	//can customize them.
 	protected final I pop(int channel) {return null;};
 	protected final I peek(int channel, int position) {return null;};
 	protected final void push(O item) {};
+	protected final int inputs() {return 0;};
 }
