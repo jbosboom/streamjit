@@ -1,11 +1,13 @@
 package org.mit.jstreamit;
 
 /**
- *
+ * Programmers building a stream graph can either create instances of Pipeline
+ * for one-off pipelines, or create subclasses of Pipeline that create and pass
+ * SteamElement instances to the superclass constructor.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
-public final class Splitjoin<I, O> implements StreamElement<I, O> {
+public class Splitjoin<I, O> implements StreamElement<I, O> {
 	//We'd like this to be a Splitter<I, T>, but that would require introducing
 	//T as a type variable in Splitjoin.
 	private final Splitter splitter;
