@@ -22,7 +22,7 @@ public class Pipeline<I, O> implements StreamElement<I, O> {
 		this.elements = new ArrayList<>(elements);
 	}
 
-	public void add(StreamElement<?, ?> first, StreamElement<?, ?>... more) {
+	public final void add(StreamElement<?, ?> first, StreamElement<?, ?>... more) {
 		elements.add(first);
 		elements.addAll(Arrays.asList(more));
 	}

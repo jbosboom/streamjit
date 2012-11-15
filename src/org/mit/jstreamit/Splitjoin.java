@@ -37,7 +37,7 @@ public class Splitjoin<I, O> implements StreamElement<I, O> {
 		this.elements.addAll(Arrays.asList(elements));
 	}
 
-	public void add(StreamElement<?, ?> first, StreamElement<?, ?>... more) {
+	public final void add(StreamElement<?, ?> first, StreamElement<?, ?>... more) {
 		elements.add(first);
 		elements.addAll(Arrays.asList(more));
 	}
