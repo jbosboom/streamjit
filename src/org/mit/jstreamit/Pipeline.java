@@ -1,5 +1,7 @@
 package org.mit.jstreamit;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -12,13 +14,16 @@ import java.util.List;
  * @since 11/7/2012
  */
 public class Pipeline<I, O> implements StreamElement<I, O> {
-	private final StreamElement[] elements;
-	public Pipeline(StreamElement... elements) {
-		if (elements.length == 0)
-			throw new IllegalArgumentException();
-		this.elements = elements;
+	private final List<StreamElement<?, ?>> elements;
+	public Pipeline(StreamElement<?, ?>... elements) {
+		this.elements = new ArrayList<>(Arrays.asList(elements));
 	}
 	public Pipeline(List<StreamElement<?, ?>> elements) {
-		this.elements = elements.toArray(new StreamElement[0]);
+		this.elements = new ArrayList<>(elements);
+	}
+
+	public void add(StreamElement<?, ?> first, StreamElement<?, ?>... more) {
+		elements.add(first);
+		elements.addAll(Arrays.asList(more));
 	}
 }
