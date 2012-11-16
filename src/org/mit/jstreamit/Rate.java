@@ -14,7 +14,7 @@ package org.mit.jstreamit;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/16/2012
  */
-public class Rate {
+public final class Rate {
 	public static final int DYNAMIC = -1;
 	private final int min, max, avg;
 
