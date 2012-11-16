@@ -3,14 +3,6 @@ package org.mit.jstreamit;
 /**
  * Represents a rate declaration, with min, max and average values.
  *
- * Rates can be "partially dynamic", in which the maximum rate is known but
- * either does not equal the minimum rate or the minimum rate is dynamic, or
- * "fully dynamic", in which the minimum rate may or may not be known but the
- * maximum rate is dynamic. ("Partially dynamic" means there exists some buffer
- * size for which the filter can definitely be fired; "fully dynamic" means you
- * can't do any better than trying no matter how much you've buffered.)
- * TODO: output rates want partially dynamic to mean a lower bound?
- *
  * Note that the average rate may be dynamic even if the minimum and maximum
  * rates are known (so long as they aren't equal).
  *
@@ -122,28 +114,31 @@ public class Rate {
 	}
 
 	/**
-	 * Returns true iff this rate is partially dynamic (known maximum rate but
-	 * dynamic or lower known minimum rate).
-	 * @return true iff this rate is partially dynamic
+	 * Returns true iff this rate is static (both the minimum and maximum rates
+	 * are known (i.e., not dynamic)). Note that the average may still be
+	 * dynamic.
+	 * @return true iff this rate is static
 	 */
-	public boolean isPartiallyDynamic() {
-		return max() != DYNAMIC && (min() == DYNAMIC || min() < max());
+	public boolean isStatic() {
+		return min() != DYNAMIC && max() != DYNAMIC;
 	}
 
 	/**
-	 * Returns true iff this rate is fully dynamic (TODO: meaning)
-	 * @return
-	 */
-	public boolean isFullyDynamic() {
-		return max() == DYNAMIC;
-	}
-
-	/**
-	 * Returns true iff this rate is dynamic (either partially or fully)
+	 * Returns true iff this rate is dynamic (either the minimum or maximum rate
+	 * (or both) is dynamic).
 	 * @return true iff this rate is dynamic
 	 */
 	public boolean isDynamic() {
-		return isPartiallyDynamic() || isFullyDynamic();
+		return !isStatic();
+	}
+
+	/**
+	 * Returns true iff this rate is fixed (the rate is static and the minimum
+	 * and maximum rates are equal).
+	 * @return true iff this rate is fixed
+	 */
+	public boolean isFixed() {
+		return isStatic() && min() == max();
 	}
 
 	@Override
