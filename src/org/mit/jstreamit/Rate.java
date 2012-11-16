@@ -31,6 +31,8 @@ public class Rate {
 			throwIAE(min, max, avg);
 		if (max < 0 && max != DYNAMIC)
 			throwIAE(min, max, avg);
+		if (avg < 0 && avg != DYNAMIC)
+			throwIAE(min, max, avg);
 		if (!(min <= max))
 			throwIAE(min, max, avg);
 		if (min == max && min != DYNAMIC && avg != min)
