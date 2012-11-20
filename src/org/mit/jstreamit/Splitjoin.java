@@ -18,7 +18,10 @@ public class Splitjoin<I, O> implements StreamElement<I, O> {
 	private final Joiner joiner;
 	private final List<StreamElement<?, ?>> elements;
 	public <T, U> Splitjoin(Splitter<I, T> splitter, Joiner<U, O> joiner, StreamElement<? super T, ? extends U>... elements) {
-		int elems = elements.length;
+		this(splitter, joiner, Arrays.asList(elements));
+	}
+	public <T, U> Splitjoin(Splitter<I, T> splitter, Joiner<U, O> joiner, List<StreamElement<? super T, ? extends U>> elements) {
+		int elems = elements.size();
 		int splitOuts = splitter.supportedOutputs();
 		int joinIns = joiner.supportedInputs();
 		//If the splitter and joiner want different numbers of inputs and
@@ -33,8 +36,7 @@ public class Splitjoin<I, O> implements StreamElement<I, O> {
 //			throw new IllegalArgumentException(String.format("Joiner expects %d inputs but %d elements provided", joinIns, elems));
 		this.splitter = splitter;
 		this.joiner = joiner;
-		this.elements = new ArrayList<>(elems);
-		this.elements.addAll(Arrays.asList(elements));
+		this.elements = new ArrayList<StreamElement<?, ?>>(elements);
 	}
 
 	public final void add(StreamElement<?, ?> first, StreamElement<?, ?>... more) {
