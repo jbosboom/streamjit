@@ -43,4 +43,25 @@ public class Splitjoin<I, O> implements StreamElement<I, O> {
 		elements.add(first);
 		elements.addAll(Arrays.asList(more));
 	}
+
+	@Override
+	public final Splitjoin<I, O> copy() {
+		Splitter splitterCopy = splitter.copy();
+		//To detect misbehaving copy() implementations...
+		assert splitter != splitterCopy : splitter;
+		assert splitter.getClass() == splitterCopy.getClass() : splitter + ", " + splitterCopy;
+		Joiner joinerCopy = joiner.copy();
+		//To detect misbehaving copy() implementations...
+		assert joiner != joinerCopy : joiner;
+		assert joiner.getClass() == joinerCopy.getClass() : joiner + ", " + joinerCopy;
+		List<StreamElement<?, ?>> elementsCopy = new ArrayList<>(elements.size());
+		for (StreamElement<?, ?> element : elements) {
+			StreamElement<?, ?> elementCopy = element.copy();
+			//To detect misbehaving copy() implementations...
+			assert element != elementCopy : element;
+			assert element.getClass() == elementCopy.getClass() : element + ", " + elementCopy;
+			elementsCopy.add(element.copy());
+		}
+		return new Splitjoin(splitterCopy, joinerCopy, elementsCopy);
+	}
 }

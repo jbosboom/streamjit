@@ -13,4 +13,8 @@ public final class Identity<T> extends Filter<T, T> {
 	public void work() {
 		push(pop());
 	}
+	@Override
+	public Identity<T> copy() {
+		return new Identity<>();
+	}
 }

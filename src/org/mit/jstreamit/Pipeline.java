@@ -26,4 +26,17 @@ public class Pipeline<I, O> implements StreamElement<I, O> {
 		elements.add(first);
 		elements.addAll(Arrays.asList(more));
 	}
+
+	@Override
+	public final Pipeline<I, O> copy() {
+		List<StreamElement<?, ?>> elementsCopy = new ArrayList<>(elements.size());
+		for (StreamElement<?, ?> element : elements) {
+			StreamElement<?, ?> elementCopy = element.copy();
+			//To detect misbehaving copy() implementations...
+			assert element != elementCopy : element;
+			assert element.getClass() == elementCopy.getClass() : element + ", " + elementCopy;
+			elementsCopy.add(element.copy());
+		}
+		return new Pipeline<>(elementsCopy);
+	}
 }

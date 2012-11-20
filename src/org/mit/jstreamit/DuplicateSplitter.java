@@ -39,4 +39,9 @@ public final class DuplicateSplitter<T> extends Splitter<T, T>{
 	protected List<Rate> getPushRates() {
 		return Collections.nCopies(outputs(), Rate.create(1));
 	}
+
+	@Override
+	public DuplicateSplitter<T> copy() {
+		return new DuplicateSplitter<>();
+	}
 }

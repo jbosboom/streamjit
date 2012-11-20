@@ -25,6 +25,25 @@ public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> {
 	protected abstract List<Rate> getPushRates();
 
 	/**
+	 * Returns a deep copy of this object.  After this method returns, calls to
+	 * other methods on this object have no effect on the returned object, and
+	 * vice versa.  Additionally, even for stateless objects, a different object
+	 * must be returned (that is, for all x, x != x.copy()).
+	 *
+	 * Implementations should refine the return type of this method; that is,
+	 * mySplitter.copy() should return a MySplitter rather than just a
+	 * Splitter.
+	 *
+	 * Implementation note: Cloneable is fraught with peril (see Josh Bloch's
+	 * Effective Java, Second Edition, Item 11), and the standard replacement of
+	 * a copy constructor or static method doesn't work here because we need a
+	 * copy with the same dynamic type as this object, thus we need an instance
+	 * method.
+	 * @return a deep copy of this object
+	 */
+	public abstract Splitter<I, O> copy();
+
+	/**
 	 * Returns the number of output channels this Splitter instance may output
 	 * to, or UNLIMITED if any number >= 1 is supported.
 	 * TODO: maybe this should be part of the rate handling?
