@@ -16,7 +16,7 @@ import java.util.List;
 public class Pipeline<I, O> implements StreamElement<I, O> {
 	private final List<StreamElement<?, ?>> elements;
 	public Pipeline(StreamElement<?, ?>... elements) {
-		this.elements = new ArrayList<>(Arrays.asList(elements));
+		this(Arrays.asList(elements));
 	}
 	public Pipeline(List<StreamElement<?, ?>> elements) {
 		this.elements = new ArrayList<>(elements);
