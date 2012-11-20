@@ -1,14 +1,23 @@
 package org.mit.jstreamit;
 
+import java.util.List;
+
 /**
  * see comments on Splitter
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
-public abstract class Joiner<I, O> {
+public abstract class Joiner<I, O> extends PrimitiveWorker<I, O> {
 	public static final int UNLIMITED = Integer.MAX_VALUE;
-	//TODO: rate information, complicated by the fact that rates might differ
-	//between channels (e.g., weighted-roundrobin splitter)
+
+	@Override
+	protected abstract List<Rate> getPeekRates();
+	@Override
+	protected abstract List<Rate> getPopRates();
+	@Override
+	protected abstract List<Rate> getPushRates();
+
+	@Override
 	public abstract void work();
 	/**
 	 * Returns the number of input channels this Joiner instance may read
@@ -18,12 +27,63 @@ public abstract class Joiner<I, O> {
 	 */
 	public abstract int supportedInputs();
 
-	//These don't actually do anything, they're just for the JIT to
-	//pattern-match against.  We can't make them abstract because they're final,
-	//but they have to be final so implementations don't think they
-	//can customize them.
-	protected final I pop(int channel) {return null;};
-	protected final I peek(int channel, int position) {return null;};
-	protected final void push(O item) {};
-	protected final int inputs() {return 0;};
+	/**
+	 * Returns the number of input channels connected to this joiner.
+	 *
+	 * This method should only be called from work(), getPeekRates() and
+	 * getPopRates() or functions called from them.
+	 *
+	 * Implementation note: this is a JIT hook method.
+	 * @return the number of output channels connected to this splitter
+	 */
+	protected final int inputs() {
+		return getInputChannels().size();
+	};
+
+	/**
+	 * Peeks at the item at the given position on the given input channel. The index
+	 * is 0-based and moves with calls to pop(); that is, peek(i, 0) == pop(i) no
+	 * matter how many times pop() is called.
+	 *
+	 * This method should only be called from work() or functions called from
+	 * work().
+	 *
+	 * Implementation note: this is a JIT hook method.
+	 * @param channel the index of the input channel to peek at
+	 * @param position the position to peek at
+	 * @return an item on the input channel
+	 */
+	protected final I peek(int channel, int position) {
+		//TODO: check rates?
+		return getInputChannels().get(channel).peek(position);
+	};
+
+	/**
+	 * Pops an item off the given input channel.
+	 *
+	 * This method should only be called from work() or functions called from
+	 * work().
+	 *
+	 * Implementation note: this is a JIT hook method.
+	 * @param channel the index of the input channel to pop from
+	 * @return the first item in the input channel
+	 */
+	protected final I pop(int channel) {
+		//TODO: check rates?
+		return getInputChannels().get(channel).pop();
+	};
+
+	/**
+	 * Pushes the given item onto the output channel.
+	 *
+	 * This method should only be called from work() or functions called from
+	 * work().
+	 *
+	 * Implementation note: this is a JIT hook method.
+	 * @param item the item to push
+	 */
+	protected final void push(O item) {
+		//TODO: check rates?
+		getOutputChannels().get(0).push(item);
+	};
 }

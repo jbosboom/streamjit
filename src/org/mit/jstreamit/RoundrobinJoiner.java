@@ -1,5 +1,8 @@
 package org.mit.jstreamit;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  *
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
@@ -18,5 +21,21 @@ public class RoundrobinJoiner<T> extends Joiner<T, T> {
 	@Override
 	public int supportedInputs() {
 		return Joiner.UNLIMITED;
+	}
+
+	@Override
+	protected List<Rate> getPeekRates() {
+		//We don't peek.
+		return Collections.nCopies(inputs(), Rate.create(0));
+	}
+
+	@Override
+	protected List<Rate> getPopRates() {
+		return Collections.nCopies(inputs(), Rate.create(1));
+	}
+
+	@Override
+	protected List<Rate> getPushRates() {
+		return Collections.singletonList(Rate.create(1));
 	}
 }
