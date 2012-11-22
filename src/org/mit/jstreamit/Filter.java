@@ -8,7 +8,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
-public abstract class Filter<I, O> extends PrimitiveWorker<I, O> implements StreamElement<I, O> {
+public abstract class Filter<I, O> extends PrimitiveWorker<I, O> implements OneToOneElement<I, O> {
 	private final Rate peekRate, popRate, pushRate;
 
 	/**

@@ -9,29 +9,29 @@ import java.util.List;
  *
  * Programmers building a stream graph can either create instances of Pipeline
  * for one-off pipelines, or create subclasses of Pipeline that create and pass
- * SteamElement instances to the superclass constructor.
+ * OneToOneElement instances to the superclass constructor.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
-public class Pipeline<I, O> implements StreamElement<I, O> {
-	private final List<StreamElement<?, ?>> elements;
-	public Pipeline(StreamElement<?, ?>... elements) {
+public class Pipeline<I, O> implements OneToOneElement<I, O> {
+	private final List<OneToOneElement<?, ?>> elements;
+	public Pipeline(OneToOneElement<?, ?>... elements) {
 		this(Arrays.asList(elements));
 	}
-	public Pipeline(List<StreamElement<?, ?>> elements) {
+	public Pipeline(List<OneToOneElement<?, ?>> elements) {
 		this.elements = new ArrayList<>(elements);
 	}
 
-	public final void add(StreamElement<?, ?> first, StreamElement<?, ?>... more) {
+	public final void add(OneToOneElement<?, ?> first, OneToOneElement<?, ?>... more) {
 		elements.add(first);
 		elements.addAll(Arrays.asList(more));
 	}
 
 	@Override
 	public final Pipeline<I, O> copy() {
-		List<StreamElement<?, ?>> elementsCopy = new ArrayList<>(elements.size());
-		for (StreamElement<?, ?> element : elements) {
-			StreamElement<?, ?> elementCopy = element.copy();
+		List<OneToOneElement<?, ?>> elementsCopy = new ArrayList<>(elements.size());
+		for (OneToOneElement<?, ?> element : elements) {
+			OneToOneElement<?, ?> elementCopy = element.copy();
 			//To detect misbehaving copy() implementations...
 			assert element != elementCopy : element;
 			assert element.getClass() == elementCopy.getClass() : element + ", " + elementCopy;

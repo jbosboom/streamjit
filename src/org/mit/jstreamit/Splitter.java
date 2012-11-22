@@ -4,14 +4,12 @@ import java.util.List;
 
 /**
  * TODO: splitters with multiple output types?  would sacrifice CTTS.
- * Splitters are not StreamElements because they have multiple outputs and thus
- * can't be used everywhere a StreamElement can.
  * Splitter is an abstract class rather than an interface to allow the library
  * to handle rate info management.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
-public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> {
+public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> implements StreamElement<I, O> {
 	public static final int UNLIMITED = Integer.MAX_VALUE;
 
 	@Override
@@ -41,6 +39,7 @@ public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> {
 	 * method.
 	 * @return a deep copy of this object
 	 */
+	@Override
 	public abstract Splitter<I, O> copy();
 
 	/**

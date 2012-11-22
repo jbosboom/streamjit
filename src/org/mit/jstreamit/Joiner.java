@@ -7,7 +7,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
-public abstract class Joiner<I, O> extends PrimitiveWorker<I, O> {
+public abstract class Joiner<I, O> extends PrimitiveWorker<I, O> implements StreamElement<I, O> {
 	public static final int UNLIMITED = Integer.MAX_VALUE;
 
 	@Override
@@ -37,6 +37,7 @@ public abstract class Joiner<I, O> extends PrimitiveWorker<I, O> {
 	 * method.
 	 * @return a deep copy of this object
 	 */
+	@Override
 	public abstract Joiner<I, O> copy();
 
 	/**
