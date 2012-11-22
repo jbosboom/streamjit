@@ -20,23 +20,6 @@ public abstract class Joiner<I, O> extends PrimitiveWorker<I, O> implements Stre
 	@Override
 	public abstract void work();
 
-	/**
-	 * Returns a deep copy of this object.  After this method returns, calls to
-	 * other methods on this object have no effect on the returned object, and
-	 * vice versa.  Additionally, even for stateless objects, a different object
-	 * must be returned (that is, for all x, x != x.copy()).
-	 *
-	 * Implementations should refine the return type of this method; that is,
-	 * myJoiner.copy() should return a MyJoiner rather than just a
-	 * Joiner.
-	 *
-	 * Implementation note: Cloneable is fraught with peril (see Josh Bloch's
-	 * Effective Java, Second Edition, Item 11), and the standard replacement of
-	 * a copy constructor or static method doesn't work here because we need a
-	 * copy with the same dynamic type as this object, thus we need an instance
-	 * method.
-	 * @return a deep copy of this object
-	 */
 	@Override
 	public abstract Joiner<I, O> copy();
 
