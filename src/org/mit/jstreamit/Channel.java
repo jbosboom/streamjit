@@ -254,6 +254,8 @@ public final class Channel<E> implements Iterable<E> {
 
 	@Override
 	public String toString() {
+		if (isEmpty())
+			return "[]";
 		Iterator<E> iterator = iterator();
 		StringBuilder sb = new StringBuilder("[");
 		sb.append(iterator.next());
