@@ -17,10 +17,18 @@ import java.util.List;
 	private List<Channel<? super O>> outputChannels = new ArrayList<>(1);
 
 	void addPredecessor(PrimitiveWorker<?, ? extends I> predecessor, Channel<? extends I> channel) {
+		if (predecessor == null || channel == null)
+			throw new NullPointerException();
+		if (predecessor == this)
+			throw new IllegalArgumentException();
 		predecessors.add(predecessor);
 		inputChannels.add(channel);
 	}
 	void addSuccessor(PrimitiveWorker<? super O, ?> successor, Channel<? super O> channel) {
+		if (successor == null || channel == null)
+			throw new NullPointerException();
+		if (successor == this)
+			throw new IllegalArgumentException();
 		successors.add(successor);
 		outputChannels.add(channel);
 	}
