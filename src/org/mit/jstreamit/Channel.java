@@ -261,7 +261,7 @@ public final class Channel<E> implements Iterable<E> {
 		sb.append(iterator.next());
 		while (iterator.hasNext())
 			sb.append(", ").append(iterator.next());
-		return sb.toString();
+		return sb.append("]").toString();
 	}
 
 	/* Helper methods */
