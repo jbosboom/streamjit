@@ -7,6 +7,6 @@ package org.mit.jstreamit;
  */
 public interface CompiledStream<I, O> {
 	public void put(I input);
-	public void take(I output);
+	public O take();
 	//public void drain();
 }
