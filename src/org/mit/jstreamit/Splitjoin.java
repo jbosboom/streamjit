@@ -21,7 +21,8 @@ public class Splitjoin<I, O> implements OneToOneElement<I, O> {
 	public <T, U> Splitjoin(Splitter<I, T> splitter, Joiner<U, O> joiner, OneToOneElement<? super T, ? extends U>... elements) {
 		this(splitter, joiner, Arrays.asList(elements));
 	}
-	public <T, U> Splitjoin(Splitter<I, T> splitter, Joiner<U, O> joiner, List<OneToOneElement<? super T, ? extends U>> elements) {
+	
+	public <T, U> Splitjoin(Splitter<I, T> splitter, Joiner<U, O> joiner, List<? extends OneToOneElement<? super T, ? extends U>> elements) {
 		int elems = elements.size();
 		int splitOuts = splitter.supportedOutputs();
 		int joinIns = joiner.supportedInputs();
@@ -37,12 +38,26 @@ public class Splitjoin<I, O> implements OneToOneElement<I, O> {
 //			throw new IllegalArgumentException(String.format("Joiner expects %d inputs but %d elements provided", joinIns, elems));
 		this.splitter = splitter;
 		this.joiner = joiner;
-		this.elements = new ArrayList<OneToOneElement<?, ?>>(elements);
+		this.elements = new ArrayList<>(elements.size());
+		add(elements);
+	}
+
+	public final void add(OneToOneElement<?, ?> element) {
+		if (element == null)
+			throw new NullPointerException();
+		if (element == this)
+			throw new IllegalArgumentException("Adding splitjoin to itself");
+		elements.add(element);
 	}
 
 	public final void add(OneToOneElement<?, ?> first, OneToOneElement<?, ?>... more) {
-		elements.add(first);
-		elements.addAll(Arrays.asList(more));
+		add(first);
+		add(Arrays.asList(more));
+	}
+
+	public final void add(List<? extends OneToOneElement<?, ?>> elements) {
+		for (OneToOneElement<?, ?> element : elements)
+			add(element);
 	}
 
 	@Override
