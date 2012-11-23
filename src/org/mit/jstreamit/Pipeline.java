@@ -39,4 +39,13 @@ public class Pipeline<I, O> implements OneToOneElement<I, O> {
 		}
 		return new Pipeline<>(elementsCopy);
 	}
+
+	@Override
+	public final void visit(StreamVisitor v) {
+		if (v.enterPipeline(this)) {
+			for (OneToOneElement<?, ?> e : elements)
+				e.visit(v);
+			v.exitPipeline(this);
+		}
+	}
 }

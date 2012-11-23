@@ -24,4 +24,11 @@ public interface StreamElement<I, O> {
 	 * @return a deep copy of this object
 	 */
 	public StreamElement<I, O> copy();
+
+	/**
+	 * Initiates a visitation by the given visitor over the stream graph rooted
+	 * at this element.
+	 * @param v a visitor
+	 */
+	public void visit(StreamVisitor v);
 }

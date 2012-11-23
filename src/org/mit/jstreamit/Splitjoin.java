@@ -65,4 +65,19 @@ public class Splitjoin<I, O> implements OneToOneElement<I, O> {
 		}
 		return new Splitjoin(splitterCopy, joinerCopy, elementsCopy);
 	}
+
+	@Override
+	public final void visit(StreamVisitor v) {
+		if (v.enterSplitjoin(this)) {
+			splitter.visit(v);
+			for (OneToOneElement<?, ?> e : elements) {
+				if (v.enterSplitjoinBranch(e)) {
+					e.visit(v);
+					v.exitSplitjoinBranch(e);
+				}
+			}
+			joiner.visit(v);
+			v.exitSplitjoin(this);
+		}
+	}
 }

@@ -53,6 +53,11 @@ public abstract class Filter<I, O> extends PrimitiveWorker<I, O> implements OneT
 	@Override
 	public abstract Filter<I, O> copy();
 
+	@Override
+	public final void visit(StreamVisitor v) {
+		v.visitFilter(this);
+	}
+
 	/**
 	 * Peeks at the item at the given position on the input channel. The index
 	 * is 0-based and moves with calls to pop(); that is, peek(0) == pop() no

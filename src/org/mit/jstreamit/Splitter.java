@@ -33,6 +33,11 @@ public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> implements St
 	 */
 	public abstract int supportedOutputs();
 
+	@Override
+	public void visit(StreamVisitor v) {
+		v.visitSplitter(this);
+	}
+
 	/**
 	 * Returns the number of output channels connected to this splitter.
 	 *

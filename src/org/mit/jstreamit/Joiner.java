@@ -23,6 +23,11 @@ public abstract class Joiner<I, O> extends PrimitiveWorker<I, O> implements Stre
 	@Override
 	public abstract Joiner<I, O> copy();
 
+	@Override
+	public final void visit(StreamVisitor v) {
+		v.visitJoiner(this);
+	}
+
 	/**
 	 * Returns the number of input channels this Joiner instance may read
 	 * from, or UNLIMITED if any number >= 1 is supported.
