@@ -18,13 +18,28 @@ public class Pipeline<I, O> implements OneToOneElement<I, O> {
 	public Pipeline(OneToOneElement<?, ?>... elements) {
 		this(Arrays.asList(elements));
 	}
+
 	public Pipeline(List<OneToOneElement<?, ?>> elements) {
-		this.elements = new ArrayList<>(elements);
+		this.elements = new ArrayList<>(elements.size());
+		add(elements);
+	}
+
+	public final void add(OneToOneElement<?, ?> element) {
+		if (element == null)
+			throw new NullPointerException();
+		if (element == this)
+			throw new IllegalArgumentException("Adding pipeline to itself");
+		elements.add(element);
 	}
 
 	public final void add(OneToOneElement<?, ?> first, OneToOneElement<?, ?>... more) {
-		elements.add(first);
-		elements.addAll(Arrays.asList(more));
+		add(first);
+		add(Arrays.asList(more));
+	}
+
+	public final void add(List<OneToOneElement<?, ?>> elements) {
+		for (OneToOneElement<?, ?> element : elements)
+			add(element);
 	}
 
 	@Override
