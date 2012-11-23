@@ -1,5 +1,6 @@
 package org.mit.jstreamit.apps.fmradio;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 import org.mit.jstreamit.*;
@@ -12,6 +13,11 @@ import org.mit.jstreamit.*;
 public class FMRadio {
 	public static void main(String[] args) {
 		FMRadioCore core = new FMRadioCore();
+		StreamCompiler sc = new InterpreterStreamCompiler();
+		CompiledStream<Float, Float> stream = sc.compile(core);
+		for (int i = 0; i < 10000; ++i)
+			stream.put((float)i);
+		System.out.println(stream.take());
 	}
 
 	private static class LowPassFilter extends Filter<Float, Float> {
@@ -44,7 +50,10 @@ public class FMRadio {
 			for (int i = 0; i < decimation; i++)
 				pop();
 			pop();
-
+		}
+		@Override
+		public LowPassFilter copy() {
+			return new LowPassFilter(rate, cutoff, taps, decimation);
 		}
 	}
 
@@ -56,6 +65,10 @@ public class FMRadio {
 		public void work() {
 			//This is Java; we can depend on pop() ordering.
 			push(pop() - pop());
+		}
+		@Override
+		public Subtractor copy() {
+			return new Subtractor();
 		}
 	}
 
@@ -88,6 +101,10 @@ public class FMRadio {
 		public void work() {
 			push(pop() * k);
 		}
+		@Override
+		public Amplifier copy() {
+			return new Amplifier(k);
+		}
 	}
 
 	private static class Equalizer extends Pipeline<Float, Float> {
@@ -95,31 +112,35 @@ public class FMRadio {
 		private final int bands;
 		private final float[] cutoffs, gains;
 		private final int taps;
-		Equalizer(float rate, int bands, float[] cutoffs, float[] gains, int taps) {
-			super(makeElements(rate, bands, cutoffs, gains, taps));
+		Equalizer(float rate, final int bands, float[] cutoffs, float[] gains, int taps) {
 			this.rate = rate;
 			this.bands = bands;
 			this.cutoffs = cutoffs;
 			this.gains = gains;
 			this.taps = taps;
-		}
 
-		private static StreamElement[] makeElements(float rate, final int bands, float[] cutoffs, float[] gains, int taps) {
 			if (cutoffs.length != bands || gains.length != bands)
 				throw new IllegalArgumentException();
 
-			List<StreamElement<Float, Float>> splitjoinBody = new ArrayList<>(bands-1);
+			List<OneToOneElement<Float, Float>> splitjoinBody = new ArrayList<>(bands-1);
 			for (int i = 1; i < bands; ++i)
 				splitjoinBody.add(new Pipeline<Float, Float>(
 						new BandPassFilter(rate, cutoffs[i-1], cutoffs[i], taps),
 						new Amplifier(gains[i]))
 					);
-			Splitjoin<Float, Float> eqSplit = new Splitjoin<>(
+			add(new Splitjoin<>(
 					new DuplicateSplitter<>(), new RoundrobinJoiner<>(),
-					splitjoinBody.toArray(new StreamElement[0]));
+					splitjoinBody.toArray(new OneToOneElement[0])));
 
-			//This is what an anonymous filter looks like
-			Filter summer = new Filter<Float, Float>(bands-1, 1, 0) {
+			//This is as close as we can get to anonymous filters because we
+			//need to use a constructor in copy().  (Not even reflection will
+			//work, because the anonymous class constructor is synthetic and
+			//might have additional parameters to support accessing values from
+			//outside the class scope.
+			class AnonFilter extends Filter<Float, Float> {
+				AnonFilter() {
+					super(bands-1, 1, 0);
+				}
 				@Override
 				public void work() {
 					float sum = 0;
@@ -127,17 +148,23 @@ public class FMRadio {
 						sum += pop();
 					push(sum);
 				}
-			};
-
-			return new StreamElement[]{eqSplit, summer};
+				@Override
+				public Filter<Float, Float> copy() {
+					return new AnonFilter();
+				}
+			}
+			add(new AnonFilter());
 		}
 	}
 
 	private static class FMDemodulator extends Filter<Float, Float> {
-		float gain;
+		private final float gain;
 		FMDemodulator(float sampRate, float max, float bandwidth) {
+			this((float)(max*(sampRate/(bandwidth*Math.PI))));
+		}
+		FMDemodulator(float gain) {
 			super(1, 1, 2);
-			this.gain = (float)(max*(sampRate/(bandwidth*Math.PI)));
+			this.gain = gain;
 		}
 		@Override
 		public void work() {
@@ -145,6 +172,10 @@ public class FMRadio {
 			temp = (float)(gain * Math.atan(temp));
 			pop();
 			push(temp);
+		}
+		@Override
+		public FMDemodulator copy() {
+			return new FMDemodulator(gain);
 		}
 	}
 
