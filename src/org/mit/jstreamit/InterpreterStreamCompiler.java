@@ -13,9 +13,97 @@ import java.util.List;
 public class InterpreterStreamCompiler implements StreamCompiler {
 	@Override
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
-		StreamElement<I, O> copy = stream.copy();
-//		PrimitiveWorker<?, ?> head = firstChild(copy);
-		return null;
+		stream = stream.copy();
+		ConnectPrimitiveWorkersVisitor cpwv = new ConnectPrimitiveWorkersVisitor();
+		stream.visit(cpwv);
+		Channel head = cpwv.head, tail = cpwv.tail;
+		PrimitiveWorker<?, ?> source = cpwv.source, sink = cpwv.cur;
+		//We don't know the iteration is over until it's over, so hook up the
+		//tail channel here.
+		sink.getOutputChannels().add(tail);
+
+		return new InterpretedCompiledStream<>(head, tail, source, sink);
+	}
+
+	/**
+	 * Note: not yet thread-safe!
+	 * @param <I>
+	 * @param <O>
+	 */
+	private static class InterpretedCompiledStream<I, O> implements CompiledStream<I, O> {
+		private final Channel head, tail;
+		private final PrimitiveWorker<?, ?> source, sink;
+		InterpretedCompiledStream(Channel head, Channel tail, PrimitiveWorker<?, ?> source, PrimitiveWorker<?, ?> sink) {
+			this.head = head;
+			this.tail = tail;
+			this.source = source;
+			this.sink = sink;
+		}
+
+		@Override
+		public void put(I input) {
+			head.push(input);
+			pull();
+		}
+
+		@Override
+		public O take() {
+			return (O)tail.pop();
+		}
+
+		/**
+		 * Fires the sink as many times as possible (firing upstream filters as
+		 * required).
+		 */
+		private void pull() {
+			//Deliberate empty while-loop-body.
+			while (fireOnceIfPossible(sink));
+		}
+
+		/**
+		 * Fires upstream filters just enough to allow worker to fire, or
+		 * returns false if this is impossible.
+		 * @param worker the worker to fire
+		 * @return true if the worker fired, false if it didn't
+		 */
+		private boolean fireOnceIfPossible(PrimitiveWorker<?, ?> worker) {
+			//Use an explicit stack to avoid overflow.
+			Deque<PrimitiveWorker<?, ?>> stack = new ArrayDeque<>();
+			stack.push(worker);
+			while (!stack.isEmpty()) {
+				PrimitiveWorker<?, ?> current = stack.element();
+				int channel = findUnsatisfiedChannel(current);
+				if (channel == -1) {
+					current.work();
+					stack.pop();
+				} else {
+					if (current == source)
+						return false;
+					stack.push(current.getPredecessors().get(channel));
+				}
+			}
+			return true;
+		}
+
+		/**
+		 * Searches the given worker's input channels for one that requires more
+		 * elements before the worker can fire, returning the index of the found
+		 * channel or -1 if the worker can fire.
+		 */
+		private <I, O> int findUnsatisfiedChannel(PrimitiveWorker<I, O> worker) {
+			List<Channel<? extends I>> channels = worker.getInputChannels();
+			List<Rate> peekRates = worker.getPeekRates();
+			List<Rate> popRates = worker.getPopRates();
+			for (int i = 0; i < channels.size(); ++i) {
+				Rate peek = peekRates.get(i), pop = popRates.get(i);
+				if (peek.max() == Rate.DYNAMIC || pop.max() == Rate.DYNAMIC)
+					throw new UnsupportedOperationException("Unbounded input rates not yet supported");
+				int required = Math.max(peek.max(), pop.max());
+				if (channels.get(i).size() < required)
+					return i;
+			}
+			return -1;
+		}
 	}
 
 	/**
