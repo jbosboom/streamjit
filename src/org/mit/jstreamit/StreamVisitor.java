@@ -39,6 +39,12 @@ public abstract class StreamVisitor {
 	public abstract boolean enterSplitjoin(Splitjoin<?, ?> splitjoin);
 
 	/**
+	 * Visits a splitter.
+	 * @param splitter a splitter
+	 */
+	public abstract void visitSplitter(Splitter<?, ?> splitter);
+
+	/**
 	 * Called when entering a splitjoin branch. Implementations may return true
 	 * to visit the branch or false to skip it. exitSplitjoinBranch() will only
 	 * be called if true is returned. Other branches of the splitjoin may be
@@ -57,24 +63,18 @@ public abstract class StreamVisitor {
 	public abstract void exitSplitjoinBranch(OneToOneElement<?, ?> element);
 
 	/**
-	 * Called when exiting a splitjoin for which true was returned from the
-	 * corresponding call to enterSplitjoin(). If false was returned, this
-	 * method is not called.
-	 * @param splitjoin a splitjoin
-	 */
-	public abstract void exitSplitjoin(Splitjoin<?, ?> splitjoin);
-
-	/**
 	 * Visits a joiner.
 	 * @param joiner a joiner
 	 */
 	public abstract void visitJoiner(Joiner<?, ?> joiner);
 
 	/**
-	 * Visits a splitter.
-	 * @param splitter a splitter
+	 * Called when exiting a splitjoin for which true was returned from the
+	 * corresponding call to enterSplitjoin(). If false was returned, this
+	 * method is not called.
+	 * @param splitjoin a splitjoin
 	 */
-	public abstract void visitSplitter(Splitter<?, ?> splitter);
+	public abstract void exitSplitjoin(Splitjoin<?, ?> splitjoin);
 
 	/**
 	 * Called when visiting a stream element for which this visitor has not
