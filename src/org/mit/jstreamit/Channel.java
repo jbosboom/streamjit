@@ -273,7 +273,7 @@ public final class Channel<E> implements Iterable<E> {
 	private int increment(int index) {
 		++index;
 		//TODO: we could trade the branch for a division by using % instead.
-		if (index > buffer.length)
+		if (index >= buffer.length)
 			index -= buffer.length;
 		return index;
 	}
