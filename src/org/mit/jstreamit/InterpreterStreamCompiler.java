@@ -26,15 +26,14 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 		@Override
 		public void visitFilter(Filter filter) {
 			if (cur == null) {
-				cur = filter;
 				//No predecessor to go with this input channel.
 				filter.getInputChannels().add(head);
 			} else {
 				Channel c = new Channel();
 				cur.addSuccessor(filter, c);
 				filter.addPredecessor(cur, c);
-				cur = filter;
 			}
+			cur = filter;
 		}
 
 		@Override
