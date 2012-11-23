@@ -19,7 +19,7 @@ public class Pipeline<I, O> implements OneToOneElement<I, O> {
 		this(Arrays.asList(elements));
 	}
 
-	public Pipeline(List<OneToOneElement<?, ?>> elements) {
+	public Pipeline(List<? extends OneToOneElement<?, ?>> elements) {
 		this.elements = new ArrayList<>(elements.size());
 		add(elements);
 	}
@@ -37,7 +37,7 @@ public class Pipeline<I, O> implements OneToOneElement<I, O> {
 		add(Arrays.asList(more));
 	}
 
-	public final void add(List<OneToOneElement<?, ?>> elements) {
+	public final void add(List<? extends OneToOneElement<?, ?>> elements) {
 		for (OneToOneElement<?, ?> element : elements)
 			add(element);
 	}
