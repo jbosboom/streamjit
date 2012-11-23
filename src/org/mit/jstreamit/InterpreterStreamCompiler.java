@@ -88,13 +88,13 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 
 			SplitjoinContext ctx = new SplitjoinContext();
 			ctx.splitter = splitter;
-			stack.addFirst(ctx);
+			stack.push(ctx);
 		}
 
 		@Override
 		public boolean enterSplitjoinBranch(OneToOneElement<?, ?> element) {
 			//Reset cur to the remembered splitter.
-			cur = stack.peekFirst().splitter;
+			cur = stack.peek().splitter;
 			//Visit subelements.
 			return true;
 		}
@@ -102,7 +102,7 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 		@Override
 		public void exitSplitjoinBranch(OneToOneElement<?, ?> element) {
 			//Remember cur as a branch end.
-			stack.peekFirst().branchEnds.add(cur);
+			stack.peek().branchEnds.add(cur);
 		}
 
 		@Override
@@ -116,7 +116,7 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 				joiner.addPredecessor(w, c);
 			}
 
-			stack.removeFirst();
+			stack.pop();
 			cur = joiner;
 		}
 
