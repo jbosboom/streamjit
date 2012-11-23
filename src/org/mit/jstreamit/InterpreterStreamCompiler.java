@@ -27,7 +27,7 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 	 */
 	private static class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 		private Channel head = new Channel(), tail = new Channel();
-		private PrimitiveWorker<?, ?> cur;
+		private PrimitiveWorker<?, ?> cur, source;
 		private Deque<SplitjoinContext> stack = new ArrayDeque<>();
 
 		/**
@@ -45,6 +45,7 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 		public void visitFilter(Filter filter) {
 			if (cur == null) { //First worker encountered.
 				//No predecessor to go with this input channel.
+				source = filter;
 				filter.getInputChannels().add(head);
 			} else {
 				Channel c = new Channel();
@@ -76,6 +77,7 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 		public void visitSplitter(Splitter splitter) {
 			if (cur == null) { //First worker encountered.
 				//No predecessor to go with this input channel.
+				source = splitter;
 				splitter.getInputChannels().add(head);
 			} else {
 				Channel c = new Channel();
