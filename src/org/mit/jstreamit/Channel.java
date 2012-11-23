@@ -232,7 +232,7 @@ public final class Channel<E> implements Iterable<E> {
 			private int position = head;
 			@Override
 			public boolean hasNext() {
-				return position == tail;
+				return position != tail;
 			}
 			@Override
 			public E next() {
