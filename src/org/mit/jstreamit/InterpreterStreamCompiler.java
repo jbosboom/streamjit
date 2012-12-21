@@ -131,16 +131,7 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 
 		@Override
 		public void visitFilter(Filter filter) {
-			if (cur == null) { //First worker encountered.
-				//No predecessor to go with this input channel.
-				source = filter;
-				filter.getInputChannels().add(head);
-			} else {
-				Channel c = new Channel();
-				cur.addSuccessor(filter, c);
-				filter.addPredecessor(cur, c);
-			}
-			cur = filter;
+			visitWorker(filter);
 		}
 
 		@Override
@@ -163,16 +154,7 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 
 		@Override
 		public void visitSplitter(Splitter splitter) {
-			if (cur == null) { //First worker encountered.
-				//No predecessor to go with this input channel.
-				source = splitter;
-				splitter.getInputChannels().add(head);
-			} else {
-				Channel c = new Channel();
-				cur.addSuccessor(splitter, c);
-				splitter.addPredecessor(cur, c);
-			}
-			cur = splitter;
+			visitWorker(splitter);
 
 			SplitjoinContext ctx = new SplitjoinContext();
 			ctx.splitter = splitter;
@@ -212,6 +194,28 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 		public void exitSplitjoin(Splitjoin<?, ?> splitjoin) {
 			//Nothing to do here.  (We pop the SplitjoinContext in
 			//visitJoiner().)
+		}
+
+		private void visitWorker(PrimitiveWorker worker) {
+			if (cur == null) { //First worker encountered.
+				//No predecessor to go with this input channel.
+				source = worker;
+				worker.getInputChannels().add(head);
+			} else {
+				//cur isn't the last worker.
+				for (Rate rate : cur.getPushRates())
+					if (rate.max() == 0)
+						throw new IllegalStreamGraphException("Sink isn't last worker", (StreamElement)cur);
+				//worker isn't the first worker.
+				for (Rate rate : cur.getPopRates())
+					if (rate.max() == 0)
+						throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)worker);
+
+				Channel c = new Channel();
+				cur.addSuccessor(worker, c);
+				worker.addPredecessor(cur, c);
+			}
+			cur = worker;
 		}
 	}
 }
