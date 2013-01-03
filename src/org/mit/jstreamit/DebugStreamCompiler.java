@@ -36,6 +36,8 @@ public class DebugStreamCompiler implements StreamCompiler {
 	/**
 	 * This CompiledStream synchronizes offer() and poll(), so it can use
 	 * unsynchronized Channels.
+	 *
+	 * TODO: should we use bounded buffers here?
 	 * @param <I> the type of input data elements
 	 * @param <O> the type of output data elements
 	 */
@@ -50,16 +52,19 @@ public class DebugStreamCompiler implements StreamCompiler {
 		}
 
 		@Override
-		public synchronized void put(I input) {
+		public synchronized boolean offer(I input) {
+			if (input == null)
+				throw new NullPointerException();
 			head.push(input);
 			pull();
+			return true;
 		}
 
 		@Override
-		public synchronized O take() {
+		public synchronized O poll() {
 			if (sink.getPushRates().get(0).max() == 0)
 				throw new IllegalStateException("Can't take() from a stream ending in a sink");
-			return (O)tail.pop();
+			return tail.isEmpty() ? null : (O)tail.pop();
 		}
 
 		/**
