@@ -6,11 +6,19 @@ import java.util.Deque;
 import java.util.List;
 
 /**
- * A StreamCompiler that only interprets the stream graph.
+ * A StreamCompiler that interprets the stream graph on the thread that calls
+ * CompiledStream.put(). This compiler performs extra checks to verify filters
+ * conform to their rate declarations. The CompiledStream returned from the
+ * compile() method synchronizes offer() and poll() such that only up to one
+ * element is being offered or polled at once. As its name suggests, this
+ * compiler is intended for debugging purposes; it is unlikely to provide good
+ * performance.
+ *
+ * TODO: implement the extra rate checks!
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/20/2012
  */
-public class InterpreterStreamCompiler implements StreamCompiler {
+public class DebugStreamCompiler implements StreamCompiler {
 	@Override
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
 		stream = stream.copy();
@@ -22,18 +30,19 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 		//tail channel here.
 		sink.getOutputChannels().add(tail);
 
-		return new InterpretedCompiledStream<>(head, tail, source, sink);
+		return new DebugCompiledStream<>(head, tail, source, sink);
 	}
 
 	/**
-	 * Note: not yet thread-safe!
-	 * @param <I>
-	 * @param <O>
+	 * This CompiledStream synchronizes offer() and poll(), so it can use
+	 * unsynchronized Channels.
+	 * @param <I> the type of input data elements
+	 * @param <O> the type of output data elements
 	 */
-	private static class InterpretedCompiledStream<I, O> implements CompiledStream<I, O> {
+	private static class DebugCompiledStream<I, O> implements CompiledStream<I, O> {
 		private final Channel head, tail;
 		private final PrimitiveWorker<?, ?> source, sink;
-		InterpretedCompiledStream(Channel head, Channel tail, PrimitiveWorker<?, ?> source, PrimitiveWorker<?, ?> sink) {
+		DebugCompiledStream(Channel head, Channel tail, PrimitiveWorker<?, ?> source, PrimitiveWorker<?, ?> sink) {
 			this.head = head;
 			this.tail = tail;
 			this.source = source;
@@ -41,13 +50,15 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 		}
 
 		@Override
-		public void put(I input) {
+		public synchronized void put(I input) {
 			head.push(input);
 			pull();
 		}
 
 		@Override
-		public O take() {
+		public synchronized O take() {
+			if (sink.getPushRates().get(0).max() == 0)
+				throw new IllegalStateException("Can't take() from a stream ending in a sink");
 			return (O)tail.pop();
 		}
 
@@ -56,6 +67,8 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 		 * required).
 		 */
 		private void pull() {
+			//We should be in the offer() method that owns our lock.
+			assert Thread.holdsLock(this) : "pull() without lock?";
 			//Deliberate empty while-loop-body.
 			while (fireOnceIfPossible(sink));
 		}
