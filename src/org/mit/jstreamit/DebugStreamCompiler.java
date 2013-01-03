@@ -14,7 +14,6 @@ import java.util.List;
  * compiler is intended for debugging purposes; it is unlikely to provide good
  * performance.
  *
- * TODO: implement the extra rate checks!
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/20/2012
  */
