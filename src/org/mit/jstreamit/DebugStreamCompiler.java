@@ -134,7 +134,8 @@ public class DebugStreamCompiler implements StreamCompiler {
 			List<Rate> peekRates = worker.getPeekRates();
 			for (int i = 0; i < inputChannels.size(); ++i) {
 				Rate peek = peekRates.get(i), pop = popRates.get(i);
-				Channel<? extends I> channel = inputChannels.get(i);
+				//All channels we create are DebugChannels, so this is safe.
+				DebugChannel<? extends I> channel = (DebugChannel<? extends I>)inputChannels.get(i);
 				int peekIndex = channel.getMaxPeekIndex();
 				if (peek.min() != Rate.DYNAMIC && peekIndex+1 < peek.min() ||
 						peek.max() != Rate.DYNAMIC && peekIndex+1 > peek.max())
@@ -150,7 +151,8 @@ public class DebugStreamCompiler implements StreamCompiler {
 			List<Rate> pushRates = worker.getPushRates();
 			for (int i = 0; i < outputChannels.size(); ++i) {
 				Rate push = pushRates.get(i);
-				Channel<? super O> channel = outputChannels.get(i);
+				//All channels we create are DebugChannels, so this is safe.
+				DebugChannel<? super O> channel = (DebugChannel<? super O>)outputChannels.get(i);
 				int pushCount = channel.getPushCount();
 				if (push.min() != Rate.DYNAMIC && pushCount < push.min() ||
 						push.max() != Rate.DYNAMIC && pushCount > push.max())
@@ -168,7 +170,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 	 * unbounded wildcards all the time.
 	 */
 	private static class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
-		private Channel head = new Channel(), tail = new Channel();
+		private Channel head = new DebugChannel(), tail = new DebugChannel();
 		private PrimitiveWorker<?, ?> cur, source;
 		private Deque<SplitjoinContext> stack = new ArrayDeque<>();
 
@@ -235,7 +237,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 			//joiners only occur in splitjoins and the splitter will be visited
 			//first.
 			for (PrimitiveWorker<?, ?> w : stack.peekFirst().branchEnds) {
-				Channel c = new Channel();
+				Channel c = new DebugChannel();
 				w.addSuccessor(joiner, c);
 				joiner.addPredecessor(w, c);
 			}
@@ -265,7 +267,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 					if (rate.max() == 0)
 						throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)worker);
 
-				Channel c = new Channel();
+				Channel c = new DebugChannel();
 				cur.addSuccessor(worker, c);
 				worker.addPredecessor(cur, c);
 			}
