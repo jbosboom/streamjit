@@ -1,7 +1,5 @@
 package org.mit.jstreamit.apps.fmradio;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.mit.jstreamit.*;
 
 /**
@@ -14,11 +12,12 @@ public class FMRadio {
 		FMRadioCore core = new FMRadioCore();
 		StreamCompiler sc = new DebugStreamCompiler();
 		CompiledStream<Float, Float> stream = sc.compile(core);
-		for (int i = 0; i < 10000; ++i)
-			stream.offer((float)i);
 		Float output;
-		while ((output = stream.poll()) != null)
-			System.out.println(output);
+		for (int i = 0; i < 1000000; ++i) {
+			stream.offer((float)i);
+			while ((output = stream.poll()) != null)
+				System.out.println(output);
+		}
 	}
 
 	private static class LowPassFilter extends Filter<Float, Float> {
