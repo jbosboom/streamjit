@@ -92,7 +92,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 				PrimitiveWorker<?, ?> current = stack.element();
 				int channel = findUnsatisfiedChannel(current);
 				if (channel == -1) {
-					current.work();
+					checkedFire(current);
 					stack.pop();
 				} else {
 					if (current == source)
@@ -121,6 +121,42 @@ public class DebugStreamCompiler implements StreamCompiler {
 					return i;
 			}
 			return -1;
+		}
+
+		/**
+		 * Fires the given worker, checking the items consumed and produced
+		 * against its rate declarations.
+		 */
+		private <I, O> void checkedFire(PrimitiveWorker<I, O> worker) {
+			worker.work();
+			List<Channel<? extends I>> inputChannels = worker.getInputChannels();
+			List<Rate> popRates = worker.getPopRates();
+			List<Rate> peekRates = worker.getPeekRates();
+			for (int i = 0; i < inputChannels.size(); ++i) {
+				Rate peek = peekRates.get(i), pop = popRates.get(i);
+				Channel<? extends I> channel = inputChannels.get(i);
+				int peekIndex = channel.getMaxPeekIndex();
+				if (peek.min() != Rate.DYNAMIC && peekIndex+1 < peek.min() ||
+						peek.max() != Rate.DYNAMIC && peekIndex+1 > peek.max())
+					throw new AssertionError(String.format("%s: Peek rate %s but peeked at index %d on channel %d", worker, peek, peekIndex, i));
+				int popCount = channel.getPopCount();
+				if (pop.min() != Rate.DYNAMIC && popCount < pop.min() ||
+						pop.max() != Rate.DYNAMIC && popCount > pop.max())
+					throw new AssertionError(String.format("%s: Pop rate %s but popped %d elements from channel %d", worker, peek, popCount, i));
+				channel.resetStatistics();
+			}
+
+			List<Channel<? super O>> outputChannels = worker.getOutputChannels();
+			List<Rate> pushRates = worker.getPushRates();
+			for (int i = 0; i < outputChannels.size(); ++i) {
+				Rate push = pushRates.get(i);
+				Channel<? super O> channel = outputChannels.get(i);
+				int pushCount = channel.getPushCount();
+				if (push.min() != Rate.DYNAMIC && pushCount < push.min() ||
+						push.max() != Rate.DYNAMIC && pushCount > push.max())
+					throw new AssertionError(String.format("%s: Push rate %s but pushed %d elements onto channel %d", worker, push, pushCount, i));
+				channel.resetStatistics();
+			}
 		}
 	}
 
