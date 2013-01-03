@@ -114,7 +114,7 @@ public final class Channel<E> implements Iterable<E> {
 			throw new IndexOutOfBoundsException(String.format("index %d, size %d", index, size()));
 		//Compute the physical index.
 		int physicalIndex = head + index;
-		if (physicalIndex > buffer.length)
+		if (physicalIndex >= buffer.length)
 			physicalIndex -= buffer.length;
 		maxPeekIndex = Math.max(maxPeekIndex, index + popCount);
 		return buffer[physicalIndex];
@@ -273,8 +273,8 @@ public final class Channel<E> implements Iterable<E> {
 	private int increment(int index) {
 		++index;
 		//TODO: we could trade the branch for a division by using % instead.
-		if (index > buffer.length)
-			index -= buffer.length;
+		if (index == buffer.length)
+			index = 0;
 		return index;
 	}
 
