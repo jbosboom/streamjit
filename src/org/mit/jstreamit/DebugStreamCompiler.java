@@ -6,11 +6,18 @@ import java.util.Deque;
 import java.util.List;
 
 /**
- * A StreamCompiler that only interprets the stream graph.
+ * A StreamCompiler that interprets the stream graph on the thread that calls
+ * CompiledStream.put(). This compiler performs extra checks to verify filters
+ * conform to their rate declarations. The CompiledStream returned from the
+ * compile() method synchronizes offer() and poll() such that only up to one
+ * element is being offered or polled at once. As its name suggests, this
+ * compiler is intended for debugging purposes; it is unlikely to provide good
+ * performance.
+ *
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/20/2012
  */
-public class InterpreterStreamCompiler implements StreamCompiler {
+public class DebugStreamCompiler implements StreamCompiler {
 	@Override
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
 		stream = stream.copy();
@@ -22,18 +29,21 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 		//tail channel here.
 		sink.getOutputChannels().add(tail);
 
-		return new InterpretedCompiledStream<>(head, tail, source, sink);
+		return new DebugCompiledStream<>(head, tail, source, sink);
 	}
 
 	/**
-	 * Note: not yet thread-safe!
-	 * @param <I>
-	 * @param <O>
+	 * This CompiledStream synchronizes offer() and poll(), so it can use
+	 * unsynchronized Channels.
+	 *
+	 * TODO: should we use bounded buffers here?
+	 * @param <I> the type of input data elements
+	 * @param <O> the type of output data elements
 	 */
-	private static class InterpretedCompiledStream<I, O> implements CompiledStream<I, O> {
+	private static class DebugCompiledStream<I, O> implements CompiledStream<I, O> {
 		private final Channel head, tail;
 		private final PrimitiveWorker<?, ?> source, sink;
-		InterpretedCompiledStream(Channel head, Channel tail, PrimitiveWorker<?, ?> source, PrimitiveWorker<?, ?> sink) {
+		DebugCompiledStream(Channel head, Channel tail, PrimitiveWorker<?, ?> source, PrimitiveWorker<?, ?> sink) {
 			this.head = head;
 			this.tail = tail;
 			this.source = source;
@@ -41,14 +51,19 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 		}
 
 		@Override
-		public void put(I input) {
+		public synchronized boolean offer(I input) {
+			if (input == null)
+				throw new NullPointerException();
 			head.push(input);
 			pull();
+			return true;
 		}
 
 		@Override
-		public O take() {
-			return (O)tail.pop();
+		public synchronized O poll() {
+			if (sink.getPushRates().get(0).max() == 0)
+				throw new IllegalStateException("Can't take() from a stream ending in a sink");
+			return tail.isEmpty() ? null : (O)tail.pop();
 		}
 
 		/**
@@ -56,6 +71,8 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 		 * required).
 		 */
 		private void pull() {
+			//We should be in the offer() method that owns our lock.
+			assert Thread.holdsLock(this) : "pull() without lock?";
 			//Deliberate empty while-loop-body.
 			while (fireOnceIfPossible(sink));
 		}
@@ -74,7 +91,7 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 				PrimitiveWorker<?, ?> current = stack.element();
 				int channel = findUnsatisfiedChannel(current);
 				if (channel == -1) {
-					current.work();
+					checkedFire(current);
 					stack.pop();
 				} else {
 					if (current == source)
@@ -104,6 +121,44 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 			}
 			return -1;
 		}
+
+		/**
+		 * Fires the given worker, checking the items consumed and produced
+		 * against its rate declarations.
+		 */
+		private <I, O> void checkedFire(PrimitiveWorker<I, O> worker) {
+			worker.work();
+			List<Channel<? extends I>> inputChannels = worker.getInputChannels();
+			List<Rate> popRates = worker.getPopRates();
+			List<Rate> peekRates = worker.getPeekRates();
+			for (int i = 0; i < inputChannels.size(); ++i) {
+				Rate peek = peekRates.get(i), pop = popRates.get(i);
+				//All channels we create are DebugChannels, so this is safe.
+				DebugChannel<? extends I> channel = (DebugChannel<? extends I>)inputChannels.get(i);
+				int peekIndex = channel.getMaxPeekIndex();
+				if (peek.min() != Rate.DYNAMIC && peekIndex+1 < peek.min() ||
+						peek.max() != Rate.DYNAMIC && peekIndex+1 > peek.max())
+					throw new AssertionError(String.format("%s: Peek rate %s but peeked at index %d on channel %d", worker, peek, peekIndex, i));
+				int popCount = channel.getPopCount();
+				if (pop.min() != Rate.DYNAMIC && popCount < pop.min() ||
+						pop.max() != Rate.DYNAMIC && popCount > pop.max())
+					throw new AssertionError(String.format("%s: Pop rate %s but popped %d elements from channel %d", worker, peek, popCount, i));
+				channel.resetStatistics();
+			}
+
+			List<Channel<? super O>> outputChannels = worker.getOutputChannels();
+			List<Rate> pushRates = worker.getPushRates();
+			for (int i = 0; i < outputChannels.size(); ++i) {
+				Rate push = pushRates.get(i);
+				//All channels we create are DebugChannels, so this is safe.
+				DebugChannel<? super O> channel = (DebugChannel<? super O>)outputChannels.get(i);
+				int pushCount = channel.getPushCount();
+				if (push.min() != Rate.DYNAMIC && pushCount < push.min() ||
+						push.max() != Rate.DYNAMIC && pushCount > push.max())
+					throw new AssertionError(String.format("%s: Push rate %s but pushed %d elements onto channel %d", worker, push, pushCount, i));
+				channel.resetStatistics();
+			}
+		}
 	}
 
 	/**
@@ -114,7 +169,7 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 	 * unbounded wildcards all the time.
 	 */
 	private static class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
-		private Channel head = new Channel(), tail = new Channel();
+		private Channel head = new DebugChannel(), tail = new DebugChannel();
 		private PrimitiveWorker<?, ?> cur, source;
 		private Deque<SplitjoinContext> stack = new ArrayDeque<>();
 
@@ -131,16 +186,7 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 
 		@Override
 		public void visitFilter(Filter filter) {
-			if (cur == null) { //First worker encountered.
-				//No predecessor to go with this input channel.
-				source = filter;
-				filter.getInputChannels().add(head);
-			} else {
-				Channel c = new Channel();
-				cur.addSuccessor(filter, c);
-				filter.addPredecessor(cur, c);
-			}
-			cur = filter;
+			visitWorker(filter);
 		}
 
 		@Override
@@ -163,16 +209,7 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 
 		@Override
 		public void visitSplitter(Splitter splitter) {
-			if (cur == null) { //First worker encountered.
-				//No predecessor to go with this input channel.
-				source = splitter;
-				splitter.getInputChannels().add(head);
-			} else {
-				Channel c = new Channel();
-				cur.addSuccessor(splitter, c);
-				splitter.addPredecessor(cur, c);
-			}
-			cur = splitter;
+			visitWorker(splitter);
 
 			SplitjoinContext ctx = new SplitjoinContext();
 			ctx.splitter = splitter;
@@ -199,7 +236,7 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 			//joiners only occur in splitjoins and the splitter will be visited
 			//first.
 			for (PrimitiveWorker<?, ?> w : stack.peekFirst().branchEnds) {
-				Channel c = new Channel();
+				Channel c = new DebugChannel();
 				w.addSuccessor(joiner, c);
 				joiner.addPredecessor(w, c);
 			}
@@ -212,6 +249,28 @@ public class InterpreterStreamCompiler implements StreamCompiler {
 		public void exitSplitjoin(Splitjoin<?, ?> splitjoin) {
 			//Nothing to do here.  (We pop the SplitjoinContext in
 			//visitJoiner().)
+		}
+
+		private void visitWorker(PrimitiveWorker worker) {
+			if (cur == null) { //First worker encountered.
+				//No predecessor to go with this input channel.
+				source = worker;
+				worker.getInputChannels().add(head);
+			} else {
+				//cur isn't the last worker.
+				for (Rate rate : cur.getPushRates())
+					if (rate.max() == 0)
+						throw new IllegalStreamGraphException("Sink isn't last worker", (StreamElement)cur);
+				//worker isn't the first worker.
+				for (Rate rate : cur.getPopRates())
+					if (rate.max() == 0)
+						throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)worker);
+
+				Channel c = new DebugChannel();
+				cur.addSuccessor(worker, c);
+				worker.addPredecessor(cur, c);
+			}
+			cur = worker;
 		}
 	}
 }

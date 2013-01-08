@@ -1,8 +1,5 @@
 package org.mit.jstreamit.apps.fmradio;
 
-import java.lang.reflect.Constructor;
-import java.util.ArrayList;
-import java.util.List;
 import org.mit.jstreamit.*;
 
 /**
@@ -13,11 +10,14 @@ import org.mit.jstreamit.*;
 public class FMRadio {
 	public static void main(String[] args) {
 		FMRadioCore core = new FMRadioCore();
-		StreamCompiler sc = new InterpreterStreamCompiler();
+		StreamCompiler sc = new DebugStreamCompiler();
 		CompiledStream<Float, Float> stream = sc.compile(core);
-		for (int i = 0; i < 10000; ++i)
-			stream.put((float)i);
-		System.out.println(stream.take());
+		Float output;
+		for (int i = 0; i < 1000000; ++i) {
+			stream.offer((float)i);
+			while ((output = stream.poll()) != null)
+				System.out.println(output);
+		}
 	}
 
 	private static class LowPassFilter extends Filter<Float, Float> {
@@ -122,23 +122,21 @@ public class FMRadio {
 			if (cutoffs.length != bands || gains.length != bands)
 				throw new IllegalArgumentException();
 
-			List<OneToOneElement<Float, Float>> splitjoinBody = new ArrayList<>(bands-1);
+			Splitjoin<Float, Float> eqSplit = new Splitjoin<>(new DuplicateSplitter<Float>(), new RoundrobinJoiner<Float>());
 			for (int i = 1; i < bands; ++i)
-				splitjoinBody.add(new Pipeline<Float, Float>(
+				eqSplit.add(new Pipeline<Float, Float>(
 						new BandPassFilter(rate, cutoffs[i-1], cutoffs[i], taps),
 						new Amplifier(gains[i]))
 					);
-			add(new Splitjoin<>(
-					new DuplicateSplitter<>(), new RoundrobinJoiner<>(),
-					splitjoinBody.toArray(new OneToOneElement[0])));
+			add(eqSplit);
 
 			//This is as close as we can get to anonymous filters because we
 			//need to use a constructor in copy().  (Not even reflection will
 			//work, because the anonymous class constructor is synthetic and
 			//might have additional parameters to support accessing values from
 			//outside the class scope.
-			class AnonFilter extends Filter<Float, Float> {
-				AnonFilter() {
+			class Summer extends Filter<Float, Float> {
+				Summer() {
 					super(bands-1, 1, 0);
 				}
 				@Override
@@ -150,10 +148,11 @@ public class FMRadio {
 				}
 				@Override
 				public Filter<Float, Float> copy() {
-					return new AnonFilter();
+					return new Summer();
 				}
 			}
-			add(new AnonFilter());
+
+			add(new Summer());
 		}
 	}
 

@@ -36,7 +36,7 @@ public class RoundrobinJoiner<T> extends Joiner<T, T> {
 
 	@Override
 	protected List<Rate> getPushRates() {
-		return Collections.singletonList(Rate.create(1));
+		return Collections.singletonList(Rate.create(inputs()));
 	}
 
 	@Override
