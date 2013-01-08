@@ -13,14 +13,13 @@ import java.util.Iterator;
  */
 public interface Channel<E> extends Iterable<E> {
 	/**
-	 * Adds the given element to the end of this channel. Updates the push
-	 * count.
+	 * Adds the given element to the end of this channel.
 	 * @param element the element to add
 	 */
 	public void push(E element);
 
 	/**
-	 * Returns the element at the given index. Updates the maximum peek index.
+	 * Returns the element at the given index.
 	 * @param index the index to peek at
 	 * @return the element at the given index
 	 * @throws IndexOutOfBoundsException if index < 0 or index > size()
@@ -28,8 +27,7 @@ public interface Channel<E> extends Iterable<E> {
 	public E peek(int index);
 
 	/**
-	 * Removes and returns the element at the front of this channel.  Updates
-	 * the pop count.
+	 * Removes and returns the element at the front of this channel.
 	 * @return the element at the front of this channel
 	 * @throws NoSuchElementException if this channel is empty
 	 */
