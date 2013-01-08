@@ -15,6 +15,10 @@ public interface Channel<E> extends Iterable<E> {
 	/**
 	 * Adds the given element to the end of this channel.
 	 * @param element the element to add
+	 * @throws IllegalStateException if the element cannot be added at this time
+	 * due to capacity restrictions
+	 * @throws NullPointerException if the specified element is null and this
+	 * channel does not permit null elements
 	 */
 	public void push(E element);
 
