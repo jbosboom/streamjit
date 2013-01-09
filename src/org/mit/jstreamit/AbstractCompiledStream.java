@@ -79,48 +79,19 @@ public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, 
 		}
 	}
 
-	/**
-	 * Initiate draining this stream.  After this method returns, no elements
-	 * can be added to the stream with offer(); all calls to offer() will fail
-	 * by returning false.
-	 *
-	 * This method does not wait for the stream to drain; to block, use
-	 * awaitDraining().
-	 */
+	@Override
 	public final void drain() {
 		draining = true;
 		doDrain();
 	}
 
-	/**
-	 * Wait for this stream to finish draining.  If this stream has already
-	 * finished draining, returns immediately.
-	 *
-	 * Note that calling this method will not cause the stream to drain if it
-	 * has not already begun; if the intent is to drain and wait, call drain()
-	 * before calling this method.
-	 * @return true if the stream was fully drained, or false if elements were
-	 * left in buffers
-	 * @throws InterruptedException if this thread is interrupted while waiting
-	 */
+	@Override
 	public final boolean awaitDraining() throws InterruptedException {
 		awaitDrainingLatch.await();
 		return fullyDrained;
 	}
 
-	/**
-	 * Wait up to a given duration for this stream to finish draining.  If this
-	 * stream has already finished draining, returns immediately.
-	 *
-	 * Note that calling this method will not cause the stream to drain if it
-	 * has not already begun; if the intent is to drain and wait, call drain()
-	 * before calling this method.
-	 * @param timeout the maximum time to wait
-	 * @param unit the unit of the timeout argument
-	 * @return true if the stream was fully drained, or false if elements were
-	 * left in buffers
-	 * @throws InterruptedException if this thread is interrupted while waiting
-	 */
+	@Override
 	public final boolean awaitDraining(long timeout, TimeUnit unit) throws InterruptedException {
 		awaitDrainingLatch.await(timeout, unit);
 		return fullyDrained;
