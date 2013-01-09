@@ -40,10 +40,11 @@ public class DebugStreamCompiler implements StreamCompiler {
 	 * @param <I> the type of input data elements
 	 * @param <O> the type of output data elements
 	 */
-	private static class DebugCompiledStream<I, O> implements CompiledStream<I, O> {
+	private static class DebugCompiledStream<I, O> extends AbstractCompiledStream<I, O> {
 		private final Channel head, tail;
 		private final PrimitiveWorker<?, ?> source, sink;
 		DebugCompiledStream(Channel head, Channel tail, PrimitiveWorker<?, ?> source, PrimitiveWorker<?, ?> sink) {
+			super(head, tail);
 			this.head = head;
 			this.tail = tail;
 			this.source = source;
@@ -52,18 +53,26 @@ public class DebugStreamCompiler implements StreamCompiler {
 
 		@Override
 		public synchronized boolean offer(I input) {
-			if (input == null)
-				throw new NullPointerException();
-			head.push(input);
+			boolean ret = super.offer(input);
 			pull();
-			return true;
+			return ret;
 		}
 
 		@Override
 		public synchronized O poll() {
 			if (sink.getPushRates().get(0).max() == 0)
 				throw new IllegalStateException("Can't take() from a stream ending in a sink");
-			return tail.isEmpty() ? null : (O)tail.pop();
+			return super.poll();
+		}
+
+		@Override
+		protected synchronized void doDrain() {
+			//Most implementations of doDrain() hand off to another thread to
+			//avoid blocking in drain(), but we only have one thread.
+			pull();
+			//We need to see if any elements were left undrained.
+			UndrainedVisitor v = new UndrainedVisitor(head, tail);
+			finishedDraining(v.isFullyDrained());
 		}
 
 		/**
@@ -271,6 +280,74 @@ public class DebugStreamCompiler implements StreamCompiler {
 				worker.addPredecessor(cur, c);
 			}
 			cur = worker;
+		}
+	}
+
+	/**
+	 * Checks if a stream fully drained or not.
+	 */
+	private static class UndrainedVisitor extends StreamVisitor {
+		private final Channel<?> streamOutput;
+		private boolean fullyDrained = true;
+		/**
+		 * Constructs a new UndrainedVisitor for a stream with the given input
+		 * and output channels.
+		 */
+		UndrainedVisitor(Channel<?> streamInput, Channel<?> streamOutput) {
+			this.streamOutput = streamOutput;
+			if (!streamInput.isEmpty())
+				fullyDrained = false;
+		}
+
+		public boolean isFullyDrained() {
+			return fullyDrained;
+		}
+
+		private void visitWorker(PrimitiveWorker<?, ?> worker) {
+			//Every input channel except for the very first in the stream is an
+			//output channel of some other worker, and we checked the first one
+			//in the constructor, so we only need to check output channels here.
+			for (Channel<?> c : worker.getOutputChannels())
+				//Ignore the stream's final output, as it doesn't count as
+				//"undrained" even if it hasn't been picked up yet.
+				if (c != streamOutput && !c.isEmpty())
+					fullyDrained = false;
+		}
+		@Override
+		public void visitFilter(Filter<?, ?> filter) {
+			visitWorker(filter);
+		}
+		@Override
+		public boolean enterPipeline(Pipeline<?, ?> pipeline) {
+			//Enter the pipeline only if we haven't found undrained data yet.
+			return fullyDrained;
+		}
+		@Override
+		public void exitPipeline(Pipeline<?, ?> pipeline) {
+		}
+		@Override
+		public boolean enterSplitjoin(Splitjoin<?, ?> splitjoin) {
+			//Enter the splitjoin only if we haven't found undrained data yet.
+			return fullyDrained;
+		}
+		@Override
+		public void visitSplitter(Splitter<?, ?> splitter) {
+			visitWorker(splitter);
+		}
+		@Override
+		public boolean enterSplitjoinBranch(OneToOneElement<?, ?> element) {
+			//Enter the branch only if we haven't found undrained data yet.
+			return fullyDrained;
+		}
+		@Override
+		public void exitSplitjoinBranch(OneToOneElement<?, ?> element) {
+		}
+		@Override
+		public void visitJoiner(Joiner<?, ?> joiner) {
+			visitWorker(joiner);
+		}
+		@Override
+		public void exitSplitjoin(Splitjoin<?, ?> splitjoin) {
 		}
 	}
 }
