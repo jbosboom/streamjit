@@ -41,12 +41,9 @@ public class DebugStreamCompiler implements StreamCompiler {
 	 * @param <O> the type of output data elements
 	 */
 	private static class DebugCompiledStream<I, O> extends AbstractCompiledStream<I, O> {
-		private final Channel head, tail;
 		private final PrimitiveWorker<?, ?> source, sink;
 		DebugCompiledStream(Channel head, Channel tail, PrimitiveWorker<?, ?> source, PrimitiveWorker<?, ?> sink) {
 			super(head, tail);
-			this.head = head;
-			this.tail = tail;
 			this.source = source;
 			this.sink = sink;
 		}
@@ -71,7 +68,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 			//avoid blocking in drain(), but we only have one thread.
 			pull();
 			//We need to see if any elements were left undrained.
-			UndrainedVisitor v = new UndrainedVisitor(head, tail);
+			UndrainedVisitor v = new UndrainedVisitor(source.getInputChannels().get(0), sink.getOutputChannels().get(0));
 			finishedDraining(v.isFullyDrained());
 		}
 
