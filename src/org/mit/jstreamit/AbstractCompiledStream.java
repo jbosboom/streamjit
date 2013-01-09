@@ -5,23 +5,48 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * A skeletal implementation of CompiledStream that forwards offer() and poll()
+ * to push() and pop() operations on Channel instances.
  *
+ * This class provides a properly-synchronized implementation of drain() and
+ * related methods using volatile variables and a CountDownLatch.  offer() and
+ * poll() are not synchronized; if the implementation requires interacting with
+ * other threads, synchronized Channel implementations should be used.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 1/3/2013
  */
 public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, O> {
+	/**
+	 * The channel being used for input: offer() turns into push().
+	 */
 	private final Channel<? super I> inputChannel;
+	/**
+	 * The channel being used for output: poll() turns into pop().
+	 */
 	private final Channel<? extends O> outputChannel;
+	/**
+	 * Whether the stream is in the process of draining (or already drained);
+	 * specifically, whether calls to offer() should be forwarded to the channel
+	 * or not.
+	 */
 	private volatile boolean draining = false;
+	/**
+	 * Once the awaitDrainingLatch is cleared, indicates whether the stream was
+	 * fully drained or if there were data items stuck in buffers.
+	 */
 	private volatile boolean fullyDrained = false;
+	/**
+	 * The latch that threads blocked in awaitDraining() block on.
+	 */
 	private final CountDownLatch awaitDrainingLatch = new CountDownLatch(1);
 
 	/**
 	 * Creates a new AbstractCompiledStream, using the given channels for input
-	 * and output.  (Hint: if you're using a separate thread, use synchronized
-	 * channels.)
-	 * @param inputChannel
-	 * @param outputChannel
+	 * and output.  If the implementation does anything with threads, these
+	 * channels should be synchronized.  If the stream has a source and/or a
+	 * sink, consider using an EmptyChannel for input and/or output.
+	 * @param inputChannel the channel to use for input
+	 * @param outputChannel the channel to use for output
 	 */
 	public AbstractCompiledStream(Channel<? super I> inputChannel, Channel<? extends O> outputChannel) {
 		if (inputChannel == null || outputChannel == null)
@@ -54,16 +79,48 @@ public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, 
 		}
 	}
 
+	/**
+	 * Initiate draining this stream.  After this method returns, no elements
+	 * can be added to the stream with offer(); all calls to offer() will fail
+	 * by returning false.
+	 *
+	 * This method does not wait for the stream to drain; to block, use
+	 * awaitDraining().
+	 */
 	public final void drain() {
 		draining = true;
 		doDrain();
 	}
 
+	/**
+	 * Wait for this stream to finish draining.  If this stream has already
+	 * finished draining, returns immediately.
+	 *
+	 * Note that calling this method will not cause the stream to drain if it
+	 * has not already begun; if the intent is to drain and wait, call drain()
+	 * before calling this method.
+	 * @return true if the stream was fully drained, or false if elements were
+	 * left in buffers
+	 * @throws InterruptedException if this thread is interrupted while waiting
+	 */
 	public final boolean awaitDraining() throws InterruptedException {
 		awaitDrainingLatch.await();
 		return fullyDrained;
 	}
 
+	/**
+	 * Wait up to a given duration for this stream to finish draining.  If this
+	 * stream has already finished draining, returns immediately.
+	 *
+	 * Note that calling this method will not cause the stream to drain if it
+	 * has not already begun; if the intent is to drain and wait, call drain()
+	 * before calling this method.
+	 * @param timeout the maximum time to wait
+	 * @param unit the unit of the timeout argument
+	 * @return true if the stream was fully drained, or false if elements were
+	 * left in buffers
+	 * @throws InterruptedException if this thread is interrupted while waiting
+	 */
 	public final boolean awaitDraining(long timeout, TimeUnit unit) throws InterruptedException {
 		awaitDrainingLatch.await(timeout, unit);
 		return fullyDrained;
@@ -80,7 +137,14 @@ public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, 
 	 */
 	protected abstract void doDrain();
 
+	/**
+	 * Called by an implementation when draining is complete, to release clients
+	 * blocked in awaitDraining().  This method should only be called once.
+	 * @param fullyDrained true if the stream was fully drained, false if data
+	 * items remained in buffers
+	 */
 	protected final void finishedDraining(boolean fullyDrained) {
+		//TODO: enforce that the method is called once?
 		this.fullyDrained = fullyDrained;
 		awaitDrainingLatch.countDown();
 	}
