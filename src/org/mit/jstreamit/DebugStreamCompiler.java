@@ -42,7 +42,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 	 */
 	private static class DebugCompiledStream<I, O> extends AbstractCompiledStream<I, O> {
 		private final PrimitiveWorker<?, ?> source, sink;
-		DebugCompiledStream(Channel head, Channel tail, PrimitiveWorker<?, ?> source, PrimitiveWorker<?, ?> sink) {
+		DebugCompiledStream(Channel<? super I> head, Channel<? extends O> tail, PrimitiveWorker<?, ?> source, PrimitiveWorker<?, ?> sink) {
 			super(head, tail);
 			this.source = source;
 			this.sink = sink;
