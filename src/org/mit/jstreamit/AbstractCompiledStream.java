@@ -56,7 +56,7 @@ public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, 
 	}
 
 	@Override
-	public final boolean offer(I input) {
+	public boolean offer(I input) {
 		if (draining)
 			return false;
 
@@ -70,7 +70,7 @@ public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, 
 	}
 
 	@Override
-	public final O poll() {
+	public O poll() {
 		try {
 			return outputChannel.pop();
 		} catch (NoSuchElementException ex) {
