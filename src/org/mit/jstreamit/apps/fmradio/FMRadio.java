@@ -8,16 +8,18 @@ import org.mit.jstreamit.*;
  * @since 11/8/2012
  */
 public class FMRadio {
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		FMRadioCore core = new FMRadioCore();
 		StreamCompiler sc = new DebugStreamCompiler();
 		CompiledStream<Float, Float> stream = sc.compile(core);
 		Float output;
-		for (int i = 0; i < 1000000; ++i) {
+		for (int i = 0; i < 10000; ++i) {
 			stream.offer((float)i);
 			while ((output = stream.poll()) != null)
 				System.out.println(output);
 		}
+		stream.drain();
+		stream.awaitDraining();
 	}
 
 	private static class LowPassFilter extends Filter<Float, Float> {
