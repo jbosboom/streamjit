@@ -45,12 +45,16 @@ public final class Portal<I> {
 	 * portal's interface
 	 */
 	public void addRecipient(I recipient) {
+		//TODO: public <T extends PrimitiveWorker & I> void addRecipient(T recipient)
 		if (recipient == null)
 			throw new NullPointerException();
 		//I'm pretty sure this can only happen via unchecked casts or
 		//incompatible class file changes, but we should check anyway.
 		if (!klass.isInstance(recipient))
-			throw new IllegalArgumentException("Listener "+recipient+" not instance of "+klass);
+			throw new IllegalArgumentException("Recipient "+recipient+" not instance of "+klass);
+		//Messaging a non-worker doesn't make sense -- SDEP isn't defined.
+		if (!(recipient instanceof PrimitiveWorker))
+			throw new IllegalArgumentException("Recipient "+recipient+" not instance of Filter, Splitter or Joiner");
 		recipients.add(recipient);
 	}
 
