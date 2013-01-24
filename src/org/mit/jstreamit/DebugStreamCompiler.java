@@ -176,6 +176,8 @@ public class DebugStreamCompiler implements StreamCompiler {
 
 	/**
 	 * Checks if a stream fully drained or not.
+	 *
+	 * TODO: check for pending messages?
 	 */
 	private static class UndrainedVisitor extends StreamVisitor {
 		private final Channel<?> streamOutput;
