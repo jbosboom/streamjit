@@ -172,7 +172,7 @@ public class ArrayChannel<E> implements Channel<E> {
 		sb.append(iterator.next());
 		while (iterator.hasNext())
 			sb.append(", ").append(iterator.next());
-		return sb.toString();
+		return sb.append("]").toString();
 	}
 
 	/* Helper methods */
