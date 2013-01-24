@@ -15,6 +15,8 @@ public final class Portal<I> {
 	private final Class<I> klass;
 	private final List<I> listeners = new ArrayList<>();
 	public Portal(Class<I> klass) {
+		if (!klass.isInterface())
+			throw new IllegalArgumentException(klass+" is not an interface type");
 		this.klass = klass;
 	}
 
