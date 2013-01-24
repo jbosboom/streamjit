@@ -91,6 +91,25 @@ public final class Rate {
 	}
 
 	/**
+	 * Creates a Rate object as the union of the two given rates.  That is, the
+	 * created Rate has the lower of the two minimums, the higher of the two
+	 * maximums, and the sum of the two averages.
+	 *
+	 * Note that in the case the given rates do not overlap, the created Rate is
+	 * not the mathematical union of the given rates, because Rate cannot
+	 * represent gaps.
+	 * @param a a rate
+	 * @param b a rate
+	 * @return the union of a and b
+	 */
+	public static Rate union(Rate a, Rate b) {
+		int min = (a.min() == DYNAMIC || b.min() == DYNAMIC) ? DYNAMIC : Math.min(a.min(), b.min());
+		int max = (a.max() == DYNAMIC || b.max() == DYNAMIC) ? DYNAMIC : Math.max(a.max(), b.max());
+		int avg = (a.avg() == DYNAMIC || b.avg() == DYNAMIC) ? DYNAMIC : a.avg() + b.avg();
+		return create(min, max, avg);
+	}
+
+	/**
 	 * Returns the minimum rate.
 	 * @return the minimum rate
 	 */
