@@ -21,14 +21,19 @@ public class DebugStreamCompiler implements StreamCompiler {
 	@Override
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
 		stream = stream.copy();
-		ConnectPrimitiveWorkersVisitor cpwv = new ConnectPrimitiveWorkersVisitor();
+		ConnectPrimitiveWorkersVisitor cpwv = new ConnectPrimitiveWorkersVisitor() {
+			@Override
+			protected <E> Channel<E> makeChannel(PrimitiveWorker<?, E> upstream, PrimitiveWorker<E, ?> downstream) {
+				return new DebugChannel<>();
+			}
+		};
 		stream.visit(cpwv);
-		Channel head = cpwv.head, tail = cpwv.tail;
-		PrimitiveWorker<?, ?> source = cpwv.source, sink = cpwv.cur;
-		//We don't know the iteration is over until it's over, so hook up the
-		//tail channel here.
+		PrimitiveWorker<I, ?> source = (PrimitiveWorker<I, ?>)cpwv.getSource();
+		DebugChannel<I> head = new DebugChannel<>();
+		source.getInputChannels().add(head);
+		PrimitiveWorker<?, O> sink = (PrimitiveWorker<?, O>)cpwv.getSink();
+		DebugChannel<O> tail = new DebugChannel<>();
 		sink.getOutputChannels().add(tail);
-
 		return new DebugCompiledStream<>(head, tail, source, sink);
 	}
 
@@ -164,119 +169,6 @@ public class DebugStreamCompiler implements StreamCompiler {
 					throw new AssertionError(String.format("%s: Push rate %s but pushed %d elements onto channel %d", worker, push, pushCount, i));
 				channel.resetStatistics();
 			}
-		}
-	}
-
-	/**
-	 * Visits the stream graph, connecting the primitive workers with channels
-	 * and keeping references to the first input and last output channels.
-	 *
-	 * This class uses lots of raw types to avoid having to recapture the
-	 * unbounded wildcards all the time.
-	 */
-	private static class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
-		private Channel head = new DebugChannel(), tail = new DebugChannel();
-		private PrimitiveWorker<?, ?> cur, source;
-		private Deque<SplitjoinContext> stack = new ArrayDeque<>();
-
-		/**
-		 * Used for remembering information about splitjoins while traversing:
-		 * so we can reset cur to splitter when we enter a branch, and so we
-		 * record cur at the end of a branch to connect it to the joiner after
-		 * all branches are processed.
-		 */
-		private static class SplitjoinContext {
-			private Splitter<?, ?> splitter;
-			private List<PrimitiveWorker<?, ?>> branchEnds = new ArrayList<>();
-		}
-
-		@Override
-		public void visitFilter(Filter filter) {
-			visitWorker(filter);
-		}
-
-		@Override
-		public boolean enterPipeline(Pipeline<?, ?> pipeline) {
-			//Nothing to do but visit the pipeline elements.
-			return true;
-		}
-
-		@Override
-		public void exitPipeline(Pipeline<?, ?> pipeline) {
-			//Nothing to do here.
-		}
-
-		@Override
-		public boolean enterSplitjoin(Splitjoin<?, ?> splitjoin) {
-			//Nothing to do but visit the splijoin elements.  (We push the new
-			//SplitjoinContext in visitSplitter().)
-			return true;
-		}
-
-		@Override
-		public void visitSplitter(Splitter splitter) {
-			visitWorker(splitter);
-
-			SplitjoinContext ctx = new SplitjoinContext();
-			ctx.splitter = splitter;
-			stack.push(ctx);
-		}
-
-		@Override
-		public boolean enterSplitjoinBranch(OneToOneElement<?, ?> element) {
-			//Reset cur to the remembered splitter.
-			cur = stack.peek().splitter;
-			//Visit subelements.
-			return true;
-		}
-
-		@Override
-		public void exitSplitjoinBranch(OneToOneElement<?, ?> element) {
-			//Remember cur as a branch end.
-			stack.peek().branchEnds.add(cur);
-		}
-
-		@Override
-		public void visitJoiner(Joiner joiner) {
-			//Note that a joiner cannot be the first worker encountered because
-			//joiners only occur in splitjoins and the splitter will be visited
-			//first.
-			for (PrimitiveWorker<?, ?> w : stack.peekFirst().branchEnds) {
-				Channel c = new DebugChannel();
-				w.addSuccessor(joiner, c);
-				joiner.addPredecessor(w, c);
-			}
-
-			stack.pop();
-			cur = joiner;
-		}
-
-		@Override
-		public void exitSplitjoin(Splitjoin<?, ?> splitjoin) {
-			//Nothing to do here.  (We pop the SplitjoinContext in
-			//visitJoiner().)
-		}
-
-		private void visitWorker(PrimitiveWorker worker) {
-			if (cur == null) { //First worker encountered.
-				//No predecessor to go with this input channel.
-				source = worker;
-				worker.getInputChannels().add(head);
-			} else {
-				//cur isn't the last worker.
-				for (Rate rate : cur.getPushRates())
-					if (rate.max() == 0)
-						throw new IllegalStreamGraphException("Sink isn't last worker", (StreamElement)cur);
-				//worker isn't the first worker.
-				for (Rate rate : cur.getPopRates())
-					if (rate.max() == 0)
-						throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)worker);
-
-				Channel c = new DebugChannel();
-				cur.addSuccessor(worker, c);
-				worker.addPredecessor(cur, c);
-			}
-			cur = worker;
 		}
 	}
 
