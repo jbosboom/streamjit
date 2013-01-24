@@ -17,6 +17,18 @@ public final class Portal<I> {
 	public Portal(Class<I> klass) {
 		if (!klass.isInterface())
 			throw new IllegalArgumentException(klass+" is not an interface type");
+		//TODO: are these checks too strict?  The interpreter can check these
+		//dynamically and the compiler can tell exactly which methods are called,
+		//so we could be more lenient here.
+		for (Method m : klass.getMethods()) {
+			if (m.getDeclaringClass().equals(Object.class))
+				continue;
+			if (!m.getReturnType().equals(void.class))
+				throw new IllegalArgumentException("Method "+m.toGenericString()+" in "+klass+" returns non-void");
+			//TODO: do we need m.getGenericExceptionTypes() to handle "throws E"?
+			if (m.getExceptionTypes().length > 0)
+				throw new IllegalArgumentException("Method "+m.toGenericString()+" in "+klass+" may throw");
+		}
 		this.klass = klass;
 	}
 
@@ -58,9 +70,11 @@ public final class Portal<I> {
 	 * object that translates calls of I methods to messages. That is, calling a
 	 * method on the returned handle with some arguments results in that method
 	 * being invoked with those arguments on each of the recipients after the
-	 * specified latency. The argument objects must not be modified until after
-	 * all recipients have received and processed their messages. Handles should
-	 * not be stored in local variables or fields.
+	 * specified latency. Only methods declared in I or a superinterface of I
+	 * may be invoked through the handle; Object methods may not be invoked. The
+	 * argument objects must not be modified until after all recipients have
+	 * received and processed their messages. Handles should not be stored in
+	 * local variables or fields.
 	 *
 	 * Implementation note: this is a JIT hook method.
 	 *
@@ -84,6 +98,11 @@ public final class Portal<I> {
 		return handle;
 	}
 
+	/**
+	 * The back-end of the dynamic proxy created in getHandle() (strictly
+	 * speaking, this isn't the actual handle object, but HandleHandler seemed
+	 * like a dumb name).
+	 */
 	private class Handle implements InvocationHandler {
 		private final PrimitiveWorker<?, ?> sender;
 		private final List<I> recipients;
@@ -95,7 +114,17 @@ public final class Portal<I> {
 		}
 		@Override
 		public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-			throw new UnsupportedOperationException("TODO");
+			//We check in the Portal constructor that all non-Object methods are
+			//valid to call through, so check we aren't calling an Object method.
+			if (method.getDeclaringClass().equals(Object.class))
+				throw new IllegalStreamGraphException("Call to Object method "+method+" through portal", sender);
+
+			for (I recipient : recipients) {
+				//TODO: Compute latency between sender and recipient and queue message.
+			}
+
+			//Methods on the portal interface return void.
+			return null;
 		}
 	}
 }
