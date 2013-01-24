@@ -145,7 +145,7 @@ public class ArrayChannel<E> implements Channel<E> {
 			private int position = head;
 			@Override
 			public boolean hasNext() {
-				return position == tail;
+				return position != tail;
 			}
 			@Override
 			public E next() {
