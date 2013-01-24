@@ -94,7 +94,7 @@ public final class Portal<I> {
 			throw new NullPointerException();
 		//When running in the JIT compiler, this is a JIT hook instead.
 		@SuppressWarnings("unchecked")
-		I handle = (I)Proxy.newProxyInstance(klass.getClassLoader(), new Class<?>[]{klass}, new Handle(sender, recipients, latency));
+		I handle = (I)Proxy.newProxyInstance(klass.getClassLoader(), new Class<?>[]{klass}, new Handle<>(sender, recipients, latency));
 		return handle;
 	}
 
@@ -103,7 +103,7 @@ public final class Portal<I> {
 	 * speaking, this isn't the actual handle object, but HandleHandler seemed
 	 * like a dumb name).
 	 */
-	private class Handle implements InvocationHandler {
+	private static class Handle<I> implements InvocationHandler {
 		private final PrimitiveWorker<?, ?> sender;
 		private final List<I> recipients;
 		private final int latency;
