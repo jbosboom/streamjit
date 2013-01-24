@@ -20,7 +20,21 @@ public final class Portal<I> {
 		this.klass = klass;
 	}
 
+	/**
+	 * Registers a message recipient with this portal.  The recipient must
+	 * implement the interface specified by this portal.
+	 *
+	 * This method should only be called while building a stream graph.  After
+	 * the stream graph is compiled, calling this method will result in
+	 * undefined behavior.
+	 * @param recipient the message recipient to add
+	 * @throws NullPointerException if recipient is null
+	 * @throws IllegalArgumentException if recipient does not implement this
+	 * portal's interface
+	 */
 	public void addRecipient(I recipient) {
+		if (recipient == null)
+			throw new NullPointerException();
 		//I'm pretty sure this can only happen via unchecked casts or
 		//incompatible class file changes, but we should check anyway.
 		if (!klass.isInstance(recipient))
