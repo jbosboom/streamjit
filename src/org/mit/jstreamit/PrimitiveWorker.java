@@ -10,7 +10,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/19/2012
  */
-/* package private */ abstract class PrimitiveWorker<I, O> {
+/* package private */ abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 	private List<PrimitiveWorker<?, ? extends I>> predecessors = new ArrayList<>(1);
 	private List<PrimitiveWorker<? super O, ?>> successors = new ArrayList<>(1);
 	private List<Channel<? extends I>> inputChannels = new ArrayList<>(1);
