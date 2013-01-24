@@ -2,9 +2,12 @@ package org.mit.jstreamit;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 
 /**
  * A PrimitiveWorker encapsulates a primitive worker in the stream graph (a
@@ -90,6 +93,38 @@ import java.util.Queue;
 		}
 
 		return 0;
+	}
+
+	/**
+	 * Returns a set of all predecessors of this worker.
+	 * @return a set of all predecessors of this worker
+	 */
+	Set<PrimitiveWorker<?, ?>> getAllPredecessors() {
+		Set<PrimitiveWorker<?, ?>> closed = new HashSet<>();
+		Queue<PrimitiveWorker<?, ?>> frontier = new ArrayDeque<>();
+		frontier.add(this);
+		while (!frontier.isEmpty()) {
+			PrimitiveWorker<?, ?> cur = frontier.remove();
+			closed.add(cur);
+			frontier.addAll(cur.getPredecessors());
+		}
+		return Collections.unmodifiableSet(closed);
+	}
+
+	/**
+	 * Returns a set of all successors of this worker.
+	 * @return a set of all successors of this worker
+	 */
+	Set<PrimitiveWorker<?, ?>> getAllSuccessors() {
+		Set<PrimitiveWorker<?, ?>> closed = new HashSet<>();
+		Queue<PrimitiveWorker<?, ?>> frontier = new ArrayDeque<>();
+		frontier.add(this);
+		while (!frontier.isEmpty()) {
+			PrimitiveWorker<?, ?> cur = frontier.remove();
+			closed.add(cur);
+			frontier.addAll(cur.getSuccessors());
+		}
+		return Collections.unmodifiableSet(closed);
 	}
 
 	public abstract void work();
