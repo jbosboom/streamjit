@@ -20,7 +20,9 @@ import java.util.List;
 public class DebugStreamCompiler implements StreamCompiler {
 	@Override
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
-		stream = stream.copy();
+		//TODO: I'd like to make a copy here so the user can't mess with our
+		//stuff, but that will screw up portal registration.
+//		stream = stream.copy();
 		ConnectPrimitiveWorkersVisitor cpwv = new ConnectPrimitiveWorkersVisitor() {
 			@Override
 			protected <E> Channel<E> makeChannel(PrimitiveWorker<?, E> upstream, PrimitiveWorker<E, ?> downstream) {
@@ -138,7 +140,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		 * against its rate declarations.
 		 */
 		private <I, O> void checkedFire(PrimitiveWorker<I, O> worker) {
-			worker.work();
+			worker.doWork();
 			List<Channel<? extends I>> inputChannels = worker.getInputChannels();
 			List<Rate> popRates = worker.getPopRates();
 			List<Rate> peekRates = worker.getPeekRates();
