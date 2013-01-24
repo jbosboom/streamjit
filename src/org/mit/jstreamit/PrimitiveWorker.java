@@ -1,5 +1,6 @@
 package org.mit.jstreamit;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,6 +22,7 @@ import java.util.Set;
 	private List<PrimitiveWorker<? super O, ?>> successors = new ArrayList<>(1);
 	private List<Channel<? extends I>> inputChannels = new ArrayList<>(1);
 	private List<Channel<? super O>> outputChannels = new ArrayList<>(1);
+	private final List<Portal.Message> messages = new ArrayList<>();
 
 	void addPredecessor(PrimitiveWorker<?, ? extends I> predecessor, Channel<? extends I> channel) {
 		if (predecessor == null || channel == null)
@@ -128,6 +130,35 @@ import java.util.Set;
 	}
 
 	public abstract void work();
+
+	/**
+	 * Called by interpreters to do work and other related tasks, such as
+	 * processing messages.
+	 */
+	void doWork() {
+		while (!messages.isEmpty() && messages.get(0).executionsUntilDelivery == 0) {
+			Portal.Message m = messages.remove(0);
+			try {
+				m.method.invoke(this, m.args);
+			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+				throw new IllegalStreamGraphException("Bad stuff happened while processing message", ex);
+			}
+		}
+
+		//TODO: implement prework here
+		work();
+
+		for (Portal.Message m : messages)
+			--m.executionsUntilDelivery;
+	}
+
+	void sendMessage(Portal.Message message) {
+		//Insert in order sorted by time-to-receive.
+		int insertionPoint = Collections.binarySearch(messages, message);
+		if (insertionPoint < 0)
+			insertionPoint = -(insertionPoint + 1);
+		messages.add(insertionPoint, message);
+	}
 
 	/*
 	 * Ideally, subclasses would provide their rates to our constructor.  But

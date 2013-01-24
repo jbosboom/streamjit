@@ -3,8 +3,14 @@ package org.mit.jstreamit;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 
 /**
  *
@@ -102,6 +108,21 @@ public final class Portal<I> {
 		return handle;
 	}
 
+	/* package-private */ static class Message implements Comparable<Message> {
+		public final Method method;
+		public final Object[] args;
+		public int executionsUntilDelivery;
+		Message(Method method, Object[] args, int executionsUntilDelivery) {
+			this.method = method;
+			this.args = args;
+			this.executionsUntilDelivery = executionsUntilDelivery;
+		}
+		@Override
+		public int compareTo(Message o) {
+			return Integer.compare(executionsUntilDelivery, o.executionsUntilDelivery);
+		}
+	}
+
 	/**
 	 * The back-end of the dynamic proxy created in getHandle() (strictly
 	 * speaking, this isn't the actual handle object, but HandleHandler seemed
@@ -123,12 +144,208 @@ public final class Portal<I> {
 			if (method.getDeclaringClass().equals(Object.class))
 				throw new IllegalStreamGraphException("Call to Object method "+method+" through portal", sender);
 
-			for (I recipient : recipients) {
-				//TODO: Compute latency between sender and recipient and queue message.
+			//We probably don't have access to the message interface, but we
+			//need to call its methods anyway.  This might fail under a security
+			//manager, or if the interface is somehow security sensitive to the
+			//Java platform(?).
+			method.setAccessible(true);
+
+			for (I recipientI : recipients) {
+				//Compute the time-to-delivery.
+				int executionsUntilDelivery = Integer.MIN_VALUE;
+				//The cast is safe because we check in addRecipient() that only
+				//PrimitiveWorkers can be added.
+				PrimitiveWorker<?, ?> recipient = (PrimitiveWorker<?, ?>)recipientI;
+				switch (sender.compareStreamPosition(recipient)) {
+					case -1: //sender is upstream of recipient; message travels downstream
+						if (latency < 0)
+							throw new UnsupportedOperationException("TODO: downstream messages with negative latency");
+
+						for (int m = 0; ; ++m)
+							if (sdep(sender, recipient, m) >= latency) {
+								executionsUntilDelivery = m;
+								break;
+							}
+						break;
+
+					case 1: //sender is downstream of recipient; message travels upstream
+						if (latency < 0)
+							throw new IllegalStreamGraphException(
+									String.format("Sending a message upstream from %s to %s via portal %s with negative latency %d", sender, recipient, this, latency),
+									(StreamElement<?, ?>)sender, (StreamElement<?, ?>)recipient);
+
+						throw new UnsupportedOperationException("TODO: upstream messages with positive latency");
+						//break;
+
+					case 0: //sender and recipient are incomparable
+						throw new IllegalStreamGraphException(
+								String.format("Sending a message between incomparable elements %s and %s via portal %s", sender, recipient, this),
+								(StreamElement<?, ?>)sender, (StreamElement<?, ?>)recipient);
+					default:
+						throw new AssertionError("Can't happen!");
+				}
+
+				//Queue up the message at the recipient.
+				Message message = new Message(method, args, executionsUntilDelivery);
+				recipient.sendMessage(message);
 			}
 
 			//Methods on the portal interface return void.
 			return null;
 		}
+	}
+
+	/**
+	 * Compute SDEP(h, t, executions); that is, the minimum number of times h
+	 * must execute for t to execute executions times. If executions is 0, the
+	 * result is 0. If h == t, the result is executions. If there is no path
+	 * from h to t in the stream graph, t does not depend on h, so the result is
+	 * 0.
+	 * @param h the upstream worker
+	 * @param t the downstream worker
+	 * @param executions the number of executions of t to ensure
+	 * @return the number of executions of h required
+	 */
+	private static int sdep(PrimitiveWorker<?, ?> h, PrimitiveWorker<?, ?> t, int executions) {
+		if (h == null || t == null)
+			throw new NullPointerException();
+		if (executions < 0)
+			throw new IllegalArgumentException(Integer.toString(executions));
+		if (executions == 0)
+			return 0;
+		if (h == t)
+			return executions;
+
+		//If t is an immediate successor of h, we can compute by looking at
+		//their data rates.
+		int hIndex = h.getSuccessors().indexOf(t);
+		if (hIndex != -1) {
+			Rate hPushRate = h.getPushRates().get(hIndex);
+			int tIndex = t.getPredecessors().indexOf(h);
+			assert tIndex != -1;
+			Rate tPeekRate = t.getPeekRates().get(tIndex), tPopRate = t.getPopRates().get(tIndex);
+			if (hPushRate.isDynamic())
+				throw new IllegalStreamGraphException("Sending message over dynamic input rates", t);
+			if (tPeekRate.isDynamic() || tPopRate.isDynamic())
+				throw new IllegalStreamGraphException("Sending message over dynamic input rates", t);
+
+			int itemsRequired = requiredToExecute(tPeekRate.max(), tPopRate.max(), executions);
+			int hFires = 0, itemsProduced = 0;
+			while (itemsProduced < itemsRequired) {
+				++hFires;
+				itemsProduced += hPushRate.min();
+			}
+			return hFires;
+		}
+
+		//Otherwise, check all of h's successors that are predecessors of t.
+		int result = 0;
+		Set<PrimitiveWorker<?, ?>> tPredecessors = t.getAllPredecessors();
+		for (PrimitiveWorker<?, ?> s : h.getSuccessors()) {
+			if (!tPredecessors.contains(s))
+				continue;
+			int x = sdep(s, t, executions);
+			result = Math.max(result, sdep(h, s, x));
+		}
+
+		return result;
+	}
+
+	private static int requiredToExecute(int peekRate, int popRate, int executions) {
+		//TODO: there must be a formula for this?!
+		int neededToFire = Math.max(peekRate, popRate);
+		int required = 0, queued = 0;
+		while (executions > 0) {
+			if (queued >= neededToFire) {
+				queued -= popRate;
+				--executions;
+			} else {
+				int added = neededToFire - queued;
+				queued += added;
+				required += added;
+			}
+		}
+		return required;
+	}
+
+	private static class NodesInPathsBetweenComputer {
+		private final PrimitiveWorker<?, ?> head, tail;
+		private final Set<PrimitiveWorker<?, ?>> tailSuccessors;
+		private final Map<PrimitiveWorker<?, ?>, Set<PrimitiveWorker<?, ?>>> nextNodesToTail = new HashMap<>();
+		private NodesInPathsBetweenComputer(PrimitiveWorker<?, ?> head, PrimitiveWorker<?, ?> tail) {
+			this.head = head;
+			this.tail = tail;
+			this.tailSuccessors = tail.getAllSuccessors();
+		}
+		public Set<PrimitiveWorker<?, ?>> get() {
+			compute(head);
+			Set<PrimitiveWorker<?, ?>> result = new HashSet<>();
+			for (Set<PrimitiveWorker<?, ?>> nexts : nextNodesToTail.values())
+				result.addAll(nexts);
+			return result;
+		}
+		private boolean compute(PrimitiveWorker<?, ?> h) {
+			if (h == tail)
+				return true;
+			Set<PrimitiveWorker<?, ?>> nodes = nextNodesToTail.get(h);
+			if (nodes == null) {
+				nodes = new HashSet<>();
+				for (PrimitiveWorker<?, ?> next : h.getSuccessors()) {
+					//If next is one of tail's successors, we can stop checking
+					//this branch because we've gone too far down.
+					if (tailSuccessors.contains(next))
+						continue;
+					//See if this node leads to tail.
+					if (compute(next))
+						nodes.add(next);
+				}
+				nextNodesToTail.put(h, nodes);
+			}
+			return !nodes.isEmpty();
+		}
+	}
+
+	/**
+	 * Topologically sort the given set of nodes, such that each node precedes
+	 * all of its successors in the returned list.
+	 * @param nodes the set of nodes to sort
+	 * @return a topologically-ordered list of the given nodes
+	 */
+	private static List<PrimitiveWorker<?, ?>> topologicalSort(Set<PrimitiveWorker<?, ?>> nodes) {
+		//Build a "use count" for each node, counting the number of nodes that
+		//have it as a successor.
+		Map<PrimitiveWorker<?, ?>, Integer> useCount = new HashMap<>();
+		for (PrimitiveWorker<?, ?> n : nodes)
+			useCount.put(n, 0);
+		for (PrimitiveWorker<?, ?> n : nodes)
+			for (PrimitiveWorker<?, ?> next : n.getSuccessors()) {
+				Integer count = useCount.get(next);
+				if (count != null)
+					useCount.put(next, count+1);
+			}
+
+		List<PrimitiveWorker<?, ?>> result = new ArrayList<>();
+		Queue<PrimitiveWorker<?, ?>> unused = new ArrayDeque<>();
+		for (Map.Entry<PrimitiveWorker<?, ?>, Integer> e : useCount.entrySet())
+			if (e.getValue() == 0)
+				unused.add(e.getKey());
+		while (!unused.isEmpty()) {
+			PrimitiveWorker<?, ?> n = unused.remove();
+			result.add(n);
+			//Decrement the use counts of n's successors, adding them to unused
+			//if the use count becomes zero.
+			for (PrimitiveWorker<?, ?> next : n.getSuccessors()) {
+				Integer count = useCount.get(next);
+				if (count != null) {
+					count -= 1;
+					useCount.put(next, count);
+					if (count == 0)
+						unused.add(next);
+				}
+			}
+		}
+
+		assert result.size() == nodes.size();
+		return result;
 	}
 }
