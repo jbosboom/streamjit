@@ -11,7 +11,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/8/2012
  */
-public final class Portal<I extends Object> {
+public final class Portal<I> {
 	private final Class<I> klass;
 	private final List<I> listeners = new ArrayList<>();
 	public Portal(Class<I> klass) {
