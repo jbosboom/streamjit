@@ -1,7 +1,10 @@
 package org.mit.jstreamit;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
+import java.util.Queue;
 
 /**
  * A PrimitiveWorker encapsulates a primitive worker in the stream graph (a
@@ -47,6 +50,46 @@ import java.util.List;
 
 	List<Channel<? super O>> getOutputChannels() {
 		return outputChannels;
+	}
+
+	/**
+	 * Compare the position of this worker to the given other worker.  Returns
+	 * -1 if this worker is upstream of the other worker, 1 if this worker is
+	 * downstream of the other worker, or 0 if this worker is neither upstream
+	 * nor downstream of the other worker (this == other, or this and other are
+	 * in parallel branches of a splitjoin).
+	 *
+	 * Obviously, this method requires the workers in a stream graph be
+	 * connected.  See ConnectPrimitiveWorkersVisitor.
+	 * @param other the other worker to compare against
+	 * @return -1 if we're upstream, 1 if we're downstream, else 0
+	 */
+	int compareStreamPosition(PrimitiveWorker<?, ?> other) {
+		if (other == null)
+			throw new NullPointerException();
+		if (this == other)
+			return 0;
+
+		Queue<PrimitiveWorker<?, ?>> frontier = new ArrayDeque<>();
+		//BFS downstream.
+		frontier.add(this);
+		while (!frontier.isEmpty()) {
+			PrimitiveWorker<?, ?> cur = frontier.remove();
+			if (cur == other)
+				return -1;
+			frontier.addAll(cur.getSuccessors());
+		}
+
+		//BFS upstream.
+		frontier.add(this);
+		while (!frontier.isEmpty()) {
+			PrimitiveWorker<?, ?> cur = frontier.remove();
+			if (cur == other)
+				return 1;
+			frontier.addAll(cur.getPredecessors());
+		}
+
+		return 0;
 	}
 
 	public abstract void work();
