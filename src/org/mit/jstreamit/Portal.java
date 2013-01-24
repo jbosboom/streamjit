@@ -19,6 +19,10 @@ public final class Portal<I extends Object> {
 	}
 
 	public void addListener(I listener) {
+		//I'm pretty sure this can only happen via unchecked casts or
+		//incompatible class file changes, but we should check anyway.
+		if (!klass.isInstance(listener))
+			throw new IllegalArgumentException("Listener "+listener+" not instance of "+klass);
 		listeners.add(listener);
 	}
 
