@@ -192,16 +192,25 @@ public class ArrayChannel<E> implements Channel<E> {
 	}
 
 	/**
-	 * Expand the buffer, copying over the existing elements.  We could take
-	 * this opportunity to move all the elements to the front of the new buffer,
-	 * but that would complicate the code merely to delay the next wraparound,
-	 * so there's no real reason.
+	 * Expand the buffer, copying over the existing elements.  Assumes (and
+	 * asserts) head == tail, so you can't call it as an "ensure capacity"
+	 * method.
 	 */
 	private void expandCapacity() {
-		int newLength = (int)Math.ceil(buffer.length * GROWTH_FACTOR);
+		assert head == tail;
+		int oldLength = buffer.length;
+		int newLength = (int)Math.ceil(oldLength * GROWTH_FACTOR);
 		if (newLength <= 0)
 			newLength = Integer.MAX_VALUE; //Good luck allocating that much...
 		assert newLength >= buffer.length;
-		buffer = Arrays.copyOf(buffer, newLength);
+		@SuppressWarnings("unchecked")
+		E[] newBuffer = (E[])new Object[newLength];
+
+		//Copy over the elements in the correct order.
+		System.arraycopy(buffer, head, newBuffer, 0, oldLength-head);
+		System.arraycopy(buffer, 0, newBuffer, oldLength-head, head);
+		head = 0;
+		tail = oldLength;
+		buffer = newBuffer;
 	}
 }
