@@ -13,19 +13,19 @@ import java.util.List;
  */
 public final class Portal<I> {
 	private final Class<I> klass;
-	private final List<I> listeners = new ArrayList<>();
+	private final List<I> recipients = new ArrayList<>();
 	public Portal(Class<I> klass) {
 		if (!klass.isInterface())
 			throw new IllegalArgumentException(klass+" is not an interface type");
 		this.klass = klass;
 	}
 
-	public void addListener(I listener) {
+	public void addRecipient(I recipient) {
 		//I'm pretty sure this can only happen via unchecked casts or
 		//incompatible class file changes, but we should check anyway.
-		if (!klass.isInstance(listener))
-			throw new IllegalArgumentException("Listener "+listener+" not instance of "+klass);
-		listeners.add(listener);
+		if (!klass.isInstance(recipient))
+			throw new IllegalArgumentException("Listener "+recipient+" not instance of "+klass);
+		recipients.add(recipient);
 	}
 
 	public I getHandle(int latency) {
