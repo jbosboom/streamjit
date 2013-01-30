@@ -52,7 +52,7 @@ final class MessageConstraint {
 	}
 	@Override
 	public String toString() {
-		return String.format("%s from %s to %s at %d", direction, sender, recipient, latency);
+		return String.format("%s from %s to %s after %d", direction, sender, recipient, latency);
 	}
 
 	/**
