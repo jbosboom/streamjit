@@ -45,6 +45,9 @@ abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 	/**
 	 * Creates a Channel object to be used to connect the given two workers
 	 * together.
+	 *
+	 * TODO: generic bounds are too strict -- the filters don't have to exactly
+	 * agree on type, but merely be compatible
 	 * @param <E> the type of element in the Channel
 	 * @param upstream the upstream worker
 	 * @param downstream the downstream worker
