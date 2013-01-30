@@ -2,6 +2,7 @@ package org.mit.jstreamit;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,6 +10,17 @@ import java.util.List;
 import java.util.Map;
 import org.mit.jstreamit.PrimitiveWorker.StreamPosition;
 import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.IntInsnNode;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.VarInsnNode;
 
 /**
  *
@@ -37,6 +49,10 @@ final class MessageConstraint {
 	}
 	public PrimitiveWorker.StreamPosition getDirection() {
 		return direction;
+	}
+	@Override
+	public String toString() {
+		return String.format("%s from %s to %s at %d", direction, sender, recipient, latency);
 	}
 
 	/**
@@ -92,6 +108,9 @@ final class MessageConstraint {
 			this.portalField = portalField;
 			this.latencyField = latencyField;
 			this.constantLatency = constantLatency;
+			this.portalField.setAccessible(true);
+			if (this.latencyField != null)
+				this.latencyField.setAccessible(true);
 		}
 		public Portal<?> getPortal(PrimitiveWorker<?, ?> worker) {
 			try {
@@ -139,16 +158,169 @@ final class MessageConstraint {
 		return false;
 	}
 
+	/**
+	 * Parse the given class' bytecodes, looking for calls to getHandle() and
+	 * returning WorkerDatas holding the calls' arguments.
+	 * @param klass
+	 * @return
+	 */
 	private static List<WorkerData> parseBytecodes(Class<?> klass) {
 		ClassReader r = null;
 		try {
-			r = new ClassReader(klass.getCanonicalName());
+			r = new ClassReader(klass.getName());
 		} catch (IOException ex) {
-			throw new IllegalStreamGraphException("Couldn't get bytecode for "+klass.getCanonicalName());
+			throw new IllegalStreamGraphException("Couldn't get bytecode for "+klass.getName(), ex);
 		}
 
-		//TODO: the hard part!
+		WorkClassVisitor wcv = new WorkClassVisitor();
+		r.accept(wcv, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+		MethodNode mn = wcv.getWorkMethodNode();
 
-		return Collections.emptyList();
+		List<WorkerData> workerDatas = new ArrayList<>();
+		for (AbstractInsnNode insn = mn.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+			if (insn instanceof MethodInsnNode) {
+				MethodInsnNode call = (MethodInsnNode)insn;
+				if (call.name.equals("getHandle") && call.owner.equals(Type.getType(Portal.class).getInternalName()))
+					workerDatas.add(dataFromCall(klass, call));
+			}
+		}
+
+		return workerDatas.isEmpty() ? Collections.<WorkerData>emptyList() : Collections.unmodifiableList(workerDatas);
+	}
+
+	/**
+	 * Parse the given getHandle() call instruction and preceding instructions
+	 * into a WorkerData.  This is a rather brittle pattern-matching job and
+	 * will fail on obfuscated bytecodes.
+	 * @param call
+	 * @return
+	 */
+	private static WorkerData dataFromCall(Class<?> klass, MethodInsnNode call) {
+		//Latency is either an integer constant or a getfield on this.
+		Field latencyField = null;
+		int constantLatency = Integer.MIN_VALUE;
+		AbstractInsnNode latencyInsn = call.getPrevious();
+		if (latencyInsn instanceof FieldInsnNode) {
+			FieldInsnNode fieldInsn = (FieldInsnNode)latencyInsn;
+			if (fieldInsn.getOpcode() != Opcodes.GETFIELD)
+				throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": latency field insn opcode "+fieldInsn.getOpcode());
+			if (!fieldInsn.desc.equals(Type.INT_TYPE.getDescriptor()))
+				throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": latency field desc "+fieldInsn.desc);
+			if (!fieldInsn.owner.equals(Type.getType(klass).getInternalName()))
+				throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": latency field owner "+fieldInsn.owner);
+
+			//Move latencyInsn to sync up with the other else-if branches.
+			latencyInsn = latencyInsn.getPrevious();
+			//We must be loading from this.
+			if (latencyInsn.getOpcode() != Opcodes.ALOAD)
+				throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": getfield subject opcode "+latencyInsn.getOpcode());
+			int varIdx = ((VarInsnNode)latencyInsn).var;
+			if (varIdx != 0)
+				throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": getfield not from this but from "+varIdx);
+
+			//Check the field we're loading from is constant (final).
+			//A static field is okay here since it isn't a reference parameter.
+			try {
+				latencyField = klass.getDeclaredField(fieldInsn.name);
+				if (!Modifier.isFinal(latencyField.getModifiers()))
+					throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": latency field not final: "+latencyField.toGenericString());
+			} catch (NoSuchFieldException ex) {
+				throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": getfield not from this but from "+varIdx);
+			}
+		} else if (latencyInsn instanceof LdcInsnNode) {
+			Object constant = ((LdcInsnNode)latencyInsn).cst;
+			if (!(constant instanceof Integer))
+				throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": ldc "+constant);
+			constantLatency = ((Integer)constant);
+		} else switch (latencyInsn.getOpcode()) {
+			case Opcodes.ICONST_M1:
+				constantLatency = -1;
+				break;
+			case Opcodes.ICONST_0:
+				constantLatency = 0;
+				break;
+			case Opcodes.ICONST_1:
+				constantLatency = 1;
+				break;
+			case Opcodes.ICONST_2:
+				constantLatency = 2;
+				break;
+			case Opcodes.ICONST_3:
+				constantLatency = 3;
+				break;
+			case Opcodes.ICONST_4:
+				constantLatency = 4;
+				break;
+			case Opcodes.ICONST_5:
+				constantLatency = 5;
+				break;
+			case Opcodes.BIPUSH:
+			case Opcodes.SIPUSH:
+				constantLatency = ((IntInsnNode)latencyInsn).operand;
+				break;
+			default:
+				throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": latencyInsn opcode "+latencyInsn.getOpcode());
+		}
+		//Finally, we've parsed the latency parameter.
+
+		//Next is an aload_0 for the sender parameter.
+		AbstractInsnNode senderInsn = latencyInsn.getPrevious();
+		if (senderInsn.getOpcode() != Opcodes.ALOAD || ((VarInsnNode)senderInsn).var != 0)
+			throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": bad sender");
+
+		//Finally, a getfield of this for a final Portal instance field.
+		AbstractInsnNode portalInsn = senderInsn.getPrevious();
+		if (!(portalInsn instanceof FieldInsnNode))
+			throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": portal getfield opcode "+portalInsn.getOpcode());
+		FieldInsnNode fieldInsn = (FieldInsnNode)portalInsn;
+		if (fieldInsn.getOpcode() != Opcodes.GETFIELD)
+			throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": portal field insn opcode "+fieldInsn.getOpcode());
+		if (!fieldInsn.desc.equals(Type.getType(Portal.class).getDescriptor()))
+			throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": portal field desc "+fieldInsn.desc);
+		if (!fieldInsn.owner.equals(Type.getType(klass).getInternalName()))
+			throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": portal field owner "+fieldInsn.owner);
+
+		portalInsn = portalInsn.getPrevious();
+		//We must be loading from this.
+		if (portalInsn.getOpcode() != Opcodes.ALOAD)
+			throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": portal getfield subject opcode "+portalInsn.getOpcode());
+		int varIdx = ((VarInsnNode)portalInsn).var;
+		if (varIdx != 0)
+			throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": portal getfield not from this but from "+varIdx);
+
+		//Check the field we're loading from is constant (final) and nonstatic.
+		Field portalField;
+		try {
+			portalField = klass.getDeclaredField(fieldInsn.name);
+			if (!Modifier.isFinal(portalField.getModifiers()))
+				throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": portal field not final: "+portalField.toGenericString());
+			if (Modifier.isStatic(portalField.getModifiers()))
+				throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": portal field is static: "+portalField.toGenericString());
+		} catch (NoSuchFieldException ex) {
+			throw new IllegalStreamGraphException("Unsupported getHandle() use in "+klass+": portal getfield not from this but from "+varIdx);
+		}
+
+		return latencyField != null ? new WorkerData(portalField, latencyField) : new WorkerData(portalField, constantLatency);
+	}
+
+	/**
+	 * Builds a MethodNode for the work() method.
+	 */
+	private static class WorkClassVisitor extends ClassVisitor {
+		private MethodNode mn;
+		WorkClassVisitor() {
+			super(Opcodes.ASM4);
+		}
+		@Override
+		public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+			if (name.equals("work") && desc.equals("()V")) {
+				mn = new MethodNode(Opcodes.ASM4, access, name, desc, signature, exceptions);
+				return mn;
+			}
+			return null;
+		}
+		public MethodNode getWorkMethodNode() {
+			return mn;
+		}
 	}
 }
