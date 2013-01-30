@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,7 +20,7 @@ import java.util.Set;
  */
 public final class Portal<I> {
 	private final Class<I> klass;
-	private final List<I> recipients = new ArrayList<>();
+	private final List<PrimitiveWorker<?, ?>> recipients = new ArrayList<>();
 	public Portal(Class<I> klass) {
 		if (!klass.isInterface())
 			throw new IllegalArgumentException(klass+" is not an interface type");
@@ -61,7 +62,7 @@ public final class Portal<I> {
 		//Messaging a non-worker doesn't make sense -- SDEP isn't defined.
 		if (!(recipient instanceof PrimitiveWorker))
 			throw new IllegalArgumentException("Recipient "+recipient+" not instance of Filter, Splitter or Joiner");
-		recipients.add(recipient);
+		recipients.add((PrimitiveWorker<?, ?>)recipient);
 	}
 
 	/**
@@ -108,6 +109,15 @@ public final class Portal<I> {
 		return handle;
 	}
 
+	/**
+	 * Gets the list of registered recipients.  MessageConstraint needs this.
+	 * @return the list of registered recipients
+	 */
+	/* package-private */ List<PrimitiveWorker<?, ?>> getRecipients() {
+		List<PrimitiveWorker<?, ?>> retval = Collections.unmodifiableList(recipients);
+		return retval;
+	}
+
 	/* package-private */ static class Message implements Comparable<Message> {
 		public final Method method;
 		public final Object[] args;
@@ -130,9 +140,9 @@ public final class Portal<I> {
 	 */
 	private static class Handle<I> implements InvocationHandler {
 		private final PrimitiveWorker<?, ?> sender;
-		private final List<I> recipients;
+		private final List<PrimitiveWorker<?, ?>> recipients;
 		private final int latency;
-		private Handle(PrimitiveWorker<?, ?> sender, List<I> recipients, int latency) {
+		private Handle(PrimitiveWorker<?, ?> sender, List<PrimitiveWorker<?, ?>> recipients, int latency) {
 			this.sender = sender;
 			this.recipients = recipients;
 			this.latency = latency;
@@ -150,12 +160,9 @@ public final class Portal<I> {
 			//Java platform(?).
 			method.setAccessible(true);
 
-			for (I recipientI : recipients) {
+			for (PrimitiveWorker<?, ?> recipient : recipients) {
 				//Compute the time-to-delivery.
 				int executionsUntilDelivery = Integer.MIN_VALUE;
-				//The cast is safe because we check in addRecipient() that only
-				//PrimitiveWorkers can be added.
-				PrimitiveWorker<?, ?> recipient = (PrimitiveWorker<?, ?>)recipientI;
 				switch (sender.compareStreamPosition(recipient)) {
 					case UPSTREAM: //sender is upstream of recipient; message travels downstream
 						if (latency < 0)
