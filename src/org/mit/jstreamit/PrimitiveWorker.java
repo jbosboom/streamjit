@@ -109,7 +109,7 @@ import java.util.Set;
 	Set<PrimitiveWorker<?, ?>> getAllPredecessors() {
 		Set<PrimitiveWorker<?, ?>> closed = new HashSet<>();
 		Queue<PrimitiveWorker<?, ?>> frontier = new ArrayDeque<>();
-		frontier.add(this);
+		frontier.addAll(this.getPredecessors());
 		while (!frontier.isEmpty()) {
 			PrimitiveWorker<?, ?> cur = frontier.remove();
 			closed.add(cur);
@@ -125,7 +125,7 @@ import java.util.Set;
 	Set<PrimitiveWorker<?, ?>> getAllSuccessors() {
 		Set<PrimitiveWorker<?, ?>> closed = new HashSet<>();
 		Queue<PrimitiveWorker<?, ?>> frontier = new ArrayDeque<>();
-		frontier.add(this);
+		frontier.addAll(this.getSuccessors());
 		while (!frontier.isEmpty()) {
 			PrimitiveWorker<?, ?> cur = frontier.remove();
 			closed.add(cur);
