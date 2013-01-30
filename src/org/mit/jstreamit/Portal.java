@@ -157,7 +157,7 @@ public final class Portal<I> {
 				//PrimitiveWorkers can be added.
 				PrimitiveWorker<?, ?> recipient = (PrimitiveWorker<?, ?>)recipientI;
 				switch (sender.compareStreamPosition(recipient)) {
-					case -1: //sender is upstream of recipient; message travels downstream
+					case UPSTREAM: //sender is upstream of recipient; message travels downstream
 						if (latency < 0)
 							throw new UnsupportedOperationException("TODO: downstream messages with negative latency");
 
@@ -168,7 +168,7 @@ public final class Portal<I> {
 							}
 						break;
 
-					case 1: //sender is downstream of recipient; message travels upstream
+					case DOWNSTREAM: //sender is downstream of recipient; message travels upstream
 						if (latency < 0)
 							throw new IllegalStreamGraphException(
 									String.format("Sending a message upstream from %s to %s via portal %s with negative latency %d", sender, recipient, this, latency),
@@ -177,10 +177,13 @@ public final class Portal<I> {
 						throw new UnsupportedOperationException("TODO: upstream messages with positive latency");
 						//break;
 
-					case 0: //sender and recipient are incomparable
+					case INCOMPARABLE: //sender and recipient are incomparable
 						throw new IllegalStreamGraphException(
 								String.format("Sending a message between incomparable elements %s and %s via portal %s", sender, recipient, this),
 								(StreamElement<?, ?>)sender, (StreamElement<?, ?>)recipient);
+
+					case EQUAL: //sender messaging itself
+						throw new UnsupportedOperationException("TODO: self-messaging? (may not be legal)");
 					default:
 						throw new AssertionError("Can't happen!");
 				}

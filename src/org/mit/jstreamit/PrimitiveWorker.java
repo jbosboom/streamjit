@@ -57,23 +57,28 @@ import java.util.Set;
 		return outputChannels;
 	}
 
+	enum StreamPosition {
+		UPSTREAM, DOWNSTREAM, EQUAL, INCOMPARABLE;
+	}
+
 	/**
-	 * Compare the position of this worker to the given other worker.  Returns
-	 * -1 if this worker is upstream of the other worker, 1 if this worker is
-	 * downstream of the other worker, or 0 if this worker is neither upstream
-	 * nor downstream of the other worker (this == other, or this and other are
-	 * in parallel branches of a splitjoin).
+	 * Compare the position of this worker to the given other worker. Returns
+	 * UPSTREAM if this worker is upstream of the other worker, DOWNSTREAM if
+	 * this worker is downstream of the other worker, EQUAL if this worker is
+	 * the other worker (reference equality), or INCOMPARABLE if this worker is
+	 * neither upstream nor downstream of the other worker (e.g., this and other
+	 * are in parallel branches of a splitjoin).
 	 *
 	 * Obviously, this method requires the workers in a stream graph be
 	 * connected.  See ConnectPrimitiveWorkersVisitor.
 	 * @param other the other worker to compare against
-	 * @return -1 if we're upstream, 1 if we're downstream, else 0
+	 * @return a StreamPosition
 	 */
-	int compareStreamPosition(PrimitiveWorker<?, ?> other) {
+	StreamPosition compareStreamPosition(PrimitiveWorker<?, ?> other) {
 		if (other == null)
 			throw new NullPointerException();
 		if (this == other)
-			return 0;
+			return StreamPosition.EQUAL;
 
 		Queue<PrimitiveWorker<?, ?>> frontier = new ArrayDeque<>();
 		//BFS downstream.
@@ -81,7 +86,7 @@ import java.util.Set;
 		while (!frontier.isEmpty()) {
 			PrimitiveWorker<?, ?> cur = frontier.remove();
 			if (cur == other)
-				return -1;
+				return StreamPosition.UPSTREAM;
 			frontier.addAll(cur.getSuccessors());
 		}
 
@@ -90,11 +95,11 @@ import java.util.Set;
 		while (!frontier.isEmpty()) {
 			PrimitiveWorker<?, ?> cur = frontier.remove();
 			if (cur == other)
-				return 1;
+				return StreamPosition.DOWNSTREAM;
 			frontier.addAll(cur.getPredecessors());
 		}
 
-		return 0;
+		return StreamPosition.INCOMPARABLE;
 	}
 
 	/**
