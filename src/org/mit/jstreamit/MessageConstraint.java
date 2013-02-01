@@ -88,6 +88,7 @@ final class MessageConstraint {
 		return Collections.unmodifiableList(mc);
 	}
 
+	//<editor-fold defaultstate="collapsed" desc="WorkerData building (bytecode parsing)">
 	/**
 	 * WorkerData encapsulates the Field(s) and/or constant for the Portal and
 	 * latency value of a particular class.  (Note that one class might have
@@ -323,4 +324,5 @@ final class MessageConstraint {
 			return mn;
 		}
 	}
+	//</editor-fold>
 }
