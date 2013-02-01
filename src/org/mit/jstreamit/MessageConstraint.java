@@ -5,6 +5,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -331,6 +332,117 @@ final class MessageConstraint {
 	//</editor-fold>
 
 	/**
+	 * Encapsulates the data built during hierarchical SDEP computation for a
+	 * particular pair of workers (not stored in the structure).
+	 *
+	 * Compare LatencyEdge in classic StreamIt.
+	 */
+	private static class SDEPData {
+		private final int upstreamInitExecutions, upstreamSteadyExecutions;
+		private final int downstreamInitExecutions, downstreamSteadyExecutions;
+		/**
+		 * The actual dependency function values.  In order for the downstream
+		 * worker to execute i times, the upstream worker must have executed at
+		 * least sdep[i] times.  Note that sdep[0] == 0.
+		 *
+		 * This array is (downstreamInitExecutions + downstreamSteadyExecutions + 1)
+		 * in size; queries beyond that can be reduced to this region only
+		 * because SDEP is periodic in the steady state.
+		 */
+		private final int[] sdep;
+		private SDEPData(int upstreamInitExecutions, int upstreamSteadyExecutions, int downstreamInitExecutions, int downstreamSteadyExecutions, int[] sdep) {
+			this.upstreamInitExecutions = upstreamInitExecutions;
+			this.upstreamSteadyExecutions = upstreamSteadyExecutions;
+			this.downstreamInitExecutions = downstreamInitExecutions;
+			this.downstreamSteadyExecutions = downstreamSteadyExecutions;
+			this.sdep = sdep;
+		}
+
+		/**
+		 * Constructs SDEPData relating a worker to itself.
+		 */
+		public static SDEPData fromWorker(PrimitiveWorker<?, ?> worker) {
+			//A plain worker has 0 init executions and 1 steady execution, and
+			//an SDEP(1) of 1.  TODO: prework may mean 1 init execution?
+			return new SDEPData(0, 1, 0, 1, new int[]{0, 1});
+		}
+
+		/**
+		 * Merge two edges that connect the same nodes.  (Used for taking the
+		 * maximum over splitjoins.)
+		 */
+		public static SDEPData fromParallelData(SDEPData left, SDEPData right) {
+			assert left != right;
+			int downstreamInitExecutions = Math.max(left.downstreamInitExecutions, right.downstreamInitExecutions);
+			int upstreamInitExecutions = Math.max(left.sdep(downstreamInitExecutions), right.sdep(downstreamInitExecutions));
+
+			int use1 = left.upstreamSteadyExecutions, use2 = right.upstreamSteadyExecutions;
+			int dse1 = left.downstreamSteadyExecutions, dse2 = right.downstreamSteadyExecutions;
+			//TODO: why only using use2/dse2?  because we do use1/dse1 * mult later?
+			int uMult = use2 / gcd(use1, use2);
+			int dMult = dse2 / gcd(dse1, dse2);
+			int mult = uMult / gcd(uMult, dMult) * dMult;
+			int upstreamSteadyExecutions = use1 * mult;
+			int downstreamSteadyExecutions = dse1 * mult;
+
+			int[] sdep = new int[downstreamInitExecutions + downstreamSteadyExecutions + 1];
+			for (int i = 0; i < sdep.length; ++i)
+				sdep[i] = Math.max(left.sdep(i), right.sdep(i));
+			return new SDEPData(upstreamInitExecutions, upstreamSteadyExecutions, downstreamInitExecutions, downstreamSteadyExecutions, sdep);
+		}
+
+		/**
+		 * Merge two edges that connect two different nodes.  (Pipelines.)
+		 */
+		public static SDEPData fromSeriesData(SDEPData upstream, SDEPData downstream) {
+			int upstreamInitExecutions = Math.max(upstream.upstreamInitExecutions, upstream.sdep(downstream.upstreamInitExecutions));
+			int downstreamInitExecutions = Math.max(downstream.downstreamInitExecutions, upstream.reverseSdep(downstream.downstreamInitExecutions));
+
+			int gcd = gcd(upstream.downstreamSteadyExecutions, downstream.upstreamSteadyExecutions);
+			int uMult = downstream.upstreamSteadyExecutions / gcd;
+			int dMult = upstream.downstreamSteadyExecutions / gcd;
+			int upstreamSteadyExecutions = upstream.upstreamSteadyExecutions * uMult;
+			int downstreamSteadyExecutions = downstream.downstreamSteadyExecutions * dMult;
+
+			int[] sdep = new int[downstreamInitExecutions + downstreamSteadyExecutions + 1];
+			for (int i = 0; i < sdep.length; ++i)
+				sdep[i] = upstream.sdep(downstream.sdep(i));
+			return new SDEPData(upstreamInitExecutions, upstreamSteadyExecutions, downstreamInitExecutions, downstreamSteadyExecutions, sdep);
+		}
+
+		public int sdep(int downstreamExecutionCount) {
+			if (downstreamExecutionCount < downstreamInitExecutions + 1)
+				return sdep[downstreamExecutionCount];
+			int steadyStates = (downstreamExecutionCount - (downstreamInitExecutions + 1)) / downstreamSteadyExecutions;
+			//Where we are in the current steady state, adjusted to ignore the
+			//initialization prefix in the sdep array.
+			int curSteadyStateProgress = (downstreamExecutionCount - (downstreamInitExecutions + 1)) % downstreamSteadyExecutions + downstreamInitExecutions + 1;
+			return sdep[curSteadyStateProgress] + steadyStates * upstreamSteadyExecutions;
+		}
+
+		public int reverseSdep(int upstreamExecutionCount) {
+			//Factor out steady state executions, leaving upstreamExecutionCount
+			//with only a partial steady state.
+			int downstreamSteadyStateExecutions = 0;
+			if (upstreamExecutionCount >= upstreamInitExecutions + upstreamSteadyExecutions + 1) {
+				int steadyStates = (upstreamExecutionCount - upstreamInitExecutions - 1) / upstreamSteadyExecutions;
+				downstreamSteadyStateExecutions = steadyStates * downstreamSteadyExecutions;
+				upstreamExecutionCount -= steadyStates * upstreamSteadyExecutions;
+			}
+
+			//Find how many times the downstream executed during the
+			//upstreamExecutionCount portion of the steady state.
+			int downstreamExecutionCount = Arrays.binarySearch(sdep, upstreamExecutionCount);
+			//Arrays.binarySearch doesn't guarantee which index it'll find, but
+			//we want the first one.  If we didn't find one, this is a no-op.
+			while (downstreamExecutionCount > 0 && sdep[downstreamExecutionCount] == upstreamExecutionCount)
+				--downstreamExecutionCount;
+
+			return downstreamSteadyStateExecutions + (downstreamExecutionCount >= 0 ? downstreamExecutionCount : downstreamInitExecutions + downstreamSteadyExecutions);
+		}
+	}
+
+	/**
 	 * Finds all nodes in any path between two nodes in the graph.
 	 */
 	private static class NodesInPathsBetweenComputer {
@@ -412,5 +524,13 @@ final class MessageConstraint {
 
 		assert result.size() == nodes.size();
 		return result;
+	}
+
+	/**
+	 * Shouldn't this be in the standard library already?
+	 */
+	private static int gcd(int a, int b) {
+		assert a > 0 && b >= 0;
+		return b == 0 ? a : gcd(b, a % b);
 	}
 }
