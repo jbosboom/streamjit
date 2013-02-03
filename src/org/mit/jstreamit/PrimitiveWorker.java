@@ -23,6 +23,7 @@ import java.util.Set;
 	private List<Channel<? extends I>> inputChannels = new ArrayList<>(1);
 	private List<Channel<? super O>> outputChannels = new ArrayList<>(1);
 	private final List<Portal.Message> messages = new ArrayList<>();
+	private long executions;
 
 	void addPredecessor(PrimitiveWorker<?, ? extends I> predecessor, Channel<? extends I> channel) {
 		if (predecessor == null || channel == null)
@@ -154,7 +155,7 @@ import java.util.Set;
 	 * processing messages.
 	 */
 	void doWork() {
-		while (!messages.isEmpty() && messages.get(0).executionsUntilDelivery == 0) {
+		while (!messages.isEmpty() && messages.get(0).timeToReceive == executions+1) {
 			Portal.Message m = messages.remove(0);
 			try {
 				m.method.invoke(this, m.args);
@@ -166,11 +167,20 @@ import java.util.Set;
 		//TODO: implement prework here
 		work();
 
-		for (Portal.Message m : messages)
-			--m.executionsUntilDelivery;
+		++executions;
+	}
+
+	/**
+	 * Returns the number of completed executions of this worker.
+	 * @return the number of completed executions of this worker.
+	 */
+	long getExecutions() {
+		return executions;
 	}
 
 	void sendMessage(Portal.Message message) {
+		if (message.timeToReceive <= executions)
+			throw new AssertionError("Message delivery missed: "+executions+", "+message);
 		//Insert in order sorted by time-to-receive.
 		int insertionPoint = Collections.binarySearch(messages, message);
 		if (insertionPoint < 0)

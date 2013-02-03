@@ -140,15 +140,18 @@ public final class Portal<I> {
 	/* package-private */ static class Message implements Comparable<Message> {
 		public final Method method;
 		public final Object[] args;
-		public int executionsUntilDelivery;
-		Message(Method method, Object[] args, int executionsUntilDelivery) {
+		/**
+		 * The execution immediately before which this message will be received.
+		 */
+		public int timeToReceive;
+		Message(Method method, Object[] args, int timeToReceive) {
 			this.method = method;
 			this.args = args;
-			this.executionsUntilDelivery = executionsUntilDelivery;
+			this.timeToReceive = timeToReceive;
 		}
 		@Override
 		public int compareTo(Message o) {
-			return Integer.compare(executionsUntilDelivery, o.executionsUntilDelivery);
+			return Integer.compare(timeToReceive, o.timeToReceive);
 		}
 	}
 
