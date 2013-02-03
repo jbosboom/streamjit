@@ -104,7 +104,7 @@ public final class Portal<I> {
 	public I getHandle(PrimitiveWorker<?, ?> sender, int latency) {
 		if (sender == null)
 			throw new NullPointerException();
-		Handle<I> handler = new Handle<>(sender, recipients, latency, constraints.get(sender));
+		Handle handler = new Handle(sender, recipients, latency, constraints.get(sender));
 		@SuppressWarnings("unchecked")
 		I handle = (I)Proxy.newProxyInstance(klass.getClassLoader(), new Class<?>[]{klass}, handler);
 		return handle;
@@ -166,7 +166,7 @@ public final class Portal<I> {
 	 * speaking, this isn't the actual handle object, but HandleHandler seemed
 	 * like a dumb name).
 	 */
-	private static class Handle<I> implements InvocationHandler {
+	private static class Handle implements InvocationHandler {
 		private final PrimitiveWorker<?, ?> sender;
 		private final List<PrimitiveWorker<?, ?>> recipients;
 		private final int latency;
