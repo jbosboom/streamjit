@@ -168,6 +168,8 @@ public class ArrayChannel<E> implements Channel<E> {
 	@Override
 	public String toString() {
 		Iterator<E> iterator = iterator();
+		if (!iterator.hasNext())
+			return "[]";
 		StringBuilder sb = new StringBuilder("[");
 		sb.append(iterator.next());
 		while (iterator.hasNext())
