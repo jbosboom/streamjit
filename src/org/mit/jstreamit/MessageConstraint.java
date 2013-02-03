@@ -36,12 +36,13 @@ final class MessageConstraint {
 	private final PrimitiveWorker<?, ?> sender, recipient;
 	private final int latency;
 	private final PrimitiveWorker.StreamPosition direction;
-	//TODO: the actual restriction on execution...
-	private MessageConstraint(PrimitiveWorker<?, ?> sender, PrimitiveWorker<?, ?> recipient, int latency, StreamPosition direction) {
+	private final SDEPData sdepData;
+	private MessageConstraint(PrimitiveWorker<?, ?> sender, PrimitiveWorker<?, ?> recipient, int latency, StreamPosition direction, SDEPData sdepData) {
 		this.sender = sender;
 		this.recipient = recipient;
 		this.latency = latency;
 		this.direction = direction;
+		this.sdepData = sdepData;
 	}
 	public PrimitiveWorker<?, ?> getSender() {
 		return sender;
@@ -54,6 +55,12 @@ final class MessageConstraint {
 	}
 	public PrimitiveWorker.StreamPosition getDirection() {
 		return direction;
+	}
+	public int sdep(int downstreamExecutionCount) {
+		return sdepData.sdep(downstreamExecutionCount);
+	}
+	public int reverseSdep(int upstreamExecutionCount) {
+		return sdepData.reverseSdep(upstreamExecutionCount);
 	}
 	@Override
 	public String toString() {
@@ -75,6 +82,7 @@ final class MessageConstraint {
 		//If a class doesn't send messages, it maps to an empty list, and we do
 		//nothing in the loop below.
 		Map<Class<?>, List<WorkerData>> workerDataCache = new HashMap<>();
+		Map<Edge, SDEPData> sdepCache = new HashMap<>();
 
 		for (PrimitiveWorker<?, ?> sender : workers) {
 			List<WorkerData> datas = workerDataCache.get(sender.getClass());
@@ -85,8 +93,12 @@ final class MessageConstraint {
 
 			for (WorkerData d : datas) {
 				int latency = d.getLatency(sender);
-				for (PrimitiveWorker<?, ?> recipient : d.getPortal(sender).getRecipients())
-					mc.add(new MessageConstraint(sender, recipient, latency, sender.compareStreamPosition(recipient)));
+				for (PrimitiveWorker<?, ?> recipient : d.getPortal(sender).getRecipients()) {
+					StreamPosition direction = sender.compareStreamPosition(recipient);
+					Edge edge = direction == StreamPosition.UPSTREAM ? new Edge(sender, recipient) : new Edge(recipient, sender);
+					SDEPData sdepData = computeSDEP(edge, sdepCache);
+					mc.add(new MessageConstraint(sender, recipient, latency, direction, sdepData));
+				}
 			}
 		}
 
@@ -332,6 +344,56 @@ final class MessageConstraint {
 	//</editor-fold>
 
 	/**
+	 * Computes the SDEPData for the given edge between two workers, using the
+	 * given cache of previously-computed SDEP data.  (The cache allows us to
+	 * reuse common parts of the path from a sender to many recipients.)
+	 * @param goalEdge the edge to compute for
+	 * @param cache previously-computed SDEP data
+	 * @return SDEPData for the given edge
+	 */
+	private static SDEPData computeSDEP(Edge goalEdge, Map<Edge, SDEPData> cache) {
+		Set<PrimitiveWorker<?, ?>> allNodes = new NodesInPathsBetweenComputer(goalEdge.upstream, goalEdge.downstream).get();
+		//TODO: see if NodesInPathsComputer adds these itself or not
+		allNodes.add(goalEdge.upstream);
+		allNodes.add(goalEdge.downstream);
+		List<PrimitiveWorker<?, ?>> sortedNodes = topologicalSort(allNodes);
+		for (PrimitiveWorker<?, ?> w : sortedNodes) {
+			Edge selfEdge = new Edge(w, w);
+			if (!cache.containsKey(selfEdge))
+				cache.put(selfEdge, SDEPData.fromWorker(w));
+		}
+
+		//For each pair of nodes that follow one another, extend the edge from
+		//the upstream through the pair of nodes, merging if such an edge is
+		//already in the cache.  Because it's topologically ordered, we process
+		//all upstream pairs before downstream pairs.
+		for (int i = 0; i < sortedNodes.size(); ++i) {
+			for (int j = i; j < sortedNodes.size(); ++j) {
+				if (!sortedNodes.get(i).getSuccessors().contains(sortedNodes.get(j)))
+					continue;
+				Edge upstreamEdge = new Edge(sortedNodes.get(0), sortedNodes.get(i));
+				Edge downstreamEdge = new Edge(sortedNodes.get(j), sortedNodes.get(j));
+				assert cache.containsKey(upstreamEdge) : "Bad topological sort?";
+				SDEPData data = cache.get(upstreamEdge);
+				assert cache.containsKey(downstreamEdge) : "Not caching self-edges?";
+				SDEPData selfData = cache.get(downstreamEdge);
+
+				Edge producedEdge = new Edge(upstreamEdge.upstream, downstreamEdge.downstream);
+				SDEPData seriesData = SDEPData.fromSeriesData(data, selfData);
+
+				SDEPData currentData = cache.get(producedEdge);
+				if (currentData != null)
+					cache.put(producedEdge, SDEPData.fromParallelData(currentData, seriesData));
+				else
+					cache.put(producedEdge, seriesData);
+			}
+		}
+
+		assert cache.containsKey(goalEdge);
+		return cache.get(goalEdge);
+	}
+
+	/**
 	 * Encapsulates the data built during hierarchical SDEP computation for a
 	 * particular pair of workers (not stored in the structure).
 	 *
@@ -532,5 +594,38 @@ final class MessageConstraint {
 	private static int gcd(int a, int b) {
 		assert a > 0 && b >= 0;
 		return b == 0 ? a : gcd(b, a % b);
+	}
+
+	/**
+	 * A pair of workers, with equality based on the workers' identity.
+	 */
+	private static class Edge {
+		public final PrimitiveWorker<?, ?> upstream, downstream;
+		Edge(PrimitiveWorker<?, ?> upstream, PrimitiveWorker<?, ?> downstream) {
+			this.upstream = upstream;
+			this.downstream = downstream;
+			StreamPosition direction = upstream.compareStreamPosition(downstream);
+			assert direction == StreamPosition.UPSTREAM || direction == StreamPosition.EQUAL;
+		}
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			final Edge other = (Edge)obj;
+			if (this.upstream != other.upstream)
+				return false;
+			if (this.downstream != other.downstream)
+				return false;
+			return true;
+		}
+		@Override
+		public int hashCode() {
+			int hash = 3;
+			hash = 23 * hash + System.identityHashCode(this.upstream);
+			hash = 23 * hash + System.identityHashCode(this.downstream);
+			return hash;
+		}
 	}
 }
