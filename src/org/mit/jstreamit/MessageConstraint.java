@@ -33,16 +33,21 @@ import org.objectweb.asm.tree.VarInsnNode;
  * @since 1/29/2013
  */
 final class MessageConstraint {
+	private final Portal<?> portal;
 	private final PrimitiveWorker<?, ?> sender, recipient;
 	private final int latency;
 	private final PrimitiveWorker.StreamPosition direction;
 	private final SDEPData sdepData;
-	private MessageConstraint(PrimitiveWorker<?, ?> sender, PrimitiveWorker<?, ?> recipient, int latency, StreamPosition direction, SDEPData sdepData) {
+	private MessageConstraint(Portal<?> portal, PrimitiveWorker<?, ?> sender, PrimitiveWorker<?, ?> recipient, int latency, StreamPosition direction, SDEPData sdepData) {
+		this.portal = portal;
 		this.sender = sender;
 		this.recipient = recipient;
 		this.latency = latency;
 		this.direction = direction;
 		this.sdepData = sdepData;
+	}
+	public Portal<?> getPortal() {
+		return portal;
 	}
 	public PrimitiveWorker<?, ?> getSender() {
 		return sender;
@@ -64,7 +69,7 @@ final class MessageConstraint {
 	}
 	@Override
 	public String toString() {
-		return String.format("%s from %s to %s after %d", direction, sender, recipient, latency);
+		return String.format("%s from %s to %s through %s after %d", direction, sender, recipient, portal, latency);
 	}
 
 	/**
@@ -92,12 +97,15 @@ final class MessageConstraint {
 			}
 
 			for (WorkerData d : datas) {
+				Portal<?> portal = d.getPortal(sender);
 				int latency = d.getLatency(sender);
 				for (PrimitiveWorker<?, ?> recipient : d.getPortal(sender).getRecipients()) {
 					StreamPosition direction = sender.compareStreamPosition(recipient);
 					Edge edge = direction == StreamPosition.UPSTREAM ? new Edge(sender, recipient) : new Edge(recipient, sender);
 					SDEPData sdepData = computeSDEP(edge, sdepCache);
-					mc.add(new MessageConstraint(sender, recipient, latency, direction, sdepData));
+					//The message direction is opposite the relation between
+					//sender and recipient.
+					mc.add(new MessageConstraint(portal, sender, recipient, latency, direction.opposite(), sdepData));
 				}
 			}
 		}
