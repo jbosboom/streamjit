@@ -59,6 +59,19 @@ import java.util.Set;
 
 	enum StreamPosition {
 		UPSTREAM, DOWNSTREAM, EQUAL, INCOMPARABLE;
+		public StreamPosition opposite() {
+			switch (this) {
+				case UPSTREAM:
+					return DOWNSTREAM;
+				case DOWNSTREAM:
+					return UPSTREAM;
+				case EQUAL:
+				case INCOMPARABLE:
+					return this;
+				default:
+					throw new AssertionError();
+			}
+		}
 	}
 
 	/**
