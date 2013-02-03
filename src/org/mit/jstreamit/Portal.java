@@ -8,7 +8,6 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  *
@@ -143,15 +142,15 @@ public final class Portal<I> {
 		/**
 		 * The execution immediately before which this message will be received.
 		 */
-		public int timeToReceive;
-		Message(Method method, Object[] args, int timeToReceive) {
+		public long timeToReceive;
+		Message(Method method, Object[] args, long timeToReceive) {
 			this.method = method;
 			this.args = args;
 			this.timeToReceive = timeToReceive;
 		}
 		@Override
 		public int compareTo(Message o) {
-			return Integer.compare(timeToReceive, o.timeToReceive);
+			return Long.compare(timeToReceive, o.timeToReceive);
 		}
 	}
 
@@ -188,120 +187,40 @@ public final class Portal<I> {
 			method.setAccessible(true);
 
 			for (PrimitiveWorker<?, ?> recipient : recipients) {
-				//Compute the time-to-delivery.
-				int executionsUntilDelivery = Integer.MIN_VALUE;
-				switch (sender.compareStreamPosition(recipient)) {
-					case UPSTREAM: //sender is upstream of recipient; message travels downstream
-						if (latency < 0)
-							throw new UnsupportedOperationException("TODO: downstream messages with negative latency");
+				MessageConstraint constraint = constraints.get(recipient);
+				assert constraint != null;
 
-						for (int m = 0; ; ++m)
-							if (sdep(sender, recipient, m) >= latency) {
-								executionsUntilDelivery = m;
-								break;
-							}
+				long timeToDelivery;
+				switch (constraint.getDirection()) {
+					case DOWNSTREAM:
+						//We add one to the reverseSdep result because we're
+						//going downstream, thus e.g. if we're in our first
+						//execution (sender.getExecutions() == 0), the message
+						//should be delivered downstream at recipient's 0, but
+						//we expect TTD to be greater than getExecutions().
+						//Classic StreamIt adjusts the TTD at delivery to
+						//account for this; we'll do it here.
+						//TODO: is the inner +1 correct?
+						timeToDelivery = constraint.reverseSdep(sender.getExecutions()+constraint.getLatency()+1)+1;
 						break;
-
-					case DOWNSTREAM: //sender is downstream of recipient; message travels upstream
-						if (latency < 0)
-							throw new IllegalStreamGraphException(
-									String.format("Sending a message upstream from %s to %s via portal %s with negative latency %d", sender, recipient, this, latency),
-									(StreamElement<?, ?>)sender, (StreamElement<?, ?>)recipient);
-
-						throw new UnsupportedOperationException("TODO: upstream messages with positive latency");
-						//break;
-
-					case INCOMPARABLE: //sender and recipient are incomparable
-						throw new IllegalStreamGraphException(
-								String.format("Sending a message between incomparable elements %s and %s via portal %s", sender, recipient, this),
-								(StreamElement<?, ?>)sender, (StreamElement<?, ?>)recipient);
-
-					case EQUAL: //sender messaging itself
-						throw new UnsupportedOperationException("TODO: self-messaging? (may not be legal)");
+					case UPSTREAM:
+						//TODO: is the +1 correct?
+						timeToDelivery = constraint.sdep(sender.getExecutions()+constraint.getLatency()+1);
+						break;
+					case EQUAL:
+					case INCOMPARABLE:
+						throw new IllegalStreamGraphException("Illegal messaging: "+constraint);
 					default:
-						throw new AssertionError("Can't happen!");
+						throw new AssertionError();
 				}
 
 				//Queue up the message at the recipient.
-				Message message = new Message(method, args, executionsUntilDelivery);
+				Message message = new Message(method, args, timeToDelivery);
 				recipient.sendMessage(message);
 			}
 
 			//Methods on the portal interface return void.
 			return null;
 		}
-	}
-
-	/**
-	 * Compute SDEP(h, t, executions); that is, the minimum number of times h
-	 * must execute for t to execute executions times. If executions is 0, the
-	 * result is 0. If h == t, the result is executions. If there is no path
-	 * from h to t in the stream graph, t does not depend on h, so the result is
-	 * 0.
-	 * @param h the upstream worker
-	 * @param t the downstream worker
-	 * @param executions the number of executions of t to ensure
-	 * @return the number of executions of h required
-	 */
-	private static int sdep(PrimitiveWorker<?, ?> h, PrimitiveWorker<?, ?> t, int executions) {
-		if (h == null || t == null)
-			throw new NullPointerException();
-		if (executions < 0)
-			throw new IllegalArgumentException(Integer.toString(executions));
-		if (executions == 0)
-			return 0;
-		if (h == t)
-			return executions;
-
-		//If t is an immediate successor of h, we can compute by looking at
-		//their data rates.
-		int hIndex = h.getSuccessors().indexOf(t);
-		if (hIndex != -1) {
-			Rate hPushRate = h.getPushRates().get(hIndex);
-			int tIndex = t.getPredecessors().indexOf(h);
-			assert tIndex != -1;
-			Rate tPeekRate = t.getPeekRates().get(tIndex), tPopRate = t.getPopRates().get(tIndex);
-			if (hPushRate.isDynamic())
-				throw new IllegalStreamGraphException("Sending message over dynamic input rates", t);
-			if (tPeekRate.isDynamic() || tPopRate.isDynamic())
-				throw new IllegalStreamGraphException("Sending message over dynamic input rates", t);
-
-			int itemsRequired = requiredToExecute(tPeekRate.max(), tPopRate.max(), executions);
-			int hFires = 0, itemsProduced = 0;
-			while (itemsProduced < itemsRequired) {
-				++hFires;
-				itemsProduced += hPushRate.min();
-			}
-			return hFires;
-		}
-
-		//Otherwise, check all of h's successors that are predecessors of t.
-		int result = 0;
-		Set<PrimitiveWorker<?, ?>> tPredecessors = t.getAllPredecessors();
-		for (PrimitiveWorker<?, ?> s : h.getSuccessors()) {
-			if (!tPredecessors.contains(s))
-				continue;
-			int x = sdep(s, t, executions);
-			result = Math.max(result, sdep(h, s, x));
-		}
-
-		return result;
-	}
-
-	private static int requiredToExecute(int peekRate, int popRate, int executions) {
-		//TODO: there must be a formula for this?!
-		int neededToFire = Math.max(peekRate, popRate);
-		int required = 0, queued = 0;
-		while (executions > 0) {
-			if (queued >= neededToFire) {
-				queued -= popRate;
-				--executions;
-			} else {
-				int added = neededToFire - queued;
-				queued += added;
-				required += added;
-			}
-		}
-		return required;
 	}
 }
