@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -151,6 +152,12 @@ public final class Portal<I> {
 		@Override
 		public int compareTo(Message o) {
 			return Long.compare(timeToReceive, o.timeToReceive);
+		}
+		@Override
+		public String toString() {
+			String argString = Arrays.toString(args);
+			argString = argString.substring(1, argString.length()-1);
+			return method.getDeclaringClass().getSimpleName()+"."+method.getName()+"("+argString+") at "+timeToReceive;
 		}
 	}
 
