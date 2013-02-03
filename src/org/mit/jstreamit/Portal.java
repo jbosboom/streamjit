@@ -5,7 +5,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -16,6 +18,10 @@ import java.util.Set;
 public final class Portal<I> {
 	private final Class<I> klass;
 	private final List<PrimitiveWorker<?, ?>> recipients = new ArrayList<>();
+	/**
+	 * sender -> (recipient -> constraint).
+	 */
+	private final Map<PrimitiveWorker<?, ?>, Map<PrimitiveWorker<?, ?>, MessageConstraint>> constraints = new IdentityHashMap<>();
 	public Portal(Class<I> klass) {
 		if (!klass.isInterface())
 			throw new IllegalArgumentException(klass+" is not an interface type");
@@ -98,9 +104,9 @@ public final class Portal<I> {
 	public I getHandle(PrimitiveWorker<?, ?> sender, int latency) {
 		if (sender == null)
 			throw new NullPointerException();
-		//When running in the JIT compiler, this is a JIT hook instead.
+		Handle<I> handler = new Handle<>(sender, recipients, latency, constraints.get(sender));
 		@SuppressWarnings("unchecked")
-		I handle = (I)Proxy.newProxyInstance(klass.getClassLoader(), new Class<?>[]{klass}, new Handle<>(sender, recipients, latency));
+		I handle = (I)Proxy.newProxyInstance(klass.getClassLoader(), new Class<?>[]{klass}, handler);
 		return handle;
 	}
 
@@ -111,6 +117,24 @@ public final class Portal<I> {
 	/* package-private */ List<PrimitiveWorker<?, ?>> getRecipients() {
 		List<PrimitiveWorker<?, ?>> retval = Collections.unmodifiableList(recipients);
 		return retval;
+	}
+
+	/**
+	 * Fills in our constraints map from the list of all constraints in the
+	 * graph.  (We only remember constraints about us.)  Called by the
+	 * interpreter after finding the constraints and before execution begins.
+	 */
+	/* package-private */ void setConstraints(List<MessageConstraint> allConstraints) {
+		for (MessageConstraint c : allConstraints) {
+			if (c.getPortal() != this)
+				continue;
+			Map<PrimitiveWorker<?, ?>, MessageConstraint> senderMap = constraints.get(c.getSender());
+			if (senderMap == null) {
+				senderMap = new IdentityHashMap<>();
+				constraints.put(c.getSender(), senderMap);
+			}
+			senderMap.put(c.getRecipient(), c);
+		}
 	}
 
 	/* package-private */ static class Message implements Comparable<Message> {
@@ -137,10 +161,15 @@ public final class Portal<I> {
 		private final PrimitiveWorker<?, ?> sender;
 		private final List<PrimitiveWorker<?, ?>> recipients;
 		private final int latency;
-		private Handle(PrimitiveWorker<?, ?> sender, List<PrimitiveWorker<?, ?>> recipients, int latency) {
+		/**
+		 * Maps recipients to constraints for this sender.
+		 */
+		private final Map<PrimitiveWorker<?, ?>, MessageConstraint> constraints;
+		private Handle(PrimitiveWorker<?, ?> sender, List<PrimitiveWorker<?, ?>> recipients, int latency, Map<PrimitiveWorker<?, ?>, MessageConstraint> constraints) {
 			this.sender = sender;
 			this.recipients = recipients;
 			this.latency = latency;
+			this.constraints = constraints;
 		}
 		@Override
 		public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
