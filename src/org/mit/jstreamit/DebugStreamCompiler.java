@@ -3,7 +3,9 @@ package org.mit.jstreamit;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A StreamCompiler that interprets the stream graph on the thread that calls
@@ -36,6 +38,14 @@ public class DebugStreamCompiler implements StreamCompiler {
 		PrimitiveWorker<?, O> sink = (PrimitiveWorker<?, O>)cpwv.getSink();
 		DebugChannel<O> tail = new DebugChannel<>();
 		sink.getOutputChannels().add(tail);
+
+		List<MessageConstraint> constraints = MessageConstraint.findConstraints(source);
+		Set<Portal<?>> portals = new HashSet<>();
+		for (MessageConstraint mc : constraints)
+			portals.add(mc.getPortal());
+		for (Portal<?> portal : portals)
+			portal.setConstraints(constraints);
+
 		return new DebugCompiledStream<>(head, tail, source, sink);
 	}
 
