@@ -61,10 +61,10 @@ final class MessageConstraint {
 	public PrimitiveWorker.StreamPosition getDirection() {
 		return direction;
 	}
-	public int sdep(int downstreamExecutionCount) {
+	public long sdep(long downstreamExecutionCount) {
 		return sdepData.sdep(downstreamExecutionCount);
 	}
-	public int reverseSdep(int upstreamExecutionCount) {
+	public long reverseSdep(long upstreamExecutionCount) {
 		return sdepData.reverseSdep(upstreamExecutionCount);
 	}
 	@Override
@@ -444,7 +444,7 @@ final class MessageConstraint {
 		public static SDEPData fromParallelData(SDEPData left, SDEPData right) {
 			assert left != right;
 			int downstreamInitExecutions = Math.max(left.downstreamInitExecutions, right.downstreamInitExecutions);
-			int upstreamInitExecutions = Math.max(left.sdep(downstreamInitExecutions), right.sdep(downstreamInitExecutions));
+			int upstreamInitExecutions = checkedCast(Math.max(left.sdep(downstreamInitExecutions), right.sdep(downstreamInitExecutions)));
 
 			int use1 = left.upstreamSteadyExecutions, use2 = right.upstreamSteadyExecutions;
 			int dse1 = left.downstreamSteadyExecutions, dse2 = right.downstreamSteadyExecutions;
@@ -457,7 +457,7 @@ final class MessageConstraint {
 
 			int[] sdep = new int[downstreamInitExecutions + downstreamSteadyExecutions + 1];
 			for (int i = 0; i < sdep.length; ++i)
-				sdep[i] = Math.max(left.sdep(i), right.sdep(i));
+				sdep[i] = checkedCast(Math.max(left.sdep(i), right.sdep(i)));
 			return new SDEPData(upstreamInitExecutions, upstreamSteadyExecutions, downstreamInitExecutions, downstreamSteadyExecutions, sdep);
 		}
 
@@ -465,8 +465,8 @@ final class MessageConstraint {
 		 * Merge two edges that connect two different nodes.  (Pipelines.)
 		 */
 		public static SDEPData fromSeriesData(SDEPData upstream, SDEPData downstream) {
-			int upstreamInitExecutions = Math.max(upstream.upstreamInitExecutions, upstream.sdep(downstream.upstreamInitExecutions));
-			int downstreamInitExecutions = Math.max(downstream.downstreamInitExecutions, upstream.reverseSdep(downstream.downstreamInitExecutions));
+			int upstreamInitExecutions = checkedCast(Math.max(upstream.upstreamInitExecutions, upstream.sdep(downstream.upstreamInitExecutions)));
+			int downstreamInitExecutions = checkedCast(Math.max(downstream.downstreamInitExecutions, upstream.reverseSdep(downstream.downstreamInitExecutions)));
 
 			int gcd = gcd(upstream.downstreamSteadyExecutions, downstream.upstreamSteadyExecutions);
 			int uMult = downstream.upstreamSteadyExecutions / gcd;
@@ -476,33 +476,33 @@ final class MessageConstraint {
 
 			int[] sdep = new int[downstreamInitExecutions + downstreamSteadyExecutions + 1];
 			for (int i = 0; i < sdep.length; ++i)
-				sdep[i] = upstream.sdep(downstream.sdep(i));
+				sdep[i] = checkedCast(upstream.sdep(downstream.sdep(i)));
 			return new SDEPData(upstreamInitExecutions, upstreamSteadyExecutions, downstreamInitExecutions, downstreamSteadyExecutions, sdep);
 		}
 
-		public int sdep(int downstreamExecutionCount) {
+		public long sdep(long downstreamExecutionCount) {
 			if (downstreamExecutionCount < downstreamInitExecutions + 1)
-				return sdep[downstreamExecutionCount];
-			int steadyStates = (downstreamExecutionCount - (downstreamInitExecutions + 1)) / downstreamSteadyExecutions;
+				return sdep[checkedCast(downstreamExecutionCount)];
+			long steadyStates = (downstreamExecutionCount - (downstreamInitExecutions + 1)) / downstreamSteadyExecutions;
 			//Where we are in the current steady state, adjusted to ignore the
 			//initialization prefix in the sdep array.
-			int curSteadyStateProgress = (downstreamExecutionCount - (downstreamInitExecutions + 1)) % downstreamSteadyExecutions + downstreamInitExecutions + 1;
+			int curSteadyStateProgress = checkedCast((downstreamExecutionCount - (downstreamInitExecutions + 1)) % downstreamSteadyExecutions + downstreamInitExecutions + 1);
 			return sdep[curSteadyStateProgress] + steadyStates * upstreamSteadyExecutions;
 		}
 
-		public int reverseSdep(int upstreamExecutionCount) {
+		public long reverseSdep(long upstreamExecutionCount) {
 			//Factor out steady state executions, leaving upstreamExecutionCount
 			//with only a partial steady state.
-			int downstreamSteadyStateExecutions = 0;
+			long downstreamSteadyStateExecutions = 0;
 			if (upstreamExecutionCount >= upstreamInitExecutions + upstreamSteadyExecutions + 1) {
-				int steadyStates = (upstreamExecutionCount - upstreamInitExecutions - 1) / upstreamSteadyExecutions;
+				long steadyStates = (upstreamExecutionCount - upstreamInitExecutions - 1) / upstreamSteadyExecutions;
 				downstreamSteadyStateExecutions = steadyStates * downstreamSteadyExecutions;
 				upstreamExecutionCount -= steadyStates * upstreamSteadyExecutions;
 			}
 
 			//Find how many times the downstream executed during the
 			//upstreamExecutionCount portion of the steady state.
-			int downstreamExecutionCount = Arrays.binarySearch(sdep, upstreamExecutionCount);
+			int downstreamExecutionCount = Arrays.binarySearch(sdep, checkedCast(upstreamExecutionCount));
 			//Arrays.binarySearch doesn't guarantee which index it'll find, but
 			//we want the first one.  If we didn't find one, this is a no-op.
 			while (downstreamExecutionCount > 0 && sdep[downstreamExecutionCount] == upstreamExecutionCount)
@@ -602,6 +602,12 @@ final class MessageConstraint {
 	private static int gcd(int a, int b) {
 		assert a > 0 && b >= 0;
 		return b == 0 ? a : gcd(b, a % b);
+	}
+
+	private static int checkedCast(long x) {
+		if (x != (int)x)
+			throw new ArithmeticException("Can't case "+x+" to int");
+		return (int)x;
 	}
 
 	/**
