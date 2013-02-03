@@ -45,6 +45,8 @@ final class MessageConstraint {
 		this.latency = latency;
 		this.direction = direction;
 		this.sdepData = sdepData;
+		if (this.direction == StreamPosition.UPSTREAM && this.latency < 0)
+			throw new IllegalStreamGraphException("Impossible constraint: "+this.toString(), sender, recipient);
 	}
 	public Portal<?> getPortal() {
 		return portal;
