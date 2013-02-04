@@ -367,18 +367,30 @@ final class MessageConstraint {
 		allNodes.add(goalEdge.upstream);
 		allNodes.add(goalEdge.downstream);
 		List<PrimitiveWorker<?, ?>> sortedNodes = topologicalSort(allNodes);
+		//Add self-edges for all workers.
 		for (PrimitiveWorker<?, ?> w : sortedNodes) {
 			Edge selfEdge = new Edge(w, w);
 			if (!cache.containsKey(selfEdge))
 				cache.put(selfEdge, SDEPData.fromWorker(w));
 		}
+		//Add data-dependence edges for all workers.  If there's already data in
+		//the cache, we know we must have added these data-dependency edges
+		//before (and possibly merged them with some latency edges).
+		for (int i = 0; i < sortedNodes.size(); ++i)
+			for (int j = i+1; j < sortedNodes.size(); ++j) {
+				if (sortedNodes.get(i).getSuccessors().contains(sortedNodes.get(j))) {
+					Edge edge = new Edge(sortedNodes.get(i), sortedNodes.get(j));
+					if (!cache.containsKey(edge))
+						cache.put(edge, SDEPData.fromDataDependence(edge.upstream, edge.downstream));
+				}
+			}
 
 		//For each pair of nodes that follow one another, extend the edge from
 		//the upstream through the pair of nodes, merging if such an edge is
 		//already in the cache.  Because it's topologically ordered, we process
 		//all upstream pairs before downstream pairs.
 		for (int i = 0; i < sortedNodes.size(); ++i) {
-			for (int j = i; j < sortedNodes.size(); ++j) {
+			for (int j = i+1; j < sortedNodes.size(); ++j) {
 				if (!sortedNodes.get(i).getSuccessors().contains(sortedNodes.get(j)))
 					continue;
 				Edge upstreamEdge = new Edge(sortedNodes.get(0), sortedNodes.get(i));
@@ -389,11 +401,11 @@ final class MessageConstraint {
 				SDEPData selfData = cache.get(downstreamEdge);
 
 				Edge producedEdge = new Edge(upstreamEdge.upstream, downstreamEdge.downstream);
-				SDEPData seriesData = SDEPData.fromSeriesData(data, selfData);
+				SDEPData seriesData = SDEPData.combineSeries(data, selfData);
 
 				SDEPData currentData = cache.get(producedEdge);
 				if (currentData != null)
-					cache.put(producedEdge, SDEPData.fromParallelData(currentData, seriesData));
+					cache.put(producedEdge, SDEPData.mergeParallel(currentData, seriesData));
 				else
 					cache.put(producedEdge, seriesData);
 			}
@@ -439,11 +451,56 @@ final class MessageConstraint {
 			return new SDEPData(0, 1, 0, 1, new int[]{0, 1});
 		}
 
+		public static SDEPData fromDataDependence(PrimitiveWorker<?, ?> upstream, PrimitiveWorker<?, ?> downstream) {
+			int uChannel = upstream.getSuccessors().indexOf(downstream);
+			assert uChannel != -1;
+			int dChannel = downstream.getPredecessors().indexOf(upstream);
+			assert dChannel != -1;
+
+			Rate pushRate = upstream.getPushRates().get(uChannel);
+			Rate peekRate = downstream.getPeekRates().get(dChannel);
+			Rate popRate = downstream.getPopRates().get(dChannel);
+			//TODO: these exceptions should include the MessageConstraint!
+			if (!pushRate.isFixed())
+				throw new IllegalStreamGraphException("Messaging over dynamic rate", upstream);
+			if (!peekRate.isFixed() || !popRate.isFixed())
+				throw new IllegalStreamGraphException("Messaging over dynamic rate", downstream);
+
+			int steadyGCD = gcd(pushRate.max(), popRate.max());
+			int steadyStateData = lcm(pushRate.max(), popRate.max());
+			int upstreamSteadyExecutions = steadyStateData/pushRate.max();
+			int downstreamSteadyExecutions = steadyStateData/popRate.max();
+
+			//Figure out how many upstream executions we need to fill peek
+			//buffers to prepare for steady-state executions.  (This may be 0.)
+			//Prework TODO: need to account for prework's peek and pop demands
+			//Divide rounding up.
+			int upstreamInitExecutions = (peekRate.max() - 1)/pushRate.max() + 1;
+			//Always 0, at least until TODO prework.
+			int downstreamInitExecutions = 0;
+
+			//We know how much SDEP info we need, so simulate that many
+			//downstream executions of a pull schedule between these two nodes.
+			int[] sdep = new int[downstreamInitExecutions + downstreamSteadyExecutions + 1];
+			int dataInChannel = 0;
+			int upstreamExecutions = 0;
+			int neededToFire = Math.max(peekRate.max(), popRate.max());
+			for (int i = 1; i < sdep.length; ++i) {
+				while (dataInChannel < neededToFire) {
+					dataInChannel += pushRate.max();
+					++upstreamExecutions;
+				}
+				dataInChannel -= popRate.max();
+				sdep[i] = upstreamExecutions;
+			}
+			return new SDEPData(upstreamInitExecutions, upstreamSteadyExecutions, downstreamInitExecutions, downstreamSteadyExecutions, sdep);
+		}
+
 		/**
 		 * Merge two edges that connect the same nodes.  (Used for taking the
 		 * maximum over splitjoins.)
 		 */
-		public static SDEPData fromParallelData(SDEPData left, SDEPData right) {
+		public static SDEPData mergeParallel(SDEPData left, SDEPData right) {
 			assert left != right;
 			int downstreamInitExecutions = Math.max(left.downstreamInitExecutions, right.downstreamInitExecutions);
 			int upstreamInitExecutions = checkedCast(Math.max(left.sdep(downstreamInitExecutions), right.sdep(downstreamInitExecutions)));
@@ -466,7 +523,7 @@ final class MessageConstraint {
 		/**
 		 * Merge two edges that connect two different nodes.  (Pipelines.)
 		 */
-		public static SDEPData fromSeriesData(SDEPData upstream, SDEPData downstream) {
+		public static SDEPData combineSeries(SDEPData upstream, SDEPData downstream) {
 			int upstreamInitExecutions = checkedCast(Math.max(upstream.upstreamInitExecutions, upstream.sdep(downstream.upstreamInitExecutions)));
 			int downstreamInitExecutions = checkedCast(Math.max(downstream.downstreamInitExecutions, upstream.reverseSdep(downstream.downstreamInitExecutions)));
 
@@ -604,6 +661,11 @@ final class MessageConstraint {
 	private static int gcd(int a, int b) {
 		assert a > 0 && b >= 0;
 		return b == 0 ? a : gcd(b, a % b);
+	}
+
+	private static int lcm(int a, int b) {
+		//Divide before multiplying for overflow resistance.
+		return a / gcd(a, b) * b;
 	}
 
 	private static int checkedCast(long x) {
