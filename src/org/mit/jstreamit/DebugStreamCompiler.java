@@ -4,7 +4,9 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -46,7 +48,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			portal.setConstraints(constraints);
 
-		return new DebugCompiledStream<>(head, tail, source, sink);
+		return new DebugCompiledStream<>(head, tail, source, sink, constraints);
 	}
 
 	/**
@@ -59,10 +61,23 @@ public class DebugStreamCompiler implements StreamCompiler {
 	 */
 	private static class DebugCompiledStream<I, O> extends AbstractCompiledStream<I, O> {
 		private final PrimitiveWorker<?, ?> source, sink;
-		DebugCompiledStream(Channel<? super I> head, Channel<? extends O> tail, PrimitiveWorker<?, ?> source, PrimitiveWorker<?, ?> sink) {
+		/**
+		 * Maps workers to all constraints of which they are recipients.
+		 */
+		private final Map<PrimitiveWorker<?, ?>, List<MessageConstraint>> constraintsForRecipient = new IdentityHashMap<>();
+		DebugCompiledStream(Channel<? super I> head, Channel<? extends O> tail, PrimitiveWorker<?, ?> source, PrimitiveWorker<?, ?> sink, List<MessageConstraint> constraints) {
 			super(head, tail);
 			this.source = source;
 			this.sink = sink;
+			for (MessageConstraint constraint : constraints) {
+				PrimitiveWorker<?, ?> recipient = constraint.getRecipient();
+				List<MessageConstraint> constraintList = constraintsForRecipient.get(recipient);
+				if (constraintList == null) {
+					constraintList = new ArrayList<>();
+					constraintsForRecipient.put(recipient, constraintList);
+				}
+				constraintList.add(constraint);
+			}
 		}
 
 		@Override
@@ -103,25 +118,64 @@ public class DebugStreamCompiler implements StreamCompiler {
 		/**
 		 * Fires upstream filters just enough to allow worker to fire, or
 		 * returns false if this is impossible.
+		 *
+		 * This is an implementation of Figure 3-12 from Bill's thesis.
 		 * @param worker the worker to fire
 		 * @return true if the worker fired, false if it didn't
 		 */
 		private boolean fireOnceIfPossible(PrimitiveWorker<?, ?> worker) {
-			//Use an explicit stack to avoid overflow.
+			//This stack holds all the unsatisfied workers we've encountered
+			//while trying to fire the argument.
 			Deque<PrimitiveWorker<?, ?>> stack = new ArrayDeque<>();
 			stack.push(worker);
-			while (!stack.isEmpty()) {
+			recurse: while (!stack.isEmpty()) {
 				PrimitiveWorker<?, ?> current = stack.element();
+				//If we're already trying to fire current, current depends on
+				//itself, so throw.  TODO: explain which constraints are bad?
+				//We have to pop then push so contains can't just find the top
+				//of the stack every time.  (no indexOf(), annoying)
+				stack.pop();
+				if (stack.contains(current))
+					throw new IllegalStreamGraphException("Unsatisfiable message constraints", current);
+				stack.push(current);
+
+				//Execute predecessors based on data dependencies.
 				int channel = indexOfUnsatisfiedChannel(current);
-				if (channel == -1) {
-					checkedFire(current);
-					stack.pop();
-				} else {
+				if (channel != -1) {
 					if (current == source)
+						//Not enough data to fire the first worker in the stream
+						//graph.  We can't make any further progress until we
+						//get more data.
 						return false;
+					//Otherwise, recursively fire the worker blocking us.
 					stack.push(current.getPredecessors().get(channel));
+					continue recurse;
 				}
+
+				List<MessageConstraint> constraints = constraintsForRecipient.get(current);
+				if (constraints != null) {
+					//Execute predecessors based on message dependencies; that is,
+					//execute any filter that might send a message to the current
+					//worker for delivery just prior to its next firing, to ensure
+					//that delivery cannot be missed.
+					for (MessageConstraint constraint : constraintsForRecipient.get(current)) {
+						PrimitiveWorker<?, ?> sender = constraint.getSender();
+						long deliveryTime = constraint.getDeliveryTime(sender.getExecutions());
+						//If deliveryTime == current.getExecutions() + 1, it's for
+						//our next execution.  (If it's <= current.getExecutions(),
+						//we already missed it!)
+						if (deliveryTime <= (current.getExecutions() + 1)) {
+							stack.push(sender);
+							continue recurse;
+						}
+					}
+				}
+
+				checkedFire(current);
+				stack.pop(); //return from the recursion
 			}
+
+			//Stack's empty: we fired the argument.
 			return true;
 		}
 
