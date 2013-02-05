@@ -112,7 +112,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 			stack.push(worker);
 			while (!stack.isEmpty()) {
 				PrimitiveWorker<?, ?> current = stack.element();
-				int channel = findUnsatisfiedChannel(current);
+				int channel = indexOfUnsatisfiedChannel(current);
 				if (channel == -1) {
 					checkedFire(current);
 					stack.pop();
@@ -130,7 +130,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		 * elements before the worker can fire, returning the index of the found
 		 * channel or -1 if the worker can fire.
 		 */
-		private <I, O> int findUnsatisfiedChannel(PrimitiveWorker<I, O> worker) {
+		private <I, O> int indexOfUnsatisfiedChannel(PrimitiveWorker<I, O> worker) {
 			List<Channel<? extends I>> channels = worker.getInputChannels();
 			List<Rate> peekRates = worker.getPeekRates();
 			List<Rate> popRates = worker.getPopRates();
