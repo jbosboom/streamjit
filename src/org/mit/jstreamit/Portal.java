@@ -197,32 +197,8 @@ public final class Portal<I> {
 				MessageConstraint constraint = constraints.get(recipient);
 				assert constraint != null;
 
-				long timeToDelivery;
-				switch (constraint.getDirection()) {
-					case DOWNSTREAM:
-						//We add one to the reverseSdep result because we're
-						//going downstream, thus e.g. if we're in our first
-						//execution (sender.getExecutions() == 0), the message
-						//should be delivered downstream at recipient's 0, but
-						//we expect TTD to be greater than getExecutions().
-						//Classic StreamIt adjusts the TTD at delivery to
-						//account for this; we'll do it here.
-						//TODO: is the inner +1 correct?
-						timeToDelivery = constraint.reverseSdep(sender.getExecutions()+constraint.getLatency()+1)+1;
-						break;
-					case UPSTREAM:
-						//TODO: is the +1 correct?
-						timeToDelivery = constraint.sdep(sender.getExecutions()+constraint.getLatency()+1);
-						break;
-					case EQUAL:
-					case INCOMPARABLE:
-						throw new IllegalStreamGraphException("Illegal messaging: "+constraint);
-					default:
-						throw new AssertionError();
-				}
-
 				//Queue up the message at the recipient.
-				Message message = new Message(method, args, timeToDelivery);
+				Message message = new Message(method, args, constraint.getDeliveryTime(sender.getExecutions()));
 				recipient.sendMessage(message);
 			}
 

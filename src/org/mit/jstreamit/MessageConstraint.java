@@ -69,6 +69,39 @@ final class MessageConstraint {
 	public long reverseSdep(long upstreamExecutionCount) {
 		return sdepData.reverseSdep(upstreamExecutionCount);
 	}
+	/**
+	 * Computes the delivery time for a message given the current sender
+	 * execution count.  Takes into account the message direction and latency.
+	 *
+	 * (The sender execution count must be provided as an argument, rather than
+	 * retrieved via sender.getExecutions() directly, because we might not be
+	 * executing in the interpreter.)
+	 * @param senderExecutionCount the sender's execution count
+	 * @return the execution of the recipient immediately before which the
+	 * message should be delivered
+	 */
+	public long getDeliveryTime(long senderExecutionCount) {
+		switch (getDirection()) {
+			case DOWNSTREAM:
+				//We add one to the reverseSdep result because we're
+				//going downstream, thus e.g. if we're in our first
+				//execution (sender.getExecutions() == 0), the message
+				//should be delivered downstream at recipient's 0, but
+				//we expect TTD to be greater than getExecutions().
+				//Classic StreamIt adjusts the TTD at delivery to
+				//account for this; we'll do it here.
+				//TODO: is the inner +1 correct?
+				return reverseSdep(senderExecutionCount + 1 + getLatency()) + 1;
+			case UPSTREAM:
+				//TODO: is the +1 correct?
+				return sdep(senderExecutionCount + 1 + getLatency());
+			case EQUAL:
+			case INCOMPARABLE:
+				throw new IllegalStreamGraphException("Illegal messaging: " + this, getSender(), getRecipient());
+			default:
+				throw new AssertionError();
+		}
+	}
 	@Override
 	public String toString() {
 		return String.format("%s from %s to %s through %s after %d", direction, sender, recipient, portal, latency);
