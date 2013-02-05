@@ -7,6 +7,4 @@ package org.mit.jstreamit;
  * @since 11/22/2012
  */
 public interface OneToOneElement<I, O> extends StreamElement<I, O> {
-	@Override
-	public OneToOneElement<I, O> copy();
 }

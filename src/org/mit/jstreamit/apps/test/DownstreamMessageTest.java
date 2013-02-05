@@ -50,10 +50,6 @@ public class DownstreamMessageTest {
 			portal.getHandle(this, 0).handler(-x);
 			push(x);
 		}
-		@Override
-		public Filter<Integer, Integer> copy() {
-			return new MessageSender(portal);
-		}
 	}
 
 	private static class MessageRecipient extends StatefulFilter<Integer, Integer> implements MessageInterface {
@@ -67,11 +63,6 @@ public class DownstreamMessageTest {
 			int x = pop();
 			push(x);
 			push(lastMessage);
-		}
-
-		@Override
-		public StatefulFilter<Integer, Integer> copy() {
-			return new MessageRecipient();
 		}
 
 		@Override

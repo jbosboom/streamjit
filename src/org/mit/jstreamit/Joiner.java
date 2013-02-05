@@ -21,9 +21,6 @@ public abstract class Joiner<I, O> extends PrimitiveWorker<I, O> implements Stre
 	public abstract void work();
 
 	@Override
-	public abstract Joiner<I, O> copy();
-
-	@Override
 	public final void visit(StreamVisitor v) {
 		v.visitJoiner(this);
 	}

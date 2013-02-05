@@ -22,9 +22,6 @@ public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> implements St
 	@Override
 	protected abstract List<Rate> getPushRates();
 
-	@Override
-	public abstract Splitter<I, O> copy();
-
 	/**
 	 * Returns the number of output channels this Splitter instance may output
 	 * to, or UNLIMITED if any number >= 1 is supported.

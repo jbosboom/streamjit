@@ -21,7 +21,7 @@ public class Splitjoin<I, O> implements OneToOneElement<I, O> {
 	public <T, U> Splitjoin(Splitter<I, T> splitter, Joiner<U, O> joiner, OneToOneElement<? super T, ? extends U>... elements) {
 		this(splitter, joiner, Arrays.asList(elements));
 	}
-	
+
 	public <T, U> Splitjoin(Splitter<I, T> splitter, Joiner<U, O> joiner, List<? extends OneToOneElement<? super T, ? extends U>> elements) {
 		int elems = elements.size();
 		int splitOuts = splitter.supportedOutputs();
@@ -58,27 +58,6 @@ public class Splitjoin<I, O> implements OneToOneElement<I, O> {
 	public final void add(List<? extends OneToOneElement<?, ?>> elements) {
 		for (OneToOneElement<?, ?> element : elements)
 			add(element);
-	}
-
-	@Override
-	public final Splitjoin<I, O> copy() {
-		Splitter splitterCopy = splitter.copy();
-		//To detect misbehaving copy() implementations...
-		assert splitter != splitterCopy : splitter;
-		assert splitter.getClass() == splitterCopy.getClass() : splitter + ", " + splitterCopy;
-		Joiner joinerCopy = joiner.copy();
-		//To detect misbehaving copy() implementations...
-		assert joiner != joinerCopy : joiner;
-		assert joiner.getClass() == joinerCopy.getClass() : joiner + ", " + joinerCopy;
-		List<OneToOneElement<?, ?>> elementsCopy = new ArrayList<>(elements.size());
-		for (OneToOneElement<?, ?> element : elements) {
-			OneToOneElement<?, ?> elementCopy = element.copy();
-			//To detect misbehaving copy() implementations...
-			assert element != elementCopy : element;
-			assert element.getClass() == elementCopy.getClass() : element + ", " + elementCopy;
-			elementsCopy.add(element.copy());
-		}
-		return new Splitjoin(splitterCopy, joinerCopy, elementsCopy);
 	}
 
 	@Override

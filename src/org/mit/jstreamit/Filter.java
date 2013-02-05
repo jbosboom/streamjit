@@ -51,9 +51,6 @@ public abstract class Filter<I, O> extends PrimitiveWorker<I, O> implements OneT
 	public abstract void work();
 
 	@Override
-	public abstract Filter<I, O> copy();
-
-	@Override
 	public final void visit(StreamVisitor v) {
 		v.visitFilter(this);
 	}

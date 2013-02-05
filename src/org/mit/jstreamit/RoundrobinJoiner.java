@@ -38,9 +38,4 @@ public class RoundrobinJoiner<T> extends Joiner<T, T> {
 	protected List<Rate> getPushRates() {
 		return Collections.singletonList(Rate.create(inputs()));
 	}
-
-	@Override
-	public RoundrobinJoiner<T> copy() {
-		return new RoundrobinJoiner<>();
-	}
 }

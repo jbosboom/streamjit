@@ -43,19 +43,6 @@ public class Pipeline<I, O> implements OneToOneElement<I, O> {
 	}
 
 	@Override
-	public final Pipeline<I, O> copy() {
-		List<OneToOneElement<?, ?>> elementsCopy = new ArrayList<>(elements.size());
-		for (OneToOneElement<?, ?> element : elements) {
-			OneToOneElement<?, ?> elementCopy = element.copy();
-			//To detect misbehaving copy() implementations...
-			assert element != elementCopy : element;
-			assert element.getClass() == elementCopy.getClass() : element + ", " + elementCopy;
-			elementsCopy.add(element.copy());
-		}
-		return new Pipeline<>(elementsCopy);
-	}
-
-	@Override
 	public final void visit(StreamVisitor v) {
 		if (v.enterPipeline(this)) {
 			for (OneToOneElement<?, ?> e : elements)

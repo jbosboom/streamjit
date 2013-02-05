@@ -17,9 +17,4 @@ public class Sink<T> extends Filter<T, Void> {
 	public void work() {
 		pop();
 	}
-
-	@Override
-	public Sink<T> copy() {
-		return new Sink<>();
-	}
 }

@@ -53,10 +53,6 @@ public class FMRadio {
 				pop();
 			pop();
 		}
-		@Override
-		public LowPassFilter copy() {
-			return new LowPassFilter(rate, cutoff, taps, decimation);
-		}
 	}
 
 	private static class Subtractor extends Filter<Float, Float> {
@@ -67,10 +63,6 @@ public class FMRadio {
 		public void work() {
 			//This is Java; we can depend on pop() ordering.
 			push(pop() - pop());
-		}
-		@Override
-		public Subtractor copy() {
-			return new Subtractor();
 		}
 	}
 
@@ -102,10 +94,6 @@ public class FMRadio {
 		@Override
 		public void work() {
 			push(pop() * k);
-		}
-		@Override
-		public Amplifier copy() {
-			return new Amplifier(k);
 		}
 	}
 
@@ -148,10 +136,6 @@ public class FMRadio {
 						sum += pop();
 					push(sum);
 				}
-				@Override
-				public Filter<Float, Float> copy() {
-					return new Summer();
-				}
 			}
 
 			add(new Summer());
@@ -173,10 +157,6 @@ public class FMRadio {
 			temp = (float)(gain * Math.atan(temp));
 			pop();
 			push(temp);
-		}
-		@Override
-		public FMDemodulator copy() {
-			return new FMDemodulator(gain);
 		}
 	}
 

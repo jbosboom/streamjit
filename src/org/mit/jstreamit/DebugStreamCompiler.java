@@ -24,9 +24,6 @@ import java.util.Set;
 public class DebugStreamCompiler implements StreamCompiler {
 	@Override
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
-		//TODO: I'd like to make a copy here so the user can't mess with our
-		//stuff, but that will screw up portal registration.
-//		stream = stream.copy();
 		ConnectPrimitiveWorkersVisitor cpwv = new ConnectPrimitiveWorkersVisitor() {
 			@Override
 			protected <E> Channel<E> makeChannel(PrimitiveWorker<?, E> upstream, PrimitiveWorker<E, ?> downstream) {
