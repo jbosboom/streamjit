@@ -1,5 +1,17 @@
-package edu.mit.streamjit;
+package edu.mit.streamjit.impl.common;
 
+import edu.mit.streamjit.Channel;
+import edu.mit.streamjit.Filter;
+import edu.mit.streamjit.IllegalStreamGraphException;
+import edu.mit.streamjit.Joiner;
+import edu.mit.streamjit.OneToOneElement;
+import edu.mit.streamjit.Pipeline;
+import edu.mit.streamjit.PrimitiveWorker;
+import edu.mit.streamjit.Rate;
+import edu.mit.streamjit.Splitjoin;
+import edu.mit.streamjit.Splitter;
+import edu.mit.streamjit.StreamElement;
+import edu.mit.streamjit.StreamVisitor;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -17,7 +29,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 1/23/2013 (originally internal to DebugStreamCompiler)
  */
-abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
+public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 	/**
 	 * The first worker in the stream graph.
 	 */
@@ -126,8 +138,8 @@ abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 		//first.
 		for (PrimitiveWorker<?, ?> w : stack.peekFirst().branchEnds) {
 			Channel c = makeChannel(w, joiner);
-			w.addSuccessor(joiner, c);
-			joiner.addPredecessor(w, c);
+			Workers.addSuccessor(w, joiner, c);
+			Workers.addPredecessor(joiner, w, c);
 		}
 
 		stack.pop();
@@ -156,8 +168,8 @@ abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 					throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)worker);
 
 			Channel c = makeChannel(cur, worker);
-			cur.addSuccessor(worker, c);
-			worker.addPredecessor(cur, c);
+			Workers.addSuccessor(cur, worker, c);
+			Workers.addPredecessor(worker, cur, c);
 		}
 		cur = worker;
 	}

@@ -1,5 +1,6 @@
 package edu.mit.streamjit;
 
+import edu.mit.streamjit.impl.common.ConnectPrimitiveWorkersVisitor;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
