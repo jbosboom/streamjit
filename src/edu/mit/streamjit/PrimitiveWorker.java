@@ -58,38 +58,6 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 		return outputChannels;
 	}
 
-	/**
-	 * Returns a set of all predecessors of this worker.
-	 * @return a set of all predecessors of this worker
-	 */
-	Set<PrimitiveWorker<?, ?>> getAllPredecessors() {
-		Set<PrimitiveWorker<?, ?>> closed = new HashSet<>();
-		Queue<PrimitiveWorker<?, ?>> frontier = new ArrayDeque<>();
-		frontier.addAll(this.getPredecessors());
-		while (!frontier.isEmpty()) {
-			PrimitiveWorker<?, ?> cur = frontier.remove();
-			closed.add(cur);
-			frontier.addAll(cur.getPredecessors());
-		}
-		return Collections.unmodifiableSet(closed);
-	}
-
-	/**
-	 * Returns a set of all successors of this worker.
-	 * @return a set of all successors of this worker
-	 */
-	Set<PrimitiveWorker<?, ?>> getAllSuccessors() {
-		Set<PrimitiveWorker<?, ?>> closed = new HashSet<>();
-		Queue<PrimitiveWorker<?, ?>> frontier = new ArrayDeque<>();
-		frontier.addAll(this.getSuccessors());
-		while (!frontier.isEmpty()) {
-			PrimitiveWorker<?, ?> cur = frontier.remove();
-			closed.add(cur);
-			frontier.addAll(cur.getSuccessors());
-		}
-		return Collections.unmodifiableSet(closed);
-	}
-
 	public abstract void work();
 
 	/**

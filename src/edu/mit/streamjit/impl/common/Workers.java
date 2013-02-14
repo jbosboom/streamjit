@@ -3,8 +3,11 @@ package edu.mit.streamjit.impl.common;
 import edu.mit.streamjit.Channel;
 import edu.mit.streamjit.PrimitiveWorker;
 import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 
 /**
  * This class provides static utility methods for PrimitiveWorker, including
@@ -39,6 +42,40 @@ public abstract class Workers {
 	}
 	public static long getExecutions(PrimitiveWorker<?, ?> worker) {
 		return FRIEND.getExecutions_impl(worker);
+	}
+
+	/**
+	 * Returns a set of all predecessors of this worker.
+	 * @param worker a worker
+	 * @return a set of all predecessors of this worker
+	 */
+	public static Set<PrimitiveWorker<?, ?>> getAllPredecessors(PrimitiveWorker<?, ?> worker) {
+		Set<PrimitiveWorker<?, ?>> closed = new HashSet<>();
+		Queue<PrimitiveWorker<?, ?>> frontier = new ArrayDeque<>();
+		frontier.addAll(Workers.getPredecessors(worker));
+		while (!frontier.isEmpty()) {
+			PrimitiveWorker<?, ?> cur = frontier.remove();
+			closed.add(cur);
+			frontier.addAll(Workers.getPredecessors(cur));
+		}
+		return Collections.unmodifiableSet(closed);
+	}
+
+	/**
+	 * Returns a set of all successors of this worker.
+	 * @param worker a worker
+	 * @return a set of all successors of this worker
+	 */
+	public static Set<PrimitiveWorker<?, ?>> getAllSuccessors(PrimitiveWorker<?, ?> worker) {
+		Set<PrimitiveWorker<?, ?>> closed = new HashSet<>();
+		Queue<PrimitiveWorker<?, ?>> frontier = new ArrayDeque<>();
+		frontier.addAll(Workers.getSuccessors(worker));
+		while (!frontier.isEmpty()) {
+			PrimitiveWorker<?, ?> cur = frontier.remove();
+			closed.add(cur);
+			frontier.addAll(Workers.getSuccessors(cur));
+		}
+		return Collections.unmodifiableSet(closed);
 	}
 
 	public enum StreamPosition {

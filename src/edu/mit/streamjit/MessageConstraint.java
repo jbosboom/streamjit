@@ -117,7 +117,7 @@ final class MessageConstraint {
 		List<MessageConstraint> mc = new ArrayList<>();
 		List<PrimitiveWorker<?, ?>> workers = new ArrayList<>();
 		workers.add(graph);
-		workers.addAll(graph.getAllSuccessors());
+		workers.addAll(Workers.getAllSuccessors(graph));
 		//Parsing bytecodes is (relatively) expensive; we only want to do it
 		//once per class, no matter how many instances are in the stream graph.
 		//If a class doesn't send messages, it maps to an empty list, and we do
@@ -615,7 +615,7 @@ final class MessageConstraint {
 		private NodesInPathsBetweenComputer(PrimitiveWorker<?, ?> head, PrimitiveWorker<?, ?> tail) {
 			this.head = head;
 			this.tail = tail;
-			this.tailSuccessors = tail.getAllSuccessors();
+			this.tailSuccessors = Workers.getAllSuccessors(tail);
 		}
 		public Set<PrimitiveWorker<?, ?>> get() {
 			compute(head);
