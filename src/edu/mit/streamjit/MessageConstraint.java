@@ -1,5 +1,6 @@
 package edu.mit.streamjit;
 
+import edu.mit.streamjit.impl.common.Workers;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -13,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-import edu.mit.streamjit.PrimitiveWorker.StreamPosition;
+import edu.mit.streamjit.impl.common.Workers.StreamPosition;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
@@ -36,7 +37,7 @@ final class MessageConstraint {
 	private final Portal<?> portal;
 	private final PrimitiveWorker<?, ?> sender, recipient;
 	private final int latency;
-	private final PrimitiveWorker.StreamPosition direction;
+	private final StreamPosition direction;
 	private final SDEPData sdepData;
 	private MessageConstraint(Portal<?> portal, PrimitiveWorker<?, ?> sender, PrimitiveWorker<?, ?> recipient, int latency, StreamPosition direction, SDEPData sdepData) {
 		this.portal = portal;
@@ -60,7 +61,7 @@ final class MessageConstraint {
 	public int getLatency() {
 		return latency;
 	}
-	public PrimitiveWorker.StreamPosition getDirection() {
+	public StreamPosition getDirection() {
 		return direction;
 	}
 	public long sdep(long downstreamExecutionCount) {
@@ -135,7 +136,7 @@ final class MessageConstraint {
 				Portal<?> portal = d.getPortal(sender);
 				int latency = d.getLatency(sender);
 				for (PrimitiveWorker<?, ?> recipient : d.getPortal(sender).getRecipients()) {
-					StreamPosition direction = sender.compareStreamPosition(recipient);
+					StreamPosition direction = Workers.compareStreamPosition(sender, recipient);
 					Edge edge = direction == StreamPosition.UPSTREAM ? new Edge(sender, recipient) : new Edge(recipient, sender);
 					SDEPData sdepData = computeSDEP(edge, sdepCache);
 					//The message direction is opposite the relation between
@@ -715,7 +716,7 @@ final class MessageConstraint {
 		Edge(PrimitiveWorker<?, ?> upstream, PrimitiveWorker<?, ?> downstream) {
 			this.upstream = upstream;
 			this.downstream = downstream;
-			StreamPosition direction = upstream.compareStreamPosition(downstream);
+			StreamPosition direction = Workers.compareStreamPosition(upstream, downstream);
 			assert direction == StreamPosition.UPSTREAM || direction == StreamPosition.EQUAL;
 		}
 		@Override

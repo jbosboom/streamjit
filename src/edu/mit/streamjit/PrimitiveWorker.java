@@ -58,64 +58,6 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 		return outputChannels;
 	}
 
-	enum StreamPosition {
-		UPSTREAM, DOWNSTREAM, EQUAL, INCOMPARABLE;
-		public StreamPosition opposite() {
-			switch (this) {
-				case UPSTREAM:
-					return DOWNSTREAM;
-				case DOWNSTREAM:
-					return UPSTREAM;
-				case EQUAL:
-				case INCOMPARABLE:
-					return this;
-				default:
-					throw new AssertionError();
-			}
-		}
-	}
-
-	/**
-	 * Compare the position of this worker to the given other worker. Returns
-	 * UPSTREAM if this worker is upstream of the other worker, DOWNSTREAM if
-	 * this worker is downstream of the other worker, EQUAL if this worker is
-	 * the other worker (reference equality), or INCOMPARABLE if this worker is
-	 * neither upstream nor downstream of the other worker (e.g., this and other
-	 * are in parallel branches of a splitjoin).
-	 *
-	 * Obviously, this method requires the workers in a stream graph be
-	 * connected.  See ConnectPrimitiveWorkersVisitor.
-	 * @param other the other worker to compare against
-	 * @return a StreamPosition
-	 */
-	StreamPosition compareStreamPosition(PrimitiveWorker<?, ?> other) {
-		if (other == null)
-			throw new NullPointerException();
-		if (this == other)
-			return StreamPosition.EQUAL;
-
-		Queue<PrimitiveWorker<?, ?>> frontier = new ArrayDeque<>();
-		//BFS downstream.
-		frontier.add(this);
-		while (!frontier.isEmpty()) {
-			PrimitiveWorker<?, ?> cur = frontier.remove();
-			if (cur == other)
-				return StreamPosition.UPSTREAM;
-			frontier.addAll(cur.getSuccessors());
-		}
-
-		//BFS upstream.
-		frontier.add(this);
-		while (!frontier.isEmpty()) {
-			PrimitiveWorker<?, ?> cur = frontier.remove();
-			if (cur == other)
-				return StreamPosition.DOWNSTREAM;
-			frontier.addAll(cur.getPredecessors());
-		}
-
-		return StreamPosition.INCOMPARABLE;
-	}
-
 	/**
 	 * Returns a set of all predecessors of this worker.
 	 * @return a set of all predecessors of this worker

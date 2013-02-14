@@ -2,7 +2,9 @@ package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.Channel;
 import edu.mit.streamjit.PrimitiveWorker;
+import java.util.ArrayDeque;
 import java.util.List;
+import java.util.Queue;
 
 /**
  * This class provides static utility methods for PrimitiveWorker, including
@@ -37,6 +39,65 @@ public abstract class Workers {
 	}
 	public static long getExecutions(PrimitiveWorker<?, ?> worker) {
 		return FRIEND.getExecutions_impl(worker);
+	}
+
+	public enum StreamPosition {
+		UPSTREAM, DOWNSTREAM, EQUAL, INCOMPARABLE;
+		public StreamPosition opposite() {
+			switch (this) {
+				case UPSTREAM:
+					return DOWNSTREAM;
+				case DOWNSTREAM:
+					return UPSTREAM;
+				case EQUAL:
+				case INCOMPARABLE:
+					return this;
+				default:
+					throw new AssertionError();
+			}
+		}
+	}
+
+	/**
+	 * Compare the position of this worker to the given other worker. Returns
+	 * UPSTREAM if this worker is upstream of the other worker, DOWNSTREAM if
+	 * this worker is downstream of the other worker, EQUAL if this worker is
+	 * the other worker (reference equality), or INCOMPARABLE if this worker is
+	 * neither upstream nor downstream of the other worker (e.g., this and other
+	 * are in parallel branches of a splitjoin).
+	 *
+	 * Obviously, this method requires the workers in a stream graph be
+	 * connected.  See ConnectPrimitiveWorkersVisitor.
+	 * @param left the first worker
+	 * @param right the second worker
+	 * @return a StreamPosition
+	 */
+	public static StreamPosition compareStreamPosition(PrimitiveWorker<?, ?> left, PrimitiveWorker<?, ?> right) {
+		if (left == null || right == null)
+			throw new NullPointerException();
+		if (left == right)
+			return StreamPosition.EQUAL;
+
+		Queue<PrimitiveWorker<?, ?>> frontier = new ArrayDeque<>();
+		//BFS downstream.
+		frontier.add(left);
+		while (!frontier.isEmpty()) {
+			PrimitiveWorker<?, ?> cur = frontier.remove();
+			if (cur == right)
+				return StreamPosition.UPSTREAM;
+			frontier.addAll(Workers.getSuccessors(cur));
+		}
+
+		//BFS upstream.
+		frontier.add(left);
+		while (!frontier.isEmpty()) {
+			PrimitiveWorker<?, ?> cur = frontier.remove();
+			if (cur == right)
+				return StreamPosition.DOWNSTREAM;
+			frontier.addAll(Workers.getPredecessors(cur));
+		}
+
+		return StreamPosition.INCOMPARABLE;
 	}
 
 	//<editor-fold defaultstate="collapsed" desc="Friend pattern support">
