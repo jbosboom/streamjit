@@ -12,16 +12,6 @@ import java.util.List;
 public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> implements StreamElement<I, O> {
 	public static final int UNLIMITED = Integer.MAX_VALUE;
 
-	@Override
-	public abstract void work();
-
-	@Override
-	protected abstract List<Rate> getPeekRates();
-	@Override
-	protected abstract List<Rate> getPopRates();
-	@Override
-	protected abstract List<Rate> getPushRates();
-
 	/**
 	 * Returns the number of output channels this Splitter instance may output
 	 * to, or UNLIMITED if any number >= 1 is supported.

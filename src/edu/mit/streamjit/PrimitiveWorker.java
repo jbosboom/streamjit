@@ -37,7 +37,7 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 	 * list.
 	 * @return a list of peek rates
 	 */
-	abstract List<Rate> getPeekRates();
+	public abstract List<Rate> getPeekRates();
 
 	/**
 	 * Returns a list of pop rates, such that the rate for the i-th channel is
@@ -45,7 +45,7 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 	 * list.
 	 * @return a list of pop rates
 	 */
-	abstract List<Rate> getPopRates();
+	public abstract List<Rate> getPopRates();
 
 	/**
 	 * Returns a list of push rates, such that the rate for the i-th channel is
@@ -53,7 +53,7 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 	 * list.
 	 * @return a list of push rates
 	 */
-	abstract List<Rate> getPushRates();
+	public abstract List<Rate> getPushRates();
 
 	private List<PrimitiveWorker<?, ? extends I>> predecessors = new ArrayList<>(1);
 	private List<PrimitiveWorker<? super O, ?>> successors = new ArrayList<>(1);

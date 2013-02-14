@@ -55,6 +55,21 @@ public abstract class Filter<I, O> extends PrimitiveWorker<I, O> implements OneT
 		v.visitFilter(this);
 	}
 
+	@Override
+	public final List<Rate> getPeekRates() {
+		return Collections.singletonList(peekRate);
+	}
+
+	@Override
+	public final List<Rate> getPopRates() {
+		return Collections.singletonList(popRate);
+	}
+
+	@Override
+	public final List<Rate> getPushRates() {
+		return Collections.singletonList(pushRate);
+	}
+
 	/**
 	 * Peeks at the item at the given position on the input channel. The index
 	 * is 0-based and moves with calls to pop(); that is, peek(0) == pop() no
@@ -99,21 +114,4 @@ public abstract class Filter<I, O> extends PrimitiveWorker<I, O> implements OneT
 		//TODO: check rates?
 		getOutputChannels().get(0).push(item);
 	};
-
-	/* Implementations of abstract methods in PrimitiveWorker */
-
-	@Override
-	List<Rate> getPeekRates() {
-		return Collections.singletonList(peekRate);
-	}
-
-	@Override
-	List<Rate> getPopRates() {
-		return Collections.singletonList(popRate);
-	}
-
-	@Override
-	List<Rate> getPushRates() {
-		return Collections.singletonList(pushRate);
-	}
 }

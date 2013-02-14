@@ -25,18 +25,18 @@ public final class DuplicateSplitter<T> extends Splitter<T, T>{
 	}
 
 	@Override
-	protected List<Rate> getPeekRates() {
+	public List<Rate> getPeekRates() {
 		//We don't peek.
 		return Collections.singletonList(Rate.create(0));
 	}
 
 	@Override
-	protected List<Rate> getPopRates() {
+	public List<Rate> getPopRates() {
 		return Collections.singletonList(Rate.create(1));
 	}
 
 	@Override
-	protected List<Rate> getPushRates() {
+	public List<Rate> getPushRates() {
 		return Collections.nCopies(outputs(), Rate.create(1));
 	}
 }

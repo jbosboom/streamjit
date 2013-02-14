@@ -11,16 +11,6 @@ public abstract class Joiner<I, O> extends PrimitiveWorker<I, O> implements Stre
 	public static final int UNLIMITED = Integer.MAX_VALUE;
 
 	@Override
-	protected abstract List<Rate> getPeekRates();
-	@Override
-	protected abstract List<Rate> getPopRates();
-	@Override
-	protected abstract List<Rate> getPushRates();
-
-	@Override
-	public abstract void work();
-
-	@Override
 	public final void visit(StreamVisitor v) {
 		v.visitJoiner(this);
 	}

@@ -24,18 +24,18 @@ public class RoundrobinJoiner<T> extends Joiner<T, T> {
 	}
 
 	@Override
-	protected List<Rate> getPeekRates() {
+	public List<Rate> getPeekRates() {
 		//We don't peek.
 		return Collections.nCopies(inputs(), Rate.create(0));
 	}
 
 	@Override
-	protected List<Rate> getPopRates() {
+	public List<Rate> getPopRates() {
 		return Collections.nCopies(inputs(), Rate.create(1));
 	}
 
 	@Override
-	protected List<Rate> getPushRates() {
+	public List<Rate> getPushRates() {
 		return Collections.singletonList(Rate.create(inputs()));
 	}
 }
