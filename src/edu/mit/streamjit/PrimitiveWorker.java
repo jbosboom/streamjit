@@ -17,7 +17,7 @@ import java.util.Set;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/19/2012
  */
-/* package private */ abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
+public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 	private List<PrimitiveWorker<?, ? extends I>> predecessors = new ArrayList<>(1);
 	private List<PrimitiveWorker<? super O, ?>> successors = new ArrayList<>(1);
 	private List<Channel<? extends I>> inputChannels = new ArrayList<>(1);
@@ -224,4 +224,43 @@ import java.util.Set;
 	 * @return a list of push rates
 	 */
 	abstract List<Rate> getPushRates();
+
+	//<editor-fold defaultstate="collapsed" desc="Friend pattern support (see impl.common.Workers)">
+	private static class WorkersFriend extends edu.mit.streamjit.impl.common.Workers {
+		@Override
+		protected <I> void addPredecessor_impl(PrimitiveWorker<I, ?> worker, PrimitiveWorker<?, ? extends I> predecessor, Channel<? extends I> channel) {
+			worker.addPredecessor(predecessor, channel);
+		}
+		@Override
+		protected <O> void addSuccessor_impl(PrimitiveWorker<?, O> worker, PrimitiveWorker<? super O, ?> successor, Channel<? super O> channel) {
+			worker.addSuccessor(successor, channel);
+		}
+		@Override
+		protected <I> List<PrimitiveWorker<?, ? extends I>> getPredecessors_impl(PrimitiveWorker<I, ?> worker) {
+			return worker.getPredecessors();
+		}
+		@Override
+		protected <O> List<PrimitiveWorker<? super O, ?>> getSuccessors_impl(PrimitiveWorker<?, O> worker) {
+			return worker.getSuccessors();
+		}
+		@Override
+		protected <I> List<Channel<? extends I>> getInputChannels_impl(PrimitiveWorker<I, ?> worker) {
+			return worker.getInputChannels();
+		}
+		@Override
+		protected <O> List<Channel<? super O>> getOutputChannels_impl(PrimitiveWorker<?, O> worker) {
+			return worker.getOutputChannels();
+		}
+		@Override
+		protected long getExecutions_impl(PrimitiveWorker<?, ?> worker) {
+			return worker.getExecutions();
+		}
+		private static void init() {
+			edu.mit.streamjit.impl.common.Workers.setFriend(new WorkersFriend());
+		}
+	}
+	static {
+		WorkersFriend.init();
+	}
+	//</editor-fold>
 }
