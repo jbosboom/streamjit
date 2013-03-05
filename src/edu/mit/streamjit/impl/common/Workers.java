@@ -1,7 +1,7 @@
 package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.impl.interp.Channel;
-import edu.mit.streamjit.PrimitiveWorker;
+import edu.mit.streamjit.api.PrimitiveWorker;
 import edu.mit.streamjit.impl.interp.Message;
 import java.util.ArrayDeque;
 import java.util.Collections;

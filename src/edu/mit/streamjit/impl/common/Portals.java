@@ -2,7 +2,7 @@ package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.MessageConstraint;
 import edu.mit.streamjit.api.Portal;
-import edu.mit.streamjit.PrimitiveWorker;
+import edu.mit.streamjit.api.PrimitiveWorker;
 import java.util.List;
 
 /**

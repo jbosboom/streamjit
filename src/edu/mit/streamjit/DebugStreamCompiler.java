@@ -1,5 +1,6 @@
 package edu.mit.streamjit;
 
+import edu.mit.streamjit.api.PrimitiveWorker;
 import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.impl.interp.DebugChannel;
