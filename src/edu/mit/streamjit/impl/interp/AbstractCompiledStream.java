@@ -1,4 +1,4 @@
-package edu.mit.streamjit;
+package edu.mit.streamjit.impl.interp;
 
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.api.CompiledStream;
