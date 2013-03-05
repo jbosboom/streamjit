@@ -12,6 +12,7 @@ import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.impl.common.ConnectPrimitiveWorkersVisitor;
+import edu.mit.streamjit.impl.common.Workers;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -45,10 +46,10 @@ public class DebugStreamCompiler implements StreamCompiler {
 		stream.visit(cpwv);
 		PrimitiveWorker<I, ?> source = (PrimitiveWorker<I, ?>)cpwv.getSource();
 		DebugChannel<I> head = new DebugChannel<>();
-		source.getInputChannels().add(head);
+		Workers.getInputChannels(source).add(head);
 		PrimitiveWorker<?, O> sink = (PrimitiveWorker<?, O>)cpwv.getSink();
 		DebugChannel<O> tail = new DebugChannel<>();
-		sink.getOutputChannels().add(tail);
+		Workers.getOutputChannels(sink).add(tail);
 
 		List<MessageConstraint> constraints = MessageConstraint.findConstraints(source);
 		Set<Portal<?>> portals = new HashSet<>();
@@ -109,7 +110,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 			//avoid blocking in drain(), but we only have one thread.
 			pull();
 			//We need to see if any elements were left undrained.
-			UndrainedVisitor v = new UndrainedVisitor(source.getInputChannels().get(0), sink.getOutputChannels().get(0));
+			UndrainedVisitor v = new UndrainedVisitor(Workers.getInputChannels(source).get(0), Workers.getOutputChannels(sink).get(0));
 			finishedDraining(v.isFullyDrained());
 		}
 
@@ -157,7 +158,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 						//get more data.
 						return false;
 					//Otherwise, recursively fire the worker blocking us.
-					stack.push(current.getPredecessors().get(channel));
+					stack.push(Workers.getPredecessors(current).get(channel));
 					continue recurse;
 				}
 
@@ -169,11 +170,11 @@ public class DebugStreamCompiler implements StreamCompiler {
 					//that delivery cannot be missed.
 					for (MessageConstraint constraint : constraintsForRecipient.get(current)) {
 						PrimitiveWorker<?, ?> sender = constraint.getSender();
-						long deliveryTime = constraint.getDeliveryTime(sender.getExecutions());
+						long deliveryTime = constraint.getDeliveryTime(Workers.getExecutions(sender));
 						//If deliveryTime == current.getExecutions() + 1, it's for
 						//our next execution.  (If it's <= current.getExecutions(),
 						//we already missed it!)
-						if (deliveryTime <= (current.getExecutions() + 1)) {
+						if (deliveryTime <= (Workers.getExecutions(sender) + 1)) {
 							stack.push(sender);
 							continue recurse;
 						}
@@ -194,7 +195,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		 * channel or -1 if the worker can fire.
 		 */
 		private <I, O> int indexOfUnsatisfiedChannel(PrimitiveWorker<I, O> worker) {
-			List<Channel<? extends I>> channels = worker.getInputChannels();
+			List<Channel<? extends I>> channels = Workers.getInputChannels(worker);
 			List<Rate> peekRates = worker.getPeekRates();
 			List<Rate> popRates = worker.getPopRates();
 			for (int i = 0; i < channels.size(); ++i) {
@@ -213,8 +214,8 @@ public class DebugStreamCompiler implements StreamCompiler {
 		 * against its rate declarations.
 		 */
 		private <I, O> void checkedFire(PrimitiveWorker<I, O> worker) {
-			worker.doWork();
-			List<Channel<? extends I>> inputChannels = worker.getInputChannels();
+			Workers.doWork(worker);
+			List<Channel<? extends I>> inputChannels = Workers.getInputChannels(worker);
 			List<Rate> popRates = worker.getPopRates();
 			List<Rate> peekRates = worker.getPeekRates();
 			for (int i = 0; i < inputChannels.size(); ++i) {
@@ -232,7 +233,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 				channel.resetStatistics();
 			}
 
-			List<Channel<? super O>> outputChannels = worker.getOutputChannels();
+			List<Channel<? super O>> outputChannels = Workers.getOutputChannels(worker);
 			List<Rate> pushRates = worker.getPushRates();
 			for (int i = 0; i < outputChannels.size(); ++i) {
 				Rate push = pushRates.get(i);
@@ -273,7 +274,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 			//Every input channel except for the very first in the stream is an
 			//output channel of some other worker, and we checked the first one
 			//in the constructor, so we only need to check output channels here.
-			for (Channel<?> c : worker.getOutputChannels())
+			for (Channel<?> c : Workers.getOutputChannels(worker))
 				//Ignore the stream's final output, as it doesn't count as
 				//"undrained" even if it hasn't been picked up yet.
 				if (c != streamOutput && !c.isEmpty())
