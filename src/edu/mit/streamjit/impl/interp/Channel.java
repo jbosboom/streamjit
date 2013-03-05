@@ -1,4 +1,4 @@
-package edu.mit.streamjit;
+package edu.mit.streamjit.impl.interp;
 
 import java.util.Iterator;
 
