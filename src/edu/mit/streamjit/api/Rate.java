@@ -1,4 +1,4 @@
-package edu.mit.streamjit;
+package edu.mit.streamjit.api;
 
 /**
  * Represents a rate declaration, with min, max and average values.
