@@ -2,6 +2,7 @@ package edu.mit.streamjit;
 
 import edu.mit.streamjit.impl.interp.Message;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
+import edu.mit.streamjit.impl.common.Workers;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -174,8 +175,8 @@ public final class Portal<I> {
 				assert constraint != null;
 
 				//Queue up the message at the recipient.
-				Message message = new Message(method, args, constraint.getDeliveryTime(sender.getExecutions()));
-				recipient.sendMessage(message);
+				Message message = new Message(method, args, constraint.getDeliveryTime(Workers.getExecutions(sender)));
+				Workers.sendMessage(recipient, message);
 			}
 
 			//Methods on the portal interface return void.
