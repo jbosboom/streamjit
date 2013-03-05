@@ -11,7 +11,7 @@ import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamElement;
-import edu.mit.streamjit.StreamVisitor;
+import edu.mit.streamjit.api.StreamVisitor;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;

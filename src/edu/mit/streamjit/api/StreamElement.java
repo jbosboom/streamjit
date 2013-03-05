@@ -1,7 +1,5 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.StreamVisitor;
-
 /**
  *
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
