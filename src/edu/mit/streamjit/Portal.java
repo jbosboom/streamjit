@@ -105,7 +105,7 @@ public final class Portal<I> {
 	public I getHandle(PrimitiveWorker<?, ?> sender, int latency) {
 		if (sender == null)
 			throw new NullPointerException();
-		Handle handler = new Handle(sender, recipients, latency, constraints.get(sender));
+		Handle handler = new Handle(sender, recipients, constraints.get(sender));
 		@SuppressWarnings("unchecked")
 		I handle = (I)Proxy.newProxyInstance(klass.getClassLoader(), new Class<?>[]{klass}, handler);
 		return handle;
@@ -170,15 +170,13 @@ public final class Portal<I> {
 	private static class Handle implements InvocationHandler {
 		private final PrimitiveWorker<?, ?> sender;
 		private final List<PrimitiveWorker<?, ?>> recipients;
-		private final int latency;
 		/**
 		 * Maps recipients to constraints for this sender.
 		 */
 		private final Map<PrimitiveWorker<?, ?>, MessageConstraint> constraints;
-		private Handle(PrimitiveWorker<?, ?> sender, List<PrimitiveWorker<?, ?>> recipients, int latency, Map<PrimitiveWorker<?, ?>, MessageConstraint> constraints) {
+		private Handle(PrimitiveWorker<?, ?> sender, List<PrimitiveWorker<?, ?>> recipients, Map<PrimitiveWorker<?, ?>, MessageConstraint> constraints) {
 			this.sender = sender;
 			this.recipients = recipients;
-			this.latency = latency;
 			this.constraints = constraints;
 		}
 		@Override
