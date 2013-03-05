@@ -1,4 +1,6 @@
-package edu.mit.streamjit;
+package edu.mit.streamjit.api;
+
+import edu.mit.streamjit.StreamVisitor;
 
 /**
  *

@@ -1,5 +1,6 @@
 package edu.mit.streamjit;
 
+import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.api.Rate;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayDeque;

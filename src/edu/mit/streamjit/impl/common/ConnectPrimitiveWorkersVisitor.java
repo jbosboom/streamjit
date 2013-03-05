@@ -10,7 +10,7 @@ import edu.mit.streamjit.PrimitiveWorker;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
-import edu.mit.streamjit.StreamElement;
+import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.StreamVisitor;
 import java.util.ArrayDeque;
 import java.util.ArrayList;

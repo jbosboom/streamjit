@@ -1,7 +1,6 @@
 package edu.mit.streamjit.api;
 
 import edu.mit.streamjit.PrimitiveWorker;
-import edu.mit.streamjit.StreamElement;
 import edu.mit.streamjit.StreamVisitor;
 import edu.mit.streamjit.impl.common.Workers;
 import java.util.List;
