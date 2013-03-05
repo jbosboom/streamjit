@@ -1,5 +1,9 @@
-package edu.mit.streamjit;
+package edu.mit.streamjit.api;
 
+import edu.mit.streamjit.PrimitiveWorker;
+import edu.mit.streamjit.StreamElement;
+import edu.mit.streamjit.StreamVisitor;
+import edu.mit.streamjit.impl.common.Workers;
 import java.util.List;
 
 /**
@@ -35,7 +39,7 @@ public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> implements St
 	 * @return the number of output channels connected to this splitter
 	 */
 	protected final int outputs() {
-		return getOutputChannels().size();
+		return Workers.getOutputChannels(this).size();
 	};
 
 	/**
@@ -52,7 +56,7 @@ public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> implements St
 	 */
 	protected final I peek(int position) {
 		//TODO: check rates?
-		return getInputChannels().get(0).peek(position);
+		return Workers.getInputChannels(this).get(0).peek(position);
 	};
 
 	/**
@@ -66,7 +70,7 @@ public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> implements St
 	 */
 	protected final I pop() {
 		//TODO: check rates?
-		return getInputChannels().get(0).pop();
+		return Workers.getInputChannels(this).get(0).pop();
 	};
 
 	/**
@@ -81,6 +85,6 @@ public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> implements St
 	 */
 	protected final void push(int channel, O item) {
 		//TODO: check rates?
-		getOutputChannels().get(channel).push(item);
+		Workers.getOutputChannels(this).get(channel).push(item);
 	};
 }
