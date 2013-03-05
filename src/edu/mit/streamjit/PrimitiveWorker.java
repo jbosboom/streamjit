@@ -172,6 +172,10 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 		protected void doWork_impl(PrimitiveWorker<?, ?> worker) {
 			worker.doWork();
 		}
+		@Override
+		protected void sendMessage_impl(PrimitiveWorker<?, ?> worker, Message message) {
+			worker.sendMessage(message);
+		}
 		private static void init() {
 			edu.mit.streamjit.impl.common.Workers.setFriend(new WorkersFriend());
 		}

@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.PrimitiveWorker;
+import edu.mit.streamjit.impl.interp.Message;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.HashSet;
@@ -45,6 +46,9 @@ public abstract class Workers {
 	}
 	public static void doWork(PrimitiveWorker<?, ?> worker) {
 		FRIEND.doWork_impl(worker);
+	}
+	public static void sendMessage(PrimitiveWorker<?, ?> worker, Message message) {
+		FRIEND.sendMessage_impl(worker, message);
 	}
 
 	/**
@@ -164,5 +168,6 @@ public abstract class Workers {
 	protected abstract <O> List<Channel<? super O>> getOutputChannels_impl(PrimitiveWorker<?, O> worker);
 	protected abstract long getExecutions_impl(PrimitiveWorker<?, ?> worker);
 	protected abstract void doWork_impl(PrimitiveWorker<?, ?> worker);
+	protected abstract void sendMessage_impl(PrimitiveWorker<?, ?> worker, Message message);
 	//</editor-fold>
 }
