@@ -1,5 +1,6 @@
 package edu.mit.streamjit;
 
+import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.Filter;
 

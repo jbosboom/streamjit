@@ -3,7 +3,7 @@ package edu.mit.streamjit.impl.common;
 import edu.mit.streamjit.Channel;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.IllegalStreamGraphException;
-import edu.mit.streamjit.Joiner;
+import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.OneToOneElement;
 import edu.mit.streamjit.Pipeline;
 import edu.mit.streamjit.PrimitiveWorker;
