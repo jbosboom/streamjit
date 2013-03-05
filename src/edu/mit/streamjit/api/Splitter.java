@@ -55,7 +55,6 @@ public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> implements St
 	 * @return an item on the input channel
 	 */
 	protected final I peek(int position) {
-		//TODO: check rates?
 		return Workers.getInputChannels(this).get(0).peek(position);
 	};
 
@@ -69,7 +68,6 @@ public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> implements St
 	 * @return the first item in the input channel
 	 */
 	protected final I pop() {
-		//TODO: check rates?
 		return Workers.getInputChannels(this).get(0).pop();
 	};
 
@@ -84,7 +82,6 @@ public abstract class Splitter<I, O> extends PrimitiveWorker<I, O> implements St
 	 * @param item the item to push
 	 */
 	protected final void push(int channel, O item) {
-		//TODO: check rates?
 		Workers.getOutputChannels(this).get(channel).push(item);
 	};
 }
