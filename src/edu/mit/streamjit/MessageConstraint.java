@@ -416,7 +416,7 @@ public final class MessageConstraint {
 		//before (and possibly merged them with some latency edges).
 		for (int i = 0; i < sortedNodes.size(); ++i)
 			for (int j = i+1; j < sortedNodes.size(); ++j) {
-				if (sortedNodes.get(i).getSuccessors().contains(sortedNodes.get(j))) {
+				if (Workers.getSuccessors(sortedNodes.get(i)).contains(sortedNodes.get(j))) {
 					Edge edge = new Edge(sortedNodes.get(i), sortedNodes.get(j));
 					if (!cache.containsKey(edge))
 						cache.put(edge, SDEPData.fromDataDependence(edge.upstream, edge.downstream));
@@ -429,7 +429,7 @@ public final class MessageConstraint {
 		//all upstream pairs before downstream pairs.
 		for (int i = 0; i < sortedNodes.size(); ++i) {
 			for (int j = i+1; j < sortedNodes.size(); ++j) {
-				if (!sortedNodes.get(i).getSuccessors().contains(sortedNodes.get(j)))
+				if (!Workers.getSuccessors(sortedNodes.get(i)).contains(sortedNodes.get(j)))
 					continue;
 				Edge upstreamEdge = new Edge(sortedNodes.get(0), sortedNodes.get(i));
 				Edge downstreamEdge = new Edge(sortedNodes.get(j), sortedNodes.get(j));
@@ -490,9 +490,9 @@ public final class MessageConstraint {
 		}
 
 		public static SDEPData fromDataDependence(PrimitiveWorker<?, ?> upstream, PrimitiveWorker<?, ?> downstream) {
-			int uChannel = upstream.getSuccessors().indexOf(downstream);
+			int uChannel = Workers.getSuccessors(upstream).indexOf(downstream);
 			assert uChannel != -1;
-			int dChannel = downstream.getPredecessors().indexOf(upstream);
+			int dChannel = Workers.getPredecessors(downstream).indexOf(upstream);
 			assert dChannel != -1;
 
 			Rate pushRate = upstream.getPushRates().get(uChannel);
@@ -634,7 +634,7 @@ public final class MessageConstraint {
 			Set<PrimitiveWorker<?, ?>> nodes = nextNodesToTail.get(h);
 			if (nodes == null) {
 				nodes = new HashSet<>();
-				for (PrimitiveWorker<?, ?> next : h.getSuccessors()) {
+				for (PrimitiveWorker<?, ?> next : Workers.getSuccessors(h)) {
 					//If next is one of tail's successors, we can stop checking
 					//this branch because we've gone too far down.
 					if (tailSuccessors.contains(next))
@@ -662,7 +662,7 @@ public final class MessageConstraint {
 		for (PrimitiveWorker<?, ?> n : nodes)
 			useCount.put(n, 0);
 		for (PrimitiveWorker<?, ?> n : nodes)
-			for (PrimitiveWorker<?, ?> next : n.getSuccessors()) {
+			for (PrimitiveWorker<?, ?> next : Workers.getSuccessors(n)) {
 				Integer count = useCount.get(next);
 				if (count != null)
 					useCount.put(next, count+1);
@@ -678,7 +678,7 @@ public final class MessageConstraint {
 			result.add(n);
 			//Decrement the use counts of n's successors, adding them to unused
 			//if the use count becomes zero.
-			for (PrimitiveWorker<?, ?> next : n.getSuccessors()) {
+			for (PrimitiveWorker<?, ?> next : Workers.getSuccessors(n)) {
 				Integer count = useCount.get(next);
 				if (count != null) {
 					count -= 1;
