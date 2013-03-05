@@ -1,6 +1,5 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.OneToOneElement;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import java.util.ArrayList;

@@ -1,6 +1,5 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.OneToOneElement;
 import edu.mit.streamjit.PrimitiveWorker;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.impl.common.Workers;

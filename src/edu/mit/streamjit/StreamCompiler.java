@@ -1,5 +1,7 @@
 package edu.mit.streamjit;
 
+import edu.mit.streamjit.api.OneToOneElement;
+
 /**
  * A StreamCompiler compiles a stream graph to a CompiledStream.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
