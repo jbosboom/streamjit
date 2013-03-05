@@ -2,7 +2,7 @@ package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.Channel;
 import edu.mit.streamjit.api.Filter;
-import edu.mit.streamjit.IllegalStreamGraphException;
+import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
