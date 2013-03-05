@@ -54,7 +54,6 @@ public abstract class Joiner<I, O> extends PrimitiveWorker<I, O> implements Stre
 	 * @return an item on the input channel
 	 */
 	protected final I peek(int channel, int position) {
-		//TODO: check rates?
 		return Workers.getInputChannels(this).get(channel).peek(position);
 	};
 
@@ -69,7 +68,6 @@ public abstract class Joiner<I, O> extends PrimitiveWorker<I, O> implements Stre
 	 * @return the first item in the input channel
 	 */
 	protected final I pop(int channel) {
-		//TODO: check rates?
 		return Workers.getInputChannels(this).get(channel).pop();
 	};
 
@@ -83,7 +81,6 @@ public abstract class Joiner<I, O> extends PrimitiveWorker<I, O> implements Stre
 	 * @param item the item to push
 	 */
 	protected final void push(O item) {
-		//TODO: check rates?
 		Workers.getOutputChannels(this).get(0).push(item);
 	};
 }
