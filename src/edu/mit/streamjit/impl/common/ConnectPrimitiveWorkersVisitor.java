@@ -26,6 +26,10 @@ import java.util.List;
  *
  * This class uses lots of raw types to avoid having to recapture the
  * unbounded wildcards all the time.
+ *
+ * TODO: this should be split into two visitors, one that just connects (in
+ * impl.common) and one that adds channels (in impl.interp).  Maybe more
+ * generally a "for every pred-succ pair" worker?
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 1/23/2013 (originally internal to DebugStreamCompiler)
  */
