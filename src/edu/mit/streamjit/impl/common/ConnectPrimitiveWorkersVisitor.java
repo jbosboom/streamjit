@@ -5,7 +5,7 @@ import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.OneToOneElement;
-import edu.mit.streamjit.Pipeline;
+import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.PrimitiveWorker;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.Splitjoin;

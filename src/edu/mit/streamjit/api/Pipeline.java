@@ -1,5 +1,7 @@
-package edu.mit.streamjit;
+package edu.mit.streamjit.api;
 
+import edu.mit.streamjit.OneToOneElement;
+import edu.mit.streamjit.StreamVisitor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
