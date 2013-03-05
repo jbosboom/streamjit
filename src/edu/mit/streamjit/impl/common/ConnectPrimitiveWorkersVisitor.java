@@ -6,7 +6,7 @@ import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
-import edu.mit.streamjit.api.PrimitiveWorker;
+import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
@@ -33,12 +33,12 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 	/**
 	 * The first worker in the stream graph.
 	 */
-	private PrimitiveWorker<?, ?> source;
+	private Worker<?, ?> source;
 	/**
 	 * During the visitation, the last worker encountered.  After the visitation
 	 * is complete, the last worker in the stream graph.
 	 */
-	private PrimitiveWorker<?, ?> cur;
+	private Worker<?, ?> cur;
 	private Deque<SplitjoinContext> stack = new ArrayDeque<>();
 
 	/**
@@ -49,7 +49,7 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 	 */
 	private static class SplitjoinContext {
 		private Splitter<?, ?> splitter;
-		private List<PrimitiveWorker<?, ?>> branchEnds = new ArrayList<>();
+		private List<Worker<?, ?>> branchEnds = new ArrayList<>();
 	}
 
 	protected ConnectPrimitiveWorkersVisitor() {}
@@ -66,14 +66,14 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 	 * @return a Channel that will be used to connect the upstream and
 	 * downstream workers
 	 */
-	protected abstract <E> Channel<E> makeChannel(PrimitiveWorker<?, E> upstream, PrimitiveWorker<E, ?> downstream);
+	protected abstract <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream);
 
 	/**
 	 * After the visitation is complete, returns the first worker in the stream
 	 * graph.
 	 * @returnthe first worker in the stream graph
 	 */
-	public final PrimitiveWorker<?, ?> getSource() {
+	public final Worker<?, ?> getSource() {
 		return source;
 	}
 
@@ -82,7 +82,7 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 	 * graph.
 	 * @return last worker in the stream graph
 	 */
-	public final PrimitiveWorker<?, ?> getSink() {
+	public final Worker<?, ?> getSink() {
 		return cur;
 	}
 
@@ -136,7 +136,7 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 		//Note that a joiner cannot be the first worker encountered because
 		//joiners only occur in splitjoins and the splitter will be visited
 		//first.
-		for (PrimitiveWorker<?, ?> w : stack.peekFirst().branchEnds) {
+		for (Worker<?, ?> w : stack.peekFirst().branchEnds) {
 			Channel c = makeChannel(w, joiner);
 			Workers.addSuccessor(w, joiner, c);
 			Workers.addPredecessor(joiner, w, c);
@@ -152,7 +152,7 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 		//visitJoiner().)
 	}
 
-	private void visitWorker(PrimitiveWorker worker) {
+	private void visitWorker(Worker worker) {
 		if (cur == null) { //First worker encountered.
 			source = worker;
 		} else {

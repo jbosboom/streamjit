@@ -1,6 +1,6 @@
 package edu.mit.streamjit;
 
-import edu.mit.streamjit.api.PrimitiveWorker;
+import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Rate;
@@ -40,11 +40,11 @@ import org.objectweb.asm.tree.VarInsnNode;
  */
 public final class MessageConstraint {
 	private final Portal<?> portal;
-	private final PrimitiveWorker<?, ?> sender, recipient;
+	private final Worker<?, ?> sender, recipient;
 	private final int latency;
 	private final StreamPosition direction;
 	private final SDEPData sdepData;
-	private MessageConstraint(Portal<?> portal, PrimitiveWorker<?, ?> sender, PrimitiveWorker<?, ?> recipient, int latency, StreamPosition direction, SDEPData sdepData) {
+	private MessageConstraint(Portal<?> portal, Worker<?, ?> sender, Worker<?, ?> recipient, int latency, StreamPosition direction, SDEPData sdepData) {
 		this.portal = portal;
 		this.sender = sender;
 		this.recipient = recipient;
@@ -57,10 +57,10 @@ public final class MessageConstraint {
 	public Portal<?> getPortal() {
 		return portal;
 	}
-	public PrimitiveWorker<?, ?> getSender() {
+	public Worker<?, ?> getSender() {
 		return sender;
 	}
-	public PrimitiveWorker<?, ?> getRecipient() {
+	public Worker<?, ?> getRecipient() {
 		return recipient;
 	}
 	public int getLatency() {
@@ -118,9 +118,9 @@ public final class MessageConstraint {
 	 * @param graph
 	 * @return
 	 */
-	public static List<MessageConstraint> findConstraints(PrimitiveWorker<?, ?> graph) {
+	public static List<MessageConstraint> findConstraints(Worker<?, ?> graph) {
 		List<MessageConstraint> mc = new ArrayList<>();
-		List<PrimitiveWorker<?, ?>> workers = new ArrayList<>();
+		List<Worker<?, ?>> workers = new ArrayList<>();
 		workers.add(graph);
 		workers.addAll(Workers.getAllSuccessors(graph));
 		//Parsing bytecodes is (relatively) expensive; we only want to do it
@@ -130,7 +130,7 @@ public final class MessageConstraint {
 		Map<Class<?>, List<WorkerData>> workerDataCache = new HashMap<>();
 		Map<Edge, SDEPData> sdepCache = new HashMap<>();
 
-		for (PrimitiveWorker<?, ?> sender : workers) {
+		for (Worker<?, ?> sender : workers) {
 			List<WorkerData> datas = workerDataCache.get(sender.getClass());
 			if (datas == null) {
 				datas = buildWorkerData(sender);
@@ -140,7 +140,7 @@ public final class MessageConstraint {
 			for (WorkerData d : datas) {
 				Portal<?> portal = d.getPortal(sender);
 				int latency = d.getLatency(sender);
-				for (PrimitiveWorker<?, ?> recipient : Portals.getRecipients(d.getPortal(sender))) {
+				for (Worker<?, ?> recipient : Portals.getRecipients(d.getPortal(sender))) {
 					StreamPosition direction = Workers.compareStreamPosition(sender, recipient);
 					Edge edge = direction == StreamPosition.UPSTREAM ? new Edge(sender, recipient) : new Edge(recipient, sender);
 					SDEPData sdepData = computeSDEP(edge, sdepCache);
@@ -179,14 +179,14 @@ public final class MessageConstraint {
 			if (this.latencyField != null)
 				this.latencyField.setAccessible(true);
 		}
-		public Portal<?> getPortal(PrimitiveWorker<?, ?> worker) {
+		public Portal<?> getPortal(Worker<?, ?> worker) {
 			try {
 				return (Portal<?>)portalField.get(worker);
 			} catch (IllegalAccessException | IllegalArgumentException | NullPointerException | ExceptionInInitializerError ex) {
 				throw new AssertionError("getting a portal object", ex);
 			}
 		}
-		public int getLatency(PrimitiveWorker<?, ?> worker) {
+		public int getLatency(Worker<?, ?> worker) {
 			if (latencyField == null)
 				return constantLatency;
 			try {
@@ -201,7 +201,7 @@ public final class MessageConstraint {
 		}
 	}
 
-	private static List<WorkerData> buildWorkerData(PrimitiveWorker<?, ?> worker) {
+	private static List<WorkerData> buildWorkerData(Worker<?, ?> worker) {
 		Class<?> klass = worker.getClass();
 		//A worker can only send messages if it has a Portal field, and most
 		//workers with Portal fields will send messages, so this is an efficient
@@ -401,13 +401,13 @@ public final class MessageConstraint {
 	 * @return SDEPData for the given edge
 	 */
 	private static SDEPData computeSDEP(Edge goalEdge, Map<Edge, SDEPData> cache) {
-		Set<PrimitiveWorker<?, ?>> allNodes = new NodesInPathsBetweenComputer(goalEdge.upstream, goalEdge.downstream).get();
+		Set<Worker<?, ?>> allNodes = new NodesInPathsBetweenComputer(goalEdge.upstream, goalEdge.downstream).get();
 		//TODO: see if NodesInPathsComputer adds these itself or not
 		allNodes.add(goalEdge.upstream);
 		allNodes.add(goalEdge.downstream);
-		List<PrimitiveWorker<?, ?>> sortedNodes = topologicalSort(allNodes);
+		List<Worker<?, ?>> sortedNodes = topologicalSort(allNodes);
 		//Add self-edges for all workers.
-		for (PrimitiveWorker<?, ?> w : sortedNodes) {
+		for (Worker<?, ?> w : sortedNodes) {
 			Edge selfEdge = new Edge(w, w);
 			if (!cache.containsKey(selfEdge))
 				cache.put(selfEdge, SDEPData.fromWorker(w));
@@ -484,13 +484,13 @@ public final class MessageConstraint {
 		/**
 		 * Constructs SDEPData relating a worker to itself.
 		 */
-		public static SDEPData fromWorker(PrimitiveWorker<?, ?> worker) {
+		public static SDEPData fromWorker(Worker<?, ?> worker) {
 			//A plain worker has 0 init executions and 1 steady execution, and
 			//an SDEP(1) of 1.  TODO: prework may mean 1 init execution?
 			return new SDEPData(0, 1, 0, 1, new int[]{0, 1});
 		}
 
-		public static SDEPData fromDataDependence(PrimitiveWorker<?, ?> upstream, PrimitiveWorker<?, ?> downstream) {
+		public static SDEPData fromDataDependence(Worker<?, ?> upstream, Worker<?, ?> downstream) {
 			int uChannel = Workers.getSuccessors(upstream).indexOf(downstream);
 			assert uChannel != -1;
 			int dChannel = Workers.getPredecessors(downstream).indexOf(upstream);
@@ -614,28 +614,28 @@ public final class MessageConstraint {
 	 * Finds all nodes in any path between two nodes in the graph.
 	 */
 	private static class NodesInPathsBetweenComputer {
-		private final PrimitiveWorker<?, ?> head, tail;
-		private final Set<PrimitiveWorker<?, ?>> tailSuccessors;
-		private final Map<PrimitiveWorker<?, ?>, Set<PrimitiveWorker<?, ?>>> nextNodesToTail = new HashMap<>();
-		private NodesInPathsBetweenComputer(PrimitiveWorker<?, ?> head, PrimitiveWorker<?, ?> tail) {
+		private final Worker<?, ?> head, tail;
+		private final Set<Worker<?, ?>> tailSuccessors;
+		private final Map<Worker<?, ?>, Set<Worker<?, ?>>> nextNodesToTail = new HashMap<>();
+		private NodesInPathsBetweenComputer(Worker<?, ?> head, Worker<?, ?> tail) {
 			this.head = head;
 			this.tail = tail;
 			this.tailSuccessors = Workers.getAllSuccessors(tail);
 		}
-		public Set<PrimitiveWorker<?, ?>> get() {
+		public Set<Worker<?, ?>> get() {
 			compute(head);
-			Set<PrimitiveWorker<?, ?>> result = new HashSet<>();
-			for (Set<PrimitiveWorker<?, ?>> nexts : nextNodesToTail.values())
+			Set<Worker<?, ?>> result = new HashSet<>();
+			for (Set<Worker<?, ?>> nexts : nextNodesToTail.values())
 				result.addAll(nexts);
 			return result;
 		}
-		private boolean compute(PrimitiveWorker<?, ?> h) {
+		private boolean compute(Worker<?, ?> h) {
 			if (h == tail)
 				return true;
-			Set<PrimitiveWorker<?, ?>> nodes = nextNodesToTail.get(h);
+			Set<Worker<?, ?>> nodes = nextNodesToTail.get(h);
 			if (nodes == null) {
 				nodes = new HashSet<>();
-				for (PrimitiveWorker<?, ?> next : Workers.getSuccessors(h)) {
+				for (Worker<?, ?> next : Workers.getSuccessors(h)) {
 					//If next is one of tail's successors, we can stop checking
 					//this branch because we've gone too far down.
 					if (tailSuccessors.contains(next))
@@ -656,30 +656,30 @@ public final class MessageConstraint {
 	 * @param nodes the set of nodes to sort
 	 * @return a topologically-ordered list of the given nodes
 	 */
-	private static List<PrimitiveWorker<?, ?>> topologicalSort(Set<PrimitiveWorker<?, ?>> nodes) {
+	private static List<Worker<?, ?>> topologicalSort(Set<Worker<?, ?>> nodes) {
 		//Build a "use count" for each node, counting the number of nodes that
 		//have it as a successor.
-		Map<PrimitiveWorker<?, ?>, Integer> useCount = new HashMap<>();
-		for (PrimitiveWorker<?, ?> n : nodes)
+		Map<Worker<?, ?>, Integer> useCount = new HashMap<>();
+		for (Worker<?, ?> n : nodes)
 			useCount.put(n, 0);
-		for (PrimitiveWorker<?, ?> n : nodes)
-			for (PrimitiveWorker<?, ?> next : Workers.getSuccessors(n)) {
+		for (Worker<?, ?> n : nodes)
+			for (Worker<?, ?> next : Workers.getSuccessors(n)) {
 				Integer count = useCount.get(next);
 				if (count != null)
 					useCount.put(next, count+1);
 			}
 
-		List<PrimitiveWorker<?, ?>> result = new ArrayList<>();
-		Queue<PrimitiveWorker<?, ?>> unused = new ArrayDeque<>();
-		for (Map.Entry<PrimitiveWorker<?, ?>, Integer> e : useCount.entrySet())
+		List<Worker<?, ?>> result = new ArrayList<>();
+		Queue<Worker<?, ?>> unused = new ArrayDeque<>();
+		for (Map.Entry<Worker<?, ?>, Integer> e : useCount.entrySet())
 			if (e.getValue() == 0)
 				unused.add(e.getKey());
 		while (!unused.isEmpty()) {
-			PrimitiveWorker<?, ?> n = unused.remove();
+			Worker<?, ?> n = unused.remove();
 			result.add(n);
 			//Decrement the use counts of n's successors, adding them to unused
 			//if the use count becomes zero.
-			for (PrimitiveWorker<?, ?> next : Workers.getSuccessors(n)) {
+			for (Worker<?, ?> next : Workers.getSuccessors(n)) {
 				Integer count = useCount.get(next);
 				if (count != null) {
 					count -= 1;
@@ -717,8 +717,8 @@ public final class MessageConstraint {
 	 * A pair of workers, with equality based on the workers' identity.
 	 */
 	private static class Edge {
-		public final PrimitiveWorker<?, ?> upstream, downstream;
-		Edge(PrimitiveWorker<?, ?> upstream, PrimitiveWorker<?, ?> downstream) {
+		public final Worker<?, ?> upstream, downstream;
+		Edge(Worker<?, ?> upstream, Worker<?, ?> downstream) {
 			this.upstream = upstream;
 			this.downstream = downstream;
 			StreamPosition direction = Workers.compareStreamPosition(upstream, downstream);

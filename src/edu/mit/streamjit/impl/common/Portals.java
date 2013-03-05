@@ -2,7 +2,7 @@ package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.MessageConstraint;
 import edu.mit.streamjit.api.Portal;
-import edu.mit.streamjit.api.PrimitiveWorker;
+import edu.mit.streamjit.api.Worker;
 import java.util.List;
 
 /**
@@ -11,7 +11,7 @@ import java.util.List;
  * @since 3/5/2013
  */
 public abstract class Portals {
-	public static List<PrimitiveWorker<?, ?>> getRecipients(Portal<?> portal) {
+	public static List<Worker<?, ?>> getRecipients(Portal<?> portal) {
 		return FRIEND.getRecipients_impl(portal);
 	}
 	public static void setConstraints(Portal<?> portal, List<MessageConstraint> constraints) {
@@ -34,7 +34,7 @@ public abstract class Portals {
 			throw new AssertionError(ex);
 		}
 	}
-	protected abstract List<PrimitiveWorker<?, ?>> getRecipients_impl(Portal<?> portal);
+	protected abstract List<Worker<?, ?>> getRecipients_impl(Portal<?> portal);
 	protected abstract void setConstraints_impl(Portal<?> portal, List<MessageConstraint> constraints);
 	//</editor-fold>
 }

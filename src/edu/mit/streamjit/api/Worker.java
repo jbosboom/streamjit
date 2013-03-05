@@ -16,10 +16,10 @@ import java.util.Queue;
 import java.util.Set;
 
 /**
- * A PrimitiveWorker is a StreamElement with a work function, rates, and the
+ * A Worker is a StreamElement with a work function, rates, and the
  * ability to receive teleport messages via a Portal.
  * <p/>
- * Ideally, subclasses would provide their rates to a PrimitiveWorker
+ * Ideally, subclasses would provide their rates to a Worker
  * constructor. But that would require splitters and joiners to commit to their
  * rates before knowing how many outputs/inputs they have. If the user wants to
  * build a splitjoin with a variable number of elements, he or she would have to
@@ -33,7 +33,7 @@ import java.util.Set;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/19/2012
  */
-public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
+public abstract class Worker<I, O> implements StreamElement<I, O> {
 	public abstract void work();
 
 	/**
@@ -60,14 +60,14 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 	 */
 	public abstract List<Rate> getPushRates();
 
-	private List<PrimitiveWorker<?, ? extends I>> predecessors = new ArrayList<>(1);
-	private List<PrimitiveWorker<? super O, ?>> successors = new ArrayList<>(1);
+	private List<Worker<?, ? extends I>> predecessors = new ArrayList<>(1);
+	private List<Worker<? super O, ?>> successors = new ArrayList<>(1);
 	private List<Channel<? extends I>> inputChannels = new ArrayList<>(1);
 	private List<Channel<? super O>> outputChannels = new ArrayList<>(1);
 	private final List<Message> messages = new ArrayList<>();
 	private long executions;
 
-	void addPredecessor(PrimitiveWorker<?, ? extends I> predecessor, Channel<? extends I> channel) {
+	void addPredecessor(Worker<?, ? extends I> predecessor, Channel<? extends I> channel) {
 		if (predecessor == null || channel == null)
 			throw new NullPointerException();
 		if (predecessor == this)
@@ -75,7 +75,7 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 		predecessors.add(predecessor);
 		inputChannels.add(channel);
 	}
-	void addSuccessor(PrimitiveWorker<? super O, ?> successor, Channel<? super O> channel) {
+	void addSuccessor(Worker<? super O, ?> successor, Channel<? super O> channel) {
 		if (successor == null || channel == null)
 			throw new NullPointerException();
 		if (successor == this)
@@ -84,11 +84,11 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 		outputChannels.add(channel);
 	}
 
-	List<PrimitiveWorker<?, ? extends I>> getPredecessors() {
+	List<Worker<?, ? extends I>> getPredecessors() {
 		return predecessors;
 	}
 
-	List<PrimitiveWorker<? super O, ?>> getSuccessors() {
+	List<Worker<? super O, ?>> getSuccessors() {
 		return successors;
 	}
 
@@ -141,39 +141,39 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 	//<editor-fold defaultstate="collapsed" desc="Friend pattern support (see impl.common.Workers)">
 	private static class WorkersFriend extends edu.mit.streamjit.impl.common.Workers {
 		@Override
-		protected <I> void addPredecessor_impl(PrimitiveWorker<I, ?> worker, PrimitiveWorker<?, ? extends I> predecessor, Channel<? extends I> channel) {
+		protected <I> void addPredecessor_impl(Worker<I, ?> worker, Worker<?, ? extends I> predecessor, Channel<? extends I> channel) {
 			worker.addPredecessor(predecessor, channel);
 		}
 		@Override
-		protected <O> void addSuccessor_impl(PrimitiveWorker<?, O> worker, PrimitiveWorker<? super O, ?> successor, Channel<? super O> channel) {
+		protected <O> void addSuccessor_impl(Worker<?, O> worker, Worker<? super O, ?> successor, Channel<? super O> channel) {
 			worker.addSuccessor(successor, channel);
 		}
 		@Override
-		protected <I> List<PrimitiveWorker<?, ? extends I>> getPredecessors_impl(PrimitiveWorker<I, ?> worker) {
+		protected <I> List<Worker<?, ? extends I>> getPredecessors_impl(Worker<I, ?> worker) {
 			return worker.getPredecessors();
 		}
 		@Override
-		protected <O> List<PrimitiveWorker<? super O, ?>> getSuccessors_impl(PrimitiveWorker<?, O> worker) {
+		protected <O> List<Worker<? super O, ?>> getSuccessors_impl(Worker<?, O> worker) {
 			return worker.getSuccessors();
 		}
 		@Override
-		protected <I> List<Channel<? extends I>> getInputChannels_impl(PrimitiveWorker<I, ?> worker) {
+		protected <I> List<Channel<? extends I>> getInputChannels_impl(Worker<I, ?> worker) {
 			return worker.getInputChannels();
 		}
 		@Override
-		protected <O> List<Channel<? super O>> getOutputChannels_impl(PrimitiveWorker<?, O> worker) {
+		protected <O> List<Channel<? super O>> getOutputChannels_impl(Worker<?, O> worker) {
 			return worker.getOutputChannels();
 		}
 		@Override
-		protected long getExecutions_impl(PrimitiveWorker<?, ?> worker) {
+		protected long getExecutions_impl(Worker<?, ?> worker) {
 			return worker.getExecutions();
 		}
 		@Override
-		protected void doWork_impl(PrimitiveWorker<?, ?> worker) {
+		protected void doWork_impl(Worker<?, ?> worker) {
 			worker.doWork();
 		}
 		@Override
-		protected void sendMessage_impl(PrimitiveWorker<?, ?> worker, Message message) {
+		protected void sendMessage_impl(Worker<?, ?> worker, Message message) {
 			worker.sendMessage(message);
 		}
 		private static void init() {

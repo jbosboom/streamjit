@@ -1,6 +1,6 @@
 package edu.mit.streamjit;
 
-import edu.mit.streamjit.api.PrimitiveWorker;
+import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.impl.interp.DebugChannel;
@@ -45,15 +45,15 @@ public class DebugStreamCompiler implements StreamCompiler {
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
 		ConnectPrimitiveWorkersVisitor cpwv = new ConnectPrimitiveWorkersVisitor() {
 			@Override
-			protected <E> Channel<E> makeChannel(PrimitiveWorker<?, E> upstream, PrimitiveWorker<E, ?> downstream) {
+			protected <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
 				return new DebugChannel<>();
 			}
 		};
 		stream.visit(cpwv);
-		PrimitiveWorker<I, ?> source = (PrimitiveWorker<I, ?>)cpwv.getSource();
+		Worker<I, ?> source = (Worker<I, ?>)cpwv.getSource();
 		DebugChannel<I> head = new DebugChannel<>();
 		Workers.getInputChannels(source).add(head);
-		PrimitiveWorker<?, O> sink = (PrimitiveWorker<?, O>)cpwv.getSink();
+		Worker<?, O> sink = (Worker<?, O>)cpwv.getSink();
 		DebugChannel<O> tail = new DebugChannel<>();
 		Workers.getOutputChannels(sink).add(tail);
 
@@ -76,17 +76,17 @@ public class DebugStreamCompiler implements StreamCompiler {
 	 * @param <O> the type of output data elements
 	 */
 	private static class DebugCompiledStream<I, O> extends AbstractCompiledStream<I, O> {
-		private final PrimitiveWorker<?, ?> source, sink;
+		private final Worker<?, ?> source, sink;
 		/**
 		 * Maps workers to all constraints of which they are recipients.
 		 */
-		private final Map<PrimitiveWorker<?, ?>, List<MessageConstraint>> constraintsForRecipient = new IdentityHashMap<>();
-		DebugCompiledStream(Channel<? super I> head, Channel<? extends O> tail, PrimitiveWorker<?, ?> source, PrimitiveWorker<?, ?> sink, List<MessageConstraint> constraints) {
+		private final Map<Worker<?, ?>, List<MessageConstraint>> constraintsForRecipient = new IdentityHashMap<>();
+		DebugCompiledStream(Channel<? super I> head, Channel<? extends O> tail, Worker<?, ?> source, Worker<?, ?> sink, List<MessageConstraint> constraints) {
 			super(head, tail);
 			this.source = source;
 			this.sink = sink;
 			for (MessageConstraint constraint : constraints) {
-				PrimitiveWorker<?, ?> recipient = constraint.getRecipient();
+				Worker<?, ?> recipient = constraint.getRecipient();
 				List<MessageConstraint> constraintList = constraintsForRecipient.get(recipient);
 				if (constraintList == null) {
 					constraintList = new ArrayList<>();
@@ -139,13 +139,13 @@ public class DebugStreamCompiler implements StreamCompiler {
 		 * @param worker the worker to fire
 		 * @return true if the worker fired, false if it didn't
 		 */
-		private boolean fireOnceIfPossible(PrimitiveWorker<?, ?> worker) {
+		private boolean fireOnceIfPossible(Worker<?, ?> worker) {
 			//This stack holds all the unsatisfied workers we've encountered
 			//while trying to fire the argument.
-			Deque<PrimitiveWorker<?, ?>> stack = new ArrayDeque<>();
+			Deque<Worker<?, ?>> stack = new ArrayDeque<>();
 			stack.push(worker);
 			recurse: while (!stack.isEmpty()) {
-				PrimitiveWorker<?, ?> current = stack.element();
+				Worker<?, ?> current = stack.element();
 				//If we're already trying to fire current, current depends on
 				//itself, so throw.  TODO: explain which constraints are bad?
 				//We have to pop then push so contains can't just find the top
@@ -175,7 +175,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 					//worker for delivery just prior to its next firing, to ensure
 					//that delivery cannot be missed.
 					for (MessageConstraint constraint : constraintsForRecipient.get(current)) {
-						PrimitiveWorker<?, ?> sender = constraint.getSender();
+						Worker<?, ?> sender = constraint.getSender();
 						long deliveryTime = constraint.getDeliveryTime(Workers.getExecutions(sender));
 						//If deliveryTime == current.getExecutions() + 1, it's for
 						//our next execution.  (If it's <= current.getExecutions(),
@@ -200,7 +200,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		 * elements before the worker can fire, returning the index of the found
 		 * channel or -1 if the worker can fire.
 		 */
-		private <I, O> int indexOfUnsatisfiedChannel(PrimitiveWorker<I, O> worker) {
+		private <I, O> int indexOfUnsatisfiedChannel(Worker<I, O> worker) {
 			List<Channel<? extends I>> channels = Workers.getInputChannels(worker);
 			List<Rate> peekRates = worker.getPeekRates();
 			List<Rate> popRates = worker.getPopRates();
@@ -219,7 +219,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		 * Fires the given worker, checking the items consumed and produced
 		 * against its rate declarations.
 		 */
-		private <I, O> void checkedFire(PrimitiveWorker<I, O> worker) {
+		private <I, O> void checkedFire(Worker<I, O> worker) {
 			Workers.doWork(worker);
 			List<Channel<? extends I>> inputChannels = Workers.getInputChannels(worker);
 			List<Rate> popRates = worker.getPopRates();
@@ -276,7 +276,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 			return fullyDrained;
 		}
 
-		private void visitWorker(PrimitiveWorker<?, ?> worker) {
+		private void visitWorker(Worker<?, ?> worker) {
 			//Every input channel except for the very first in the stream is an
 			//output channel of some other worker, and we checked the first one
 			//in the constructor, so we only need to check output channels here.

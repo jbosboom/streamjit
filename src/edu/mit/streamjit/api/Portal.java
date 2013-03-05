@@ -21,11 +21,11 @@ import java.util.Map;
  */
 public final class Portal<I> {
 	private final Class<I> klass;
-	private final List<PrimitiveWorker<?, ?>> recipients = new ArrayList<>();
+	private final List<Worker<?, ?>> recipients = new ArrayList<>();
 	/**
 	 * sender -> (recipient -> constraint).
 	 */
-	private final Map<PrimitiveWorker<?, ?>, Map<PrimitiveWorker<?, ?>, MessageConstraint>> constraints = new IdentityHashMap<>();
+	private final Map<Worker<?, ?>, Map<Worker<?, ?>, MessageConstraint>> constraints = new IdentityHashMap<>();
 	public Portal(Class<I> klass) {
 		if (!klass.isInterface())
 			throw new IllegalArgumentException(klass+" is not an interface type");
@@ -57,7 +57,7 @@ public final class Portal<I> {
 	 * portal's interface
 	 */
 	public void addRecipient(I recipient) {
-		//TODO: public <T extends PrimitiveWorker & I> void addRecipient(T recipient)
+		//TODO: public <T extends Worker & I> void addRecipient(T recipient)
 		if (recipient == null)
 			throw new NullPointerException();
 		//I'm pretty sure this can only happen via unchecked casts or
@@ -65,9 +65,9 @@ public final class Portal<I> {
 		if (!klass.isInstance(recipient))
 			throw new IllegalArgumentException("Recipient "+recipient+" not instance of "+klass);
 		//Messaging a non-worker doesn't make sense -- SDEP isn't defined.
-		if (!(recipient instanceof PrimitiveWorker))
+		if (!(recipient instanceof Worker))
 			throw new IllegalArgumentException("Recipient "+recipient+" not instance of Filter, Splitter or Joiner");
-		recipients.add((PrimitiveWorker<?, ?>)recipient);
+		recipients.add((Worker<?, ?>)recipient);
 	}
 
 	/**
@@ -94,10 +94,10 @@ public final class Portal<I> {
 	 *
 	 * Implementation note: this is a JIT hook method.
 	 *
-	 * TODO: PrimitiveWorker is package-private and we're
+	 * TODO: Worker is package-private and we're
 	 * leaking it into the public API here.  Alternatives:
 	 * --create three overloads of getHandle: Filter, Splitter and Joiner
-	 * --just make PrimitiveWorker public (probably renamed to Worker and with
+	 * --just make Worker public (probably renamed to Worker and with
 	 *   all the Channel/predecessor/successor stuff still package-private)
 	 *
 	 * TODO: latency ranges?
@@ -105,7 +105,7 @@ public final class Portal<I> {
 	 * @param latency the message latency
 	 * @return an I whose calls generate messages
 	 */
-	public I getHandle(PrimitiveWorker<?, ?> sender, int latency) {
+	public I getHandle(Worker<?, ?> sender, int latency) {
 		if (sender == null)
 			throw new NullPointerException();
 		Handle handler = new Handle(sender, recipients, constraints.get(sender));
@@ -118,8 +118,8 @@ public final class Portal<I> {
 	 * Gets the list of registered recipients.  MessageConstraint needs this.
 	 * @return the list of registered recipients
 	 */
-	/* package-private */ List<PrimitiveWorker<?, ?>> getRecipients() {
-		List<PrimitiveWorker<?, ?>> retval = Collections.unmodifiableList(recipients);
+	/* package-private */ List<Worker<?, ?>> getRecipients() {
+		List<Worker<?, ?>> retval = Collections.unmodifiableList(recipients);
 		return retval;
 	}
 
@@ -132,7 +132,7 @@ public final class Portal<I> {
 		for (MessageConstraint c : allConstraints) {
 			if (c.getPortal() != this)
 				continue;
-			Map<PrimitiveWorker<?, ?>, MessageConstraint> senderMap = constraints.get(c.getSender());
+			Map<Worker<?, ?>, MessageConstraint> senderMap = constraints.get(c.getSender());
 			if (senderMap == null) {
 				senderMap = new IdentityHashMap<>();
 				constraints.put(c.getSender(), senderMap);
@@ -147,13 +147,13 @@ public final class Portal<I> {
 	 * like a dumb name).
 	 */
 	private static class Handle implements InvocationHandler {
-		private final PrimitiveWorker<?, ?> sender;
-		private final List<PrimitiveWorker<?, ?>> recipients;
+		private final Worker<?, ?> sender;
+		private final List<Worker<?, ?>> recipients;
 		/**
 		 * Maps recipients to constraints for this sender.
 		 */
-		private final Map<PrimitiveWorker<?, ?>, MessageConstraint> constraints;
-		private Handle(PrimitiveWorker<?, ?> sender, List<PrimitiveWorker<?, ?>> recipients, Map<PrimitiveWorker<?, ?>, MessageConstraint> constraints) {
+		private final Map<Worker<?, ?>, MessageConstraint> constraints;
+		private Handle(Worker<?, ?> sender, List<Worker<?, ?>> recipients, Map<Worker<?, ?>, MessageConstraint> constraints) {
 			this.sender = sender;
 			this.recipients = recipients;
 			this.constraints = constraints;
@@ -171,7 +171,7 @@ public final class Portal<I> {
 			//Java platform(?).
 			method.setAccessible(true);
 
-			for (PrimitiveWorker<?, ?> recipient : recipients) {
+			for (Worker<?, ?> recipient : recipients) {
 				MessageConstraint constraint = constraints.get(recipient);
 				assert constraint != null;
 
@@ -188,7 +188,7 @@ public final class Portal<I> {
 	//<editor-fold defaultstate="collapsed" desc="Friend pattern support (see impl.common.Portals)">
 	private static class PortalsFriend extends edu.mit.streamjit.impl.common.Portals {
 		@Override
-		protected List<PrimitiveWorker<?, ?>> getRecipients_impl(Portal<?> portal) {
+		protected List<Worker<?, ?>> getRecipients_impl(Portal<?> portal) {
 			return portal.getRecipients();
 		}
 		@Override
