@@ -1,5 +1,7 @@
 package edu.mit.streamjit;
 
+import edu.mit.streamjit.api.Filter;
+
 /**
  * Visitor for StreamElements.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>

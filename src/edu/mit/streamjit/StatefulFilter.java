@@ -1,5 +1,7 @@
 package edu.mit.streamjit;
 
+import edu.mit.streamjit.api.Filter;
+
 /**
  *
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>

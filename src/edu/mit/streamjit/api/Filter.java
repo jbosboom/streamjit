@@ -1,6 +1,10 @@
-package edu.mit.streamjit;
+package edu.mit.streamjit.api;
 
+import edu.mit.streamjit.OneToOneElement;
+import edu.mit.streamjit.PrimitiveWorker;
+import edu.mit.streamjit.StreamVisitor;
 import edu.mit.streamjit.api.Rate;
+import edu.mit.streamjit.impl.common.Workers;
 import java.util.Collections;
 import java.util.List;
 
@@ -84,7 +88,7 @@ public abstract class Filter<I, O> extends PrimitiveWorker<I, O> implements OneT
 	 * @return an item on the input channel
 	 */
 	protected final I peek(int position) {
-		return getInputChannels().get(0).peek(position);
+		return Workers.getInputChannels(this).get(0).peek(position);
 	};
 
 	/**
@@ -97,7 +101,7 @@ public abstract class Filter<I, O> extends PrimitiveWorker<I, O> implements OneT
 	 * @return the first item in the input channel
 	 */
 	protected final I pop() {
-		return getInputChannels().get(0).pop();
+		return Workers.getInputChannels(this).get(0).pop();
 	};
 
 	/**
@@ -110,6 +114,6 @@ public abstract class Filter<I, O> extends PrimitiveWorker<I, O> implements OneT
 	 * @param item the item to push
 	 */
 	protected final void push(O item) {
-		getOutputChannels().get(0).push(item);
+		Workers.getOutputChannels(this).get(0).push(item);
 	};
 }
