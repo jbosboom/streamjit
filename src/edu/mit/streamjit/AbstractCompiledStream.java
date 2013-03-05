@@ -1,5 +1,6 @@
 package edu.mit.streamjit;
 
+import edu.mit.streamjit.api.CompiledStream;
 import java.util.NoSuchElementException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;

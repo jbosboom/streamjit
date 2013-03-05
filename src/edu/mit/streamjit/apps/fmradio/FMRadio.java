@@ -3,7 +3,7 @@ package edu.mit.streamjit.apps.fmradio;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.RoundrobinJoiner;
-import edu.mit.streamjit.CompiledStream;
+import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.StreamCompiler;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.DuplicateSplitter;

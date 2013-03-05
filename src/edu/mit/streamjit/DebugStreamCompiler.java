@@ -1,5 +1,6 @@
 package edu.mit.streamjit;
 
+import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.StreamVisitor;

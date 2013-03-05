@@ -1,4 +1,4 @@
-package edu.mit.streamjit;
+package edu.mit.streamjit.api;
 
 import java.util.concurrent.TimeUnit;
 

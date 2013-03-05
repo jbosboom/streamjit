@@ -1,6 +1,6 @@
 package edu.mit.streamjit.apps.test;
 
-import edu.mit.streamjit.CompiledStream;
+import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.DebugStreamCompiler;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.OneToOneElement;
