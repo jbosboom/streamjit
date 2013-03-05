@@ -1,6 +1,6 @@
 package edu.mit.streamjit.impl.interp;
 
-import edu.mit.streamjit.MessageConstraint;
+import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
 import edu.mit.streamjit.api.Portal;

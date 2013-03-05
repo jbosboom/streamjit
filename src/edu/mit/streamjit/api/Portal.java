@@ -1,6 +1,6 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.MessageConstraint;
+import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.interp.Message;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.impl.common.Workers;

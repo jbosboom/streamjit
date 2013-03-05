@@ -1,4 +1,4 @@
-package edu.mit.streamjit;
+package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.api.Portal;

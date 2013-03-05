@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.common;
 
-import edu.mit.streamjit.MessageConstraint;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.Worker;
 import java.util.List;
