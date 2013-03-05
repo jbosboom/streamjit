@@ -6,7 +6,7 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Filter;
-import edu.mit.streamjit.DuplicateSplitter;
+import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.DebugStreamCompiler;
 
 /**
