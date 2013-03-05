@@ -1,4 +1,4 @@
-package edu.mit.streamjit;
+package edu.mit.streamjit.api;
 
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.OneToOneElement;
