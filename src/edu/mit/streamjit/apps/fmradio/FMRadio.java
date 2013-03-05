@@ -1,6 +1,6 @@
 package edu.mit.streamjit.apps.fmradio;
 
-import edu.mit.streamjit.Splitjoin;
+import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.RoundrobinJoiner;
 import edu.mit.streamjit.CompiledStream;

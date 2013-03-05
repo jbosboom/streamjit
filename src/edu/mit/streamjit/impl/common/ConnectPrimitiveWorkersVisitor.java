@@ -8,7 +8,7 @@ import edu.mit.streamjit.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.PrimitiveWorker;
 import edu.mit.streamjit.api.Rate;
-import edu.mit.streamjit.Splitjoin;
+import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.StreamElement;
 import edu.mit.streamjit.StreamVisitor;
