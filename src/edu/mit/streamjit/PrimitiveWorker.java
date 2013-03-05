@@ -1,5 +1,6 @@
 package edu.mit.streamjit;
 
+import edu.mit.streamjit.impl.interp.Message;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.StreamElement;
@@ -63,7 +64,7 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 	private List<PrimitiveWorker<? super O, ?>> successors = new ArrayList<>(1);
 	private List<Channel<? extends I>> inputChannels = new ArrayList<>(1);
 	private List<Channel<? super O>> outputChannels = new ArrayList<>(1);
-	private final List<Portal.Message> messages = new ArrayList<>();
+	private final List<Message> messages = new ArrayList<>();
 	private long executions;
 
 	void addPredecessor(PrimitiveWorker<?, ? extends I> predecessor, Channel<? extends I> channel) {
@@ -105,7 +106,7 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 	 */
 	void doWork() {
 		while (!messages.isEmpty() && messages.get(0).timeToReceive == executions+1) {
-			Portal.Message m = messages.remove(0);
+			Message m = messages.remove(0);
 			try {
 				m.method.invoke(this, m.args);
 			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
@@ -127,7 +128,7 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 		return executions;
 	}
 
-	void sendMessage(Portal.Message message) {
+	void sendMessage(Message message) {
 		if (message.timeToReceive <= executions)
 			throw new AssertionError("Message delivery missed: "+executions+", "+message);
 		//Insert in order sorted by time-to-receive.
