@@ -43,6 +43,9 @@ public abstract class Workers {
 	public static long getExecutions(PrimitiveWorker<?, ?> worker) {
 		return FRIEND.getExecutions_impl(worker);
 	}
+	public static void doWork(PrimitiveWorker<?, ?> worker) {
+		FRIEND.doWork_impl(worker);
+	}
 
 	/**
 	 * Returns a set of all predecessors of this worker.
@@ -160,5 +163,6 @@ public abstract class Workers {
 	protected abstract <I> List<Channel<? extends I>> getInputChannels_impl(PrimitiveWorker<I, ?> worker);
 	protected abstract <O> List<Channel<? super O>> getOutputChannels_impl(PrimitiveWorker<?, O> worker);
 	protected abstract long getExecutions_impl(PrimitiveWorker<?, ?> worker);
+	protected abstract void doWork_impl(PrimitiveWorker<?, ?> worker);
 	//</editor-fold>
 }

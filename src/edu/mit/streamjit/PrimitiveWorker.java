@@ -166,6 +166,10 @@ public abstract class PrimitiveWorker<I, O> implements StreamElement<I, O> {
 		protected long getExecutions_impl(PrimitiveWorker<?, ?> worker) {
 			return worker.getExecutions();
 		}
+		@Override
+		protected void doWork_impl(PrimitiveWorker<?, ?> worker) {
+			worker.doWork();
+		}
 		private static void init() {
 			edu.mit.streamjit.impl.common.Workers.setFriend(new WorkersFriend());
 		}
