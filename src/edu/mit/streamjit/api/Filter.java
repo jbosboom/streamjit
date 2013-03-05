@@ -1,6 +1,5 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.impl.common.Workers;
 import java.util.Collections;
 import java.util.List;

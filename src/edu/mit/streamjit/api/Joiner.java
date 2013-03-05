@@ -1,7 +1,6 @@
 package edu.mit.streamjit.api;
 
 import edu.mit.streamjit.impl.common.Workers;
-import java.util.List;
 
 /**
  * see comments on Splitter

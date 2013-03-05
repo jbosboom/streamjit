@@ -2,18 +2,10 @@ package edu.mit.streamjit.api;
 
 import edu.mit.streamjit.impl.interp.Message;
 import edu.mit.streamjit.impl.interp.Channel;
-import edu.mit.streamjit.api.IllegalStreamGraphException;
-import edu.mit.streamjit.api.StreamElement;
-import edu.mit.streamjit.api.Rate;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Deque;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Queue;
-import java.util.Set;
 
 /**
  * A Worker is a StreamElement with a work function, rates, and the

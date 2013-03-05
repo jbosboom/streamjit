@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.interp;
 
-import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.api.CompiledStream;
 import java.util.NoSuchElementException;
 import java.util.concurrent.CountDownLatch;

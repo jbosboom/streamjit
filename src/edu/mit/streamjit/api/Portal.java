@@ -2,13 +2,11 @@ package edu.mit.streamjit.api;
 
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.interp.Message;
-import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.impl.common.Workers;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;

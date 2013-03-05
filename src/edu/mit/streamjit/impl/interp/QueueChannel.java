@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.interp;
 
-import edu.mit.streamjit.impl.interp.Channel;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Queue;

@@ -1,7 +1,5 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.api.Filter;
-
 /**
  * An Identity filter simply passes its input through to its output.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>

@@ -4,8 +4,6 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Rate;
-import edu.mit.streamjit.impl.common.Portals;
-import edu.mit.streamjit.impl.common.Workers;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;

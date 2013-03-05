@@ -1,10 +1,7 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.api.Joiner;
-import edu.mit.streamjit.api.Splitter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**

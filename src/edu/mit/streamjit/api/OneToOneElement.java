@@ -1,7 +1,5 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.api.StreamElement;
-
 /**
  * A OneToOneElement is a StreamElement with exactly one input and one output
  * channel.

@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.interp;
 
-import edu.mit.streamjit.impl.interp.Channel;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;

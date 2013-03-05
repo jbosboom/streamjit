@@ -2,10 +2,7 @@ package edu.mit.streamjit.impl.interp;
 
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
 import edu.mit.streamjit.api.Portal;
-import edu.mit.streamjit.impl.interp.DebugChannel;
-import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.IllegalStreamGraphException;

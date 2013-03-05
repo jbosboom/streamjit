@@ -1,7 +1,5 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.api.Filter;
-
 /**
  * A BlackHole pops data items and discards them. BlackHoles are useful for
  * terminating stream graphs whose output will not be retrieved, preventing it

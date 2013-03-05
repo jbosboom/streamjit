@@ -1,7 +1,5 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.api.Splitter;
-import edu.mit.streamjit.api.Rate;
 import java.util.Collections;
 import java.util.List;
 

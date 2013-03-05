@@ -1,6 +1,5 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.api.StreamElement;
 import java.util.Arrays;
 
 /**

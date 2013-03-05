@@ -3,7 +3,6 @@ package edu.mit.streamjit.apps.test;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.api.Filter;
-import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.StatefulFilter;

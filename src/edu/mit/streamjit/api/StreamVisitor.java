@@ -1,12 +1,5 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.api.StreamElement;
-import edu.mit.streamjit.api.Splitjoin;
-import edu.mit.streamjit.api.Pipeline;
-import edu.mit.streamjit.api.Joiner;
-import edu.mit.streamjit.api.Splitter;
-import edu.mit.streamjit.api.Filter;
-
 /**
  * Visitor for StreamElements.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
