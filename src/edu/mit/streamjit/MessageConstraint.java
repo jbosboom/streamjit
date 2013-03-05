@@ -2,6 +2,7 @@ package edu.mit.streamjit;
 
 import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Rate;
+import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.Workers;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -35,7 +36,7 @@ import org.objectweb.asm.tree.VarInsnNode;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 1/29/2013
  */
-final class MessageConstraint {
+public final class MessageConstraint {
 	private final Portal<?> portal;
 	private final PrimitiveWorker<?, ?> sender, recipient;
 	private final int latency;
@@ -137,7 +138,7 @@ final class MessageConstraint {
 			for (WorkerData d : datas) {
 				Portal<?> portal = d.getPortal(sender);
 				int latency = d.getLatency(sender);
-				for (PrimitiveWorker<?, ?> recipient : d.getPortal(sender).getRecipients()) {
+				for (PrimitiveWorker<?, ?> recipient : Portals.getRecipients(d.getPortal(sender))) {
 					StreamPosition direction = Workers.compareStreamPosition(sender, recipient);
 					Edge edge = direction == StreamPosition.UPSTREAM ? new Edge(sender, recipient) : new Edge(recipient, sender);
 					SDEPData sdepData = computeSDEP(edge, sdepCache);

@@ -14,6 +14,7 @@ import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.impl.common.ConnectPrimitiveWorkersVisitor;
+import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.Workers;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -58,7 +59,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		for (MessageConstraint mc : constraints)
 			portals.add(mc.getPortal());
 		for (Portal<?> portal : portals)
-			portal.setConstraints(constraints);
+			Portals.setConstraints(portal, constraints);
 
 		return new DebugCompiledStream<>(head, tail, source, sink, constraints);
 	}

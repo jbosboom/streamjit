@@ -183,4 +183,23 @@ public final class Portal<I> {
 			return null;
 		}
 	}
+
+	//<editor-fold defaultstate="collapsed" desc="Friend pattern support (see impl.common.Portals)">
+	private static class PortalsFriend extends edu.mit.streamjit.impl.common.Portals {
+		@Override
+		protected List<PrimitiveWorker<?, ?>> getRecipients_impl(Portal<?> portal) {
+			return portal.getRecipients();
+		}
+		@Override
+		protected void setConstraints_impl(Portal<?> portal, List<MessageConstraint> constraints) {
+			portal.setConstraints(constraints);
+		}
+		private static void init() {
+			edu.mit.streamjit.impl.common.Portals.setFriend(new PortalsFriend());
+		}
+	}
+	static {
+		PortalsFriend.init();
+	}
+	//</editor-fold>
 }
