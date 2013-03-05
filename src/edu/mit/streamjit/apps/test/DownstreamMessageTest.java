@@ -5,7 +5,7 @@ import edu.mit.streamjit.DebugStreamCompiler;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
-import edu.mit.streamjit.Portal;
+import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
 

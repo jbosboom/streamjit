@@ -1,5 +1,6 @@
 package edu.mit.streamjit;
 
+import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.impl.interp.DebugChannel;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.api.StreamCompiler;
