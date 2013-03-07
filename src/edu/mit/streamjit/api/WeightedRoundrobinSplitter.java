@@ -1,0 +1,57 @@
+package edu.mit.streamjit.api;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * A WeightedRoundrobinSpliiter splits its input by passing data items to its
+ * children according to specified weights.  A WeightedRoundrobinSpliiter with
+ * weights [1, 2, 1] will pass one item to its first child, two items to its
+ * second child, and one item to its third child per iteration.
+ * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @since 3/7/2013
+ */
+public class WeightedRoundrobinSplitter<T> extends Splitter<T, T> {
+	private final int[] weights;
+	/**
+	 * Creates a new WeightedRoundrobinSplitter with the given weights.
+	 */
+	public WeightedRoundrobinSplitter(int... weights) {
+		this.weights = weights;
+	}
+
+	@Override
+	public int supportedOutputs() {
+		return weights.length;
+	}
+
+	@Override
+	public void work() {
+		for (int i = 0; i < outputs(); ++i)
+			for (int j = 0; j < weights[i]; ++j)
+				push(i, pop());
+	}
+
+	@Override
+	public List<Rate> getPeekRates() {
+		//We don't peek.
+		return Collections.nCopies(outputs(), Rate.create(0));
+	}
+
+	@Override
+	public List<Rate> getPopRates() {
+		int sum = 0;
+		for (int w : weights)
+			sum += w;
+		return Collections.singletonList(Rate.create(sum));
+	}
+
+	@Override
+	public List<Rate> getPushRates() {
+		List<Rate> r = new ArrayList<>();
+		for (int w : weights)
+			r.add(Rate.create(w));
+		return Collections.unmodifiableList(r);
+	}
+}
