@@ -4,7 +4,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- *
+ * DuplicateSplitter splits its input by duplicating input data items to each
+ * of its outputs.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
