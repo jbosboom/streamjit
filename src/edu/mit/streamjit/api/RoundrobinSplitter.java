@@ -43,7 +43,7 @@ public class RoundrobinSplitter<T> extends Splitter<T, T> {
 	@Override
 	public List<Rate> getPeekRates() {
 		//We don't peek.
-		return Collections.nCopies(outputs(), Rate.create(0));
+		return Collections.singletonList(Rate.create(0));
 	}
 
 	@Override
