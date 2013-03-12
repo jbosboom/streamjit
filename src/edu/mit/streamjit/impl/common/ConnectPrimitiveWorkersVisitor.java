@@ -169,7 +169,7 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 			//worker isn't the first worker.
 			for (Rate rate : cur.getPopRates())
 				if (rate.max() == 0)
-					throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)worker);
+					throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)cur);
 
 			Channel c = makeChannel(cur, worker);
 			Workers.addSuccessor(cur, worker, c);
