@@ -44,6 +44,12 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 	 */
 	private Worker<?, ?> cur;
 	private Deque<SplitjoinContext> stack = new ArrayDeque<>();
+	/**
+	 * The element nesting depth, during the traversal.  Used to perform checks
+	 * only when we've finished traversal (when we're leaving an element with
+	 * depth == 0).
+	 */
+	private int depth = 0;
 
 	/**
 	 * Used for remembering information about splitjoins while traversing:
@@ -92,24 +98,30 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 
 	@Override
 	public final void visitFilter(Filter filter) {
+		++depth;
 		visitWorker(filter);
+		--depth;
+		if (depth == 0)
+			finishedVisitation();
 	}
 
 	@Override
 	public final boolean enterPipeline(Pipeline<?, ?> pipeline) {
-		//Nothing to do but visit the pipeline elements.
+		++depth;
 		return true;
 	}
 
 	@Override
 	public final void exitPipeline(Pipeline<?, ?> pipeline) {
-		//Nothing to do here.
+		--depth;
+		if (depth == 0)
+			finishedVisitation();
 	}
 
 	@Override
 	public final boolean enterSplitjoin(Splitjoin<?, ?> splitjoin) {
-		//Nothing to do but visit the splijoin elements.  (We push the new
-		//SplitjoinContext in visitSplitter().)
+		++depth;
+		//We push the new SplitjoinContext in visitSplitter().
 		return true;
 	}
 
@@ -148,33 +160,40 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 
 		stack.pop();
 		cur = joiner;
+
+		//We can't visit a Joiner outside of a Splitjoin, so no depth check for
+		//finishedVisitation() is required.
 	}
 
 	@Override
 	public final void exitSplitjoin(Splitjoin<?, ?> splitjoin) {
-		//Nothing to do here.  (We pop the SplitjoinContext in
-		//visitJoiner().)
+		//We pop the SplitjoinContext in visitJoiner().
+		--depth;
+		if (depth == 0)
+			finishedVisitation();
 	}
 
 	private void visitWorker(Worker worker) {
 		if (cur == null) { //First worker encountered.
 			source = worker;
 		} else {
-			//TODO: move checks to a CheckVisitor, include checks for stream
-			//graphs with no workers
-			//cur isn't the last worker.
-			for (Rate rate : cur.getPushRates())
-				if (rate.max() == 0)
-					throw new IllegalStreamGraphException("Sink isn't last worker", (StreamElement)cur);
-			//worker isn't the first worker.
-			for (Rate rate : cur.getPopRates())
-				if (rate.max() == 0)
-					throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)cur);
-
 			Channel c = makeChannel(cur, worker);
 			Workers.addSuccessor(cur, worker, c);
 			Workers.addPredecessor(worker, cur, c);
 		}
 		cur = worker;
+	}
+
+	private void finishedVisitation() {
+		//Ensure all but the first worker aren't sources.
+		for (Worker<?, ?> worker : Workers.getAllSuccessors(source))
+			for (Rate rate : worker.getPopRates())
+				if (rate.max() == 0)
+					throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)cur);
+		//Ensure all but the last worker aren't sinks.
+		for (Worker<?, ?> worker : Workers.getAllPredecessors(source))
+			for (Rate rate : worker.getPopRates())
+				if (rate.max() == 0)
+					throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)cur);
 	}
 }
