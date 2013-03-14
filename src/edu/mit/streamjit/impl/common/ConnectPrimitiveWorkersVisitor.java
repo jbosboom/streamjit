@@ -44,12 +44,6 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 	 */
 	private Worker<?, ?> cur;
 	private Deque<SplitjoinContext> stack = new ArrayDeque<>();
-	/**
-	 * The element nesting depth, during the traversal.  Used to perform checks
-	 * only when we've finished traversal (when we're leaving an element with
-	 * depth == 0).
-	 */
-	private int depth = 0;
 
 	/**
 	 * Used for remembering information about splitjoins while traversing:
@@ -97,30 +91,25 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 	}
 
 	@Override
+	public final void beginVisit() {
+	}
+
+	@Override
 	public final void visitFilter(Filter filter) {
-		++depth;
 		visitWorker(filter);
-		--depth;
-		if (depth == 0)
-			finishedVisitation();
 	}
 
 	@Override
 	public final boolean enterPipeline(Pipeline<?, ?> pipeline) {
-		++depth;
 		return true;
 	}
 
 	@Override
 	public final void exitPipeline(Pipeline<?, ?> pipeline) {
-		--depth;
-		if (depth == 0)
-			finishedVisitation();
 	}
 
 	@Override
 	public final boolean enterSplitjoin(Splitjoin<?, ?> splitjoin) {
-		++depth;
 		//We push the new SplitjoinContext in visitSplitter().
 		return true;
 	}
@@ -168,9 +157,6 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 	@Override
 	public final void exitSplitjoin(Splitjoin<?, ?> splitjoin) {
 		//We pop the SplitjoinContext in visitJoiner().
-		--depth;
-		if (depth == 0)
-			finishedVisitation();
 	}
 
 	private void visitWorker(Worker worker) {
@@ -184,7 +170,7 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 		cur = worker;
 	}
 
-	private void finishedVisitation() {
+	public final void endVisit() {
 		//Ensure all but the first worker aren't sources.
 		for (Worker<?, ?> worker : Workers.getAllSuccessors(source))
 			for (Rate rate : worker.getPopRates())

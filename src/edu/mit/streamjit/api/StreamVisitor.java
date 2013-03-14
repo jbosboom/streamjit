@@ -6,6 +6,13 @@ package edu.mit.streamjit.api;
  * @since 11/22/2012
  */
 public abstract class StreamVisitor {
+	private int depth = 0;
+
+	/**
+	 * Called when visitation begins, before any StreamElements are visited.
+	 */
+	public abstract void beginVisit();
+
 	/**
 	 * Visits a filter (stateless or stateful).
 	 * @param filter a filter
@@ -77,6 +84,11 @@ public abstract class StreamVisitor {
 	public abstract void exitSplitjoin(Splitjoin<?, ?> splitjoin);
 
 	/**
+	 * Called when visitation ends, after all StreamElements have been visited.
+	 */
+	public abstract void endVisit();
+
+	/**
 	 * Called when visiting a stream element for which this visitor has not
 	 * overridden the corresponding visit method. Implementations may return
 	 * true if they wish to visit subelements of this element, false if they
@@ -87,5 +99,48 @@ public abstract class StreamVisitor {
 	 */
 	public boolean visitUnknown(StreamElement<?, ?> e) {
 		throw new UnsupportedOperationException(this.getClass().getSimpleName() + " visiting unknown element: " + e);
+	}
+
+	private void enter() {
+		if (depth == 0)
+			beginVisit();
+		++depth;
+	}
+
+	private void exit() {
+		--depth;
+		if (depth == 0)
+			endVisit();
+	}
+
+	/* Any method that might trigger beginVisit or endVisit needs to use
+	 * enter()/exit(); the API classes call these package-private methods to
+	 * use this handling rather than directly calling into client code.
+	 */
+
+	void visitFilter0(Filter<?, ?> filter) {
+		enter();
+		visitFilter(filter);
+		exit();
+	}
+
+	boolean enterPipeline0(Pipeline<?, ?> pipeline) {
+		enter();
+		return enterPipeline(pipeline);
+	}
+
+	void exitPipeline0(Pipeline<?, ?> pipeline) {
+		exitPipeline(pipeline);
+		exit();
+	}
+
+	boolean enterSplitjoin0(Splitjoin<?, ?> splitjoin) {
+		enter();
+		return enterSplitjoin(splitjoin);
+	}
+
+	void exitSplitjoin0(Splitjoin<?, ?> splitjoin) {
+		exitSplitjoin(splitjoin);
+		exit();
 	}
 }

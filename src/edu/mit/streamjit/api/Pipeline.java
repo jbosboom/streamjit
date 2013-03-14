@@ -44,10 +44,10 @@ public class Pipeline<I, O> implements OneToOneElement<I, O> {
 
 	@Override
 	public final void visit(StreamVisitor v) {
-		if (v.enterPipeline(this)) {
+		if (v.enterPipeline0(this)) {
 			for (OneToOneElement<?, ?> e : elements)
 				e.visit(v);
-			v.exitPipeline(this);
+			v.exitPipeline0(this);
 		}
 	}
 }

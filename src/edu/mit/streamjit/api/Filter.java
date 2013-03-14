@@ -53,7 +53,7 @@ public abstract class Filter<I, O> extends Worker<I, O> implements OneToOneEleme
 
 	@Override
 	public final void visit(StreamVisitor v) {
-		v.visitFilter(this);
+		v.visitFilter0(this);
 	}
 
 	@Override

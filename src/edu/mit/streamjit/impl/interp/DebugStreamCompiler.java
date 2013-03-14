@@ -320,5 +320,11 @@ public class DebugStreamCompiler implements StreamCompiler {
 		@Override
 		public void exitSplitjoin(Splitjoin<?, ?> splitjoin) {
 		}
+		@Override
+		public void beginVisit() {
+		}
+		@Override
+		public void endVisit() {
+		}
 	}
 }

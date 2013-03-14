@@ -61,7 +61,7 @@ public class Splitjoin<I, O> implements OneToOneElement<I, O> {
 
 	@Override
 	public final void visit(StreamVisitor v) {
-		if (v.enterSplitjoin(this)) {
+		if (v.enterSplitjoin0(this)) {
 			splitter.visit(v);
 			for (OneToOneElement<?, ?> e : elements) {
 				if (v.enterSplitjoinBranch(e)) {
@@ -70,7 +70,7 @@ public class Splitjoin<I, O> implements OneToOneElement<I, O> {
 				}
 			}
 			joiner.visit(v);
-			v.exitSplitjoin(this);
+			v.exitSplitjoin0(this);
 		}
 	}
 }
