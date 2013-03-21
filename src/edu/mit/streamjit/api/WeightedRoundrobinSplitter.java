@@ -9,6 +9,17 @@ import java.util.List;
  * children according to specified weights.  A WeightedRoundrobinSpliiter with
  * weights [1, 2, 1] will pass one item to its first child, two items to its
  * second child, and one item to its third child per iteration.
+ *
+ * TODO: This class is separate from RoundrobinSplitter to avoid having to
+ * branch in the work() function to determine the inner loop bound (which would
+ * create extra work for the compiler to optimize away). The obvious solution,
+ * using a weights array with identical weights, will not work because the
+ * splitter doesn't learn how many outputs it has before they're hooked up, and
+ * there's no notification between having all outputs hooked up and the first
+ * execution. When the compiler is sophisticated enough to constant-fold the
+ * branch, we could merge this class with RoundrobinSplitter. (The interpreter
+ * would still take the branch, but its performance isn't critical.) The
+ * preceeding comments apply to WeightedRoundrobinJoiner as well.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/7/2013
  */

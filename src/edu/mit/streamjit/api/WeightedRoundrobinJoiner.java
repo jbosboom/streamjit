@@ -5,9 +5,12 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * A RoundrobinJoiner joins its input by reading data items from each child in
- * turn per execution.  RoundrobinJoiner reads the same number of items per
- * child; to use weights, see WeightedRoundrobinJoiner.
+ * A WeightedRoundrobinJoiner joins its input by taking data items from its
+ * children according to specified weights.  A WeightedRoundrobinJoiner with
+ * weights [1, 2, 1] will take one item from its first parent, two items from
+ * its second parent, and one item from its third parent per iteration.
+ *
+ * TODO: see WeightedRoundrobinSplitter for details about this class' necessity
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
