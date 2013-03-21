@@ -16,7 +16,7 @@ import java.util.List;
  */
 public class WeightedRoundrobinJoiner<T> extends Joiner<T, T> {
 	private final int[] weights;
-	public WeightedRoundrobinJoiner(int[] weights) {
+	public WeightedRoundrobinJoiner(int... weights) {
 		this.weights = weights;
 	}
 
