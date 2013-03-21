@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.common;
 
+import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
@@ -12,6 +13,8 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.api.StreamVisitor;
+import edu.mit.streamjit.impl.interp.ChannelFactory;
+import edu.mit.streamjit.impl.interp.EmptyChannel;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -33,7 +36,11 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 1/23/2013 (originally internal to DebugStreamCompiler)
  */
-public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
+public final class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
+	/**
+	 * The ChannelFactory used to create channels.
+	 */
+	private final ChannelFactory channelFactory;
 	/**
 	 * The first worker in the stream graph.
 	 */
@@ -56,21 +63,28 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 		private List<Worker<?, ?>> branchEnds = new ArrayList<>();
 	}
 
-	protected ConnectPrimitiveWorkersVisitor() {}
+	/**
+	 * Creates a new ConnectPrimitiveWorkersVisitor that connects workers with
+	 * EmptyChannels.  This is useful to discover predecessor/successor
+	 * relationships when the graph won't be executed.
+	 */
+	public ConnectPrimitiveWorkersVisitor() {
+		this(new ChannelFactory() {
+			@Override
+			public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
+				return new EmptyChannel<>();
+			}
+		});
+	}
 
 	/**
-	 * Creates a Channel object to be used to connect the given two workers
-	 * together.
-	 *
-	 * TODO: generic bounds are too strict -- the filters don't have to exactly
-	 * agree on type, but merely be compatible
-	 * @param <E> the type of element in the Channel
-	 * @param upstream the upstream worker
-	 * @param downstream the downstream worker
-	 * @return a Channel that will be used to connect the upstream and
-	 * downstream workers
+	 * Creates a new ConnectPrimitiveWorkersVisitor that connects workers with
+	 * channels from the given ChannelFactory.
+	 * @param channelFactory the channel factory to use
 	 */
-	protected abstract <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream);
+	public ConnectPrimitiveWorkersVisitor(ChannelFactory channelFactory) {
+		this.channelFactory = checkNotNull(channelFactory);
+	}
 
 	/**
 	 * After the visitation is complete, returns the first worker in the stream
@@ -142,7 +156,7 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 		//joiners only occur in splitjoins and the splitter will be visited
 		//first.
 		for (Worker<?, ?> w : stack.peekFirst().branchEnds) {
-			Channel c = makeChannel(w, joiner);
+			Channel c = channelFactory.makeChannel(w, joiner);
 			Workers.addSuccessor(w, joiner, c);
 			Workers.addPredecessor(joiner, w, c);
 		}
@@ -163,7 +177,7 @@ public abstract class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 		if (cur == null) { //First worker encountered.
 			source = worker;
 		} else {
-			Channel c = makeChannel(cur, worker);
+			Channel c = channelFactory.makeChannel(cur, worker);
 			Workers.addSuccessor(cur, worker, c);
 			Workers.addPredecessor(worker, cur, c);
 		}

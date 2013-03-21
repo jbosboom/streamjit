@@ -41,12 +41,12 @@ import java.util.Set;
 public class DebugStreamCompiler implements StreamCompiler {
 	@Override
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
-		ConnectPrimitiveWorkersVisitor cpwv = new ConnectPrimitiveWorkersVisitor() {
+		ConnectPrimitiveWorkersVisitor cpwv = new ConnectPrimitiveWorkersVisitor(new ChannelFactory() {
 			@Override
-			protected <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
+			public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
 				return new DebugChannel<>();
 			}
-		};
+		});
 		stream.visit(cpwv);
 		Worker<I, ?> source = (Worker<I, ?>)cpwv.getSource();
 		DebugChannel<I> head = new DebugChannel<>();
