@@ -10,7 +10,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
-public class RoundrobinJoiner<T> extends Joiner<T, T> {
+public final class RoundrobinJoiner<T> extends Joiner<T, T> {
 	private final int itemsPerExecution;
 	public RoundrobinJoiner() {
 		this(1);

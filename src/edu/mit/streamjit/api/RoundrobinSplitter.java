@@ -11,7 +11,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/7/2013
  */
-public class RoundrobinSplitter<T> extends Splitter<T, T> {
+public final class RoundrobinSplitter<T> extends Splitter<T, T> {
 	private final int itemsPerExecution;
 	/**
 	 * Creates a new RoundrobinSplitter that distributes one item to each child
