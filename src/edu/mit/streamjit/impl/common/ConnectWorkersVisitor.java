@@ -89,7 +89,7 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 	/**
 	 * After the visitation is complete, returns the first worker in the stream
 	 * graph.
-	 * @returnthe first worker in the stream graph
+	 * @return the first worker in the stream graph
 	 */
 	public final Worker<?, ?> getSource() {
 		return source;
