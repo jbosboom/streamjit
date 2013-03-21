@@ -36,7 +36,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 1/23/2013 (originally internal to DebugStreamCompiler)
  */
-public final class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
+public final class ConnectWorkersVisitor extends StreamVisitor {
 	/**
 	 * The ChannelFactory used to create channels.
 	 */
@@ -64,11 +64,11 @@ public final class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 	}
 
 	/**
-	 * Creates a new ConnectPrimitiveWorkersVisitor that connects workers with
+	 * Creates a new ConnectWorkersVisitor that connects workers with
 	 * EmptyChannels.  This is useful to discover predecessor/successor
 	 * relationships when the graph won't be executed.
 	 */
-	public ConnectPrimitiveWorkersVisitor() {
+	public ConnectWorkersVisitor() {
 		this(new ChannelFactory() {
 			@Override
 			public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
@@ -78,11 +78,11 @@ public final class ConnectPrimitiveWorkersVisitor extends StreamVisitor {
 	}
 
 	/**
-	 * Creates a new ConnectPrimitiveWorkersVisitor that connects workers with
+	 * Creates a new ConnectWorkersVisitor that connects workers with
 	 * channels from the given ChannelFactory.
 	 * @param channelFactory the channel factory to use
 	 */
-	public ConnectPrimitiveWorkersVisitor(ChannelFactory channelFactory) {
+	public ConnectWorkersVisitor(ChannelFactory channelFactory) {
 		this.channelFactory = checkNotNull(channelFactory);
 	}
 

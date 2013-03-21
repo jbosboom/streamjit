@@ -14,7 +14,7 @@ import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Rate;
-import edu.mit.streamjit.impl.common.ConnectPrimitiveWorkersVisitor;
+import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.Workers;
 import java.util.ArrayDeque;
@@ -41,7 +41,7 @@ import java.util.Set;
 public class DebugStreamCompiler implements StreamCompiler {
 	@Override
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
-		ConnectPrimitiveWorkersVisitor cpwv = new ConnectPrimitiveWorkersVisitor(new ChannelFactory() {
+		ConnectWorkersVisitor cpwv = new ConnectWorkersVisitor(new ChannelFactory() {
 			@Override
 			public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
 				return new DebugChannel<>();
