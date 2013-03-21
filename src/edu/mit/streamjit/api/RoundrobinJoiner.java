@@ -47,4 +47,9 @@ public final class RoundrobinJoiner<T> extends Joiner<T, T> {
 	public List<Rate> getPushRates() {
 		return Collections.singletonList(Rate.create(itemsPerExecution*inputs()));
 	}
+
+	@Override
+	public String toString() {
+		return String.format("RoundrobinJoiner(%d)", itemsPerExecution);
+	}
 }

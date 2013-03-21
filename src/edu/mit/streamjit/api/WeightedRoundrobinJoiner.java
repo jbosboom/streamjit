@@ -1,6 +1,7 @@
 package edu.mit.streamjit.api;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -52,5 +53,10 @@ public final class WeightedRoundrobinJoiner<T> extends Joiner<T, T> {
 		for (int w : weights)
 			sum += w;
 		return Collections.singletonList(Rate.create(sum));
+	}
+
+	@Override
+	public String toString() {
+		return String.format("WeightedRoundrobinJoiner(%s)", Arrays.toString(weights));
 	}
 }

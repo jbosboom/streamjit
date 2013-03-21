@@ -55,4 +55,9 @@ public final class RoundrobinSplitter<T> extends Splitter<T, T> {
 	public List<Rate> getPushRates() {
 		return Collections.nCopies(outputs(), Rate.create(itemsPerExecution));
 	}
+
+	@Override
+	public String toString() {
+		return String.format("RoundrobinSplitter(%d)", itemsPerExecution);
+	}
 }

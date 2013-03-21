@@ -1,6 +1,7 @@
 package edu.mit.streamjit.api;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -64,5 +65,10 @@ public final class WeightedRoundrobinSplitter<T> extends Splitter<T, T> {
 		for (int w : weights)
 			r.add(Rate.create(w));
 		return Collections.unmodifiableList(r);
+	}
+
+	@Override
+	public String toString() {
+		return String.format("WeightedRoundrobinSplitter(%s)", Arrays.toString(weights));
 	}
 }
