@@ -92,12 +92,6 @@ public final class Portal<I> {
 	 *
 	 * Implementation note: this is a JIT hook method.
 	 *
-	 * TODO: Worker is package-private and we're
-	 * leaking it into the public API here.  Alternatives:
-	 * --create three overloads of getHandle: Filter, Splitter and Joiner
-	 * --just make Worker public (probably renamed to Worker and with
-	 *   all the Channel/predecessor/successor stuff still package-private)
-	 *
 	 * TODO: latency ranges?
 	 * @param sender the message sender
 	 * @param latency the message latency
