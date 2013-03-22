@@ -62,7 +62,7 @@ public abstract class Worker<I, O> implements StreamElement<I, O> {
 	 * An entirely arbitrary identifier, unique in a stream graph, to support
 	 * maintaining worker identity in the distributed implementation.
 	 */
-	private int identifier;
+	private int identifier = -1;
 
 	void addPredecessor(Worker<?, ? extends I> predecessor, Channel<? extends I> channel) {
 		if (predecessor == null || channel == null)
