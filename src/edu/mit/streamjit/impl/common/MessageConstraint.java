@@ -118,9 +118,6 @@ public final class MessageConstraint {
 	 */
 	public static List<MessageConstraint> findConstraints(Worker<?, ?> graph) {
 		ImmutableList.Builder<MessageConstraint> mc = ImmutableList.builder();
-		List<Worker<?, ?>> workers = new ArrayList<>();
-		workers.add(graph);
-		workers.addAll(Workers.getAllSuccessors(graph));
 		//Parsing bytecodes is (relatively) expensive; we only want to do it
 		//once per class, no matter how many instances are in the stream graph.
 		//If a class doesn't send messages, it maps to an empty list, and we do
@@ -128,7 +125,7 @@ public final class MessageConstraint {
 		Map<Class<?>, ImmutableList<WorkerData>> workerDataCache = new HashMap<>();
 		Map<Edge, SDEPData> sdepCache = new HashMap<>();
 
-		for (Worker<?, ?> sender : workers) {
+		for (Worker<?, ?> sender : Workers.getAllWorkersInGraph(graph)) {
 			ImmutableList<WorkerData> datas = workerDataCache.get(sender.getClass());
 			if (datas == null) {
 				datas = buildWorkerData(sender);
