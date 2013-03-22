@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import com.google.common.base.Joiner;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Objects;
@@ -57,14 +58,6 @@ public class MethodType extends Type {
 
 	@Override
 	public String toString() {
-		StringBuilder sb = new StringBuilder();
-		sb.append(returnType);
-		sb.append('(');
-		if (argumentTypes.length >= 1)
-			sb.append(argumentTypes[0]);
-		for (int i = 1; i < argumentTypes.length; ++i)
-			sb.append(", ").append(argumentTypes[i]);
-		sb.append(')');
-		return sb.toString();
+		return returnType.toString() + '(' + Joiner.on(", ").join(argumentTypes) + ')';
 	}
 }
