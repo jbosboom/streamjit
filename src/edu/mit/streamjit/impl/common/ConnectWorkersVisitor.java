@@ -163,14 +163,7 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 		//joiners only occur in splitjoins and the splitter will be visited
 		//first.
 		for (Worker<?, ?> w : stack.peekFirst().branchEnds) {
-			Channel c = channelFactory.makeChannel(w, joiner);
-			if (c != null) {
-				Workers.addSuccessor(w, joiner, c);
-				Workers.addPredecessor(joiner, w, c);
-			} else {
-				Workers.getSuccessors(w).add(joiner);
-				Workers.getPredecessors(joiner).add(w);
-			}
+			connect(w, joiner);
 		}
 
 		stack.pop();
@@ -187,16 +180,20 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 		if (cur == null) { //First worker encountered.
 			source = worker;
 		} else {
-			Channel c = channelFactory.makeChannel(cur, worker);
-			if (c != null) {
-				Workers.addSuccessor(cur, worker, c);
-				Workers.addPredecessor(worker, cur, c);
-			} else {
-				Workers.getSuccessors(cur).add(worker);
-				Workers.getPredecessors(worker).add(cur);
-			}
+			connect(cur, worker);
 		}
 		cur = worker;
+	}
+
+	private void connect(Worker upstream, Worker downstream) {
+		Channel c = channelFactory.makeChannel(upstream, downstream);
+		if (c != null) {
+			Workers.addSuccessor(upstream, downstream, c);
+			Workers.addPredecessor(downstream, upstream, c);
+		} else {
+			Workers.getSuccessors(upstream).add(downstream);
+			Workers.getPredecessors(downstream).add(upstream);
+		}
 	}
 
 	public final void endVisit() {
