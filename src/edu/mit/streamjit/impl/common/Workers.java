@@ -5,11 +5,8 @@ import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.interp.Message;
 import java.util.ArrayDeque;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
-import java.util.Set;
 
 /**
  * This class provides static utility methods for Worker, including
@@ -57,8 +54,8 @@ public abstract class Workers {
 	 * @param worker a worker
 	 * @return a set of all predecessors of this worker
 	 */
-	public static Set<Worker<?, ?>> getAllPredecessors(Worker<?, ?> worker) {
-		Set<Worker<?, ?>> closed = new HashSet<>();
+	public static ImmutableSet<Worker<?, ?>> getAllPredecessors(Worker<?, ?> worker) {
+		ImmutableSet.Builder<Worker<?, ?>> closed = ImmutableSet.builder();
 		Queue<Worker<?, ?>> frontier = new ArrayDeque<>();
 		frontier.addAll(Workers.getPredecessors(worker));
 		while (!frontier.isEmpty()) {
@@ -66,7 +63,7 @@ public abstract class Workers {
 			closed.add(cur);
 			frontier.addAll(Workers.getPredecessors(cur));
 		}
-		return Collections.unmodifiableSet(closed);
+		return closed.build();
 	}
 
 	/**
@@ -74,8 +71,8 @@ public abstract class Workers {
 	 * @param worker a worker
 	 * @return a set of all successors of this worker
 	 */
-	public static Set<Worker<?, ?>> getAllSuccessors(Worker<?, ?> worker) {
-		Set<Worker<?, ?>> closed = new HashSet<>();
+	public static ImmutableSet<Worker<?, ?>> getAllSuccessors(Worker<?, ?> worker) {
+		ImmutableSet.Builder<Worker<?, ?>> closed = ImmutableSet.builder();
 		Queue<Worker<?, ?>> frontier = new ArrayDeque<>();
 		frontier.addAll(Workers.getSuccessors(worker));
 		while (!frontier.isEmpty()) {
@@ -83,7 +80,7 @@ public abstract class Workers {
 			closed.add(cur);
 			frontier.addAll(Workers.getSuccessors(cur));
 		}
-		return Collections.unmodifiableSet(closed);
+		return closed.build();
 	}
 
 	/**
