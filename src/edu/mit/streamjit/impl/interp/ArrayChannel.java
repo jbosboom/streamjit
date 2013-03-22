@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.interp;
 
+import com.google.common.base.Joiner;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -167,14 +168,7 @@ public class ArrayChannel<E> implements Channel<E> {
 
 	@Override
 	public String toString() {
-		Iterator<E> iterator = iterator();
-		if (!iterator.hasNext())
-			return "[]";
-		StringBuilder sb = new StringBuilder("[");
-		sb.append(iterator.next());
-		while (iterator.hasNext())
-			sb.append(", ").append(iterator.next());
-		return sb.append("]").toString();
+		return '['+Joiner.on(", ").useForNull("null").join(iterator())+']';
 	}
 
 	/* Helper methods */
