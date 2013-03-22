@@ -5,7 +5,6 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.CompiledStream;
-import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.StreamVisitor;
 import edu.mit.streamjit.api.Splitjoin;
@@ -18,13 +17,8 @@ import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.interp.Interpreter.IOChannel;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
