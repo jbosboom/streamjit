@@ -44,11 +44,9 @@ public class DebugStreamCompiler implements StreamCompiler {
 		});
 		stream.visit(cpwv);
 		Worker<I, ?> source = (Worker<I, ?>)cpwv.getSource();
-		DebugChannel<I> head = new DebugChannel<>();
-		Workers.getInputChannels(source).add(head);
+		Channel<I> head = (Channel<I>)Workers.getInputChannels(source).get(0);
 		Worker<?, O> sink = (Worker<?, O>)cpwv.getSink();
-		DebugChannel<O> tail = new DebugChannel<>();
-		Workers.getOutputChannels(sink).add(tail);
+		Channel<O> tail = (Channel<O>)Workers.getOutputChannels(sink).get(0);
 
 		List<MessageConstraint> constraints = MessageConstraint.findConstraints(source);
 		Set<Portal<?>> portals = new HashSet<>();

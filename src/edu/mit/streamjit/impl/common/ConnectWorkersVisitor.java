@@ -23,7 +23,9 @@ import java.util.List;
  * Visits the stream graph, setting up predecessor-successor relations, setting
  * the worker identifier field, and optionally connecting workers with channels.
  * The provided ChannelFactory is used to create channels; if the factory
- * returns null, the two workers will not be connected with a channel.
+ * returns null, the two workers will not be connected with a channel.  This
+ * visitor will attempt to create channels for overall stream graph input and
+ * output if they don't already exist.
  *
  * This class uses lots of raw types to avoid having to recapture the
  * unbounded wildcards all the time.
@@ -177,10 +179,17 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 
 	private void visitWorker(Worker worker) {
 		Workers.setIdentifier(worker, identifier++);
-		if (cur == null) { //First worker encountered.
-			source = worker;
-		} else {
+		if (cur != null)
 			connect(cur, worker);
+		else {
+			//First worker encountered.
+			source = worker;
+			if (Workers.getInputChannels(worker).isEmpty()) {
+				//Create the channel for overall stream graph input.
+				Channel c = channelFactory.makeChannel(null, worker);
+				if (c != null)
+					Workers.getInputChannels(worker).add(c);
+			}
 		}
 		cur = worker;
 	}
@@ -197,6 +206,13 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 	}
 
 	public final void endVisit() {
+		if (Workers.getOutputChannels(cur).isEmpty()) {
+			//Create the channel for overall stream graph output.
+			Channel c = channelFactory.makeChannel(cur, null);
+			if (c != null)
+				Workers.getOutputChannels(cur).add(c);
+		}
+
 		//Ensure all but the first worker aren't sources.
 		for (Worker<?, ?> worker : Workers.getAllSuccessors(source))
 			for (Rate rate : worker.getPopRates())
