@@ -17,6 +17,7 @@ import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.interp.Interpreter.IOChannel;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -74,37 +75,26 @@ public class DebugStreamCompiler implements StreamCompiler {
 	 * @param <O> the type of output data elements
 	 */
 	private static class DebugCompiledStream<I, O> extends AbstractCompiledStream<I, O> {
-		private final Worker<?, ?> source, sink;
-		/**
-		 * Maps workers to all constraints of which they are recipients.
-		 */
-		private final Map<Worker<?, ?>, List<MessageConstraint>> constraintsForRecipient = new IdentityHashMap<>();
+		private final Interpreter interpreter;
 		DebugCompiledStream(Channel<? super I> head, Channel<? extends O> tail, Worker<?, ?> source, Worker<?, ?> sink, List<MessageConstraint> constraints) {
 			super(head, tail);
-			this.source = source;
-			this.sink = sink;
-			for (MessageConstraint constraint : constraints) {
-				Worker<?, ?> recipient = constraint.getRecipient();
-				List<MessageConstraint> constraintList = constraintsForRecipient.get(recipient);
-				if (constraintList == null) {
-					constraintList = new ArrayList<>();
-					constraintsForRecipient.put(recipient, constraintList);
+			this.interpreter = new Interpreter(Workers.getAllWorkersInGraph(source), constraints) {
+				@Override
+				protected void afterFire(Worker<?, ?> worker) {
+					checkRatesAfterFire(worker);
 				}
-				constraintList.add(constraint);
-			}
+			};
 		}
 
 		@Override
 		public synchronized boolean offer(I input) {
 			boolean ret = super.offer(input);
-			pull();
+			interpreter.interpret();
 			return ret;
 		}
 
 		@Override
 		public synchronized O poll() {
-			if (sink.getPushRates().get(0).max() == 0)
-				throw new IllegalStateException("Can't take() from a stream ending in a sink");
 			return super.poll();
 		}
 
@@ -112,113 +102,24 @@ public class DebugStreamCompiler implements StreamCompiler {
 		protected synchronized void doDrain() {
 			//Most implementations of doDrain() hand off to another thread to
 			//avoid blocking in drain(), but we only have one thread.
-			pull();
+			interpreter.interpret();
 			//We need to see if any elements were left undrained.
-			UndrainedVisitor v = new UndrainedVisitor(Workers.getInputChannels(source).get(0), Workers.getOutputChannels(sink).get(0));
+			assert interpreter.getChannels().size() == 2 : interpreter.getChannels();
+			Channel<?> inputChannel = null, outputChannel = null;
+			for (IOChannel c : interpreter.getChannels().values())
+				if (c.isInput())
+					inputChannel = c.getChannel();
+				else
+					outputChannel = c.getChannel();
+			UndrainedVisitor v = new UndrainedVisitor(inputChannel, outputChannel);
 			finishedDraining(v.isFullyDrained());
 		}
 
 		/**
-		 * Fires the sink as many times as possible (firing upstream filters as
-		 * required).
+		 * Checks the given worker (which has just fired)'s rate declarations
+		 * against its actual behavior.
 		 */
-		private void pull() {
-			//We should be in the offer() method that owns our lock.
-			assert Thread.holdsLock(this) : "pull() without lock?";
-			//Deliberate empty while-loop-body.
-			while (fireOnceIfPossible(sink));
-		}
-
-		/**
-		 * Fires upstream filters just enough to allow worker to fire, or
-		 * returns false if this is impossible.
-		 *
-		 * This is an implementation of Figure 3-12 from Bill's thesis.
-		 * @param worker the worker to fire
-		 * @return true if the worker fired, false if it didn't
-		 */
-		private boolean fireOnceIfPossible(Worker<?, ?> worker) {
-			//This stack holds all the unsatisfied workers we've encountered
-			//while trying to fire the argument.
-			Deque<Worker<?, ?>> stack = new ArrayDeque<>();
-			stack.push(worker);
-			recurse: while (!stack.isEmpty()) {
-				Worker<?, ?> current = stack.element();
-				//If we're already trying to fire current, current depends on
-				//itself, so throw.  TODO: explain which constraints are bad?
-				//We have to pop then push so contains can't just find the top
-				//of the stack every time.  (no indexOf(), annoying)
-				stack.pop();
-				if (stack.contains(current))
-					throw new IllegalStreamGraphException("Unsatisfiable message constraints", current);
-				stack.push(current);
-
-				//Execute predecessors based on data dependencies.
-				int channel = indexOfUnsatisfiedChannel(current);
-				if (channel != -1) {
-					if (current == source)
-						//Not enough data to fire the first worker in the stream
-						//graph.  We can't make any further progress until we
-						//get more data.
-						return false;
-					//Otherwise, recursively fire the worker blocking us.
-					stack.push(Workers.getPredecessors(current).get(channel));
-					continue recurse;
-				}
-
-				List<MessageConstraint> constraints = constraintsForRecipient.get(current);
-				if (constraints != null) {
-					//Execute predecessors based on message dependencies; that is,
-					//execute any filter that might send a message to the current
-					//worker for delivery just prior to its next firing, to ensure
-					//that delivery cannot be missed.
-					for (MessageConstraint constraint : constraintsForRecipient.get(current)) {
-						Worker<?, ?> sender = constraint.getSender();
-						long deliveryTime = constraint.getDeliveryTime(Workers.getExecutions(sender));
-						//If deliveryTime == current.getExecutions() + 1, it's for
-						//our next execution.  (If it's <= current.getExecutions(),
-						//we already missed it!)
-						if (deliveryTime <= (Workers.getExecutions(sender) + 1)) {
-							stack.push(sender);
-							continue recurse;
-						}
-					}
-				}
-
-				checkedFire(current);
-				stack.pop(); //return from the recursion
-			}
-
-			//Stack's empty: we fired the argument.
-			return true;
-		}
-
-		/**
-		 * Searches the given worker's input channels for one that requires more
-		 * elements before the worker can fire, returning the index of the found
-		 * channel or -1 if the worker can fire.
-		 */
-		private <I, O> int indexOfUnsatisfiedChannel(Worker<I, O> worker) {
-			List<Channel<? extends I>> channels = Workers.getInputChannels(worker);
-			List<Rate> peekRates = worker.getPeekRates();
-			List<Rate> popRates = worker.getPopRates();
-			for (int i = 0; i < channels.size(); ++i) {
-				Rate peek = peekRates.get(i), pop = popRates.get(i);
-				if (peek.max() == Rate.DYNAMIC || pop.max() == Rate.DYNAMIC)
-					throw new UnsupportedOperationException("Unbounded input rates not yet supported");
-				int required = Math.max(peek.max(), pop.max());
-				if (channels.get(i).size() < required)
-					return i;
-			}
-			return -1;
-		}
-
-		/**
-		 * Fires the given worker, checking the items consumed and produced
-		 * against its rate declarations.
-		 */
-		private <I, O> void checkedFire(Worker<I, O> worker) {
-			Workers.doWork(worker);
+		private <I, O> void checkRatesAfterFire(Worker<I, O> worker) {
 			List<Channel<? extends I>> inputChannels = Workers.getInputChannels(worker);
 			List<Rate> popRates = worker.getPopRates();
 			List<Rate> peekRates = worker.getPeekRates();
