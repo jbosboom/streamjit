@@ -14,18 +14,16 @@ import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.api.StreamVisitor;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
-import edu.mit.streamjit.impl.interp.EmptyChannel;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
 /**
- * Visits the stream graph, connecting the primitive workers with channels
- * and keeping references to the first and last filters.  Subclasses override
- * the makeChannel() method to provide Channels to connect filters together.
- * This visitor does not add input or output channels to the first or last
- * filters respectively.
+ * Visits the stream graph, setting up predecessor-successor relations, setting
+ * the worker identifier field, and optionally connecting workers with channels.
+ * The provided ChannelFactory is used to create channels; if the factory
+ * returns null, the two workers will not be connected with a channel.
  *
  * This class uses lots of raw types to avoid having to recapture the
  * unbounded wildcards all the time.
@@ -50,7 +48,15 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 	 * is complete, the last worker in the stream graph.
 	 */
 	private Worker<?, ?> cur;
+	/**
+	 * The splitjoin context stack.  See comments on SplitjoinContext.
+	 */
 	private Deque<SplitjoinContext> stack = new ArrayDeque<>();
+	/**
+	 * The worker identifier counter, used to give each worker an identifier
+	 * unique over the stream graph.
+	 */
+	private int identifier = 0;
 
 	/**
 	 * Used for remembering information about splitjoins while traversing:
@@ -64,15 +70,15 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 	}
 
 	/**
-	 * Creates a new ConnectWorkersVisitor that connects workers with
-	 * EmptyChannels.  This is useful to discover predecessor/successor
-	 * relationships when the graph won't be executed.
+	 * Creates a new ConnectWorkersVisitor that doesn't connect workers with
+	 * channels.  Predecessor-successor relationships and worker identifiers
+	 * are still set up.
 	 */
 	public ConnectWorkersVisitor() {
 		this(new ChannelFactory() {
 			@Override
 			public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
-				return new EmptyChannel<>();
+				return null;
 			}
 		});
 	}
@@ -152,20 +158,23 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 
 	@Override
 	public final void visitJoiner(Joiner joiner) {
+		Workers.setIdentifier(joiner, identifier++);
 		//Note that a joiner cannot be the first worker encountered because
 		//joiners only occur in splitjoins and the splitter will be visited
 		//first.
 		for (Worker<?, ?> w : stack.peekFirst().branchEnds) {
 			Channel c = channelFactory.makeChannel(w, joiner);
-			Workers.addSuccessor(w, joiner, c);
-			Workers.addPredecessor(joiner, w, c);
+			if (c != null) {
+				Workers.addSuccessor(w, joiner, c);
+				Workers.addPredecessor(joiner, w, c);
+			} else {
+				Workers.getSuccessors(w).add(joiner);
+				Workers.getPredecessors(joiner).add(w);
+			}
 		}
 
 		stack.pop();
 		cur = joiner;
-
-		//We can't visit a Joiner outside of a Splitjoin, so no depth check for
-		//finishedVisitation() is required.
 	}
 
 	@Override
@@ -174,12 +183,18 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 	}
 
 	private void visitWorker(Worker worker) {
+		Workers.setIdentifier(worker, identifier++);
 		if (cur == null) { //First worker encountered.
 			source = worker;
 		} else {
 			Channel c = channelFactory.makeChannel(cur, worker);
-			Workers.addSuccessor(cur, worker, c);
-			Workers.addPredecessor(worker, cur, c);
+			if (c != null) {
+				Workers.addSuccessor(cur, worker, c);
+				Workers.addPredecessor(worker, cur, c);
+			} else {
+				Workers.getSuccessors(cur).add(worker);
+				Workers.getPredecessors(worker).add(cur);
+			}
 		}
 		cur = worker;
 	}
