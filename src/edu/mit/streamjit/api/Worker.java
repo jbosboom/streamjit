@@ -58,6 +58,11 @@ public abstract class Worker<I, O> implements StreamElement<I, O> {
 	private List<Channel<? super O>> outputChannels = new ArrayList<>(1);
 	private final List<Message> messages = new ArrayList<>();
 	private long executions;
+	/**
+	 * An entirely arbitrary identifier, unique in a stream graph, to support
+	 * maintaining worker identity in the distributed implementation.
+	 */
+	private int identifier;
 
 	void addPredecessor(Worker<?, ? extends I> predecessor, Channel<? extends I> channel) {
 		if (predecessor == null || channel == null)
@@ -130,6 +135,14 @@ public abstract class Worker<I, O> implements StreamElement<I, O> {
 		messages.add(insertionPoint, message);
 	}
 
+	public int getIdentifier() {
+		return identifier;
+	}
+
+	public void setIdentifier(int identifier) {
+		this.identifier = identifier;
+	}
+
 	//<editor-fold defaultstate="collapsed" desc="Friend pattern support (see impl.common.Workers)">
 	private static class WorkersFriend extends edu.mit.streamjit.impl.common.Workers {
 		@Override
@@ -167,6 +180,14 @@ public abstract class Worker<I, O> implements StreamElement<I, O> {
 		@Override
 		protected void sendMessage_impl(Worker<?, ?> worker, Message message) {
 			worker.sendMessage(message);
+		}
+		@Override
+		protected int getIdentifier_impl(Worker<?, ?> worker) {
+			return worker.getIdentifier();
+		}
+		@Override
+		protected void setIdentifier_impl(Worker<?, ?> worker, int identifier) {
+			worker.setIdentifier(identifier);
 		}
 		private static void init() {
 			edu.mit.streamjit.impl.common.Workers.setFriend(new WorkersFriend());

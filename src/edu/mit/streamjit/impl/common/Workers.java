@@ -48,6 +48,12 @@ public abstract class Workers {
 	public static void sendMessage(Worker<?, ?> worker, Message message) {
 		FRIEND.sendMessage_impl(worker, message);
 	}
+	public static int getIdentifier(Worker<?, ?> worker) {
+		return FRIEND.getIdentifier_impl(worker);
+	}
+	public static void setIdentifier(Worker<?, ?> worker, int identifier) {
+		FRIEND.setIdentifier_impl(worker, identifier);
+	}
 
 	/**
 	 * Returns a set of all predecessors of this worker.
@@ -181,5 +187,7 @@ public abstract class Workers {
 	protected abstract long getExecutions_impl(Worker<?, ?> worker);
 	protected abstract void doWork_impl(Worker<?, ?> worker);
 	protected abstract void sendMessage_impl(Worker<?, ?> worker, Message message);
+	protected abstract int getIdentifier_impl(Worker<?, ?> worker);
+	protected abstract void setIdentifier_impl(Worker<?, ?> worker, int identifier);
 	//</editor-fold>
 }
