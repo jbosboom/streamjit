@@ -61,11 +61,11 @@ public final class WeightedRoundrobinSplitter<T> extends Splitter<T, T> {
 	}
 
 	@Override
-	public List<Rate> getPushRates() {
-		List<Rate> r = new ArrayList<>();
+	public ImmutableList<Rate> getPushRates() {
+		ImmutableList.Builder<Rate> r = ImmutableList.builder();
 		for (int w : weights)
 			r.add(Rate.create(w));
-		return Collections.unmodifiableList(r);
+		return r.build();
 	}
 
 	@Override

@@ -1,7 +1,6 @@
 package edu.mit.streamjit.api;
 
 import com.google.common.collect.ImmutableList;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -41,11 +40,11 @@ public final class WeightedRoundrobinJoiner<T> extends Joiner<T, T> {
 	}
 
 	@Override
-	public List<Rate> getPopRates() {
-		List<Rate> r = new ArrayList<>();
+	public ImmutableList<Rate> getPopRates() {
+		ImmutableList.Builder<Rate> r = ImmutableList.builder();
 		for (int w : weights)
 			r.add(Rate.create(w));
-		return Collections.unmodifiableList(r);
+		return r.build();
 	}
 
 	@Override

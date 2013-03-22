@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.common;
 
+import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
@@ -10,7 +11,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -117,7 +117,7 @@ public final class MessageConstraint {
 	 * @return
 	 */
 	public static List<MessageConstraint> findConstraints(Worker<?, ?> graph) {
-		List<MessageConstraint> mc = new ArrayList<>();
+		ImmutableList.Builder<MessageConstraint> mc = ImmutableList.builder();
 		List<Worker<?, ?>> workers = new ArrayList<>();
 		workers.add(graph);
 		workers.addAll(Workers.getAllSuccessors(graph));
@@ -125,11 +125,11 @@ public final class MessageConstraint {
 		//once per class, no matter how many instances are in the stream graph.
 		//If a class doesn't send messages, it maps to an empty list, and we do
 		//nothing in the loop below.
-		Map<Class<?>, List<WorkerData>> workerDataCache = new HashMap<>();
+		Map<Class<?>, ImmutableList<WorkerData>> workerDataCache = new HashMap<>();
 		Map<Edge, SDEPData> sdepCache = new HashMap<>();
 
 		for (Worker<?, ?> sender : workers) {
-			List<WorkerData> datas = workerDataCache.get(sender.getClass());
+			ImmutableList<WorkerData> datas = workerDataCache.get(sender.getClass());
 			if (datas == null) {
 				datas = buildWorkerData(sender);
 				workerDataCache.put(sender.getClass(), datas);
@@ -149,7 +149,7 @@ public final class MessageConstraint {
 			}
 		}
 
-		return Collections.unmodifiableList(mc);
+		return mc.build();
 	}
 
 	//<editor-fold defaultstate="collapsed" desc="WorkerData building (bytecode parsing)">
@@ -199,13 +199,13 @@ public final class MessageConstraint {
 		}
 	}
 
-	private static List<WorkerData> buildWorkerData(Worker<?, ?> worker) {
+	private static ImmutableList<WorkerData> buildWorkerData(Worker<?, ?> worker) {
 		Class<?> klass = worker.getClass();
 		//A worker can only send messages if it has a Portal field, and most
 		//workers with Portal fields will send messages, so this is an efficient
 		//and useful test to avoid the bytecode parse.
 		if (!hasPortalField(worker.getClass()))
-			return Collections.emptyList();
+			return ImmutableList.of();
 		return parseBytecodes(klass);
 	}
 
@@ -229,7 +229,7 @@ public final class MessageConstraint {
 	 * @param klass
 	 * @return
 	 */
-	private static List<WorkerData> parseBytecodes(Class<?> klass) {
+	private static ImmutableList<WorkerData> parseBytecodes(Class<?> klass) {
 		ClassReader r = null;
 		try {
 			r = new ClassReader(klass.getName());
@@ -241,7 +241,7 @@ public final class MessageConstraint {
 		r.accept(wcv, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
 		MethodNode mn = wcv.getWorkMethodNode();
 
-		List<WorkerData> workerDatas = new ArrayList<>();
+		ImmutableList.Builder<WorkerData> workerDatas = ImmutableList.builder();
 		for (AbstractInsnNode insn = mn.instructions.getFirst(); insn != null; insn = insn.getNext()) {
 			if (insn instanceof MethodInsnNode) {
 				MethodInsnNode call = (MethodInsnNode)insn;
@@ -250,7 +250,7 @@ public final class MessageConstraint {
 			}
 		}
 
-		return workerDatas.isEmpty() ? Collections.<WorkerData>emptyList() : Collections.unmodifiableList(workerDatas);
+		return workerDatas.build();
 	}
 
 	/**
