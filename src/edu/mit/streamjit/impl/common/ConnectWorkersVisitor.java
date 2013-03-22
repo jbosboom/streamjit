@@ -27,12 +27,16 @@ import java.util.List;
  * visitor will attempt to create channels for overall stream graph input and
  * output if they don't already exist.
  *
+ * Provided the stream graph is not structurally modified (elements not added,
+ * removed or reordered), it is safe to use instances of ConnectWorkersVisitor
+ * to visit the graph multiple times, for example, to create channels when
+ * previous visitations did not (by returning null from
+ * ChannelFactory.makeChannel()).  It can be useful to visit once to set up
+ * predecessor/successor relationships, build more data structures, then use
+ * those data structures to decide what type of channel to create.
+ *
  * This class uses lots of raw types to avoid having to recapture the
  * unbounded wildcards all the time.
- *
- * TODO: this should be split into two visitors, one that just connects (in
- * impl.common) and one that adds channels (in impl.interp).  Maybe more
- * generally a "for every pred-succ pair" worker?
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 1/23/2013 (originally internal to DebugStreamCompiler)
  */
@@ -195,13 +199,25 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 	}
 
 	private void connect(Worker upstream, Worker downstream) {
-		Channel c = channelFactory.makeChannel(upstream, downstream);
-		if (c != null) {
+		assert upstream != null && downstream != null;
+		if (upstream != null && downstream != null && !Workers.getSuccessors(upstream).contains(downstream)) {
+			assert !Workers.getPredecessors(downstream).contains(upstream) : "Already connected in one direction only?";
+			//The channel may be null.  That's okay.
+			Channel c = channelFactory.makeChannel(upstream, downstream);
 			Workers.addSuccessor(upstream, downstream, c);
 			Workers.addPredecessor(downstream, upstream, c);
-		} else {
-			Workers.getSuccessors(upstream).add(downstream);
-			Workers.getPredecessors(downstream).add(upstream);
+			return;
+		}
+
+		//We've already connected them, but maybe we should make a channel.
+		int upIdx = Workers.getSuccessors(upstream).indexOf(downstream);
+		int downIdx = Workers.getPredecessors(downstream).indexOf(upstream);
+		if (Workers.getOutputChannels(upstream).get(upIdx) == null) {
+			assert Workers.getInputChannels(downstream).get(downIdx) == null : "Channel in one direction only?";
+			//The channel may be null.  That's okay -- replace null with null.
+			Channel c = channelFactory.makeChannel(upstream, downstream);
+			Workers.getOutputChannels(upstream).set(upIdx, c);
+			Workers.getInputChannels(downstream).set(downIdx, c);
 		}
 	}
 
