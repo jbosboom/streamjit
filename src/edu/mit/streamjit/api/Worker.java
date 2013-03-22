@@ -135,11 +135,11 @@ public abstract class Worker<I, O> implements StreamElement<I, O> {
 		messages.add(insertionPoint, message);
 	}
 
-	public int getIdentifier() {
+	int getIdentifier() {
 		return identifier;
 	}
 
-	public void setIdentifier(int identifier) {
+	void setIdentifier(int identifier) {
 		this.identifier = identifier;
 	}
 
