@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.common;
 
+import com.google.common.collect.ImmutableSet;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.interp.Message;
@@ -83,6 +84,20 @@ public abstract class Workers {
 			frontier.addAll(Workers.getSuccessors(cur));
 		}
 		return Collections.unmodifiableSet(closed);
+	}
+
+	/**
+	 * Returns a set of all workers in the stream graph that this worker is
+	 * part of, including the worker itself.
+	 * @param worker a worker
+	 * @return a set of all workers in the stream graph
+	 */
+	public static ImmutableSet<Worker<?, ?>> getAllWorkersInGraph(Worker<?, ?> worker) {
+		return ImmutableSet.<Worker<?, ?>>builder()
+				.add(worker)
+				.addAll(getAllPredecessors(worker))
+				.addAll(getAllSuccessors(worker))
+				.build();
 	}
 
 	public enum StreamPosition {
