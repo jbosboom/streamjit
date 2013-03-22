@@ -65,7 +65,7 @@ public abstract class Worker<I, O> implements StreamElement<I, O> {
 	private int identifier = -1;
 
 	void addPredecessor(Worker<?, ? extends I> predecessor, Channel<? extends I> channel) {
-		if (predecessor == null || channel == null)
+		if (predecessor == null)
 			throw new NullPointerException();
 		if (predecessor == this)
 			throw new IllegalArgumentException();
@@ -73,7 +73,7 @@ public abstract class Worker<I, O> implements StreamElement<I, O> {
 		inputChannels.add(channel);
 	}
 	void addSuccessor(Worker<? super O, ?> successor, Channel<? super O> channel) {
-		if (successor == null || channel == null)
+		if (successor == null)
 			throw new NullPointerException();
 		if (successor == this)
 			throw new IllegalArgumentException();
