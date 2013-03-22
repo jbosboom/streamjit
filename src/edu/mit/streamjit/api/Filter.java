@@ -1,8 +1,7 @@
 package edu.mit.streamjit.api;
 
+import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.impl.common.Workers;
-import java.util.Collections;
-import java.util.List;
 
 /**
  *
@@ -57,18 +56,18 @@ public abstract class Filter<I, O> extends Worker<I, O> implements OneToOneEleme
 	}
 
 	@Override
-	public final List<Rate> getPeekRates() {
-		return Collections.singletonList(peekRate);
+	public final ImmutableList<Rate> getPeekRates() {
+		return ImmutableList.of(peekRate);
 	}
 
 	@Override
-	public final List<Rate> getPopRates() {
-		return Collections.singletonList(popRate);
+	public final ImmutableList<Rate> getPopRates() {
+		return ImmutableList.of(popRate);
 	}
 
 	@Override
-	public final List<Rate> getPushRates() {
-		return Collections.singletonList(pushRate);
+	public final ImmutableList<Rate> getPushRates() {
+		return ImmutableList.of(pushRate);
 	}
 
 	/**

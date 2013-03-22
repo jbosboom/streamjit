@@ -1,5 +1,6 @@
 package edu.mit.streamjit.api;
 
+import com.google.common.collect.ImmutableList;
 import java.util.Collections;
 import java.util.List;
 
@@ -41,14 +42,14 @@ public final class RoundrobinSplitter<T> extends Splitter<T, T> {
 	}
 
 	@Override
-	public List<Rate> getPeekRates() {
+	public ImmutableList<Rate> getPeekRates() {
 		//We don't peek.
-		return Collections.singletonList(Rate.create(0));
+		return ImmutableList.of(Rate.create(0));
 	}
 
 	@Override
-	public List<Rate> getPopRates() {
-		return Collections.singletonList(Rate.create(itemsPerExecution*outputs()));
+	public ImmutableList<Rate> getPopRates() {
+		return ImmutableList.of(Rate.create(itemsPerExecution*outputs()));
 	}
 
 	@Override

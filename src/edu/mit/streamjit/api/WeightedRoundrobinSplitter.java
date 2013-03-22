@@ -1,5 +1,6 @@
 package edu.mit.streamjit.api;
 
+import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,11 +53,11 @@ public final class WeightedRoundrobinSplitter<T> extends Splitter<T, T> {
 	}
 
 	@Override
-	public List<Rate> getPopRates() {
+	public ImmutableList<Rate> getPopRates() {
 		int sum = 0;
 		for (int w : weights)
 			sum += w;
-		return Collections.singletonList(Rate.create(sum));
+		return ImmutableList.of(Rate.create(sum));
 	}
 
 	@Override

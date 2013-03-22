@@ -1,5 +1,6 @@
 package edu.mit.streamjit.api;
 
+import com.google.common.collect.ImmutableList;
 import java.util.Collections;
 import java.util.List;
 
@@ -44,8 +45,8 @@ public final class RoundrobinJoiner<T> extends Joiner<T, T> {
 	}
 
 	@Override
-	public List<Rate> getPushRates() {
-		return Collections.singletonList(Rate.create(itemsPerExecution*inputs()));
+	public ImmutableList<Rate> getPushRates() {
+		return ImmutableList.of(Rate.create(itemsPerExecution*inputs()));
 	}
 
 	@Override
