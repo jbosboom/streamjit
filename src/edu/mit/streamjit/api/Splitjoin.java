@@ -28,7 +28,7 @@ public class Splitjoin<I, O> implements OneToOneElement<I, O> {
 		//If the splitter and joiner want different numbers of inputs and
 		//outputs, and one of them isn't allowing any number, the combination is
 		//invalid.
-		if (splitOuts != joinIns && (splitOuts != Splitter.UNLIMITED || joinIns != Joiner.UNLIMITED))
+		if (splitOuts != joinIns && (splitOuts != Splitter.UNLIMITED && joinIns != Joiner.UNLIMITED))
 			throw new IllegalArgumentException(String.format("Splitter produces %d outputs but joiner consumes %d inputs", splitOuts, joinIns));
 		//TODO: these checks must be deferred until we're ready to go
 //		if (splitOuts != Splitter.UNLIMITED && splitOuts != elems)
