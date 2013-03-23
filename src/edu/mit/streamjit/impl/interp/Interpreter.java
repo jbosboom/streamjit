@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.interp;
 
+import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -7,9 +8,9 @@ import com.google.common.collect.Iterables;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
-import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -45,9 +46,9 @@ import java.util.Set;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/22/2013
  */
-public class Interpreter {
+public class Interpreter implements Blob {
 	private final ImmutableSet<Worker<?, ?>> workers, sinks;
-	private final ImmutableMap<Token, IOChannel> ioChannels;
+	private final ImmutableMap<Token, Channel<?>> inputChannels, outputChannels;
 	/**
 	 * Maps workers to all constraints of which they are recipients.
 	 */
@@ -74,8 +75,8 @@ public class Interpreter {
 			constraintList.add(constraint);
 		}
 
-		ImmutableMap.Builder<Token, IOChannel> ioChannelsBuilder = ImmutableMap.builder();
-		int channelNo = 0;
+		ImmutableMap.Builder<Token, Channel<?>> inputChannelsBuilder = ImmutableMap.builder();
+		ImmutableMap.Builder<Token, Channel<?>> outputChannelsBuilder = ImmutableMap.builder();
 		for (Worker<?, ?> worker : workers) {
 			List<Channel<?>> inChannels = ImmutableList.<Channel<?>>builder().addAll(Workers.getInputChannels(worker)).build();
 			ImmutableList<Worker<?, ?>> preds = ImmutableList.<Worker<?, ?>>builder().addAll(Workers.getPredecessors(worker)).build();
@@ -85,10 +86,9 @@ public class Interpreter {
 				Worker<?, ?> pred = Iterables.get(preds, i, null);
 				//Null is "not in stream graph section" (so this works).
 				if (!workers.contains(pred)) {
-					Token token = new Token(channelNo++);
+					Token token = pred == null ? Token.createOverallInputToken(worker) : new Token(pred, worker);
 					Channel<?> channel = inChannels.get(i);
-					IOChannel iochannel = new IOChannel(channel, pred, worker, true);
-					ioChannelsBuilder.put(token, iochannel);
+					inputChannelsBuilder.put(token, channel);
 				}
 			}
 
@@ -100,27 +100,45 @@ public class Interpreter {
 				Worker<?, ?> succ = Iterables.get(succs, i, null);
 				//Null is "not in stream graph section" (so this works).
 				if (!workers.contains(succ)) {
-					Token token = new Token(channelNo++);
+					Token token = succ == null ? Token.createOverallOutputToken(worker) : new Token(worker, succ);
 					Channel<?> channel = outChannels.get(i);
-					IOChannel iochannel = new IOChannel(channel, worker, succ, false);
-					ioChannelsBuilder.put(token, iochannel);
+					outputChannelsBuilder.put(token, channel);
 				}
 			}
 		}
-		this.ioChannels = ioChannelsBuilder.build();
+		this.inputChannels = inputChannelsBuilder.build();
+		this.outputChannels = outputChannelsBuilder.build();
 	}
 
-	/**
-	 * Returns an immutable set of the workers in this Interpreter's stream
-	 * graph section.
-	 * @return an immutable set of the workers this Interpreter will execute
-	 */
+	@Override
 	public ImmutableSet<Worker<?, ?>> getWorkers() {
 		return workers;
 	}
 
-	public ImmutableMap<Token, IOChannel> getChannels() {
-		return ioChannels;
+	@Override
+	public Map<Token, Channel<?>> getInputChannels() {
+		return inputChannels;
+	}
+
+	@Override
+	public Map<Token, Channel<?>> getOutputChannels() {
+		return outputChannels;
+	}
+
+	@Override
+	public int getCoreCount() {
+		return 1;
+	}
+
+	@Override
+	public Runnable getCoreCode(int core) {
+		checkElementIndex(core, getCoreCount());
+		return new Runnable() {
+			@Override
+			public void run() {
+				interpret();
+			}
+		};
 	}
 
 	/**
@@ -239,58 +257,4 @@ public class Interpreter {
 	 * @param worker the worker that just fired
 	 */
 	protected void afterFire(Worker<?, ?> worker) {}
-
-	/**
-	 * A Token identifies an input or output of this interpreter instance.
-	 */
-	public static class Token implements Serializable {
-		private static final long serialVersionUID = 1L;
-		private final int id;
-		private Token(int id) {
-			this.id = id;
-		}
-	}
-
-	/**
-	 * An IOChannel contains information about an input or output channel of
-	 * this interpreter.
-	 */
-	public static class IOChannel {
-		private final Channel<?> channel;
-		private final Worker<?, ?> upstream, downstream;
-		private final boolean isInput;
-		private IOChannel(Channel<?> channel, Worker<?, ?> upstream, Worker<?, ?> downstream, boolean isInput) {
-			this.channel = channel;
-			this.upstream = upstream;
-			this.downstream = downstream;
-			this.isInput = isInput;
-		}
-		public Channel<?> getChannel() {
-			return channel;
-		}
-		/**
-		 * Returns the worker that puts input into this channel, or null if this
-		 * channel is the overall input to the stream graph.
-		 * @return the worker that puts input into this channel, or null if this
-		 * channel is the overall input to the stream graph.
-		 */
-		public Worker<?, ?> getUpstreamWorker() {
-			return upstream;
-		}
-		/**
-		 * Returns the worker that takes output from this channel, or null if
-		 * this channel is the overall output of the stream graph.
-		 * @return the worker that takes output from this channel, or null if
-		 * this channel is the overall output of the stream graph.
-		 */
-		public Worker<?, ?> getDownstreamWorker() {
-			return downstream;
-		}
-		public boolean isInput() {
-			return isInput;
-		}
-		public boolean isOutput() {
-			return !isInput();
-		}
-	}
 }

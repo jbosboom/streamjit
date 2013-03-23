@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.interp;
 
+import com.google.common.collect.Iterables;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.api.Portal;
@@ -16,7 +17,6 @@ import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.interp.Interpreter.IOChannel;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -96,13 +96,8 @@ public class DebugStreamCompiler implements StreamCompiler {
 			//avoid blocking in drain(), but we only have one thread.
 			interpreter.interpret();
 			//We need to see if any elements were left undrained.
-			assert interpreter.getChannels().size() == 2 : interpreter.getChannels();
-			Channel<?> inputChannel = null, outputChannel = null;
-			for (IOChannel c : interpreter.getChannels().values())
-				if (c.isInput())
-					inputChannel = c.getChannel();
-				else
-					outputChannel = c.getChannel();
+			Channel<?> inputChannel = Iterables.getOnlyElement(interpreter.getInputChannels().values());
+			Channel<?> outputChannel = Iterables.getOnlyElement(interpreter.getOutputChannels().values());
 			UndrainedVisitor v = new UndrainedVisitor(inputChannel, outputChannel);
 			finishedDraining(v.isFullyDrained());
 		}
