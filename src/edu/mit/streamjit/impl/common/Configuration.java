@@ -3,7 +3,9 @@ package edu.mit.streamjit.impl.common;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Strings;
 import com.google.common.collect.BoundType;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Range;
 import java.io.Serializable;
 import java.util.HashMap;
@@ -177,6 +179,24 @@ public final class Configuration {
 	}
 
 	/**
+	 * Gets the generic parameter with the given name cast to the given
+	 * parameter type (including checking the type parameter type), or null if
+	 * this configuration doesn't contain a parameter with that name.  If this
+	 * configuration does have a parameter with that name but of a different
+	 * type or with a different type parameter type,
+	 */
+	public <U, T extends GenericParameter<?>, V extends GenericParameter<U>> V getParameter(String name, Class<T> parameterType, Class<U> typeParameterType) {
+		T parameter = getParameter(name, parameterType);
+		//This must be an exact match.
+		if (parameter.getGenericParameter() != typeParameterType)
+			throw new ClassCastException("Type parameter type mismatch: "+parameter.getGenericParameter() +" != "+typeParameterType);
+		//Due to the checks above, this is safe.
+		@SuppressWarnings("unchecked")
+		V retval = (V)parameter;
+		return retval;
+	}
+
+	/**
 	 * Returns an immutable mapping of subconfiguration names to the
 	 * subconfigurations of this configuration.
 	 * @return an immutable mapping of the subconfigurations of this
@@ -205,6 +225,19 @@ public final class Configuration {
 	 */
 	public interface Parameter extends Serializable {
 		public String getName();
+	}
+
+	/**
+	 * A GenericParameter is a Parameter with a type parameter. (The name
+	 * GenericParameter was chosen in preference to ParameterizedParameter.)
+	 *
+	 * This interface isn't particularly interesting in and of itself; it mostly
+	 * exists to make the Configuration.getParameter(String, Class<T>, Class<U>)
+	 * overload have the proper (and checked) return type.
+	 * @param <T>
+	 */
+	public interface GenericParameter<T> extends Parameter {
+		public Class<?> getGenericParameter();
 	}
 
 	/**
@@ -292,6 +325,141 @@ public final class Configuration {
 		@Override
 		public String toString() {
 			return String.format("[%s: %d in %s]", name, value, range);
+		}
+	}
+
+	/**
+	 * A SwitchParameter represents a choice of one of some universe of objects.
+	 * For example, a SwitchParameter<Boolean> is a simple on-off flag, while a
+	 * SwitchParameter<ChannelFactory> represents a choice of factories.
+	 *
+	 * The autotuner assumes there's no numeric relationship between the objects
+	 * in the universe, in contrast to IntParameter, for which it will try to
+	 * fit a model.
+	 *
+	 * The order of a SwitchParameter's universe is relevant for equals() and
+	 * hashCode() and correct operation of the autotuner.  (To the autotuner, a
+	 * SwitchParameter is just an integer between 0 and the universe size; if
+	 * the order of the universe changes, the meaning of that integer changes
+	 * and the autotuner will get confused.)
+	 *
+	 * Objects put into SwitchParameters must implements equals() and hashCode()
+	 * for SwitchParameter's equals() and hashCode() methods to work correctly.
+	 * Objects put into SwitchParameters must be immutable.
+	 *
+	 * To the extent possible, the type T should not itself contain type
+	 * parameters.  Consider defining a new class or interface that fixes the
+	 * type parameters.
+	 *
+	 * TODO: restrictions required for JSON representation: toString() and
+	 * fromString/valueOf/String ctor, fallback to base64 encoded Serializable,
+	 * etc; List/Set etc. not good unless contains only one type (e.g.,
+	 * List<String> can be handled okay)
+	 * @param <T>
+	 */
+	public static class SwitchParameter<T> implements GenericParameter<Boolean> {
+		private static final long serialVersionUID = 1L;
+		private final String name;
+		/**
+		 * The type of elements in this SwitchParameter.
+		 */
+		private final Class<T> type;
+		/**
+		 * The universe of this SwitchParameter -- must not contain any
+		 * duplicate elements.
+		 */
+		private final ImmutableList<T> universe;
+		/**
+		 * The index of the value in the universe.  Note that most of the
+		 * interface prefers to work with Ts rather than values.
+		 */
+		private final int value;
+
+		/**
+		 * Create a new SwitchParameter with the given type, value, and
+		 * universe.  The universe must contain at least one element, contain no
+		 * duplicate elements, and contain the value.
+		 *
+		 * The type must be provided explicitly, rather than being inferred as
+		 * value.getClass(), as value might be of a more-derived type than the
+		 * elements in the universe.
+		 * @param name the name of this parameter
+		 * @param type the type of the universe
+		 * @param value the value of this parameter
+		 * @param universe the universe of possible values of this parameter
+		 */
+		public SwitchParameter(String name, Class<T> type, T value, Iterable<? extends T> universe) {
+			this.name = checkNotNull(Strings.emptyToNull(name));
+			this.type = checkNotNull(type);
+			int size = 0;
+			ImmutableSet.Builder<T> builder = ImmutableSet.builder();
+			for (T t : universe) {
+				builder.add(t);
+				++size;
+			}
+			ImmutableSet<T> set = builder.build();
+			checkArgument(set.size() == size, "universe contains duplicate elements");
+			//A single element universe is permitted, through not particularly
+			//useful.
+			checkArgument(set.size() == 0, "empty universe");
+			this.universe = set.asList();
+			this.value = checkElementIndex(this.universe.indexOf(value), this.universe.size(), "value not in universe");
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public Class<T> getGenericParameter() {
+			return type;
+		}
+
+		/**
+		 * Gets this parameter's value.
+		 * @return this parameter's value
+		 */
+		public T getValue() {
+			return universe.get(value);
+		}
+
+		/**
+		 * Gets the universe of possible values for this parameter.
+		 * @return the universe of possible values for this parameter
+		 */
+		public ImmutableList<T> getUniverse() {
+			return universe;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			final SwitchParameter<?> other = (SwitchParameter<?>)obj;
+			if (!Objects.equals(this.type, other.type))
+				return false;
+			if (!Objects.equals(this.universe, other.universe))
+				return false;
+			if (this.value != other.value)
+				return false;
+			return true;
+		}
+
+		@Override
+		public int hashCode() {
+			int hash = 7;
+			hash = 47 * hash + Objects.hashCode(this.type);
+			hash = 47 * hash + Objects.hashCode(this.universe);
+			hash = 47 * hash + this.value;
+			return hash;
+		}
+
+		@Override
+		public String toString() {
+			return String.format("[%s: %s (index %d) of %s]", name, getValue(), value, universe);
 		}
 	}
 }
