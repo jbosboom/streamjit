@@ -8,6 +8,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Range;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -404,6 +405,17 @@ public final class Configuration {
 			checkArgument(set.size() == 0, "empty universe");
 			this.universe = set.asList();
 			this.value = checkElementIndex(this.universe.indexOf(value), this.universe.size(), "value not in universe");
+		}
+
+		/**
+		 * Creates a new SwitchParameter<Boolean> with the given name and value.
+		 * The universe is [false, true].
+		 * @param name the name of this parameter
+		 * @param value the value of this parameter (true or false)
+		 * @return a new SwitchParameter<Boolean> with the given name and value
+		 */
+		public static SwitchParameter<Boolean> create(String name, boolean value) {
+			return new SwitchParameter<>(name, Boolean.class, value, Arrays.asList(false, true));
 		}
 
 		@Override
