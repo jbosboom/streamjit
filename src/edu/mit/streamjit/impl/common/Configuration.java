@@ -8,10 +8,17 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Range;
 import java.io.Serializable;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
+import javax.json.JsonValue;
+import javax.json.JsonWriter;
 
 /**
  * A Configuration contains parameters that can be manipulated by the autotuner
@@ -144,6 +151,56 @@ public final class Configuration {
 		return new Builder();
 	}
 
+	public static Configuration fromJson(String json) {
+		return parseConfigurationJson(Json.createReader(new StringReader(json)).readObject());
+	}
+
+	private static Configuration parseConfigurationJson(JsonObject configObj) {
+		//TODO: decide on an exception type for error reporting
+		JsonObject parametersObj = checkNotNull(configObj.getJsonObject("params"));
+		JsonObject subconfigurationsObj = checkNotNull(configObj.getJsonObject("subconfigs"));
+		Builder builder = builder();
+		for (Map.Entry<String, JsonValue> param : parametersObj.entrySet()) {
+			builder.addParameter(parseParameterJson((JsonObject)param.getValue()));
+		}
+		for (Map.Entry<String, JsonValue> subconfiguration : subconfigurationsObj.entrySet()) {
+			builder.addSubconfiguration(subconfiguration.getKey(), parseConfigurationJson((JsonObject)subconfiguration.getValue()));
+		}
+		return builder.build();
+	}
+
+	private static Parameter parseParameterJson(JsonObject paramObj) {
+		switch (paramObj.getString("type")) {
+			case "int":
+				return IntParameter.parseJson(paramObj);
+			case "switch":
+				return SwitchParameter.parseJson(paramObj);
+			default:
+				throw new RuntimeException("Unrecognized type: "+paramObj.getString("type"));
+		}
+	}
+
+	public String toJson() {
+		StringWriter string = new StringWriter();
+		try (JsonWriter writer = Json.createWriter(string)) {
+			writer.write(toJsonObject());
+		}
+		return string.toString();
+	}
+
+	private JsonObject toJsonObject() {
+		JsonObjectBuilder paramsBuilder = Json.createObjectBuilder();
+		for (Map.Entry<String, Parameter> param : parameters.entrySet())
+			paramsBuilder.add(param.getKey(), param.getValue().toJsonObject());
+		JsonObjectBuilder subconfigsBuilder = Json.createObjectBuilder();
+		for (Map.Entry<String, Configuration> subconfig : subconfigurations.entrySet())
+			subconfigsBuilder.add(subconfig.getKey(), subconfig.getValue().toJsonObject());
+		return Json.createObjectBuilder()
+				.add("params", paramsBuilder)
+				.add("subconfigs", subconfigsBuilder)
+				.build();
+	}
+
 	/**
 	 * Returns an immutable mapping of parameter names to the parameters in this
 	 * configuration.
@@ -226,6 +283,9 @@ public final class Configuration {
 	 */
 	public interface Parameter extends Serializable {
 		public String getName();
+		//TODO: this doesn't really belong here, it's an impl detail, and will
+		//be removed when we switch to ServiceLoader-found parsers/writers.
+		public JsonObject toJsonObject();
 	}
 
 	/**
@@ -283,6 +343,23 @@ public final class Configuration {
 			this.range = range;
 			checkArgument(range.contains(value));
 			this.value = value;
+		}
+		private static IntParameter parseJson(JsonObject paramObj) {
+			String name = paramObj.getString("name");
+			int min = paramObj.getJsonNumber("min").intValueExact();
+			int max = paramObj.getJsonNumber("max").intValueExact();
+			int value = paramObj.getJsonNumber("value").intValueExact();
+			return new IntParameter(name, min, max, value);
+		}
+		@Override
+		public JsonObject toJsonObject() {
+			return Json.createObjectBuilder()
+					.add("type", "int")
+					.add("name", getName())
+					.add("min", range.lowerEndpoint())
+					.add("max", range.upperEndpoint())
+					.add("value", value)
+					.build();
 		}
 		@Override
 		public String getName() {
@@ -418,6 +495,15 @@ public final class Configuration {
 			return new SwitchParameter<>(name, Boolean.class, value, Arrays.asList(false, true));
 		}
 
+		private static Parameter parseJson(JsonObject paramObj) {
+			throw new UnsupportedOperationException("TODO: SwitchParameter.parseJson()");
+		}
+
+		@Override
+		public JsonObject toJsonObject() {
+			throw new UnsupportedOperationException("TODO: SwitchParamter.toJsonObject");
+		}
+
 		@Override
 		public String getName() {
 			return name;
@@ -473,5 +559,15 @@ public final class Configuration {
 		public String toString() {
 			return String.format("[%s: %s (index %d) of %s]", name, getValue(), value, universe);
 		}
+	}
+
+	public static void main(String[] args) {
+		Configuration.Builder builder = Configuration.builder();
+		builder.addParameter(new IntParameter("foo", 0, 10, 8));
+		Configuration cfg1 = builder.build();
+		builder.addSubconfiguration("cfg1", cfg1);
+		Configuration cfg2 = builder.build();
+		System.out.println(cfg2.toJson());
+		System.out.println(Configuration.fromJson(cfg2.toJson()).toJson());
 	}
 }
