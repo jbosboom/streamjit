@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import edu.mit.streamjit.impl.common.Workers.StreamPosition;
+import edu.mit.streamjit.util.ReflectionUtils;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
@@ -207,16 +208,9 @@ public final class MessageConstraint {
 	}
 
 	private static boolean hasPortalField(Class<?> klass) {
-		while (klass != null) {
-			for (Field f : klass.getDeclaredFields())
-				if (f.getType().equals(Portal.class))
-					return true;
-			for (Class<?> i : klass.getInterfaces())
-				for (Field f : i.getDeclaredFields())
-					if (f.getType().equals(Portal.class))
-						return true;
-			klass = klass.getSuperclass();
-		}
+		for (Field f : ReflectionUtils.getAllFields(klass))
+			if (f.getType().equals(Portal.class))
+				return true;
 		return false;
 	}
 
