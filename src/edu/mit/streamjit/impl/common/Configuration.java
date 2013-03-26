@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import javax.json.Json;
+import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonValue;
@@ -510,6 +511,45 @@ public final class Configuration {
 			return new SwitchParameter<>(name, Boolean.class, value, Arrays.asList(false, true));
 		}
 
+		protected static class SwitchParameterJsonifier implements Jsonifier<SwitchParameter<?>>, JsonifierFactory {
+			public SwitchParameterJsonifier() {}
+			@Override
+			@SuppressWarnings({"unchecked", "rawtypes"})
+			public SwitchParameter<?> fromJson(JsonValue jsonvalue) {
+				JsonObject obj = Jsonifiers.checkClassEqual(jsonvalue, SwitchParameter.class);
+				String name = obj.getString("name");
+				Class<?> universeType = Jsonifiers.fromJson(obj.get("universeType"), Class.class);
+				ImmutableList.Builder<Object> builder = ImmutableList.builder();
+				for (JsonValue v : obj.getJsonArray("universe"))
+					builder.add(Jsonifiers.fromJson(v, universeType));
+				ImmutableList<?> universe = builder.build();
+				//We should have caught this in fromJson(v, universeType).
+				assert Jsonifiers.notHeapPolluted(universe, universeType);
+				int value = obj.getInt("value");
+				return new SwitchParameter(name, universeType, universe.get(value), universe);
+			}
+
+			@Override
+			public JsonValue toJson(SwitchParameter<?> t) {
+				JsonArrayBuilder universe = Json.createArrayBuilder();
+				for (Object o : t.universe)
+					universe.add(Jsonifiers.toJson(o));
+				return Json.createObjectBuilder()
+						.add("class", Jsonifiers.toJson(SwitchParameter.class))
+						.add("name", t.getName())
+						.add("universeType", Jsonifiers.toJson(t.type))
+						.add("universe", universe)
+						.add("value", t.value)
+						.build();
+			}
+
+			@Override
+			@SuppressWarnings("unchecked")
+			public <T> Jsonifier<T> getJsonifier(Class<T> klass) {
+				return (Jsonifier<T>)(klass.equals(SwitchParameter.class) ? this : null);
+			}
+		}
+
 		@Override
 		public String getName() {
 			return name;
@@ -570,6 +610,7 @@ public final class Configuration {
 	public static void main(String[] args) {
 		Configuration.Builder builder = Configuration.builder();
 		builder.addParameter(new IntParameter("foo", 0, 10, 8));
+		builder.addParameter(SwitchParameter.create("bar", true));
 		Configuration cfg1 = builder.build();
 		builder.addSubconfiguration("cfg1", cfg1);
 		Configuration cfg2 = builder.build();
