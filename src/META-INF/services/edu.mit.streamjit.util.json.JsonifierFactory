@@ -1,0 +1,6 @@
+# JsonifierFactory implementations are queried in the order they are listed in
+# this file.  Implementations specific to particular types or families of types
+# should be listed prior to generic implementations.
+edu.mit.streamjit.util.json.PrimitiveJsonifierFactory
+edu.mit.streamjit.impl.common.Configuration$ConfigurationJsonifier
+edu.mit.streamjit.impl.common.Configuration$IntParameter$IntParameterJsonifier
