@@ -494,7 +494,7 @@ public final class Configuration {
 			checkArgument(set.size() == size, "universe contains duplicate elements");
 			//A single element universe is permitted, through not particularly
 			//useful.
-			checkArgument(set.size() == 0, "empty universe");
+			checkArgument(set.size() > 0, "empty universe");
 			this.universe = set.asList();
 			this.value = checkElementIndex(this.universe.indexOf(value), this.universe.size(), "value not in universe");
 		}
