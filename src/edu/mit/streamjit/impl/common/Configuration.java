@@ -1,22 +1,35 @@
 package edu.mit.streamjit.impl.common;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Strings;
 import com.google.common.collect.BoundType;
+import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
+import com.google.common.primitives.Ints;
+import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.util.json.Jsonifier;
 import edu.mit.streamjit.util.json.JsonifierFactory;
 import edu.mit.streamjit.util.json.Jsonifiers;
 import java.io.Serializable;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
@@ -604,6 +617,270 @@ public final class Configuration {
 		@Override
 		public String toString() {
 			return String.format("[%s: %s (index %d) of %s]", name, getValue(), value, universe);
+		}
+	}
+
+	/**
+	 * A PartitionParameter represents a partitioning of a stream graph
+	 * (workers) into Blobs, the kind of those Blobs, and the mapping of Blobs
+	 * to cores on machines.
+	 * <p/>
+	 * For the purposes of this class, machines are considered distinct, but
+	 * cores on the same machine are not.
+	 */
+	public static class PartitionParameter implements Parameter {
+		private static final long serialVersionUID = 1L;
+		private final String name;
+		/**
+		 * The number of cores on each machine. Always contains at least one
+		 * element and all elements are always >= 1.
+		 */
+		private final ImmutableList<Integer> coresPerMachine;
+		/**
+		 * A list per machine of a list of blobs on that machine. The inner
+		 * lists are sorted.
+		 */
+		private final ImmutableList<ImmutableList<BlobSpecifier>> blobs;
+		/**
+		 * The BlobFactories that can be used to create blobs. This list
+		 * contains no duplicate elements.
+		 */
+		private final ImmutableList<BlobFactory> blobFactoryUniverse;
+		/**
+		 * The maximum identifier of a worker in the stream graph, used during
+		 * deserialization to check that all workers have been assigned to a
+		 * blob.
+		 */
+		private final int maxWorkerIdentifier;
+
+		/**
+		 * Only called by the builder.
+		 */
+		private PartitionParameter(String name, ImmutableList<Integer> coresPerMachine, ImmutableList<ImmutableList<BlobSpecifier>> blobs, ImmutableList<BlobFactory> blobFactoryUniverse, int maxWorkerIdentifier) {
+			this.name = name;
+			this.coresPerMachine = coresPerMachine;
+			this.blobs = blobs;
+			this.blobFactoryUniverse = blobFactoryUniverse;
+			this.maxWorkerIdentifier = maxWorkerIdentifier;
+		}
+
+		public static final class Builder {
+			private final String name;
+			private final ImmutableList<Integer> coresPerMachine;
+			private final int[] coresAvailable;
+			private final List<BlobFactory> blobFactoryUniverse = new ArrayList<>();
+			private final List<List<BlobSpecifier>> blobs = new ArrayList<>();
+			private final NavigableSet<Integer> workersInBlobs = new TreeSet<>();
+
+			private Builder(String name, ImmutableList<Integer> coresPerMachine) {
+				this.name = name;
+				this.coresPerMachine = coresPerMachine;
+				this.coresAvailable = Ints.toArray(this.coresPerMachine);
+				//You might think we can use Collections.nCopies() here, but
+				//that would mean all cores would share the same list!
+				for (int i = 0; i < coresPerMachine.size(); ++i)
+					blobs.add(new ArrayList<BlobSpecifier>());
+			}
+
+			public void addBlobFactory(BlobFactory factory) {
+				checkArgument(!blobFactoryUniverse.contains(checkNotNull(factory)), "blob factory already added");
+				blobFactoryUniverse.add(factory);
+			}
+
+			public void addBlob(int machine, int cores, BlobFactory blobFactory, Set<Worker<?, ?>> workers) {
+				checkElementIndex(machine, coresPerMachine.size());
+				checkArgument(cores <= coresAvailable[machine],
+						"allocating %s cores but only %s available on machine %s",
+						cores, coresAvailable[machine], machine);
+				checkArgument(blobFactoryUniverse.contains(blobFactory),
+						"blob factory %s not in universe %s", blobFactory, blobFactoryUniverse);
+				ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+				for (Worker<?, ?> worker : workers) {
+					int identifier = Workers.getIdentifier(worker);
+					checkArgument(identifier >= 0, "uninitialized worker identifier: %s", worker);
+					checkArgument(!workersInBlobs.contains(identifier), "worker %s already assigned to blob", worker);
+					builder.add(identifier);
+				}
+				ImmutableSortedSet<Integer> workerIdentifiers = builder.build();
+
+				//Okay, we've checked everything.  Commit.
+				blobs.get(machine).add(new BlobSpecifier(workerIdentifiers, machine, cores, blobFactory));
+				workersInBlobs.addAll(workerIdentifiers);
+				coresAvailable[machine] -= cores;
+			}
+
+			public PartitionParameter build() {
+				ImmutableList.Builder<ImmutableList<BlobSpecifier>> blobBuilder = ImmutableList.builder();
+				for (List<BlobSpecifier> list : blobs) {
+					Collections.sort(list);
+					blobBuilder.add(ImmutableList.copyOf(list));
+				}
+				return new PartitionParameter(name, coresPerMachine, blobBuilder.build(), ImmutableList.copyOf(blobFactoryUniverse), workersInBlobs.last());
+			}
+		}
+
+		public static Builder builder(String name, List<Integer> coresPerMachine) {
+			checkArgument(!coresPerMachine.isEmpty());
+			for (Integer i : coresPerMachine)
+				checkArgument(checkNotNull(i) >= 1);
+			return new Builder(checkNotNull(Strings.emptyToNull(name)), ImmutableList.copyOf(coresPerMachine));
+		}
+
+		public static Builder builder(String name, int... coresPerMachine) {
+			return builder(name, Ints.asList(coresPerMachine));
+		}
+
+		/**
+		 * A blob's properties.
+		 */
+		public static final class BlobSpecifier implements Comparable<BlobSpecifier> {
+			/**
+			 * The identifiers of the workers in this blob.
+			 */
+			private final ImmutableSortedSet<Integer> workerIdentifiers;
+			/**
+			 * The index of the machine this blob is on.
+			 */
+			private final int machine;
+			/**
+			 * The number of cores allocated to this blob.
+			 */
+			private final int cores;
+			/**
+			 * The BlobFactory to be used to create this blob.
+			 */
+			private final BlobFactory blobFactory;
+
+			private BlobSpecifier(ImmutableSortedSet<Integer> workerIdentifiers, int machine, int cores, BlobFactory blobFactory) {
+				this.workerIdentifiers = workerIdentifiers;
+				checkArgument(machine >= 0);
+				this.machine = machine;
+				checkArgument(cores >= 1, "all blobs must be assigned at least one core");
+				this.cores = cores;
+				this.blobFactory = blobFactory;
+			}
+
+			public ImmutableSortedSet<Integer> getWorkerIdentifiers() {
+				return workerIdentifiers;
+			}
+
+			public ImmutableSet<Worker<?, ?>> getWorkers(Worker<?, ?> streamGraph) {
+				ImmutableSet<Worker<?, ?>> allWorkers = Workers.getAllWorkersInGraph(streamGraph);
+				ImmutableMap<Integer, Worker<?, ?>> workersByIdentifier =
+						Maps.uniqueIndex(allWorkers, new Function<Worker<?, ?>, Integer>() {
+					@Override
+					public Integer apply(Worker<?, ?> input) {
+						return Workers.getIdentifier(input);
+					}
+				});
+				ImmutableSet.Builder<Worker<?, ?>> workersInBlob = ImmutableSet.builder();
+				for (Integer i : workerIdentifiers) {
+					Worker<?, ?> w = workersByIdentifier.get(i);
+					if (w == null)
+						throw new IllegalArgumentException("Identifier " + i + " not in given stream graph");
+					workersInBlob.add(w);
+				}
+				return workersInBlob.build();
+			}
+
+			public int getMachine() {
+				return machine;
+			}
+
+			public int getCores() {
+				return cores;
+			}
+
+			public BlobFactory getBlobFactory() {
+				return blobFactory;
+			}
+
+			@Override
+			public int hashCode() {
+				int hash = 3;
+				hash = 37 * hash + Objects.hashCode(this.workerIdentifiers);
+				hash = 37 * hash + this.machine;
+				hash = 37 * hash + this.cores;
+				hash = 37 * hash + Objects.hashCode(this.blobFactory);
+				return hash;
+			}
+
+			@Override
+			public boolean equals(Object obj) {
+				if (obj == null)
+					return false;
+				if (getClass() != obj.getClass())
+					return false;
+				final BlobSpecifier other = (BlobSpecifier)obj;
+				if (!Objects.equals(this.workerIdentifiers, other.workerIdentifiers))
+					return false;
+				if (this.machine != other.machine)
+					return false;
+				if (this.cores != other.cores)
+					return false;
+				if (!Objects.equals(this.blobFactory, other.blobFactory))
+					return false;
+				return true;
+			}
+
+			@Override
+			public int compareTo(BlobSpecifier o) {
+				//Worker identifiers are unique within the stream graph, so
+				//we can base our comparison on them.
+				return workerIdentifiers.first().compareTo(o.workerIdentifiers.first());
+			}
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		public int getMachineCount() {
+			return coresPerMachine.size();
+		}
+
+		public int getCoresOnMachine(int machine) {
+			return coresPerMachine.get(machine);
+		}
+
+		public ImmutableList<BlobSpecifier> getBlobsOnMachine(int machine) {
+			return blobs.get(machine);
+		}
+
+		public ImmutableList<BlobFactory> getBlobFactories() {
+			return blobFactoryUniverse;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			final PartitionParameter other = (PartitionParameter)obj;
+			if (!Objects.equals(this.name, other.name))
+				return false;
+			if (!Objects.equals(this.coresPerMachine, other.coresPerMachine))
+				return false;
+			if (!Objects.equals(this.blobs, other.blobs))
+				return false;
+			if (!Objects.equals(this.blobFactoryUniverse, other.blobFactoryUniverse))
+				return false;
+			if (this.maxWorkerIdentifier != other.maxWorkerIdentifier)
+				return false;
+			return true;
+		}
+
+		@Override
+		public int hashCode() {
+			int hash = 3;
+			hash = 61 * hash + Objects.hashCode(this.name);
+			hash = 61 * hash + Objects.hashCode(this.coresPerMachine);
+			hash = 61 * hash + Objects.hashCode(this.blobs);
+			hash = 61 * hash + Objects.hashCode(this.blobFactoryUniverse);
+			hash = 61 * hash + this.maxWorkerIdentifier;
+			return hash;
 		}
 	}
 
