@@ -5,4 +5,6 @@ edu.mit.streamjit.util.json.PrimitiveJsonifierFactory
 edu.mit.streamjit.impl.common.Configuration$ConfigurationJsonifier
 edu.mit.streamjit.impl.common.Configuration$IntParameter$IntParameterJsonifier
 edu.mit.streamjit.impl.common.Configuration$SwitchParameter$SwitchParameterJsonifier
+edu.mit.streamjit.impl.common.Configuration$PartitionParameter$PartitionParameterJsonifier
+edu.mit.streamjit.impl.common.Configuration$PartitionParameter$BlobSpecifier$BlobSpecifierJsonifier
 edu.mit.streamjit.util.json.StatelessJsonifierFactory

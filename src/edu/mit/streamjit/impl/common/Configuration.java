@@ -12,8 +12,11 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.primitives.Ints;
+import edu.mit.streamjit.api.Identity;
+import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.BlobFactory;
+import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.json.Jsonifier;
 import edu.mit.streamjit.util.json.JsonifierFactory;
 import edu.mit.streamjit.util.json.Jsonifiers;
@@ -760,6 +763,40 @@ public final class Configuration {
 				this.blobFactory = blobFactory;
 			}
 
+			protected static final class BlobSpecifierJsonifier implements Jsonifier<BlobSpecifier>, JsonifierFactory {
+				public BlobSpecifierJsonifier() {}
+				@Override
+				public BlobSpecifier fromJson(JsonValue value) {
+					//TODO: array serialization, error checking
+					JsonObject obj = Jsonifiers.checkClassEqual(value, BlobSpecifier.class);
+					int machine = obj.getInt("machine");
+					int cores = obj.getInt("cores");
+					BlobFactory blobFactory = Jsonifiers.fromJson(obj.get("blobFactory"), BlobFactory.class);
+					ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+					for (JsonValue i : obj.getJsonArray("workerIds"))
+						builder.add(Jsonifiers.fromJson(i, Integer.class));
+					return new BlobSpecifier(builder.build(), machine, cores, blobFactory);
+				}
+				@Override
+				public JsonValue toJson(BlobSpecifier t) {
+					JsonArrayBuilder workerIds = Json.createArrayBuilder();
+					for (int i : t.workerIdentifiers)
+						workerIds.add(i);
+					return Json.createObjectBuilder()
+							.add("class", Jsonifiers.toJson(BlobSpecifier.class))
+							.add("machine", t.machine)
+							.add("cores", t.cores)
+							.add("blobFactory", Jsonifiers.toJson(t.blobFactory))
+							.add("workerIds", workerIds)
+							.build();
+				}
+				@Override
+				@SuppressWarnings("unchecked")
+				public <T> Jsonifier<T> getJsonifier(Class<T> klass) {
+					return (Jsonifier<T>)(klass.equals(BlobSpecifier.class) ? this : null);
+				}
+			}
+
 			public ImmutableSortedSet<Integer> getWorkerIdentifiers() {
 				return workerIdentifiers;
 			}
@@ -831,6 +868,62 @@ public final class Configuration {
 			}
 		}
 
+		protected static final class PartitionParameterJsonifier implements Jsonifier<PartitionParameter>, JsonifierFactory {
+			public PartitionParameterJsonifier() {}
+			@Override
+			public PartitionParameter fromJson(JsonValue value) {
+				//TODO: array serialization, error checking
+				JsonObject obj = Jsonifiers.checkClassEqual(value, PartitionParameter.class);
+				String name = obj.getString("name");
+				int maxWorkerIdentifier = obj.getInt("maxWorkerIdentifier");
+				ImmutableList.Builder<Integer> coresPerMachine = ImmutableList.builder();
+				for (JsonValue v : obj.getJsonArray("coresPerMachine"))
+					coresPerMachine.add(Jsonifiers.fromJson(v, Integer.class));
+				ImmutableList.Builder<BlobFactory> blobFactoryUniverse = ImmutableList.builder();
+				for (JsonValue v : obj.getJsonArray("blobFactoryUniverse"))
+					blobFactoryUniverse.add(Jsonifiers.fromJson(v, BlobFactory.class));
+				List<List<BlobSpecifier>> mBlobs = new ArrayList<>();
+				for (int i = 0; i < coresPerMachine.build().size(); ++i)
+					mBlobs.add(new ArrayList<BlobSpecifier>());
+				for (JsonValue v : obj.getJsonArray("blobs")) {
+					BlobSpecifier bs = Jsonifiers.fromJson(v, BlobSpecifier.class);
+					mBlobs.get(bs.getMachine()).add(bs);
+				}
+				ImmutableList.Builder<ImmutableList<BlobSpecifier>> blobs = ImmutableList.builder();
+				for (List<BlobSpecifier> m : mBlobs)
+					blobs.add(ImmutableList.copyOf(m));
+				return new PartitionParameter(name, coresPerMachine.build(), blobs.build(), blobFactoryUniverse.build(), maxWorkerIdentifier);
+			}
+
+			@Override
+			public JsonValue toJson(PartitionParameter t) {
+				JsonArrayBuilder coresPerMachine = Json.createArrayBuilder();
+				for (int i : t.coresPerMachine)
+					coresPerMachine.add(i);
+				JsonArrayBuilder blobFactoryUniverse = Json.createArrayBuilder();
+				for (BlobFactory factory : t.blobFactoryUniverse)
+					blobFactoryUniverse.add(Jsonifiers.toJson(factory));
+				JsonArrayBuilder blobs = Json.createArrayBuilder();
+				for (List<BlobSpecifier> machine : t.blobs)
+					for (BlobSpecifier blob : machine)
+						blobs.add(Jsonifiers.toJson(blob));
+				return Json.createObjectBuilder()
+						.add("class", Jsonifiers.toJson(PartitionParameter.class))
+						.add("name", t.getName())
+						.add("maxWorkerIdentifier", t.maxWorkerIdentifier)
+						.add("coresPerMachine", coresPerMachine)
+						.add("blobFactoryUniverse", blobFactoryUniverse)
+						.add("blobs", blobs)
+						.build();
+			}
+
+			@Override
+			@SuppressWarnings("unchecked")
+			public <T> Jsonifier<T> getJsonifier(Class<T> klass) {
+				return (Jsonifier<T>)(klass.equals(PartitionParameter.class) ? this : null);
+			}
+		}
+
 		@Override
 		public String getName() {
 			return name;
@@ -888,11 +981,25 @@ public final class Configuration {
 		Configuration.Builder builder = Configuration.builder();
 		builder.addParameter(new IntParameter("foo", 0, 10, 8));
 		builder.addParameter(SwitchParameter.create("bar", true));
+
+		Identity<Integer> first = new Identity<>(), second = new Identity<>();
+		Pipeline<Integer, Integer> pipeline = new Pipeline<>(first, second);
+		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
+		pipeline.visit(cwv);
+
+		PartitionParameter.Builder partParam = PartitionParameter.builder("part", 1, 1);
+		BlobFactory factory = new Interpreter.InterpreterBlobFactory();
+		partParam.addBlobFactory(factory);
+		partParam.addBlob(0, 1, factory, Collections.<Worker<?, ?>>singleton(first));
+		partParam.addBlob(1, 1, factory, Collections.<Worker<?, ?>>singleton(second));
+		builder.addParameter(partParam.build());
+
 		Configuration cfg1 = builder.build();
-		builder.addSubconfiguration("cfg1", cfg1);
-		Configuration cfg2 = builder.build();
-		JsonValue json = Jsonifiers.toJson(cfg2);
-		System.out.println(json.toString());
-		System.out.println(Jsonifiers.fromJson(json, Configuration.class));
+		String json = Jsonifiers.toJson(cfg1).toString();
+		System.out.println(json);
+		Configuration cfg2 = Jsonifiers.fromJson(json, Configuration.class);
+		System.out.println(cfg2);
+		String json2 = Jsonifiers.toJson(cfg2).toString();
+		System.out.println(json2);
 	}
 }
