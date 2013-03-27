@@ -9,10 +9,13 @@ import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
+import edu.mit.streamjit.impl.blob.BlobFactory;
+import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -139,6 +142,23 @@ public class Interpreter implements Blob {
 				interpret();
 			}
 		};
+	}
+
+	public static final class InterpreterBlobFactory implements BlobFactory {
+		@Override
+		public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
+			//TODO: get the constraints!
+			return new Interpreter(workers, Collections.<MessageConstraint>emptyList());
+		}
+		@Override
+		public boolean equals(Object o) {
+			//All InterpreterBlobFactory instances are equal.
+			return o != null && getClass() == o.getClass();
+		}
+		@Override
+		public int hashCode() {
+			return 9001;
+		}
 	}
 
 	/**
