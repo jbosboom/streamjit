@@ -210,10 +210,12 @@ public final class Configuration {
 			for (Map.Entry<String, Configuration> subconfig : t.subconfigurations.entrySet())
 				subconfigsBuilder.add(subconfig.getKey(), Jsonifiers.toJson(subconfig.getValue()));
 			return Json.createObjectBuilder()
-					.add("__module__", "configuration") 
-					.add("__class__", Jsonifiers.toJson(Configuration.class))
+					.add("class", Jsonifiers.toJson(Configuration.class))
 					.add("params", paramsBuilder)
 					.add("subconfigs", subconfigsBuilder)
+					//Python-side support
+					.add("__module__", "configuration")
+					.add("__class__", Configuration.class.getSimpleName())
 					.build();
 		}
 
@@ -380,12 +382,14 @@ public final class Configuration {
 			@Override
 			public JsonValue toJson(IntParameter t) {
 				return Json.createObjectBuilder()
-					.add("__class__", IntParameter.class.getSimpleName())
-					.add("__module__", "parameters")
+					.add("class", Jsonifiers.toJson(IntParameter.class))
 					.add("name", t.getName())
 					.add("min", t.getMin())
 					.add("max", t.getMax())
 					.add("value", t.getValue())
+					//Python-side support
+					.add("__module__", "parameters")
+					.add("__class__", IntParameter.class.getSimpleName())
 					.build();
 			}
 
@@ -553,12 +557,14 @@ public final class Configuration {
 				for (Object o : t.universe)
 					universe.add(Jsonifiers.toJson(o));
 				return Json.createObjectBuilder()
-						.add("__module__", "parameters") 
-						.add("__class__", Jsonifiers.toJson(SwitchParameter.class))
+						.add("class", Jsonifiers.toJson(SwitchParameter.class))
 						.add("name", t.getName())
 						.add("universeType", Jsonifiers.toJson(t.type))
 						.add("universe", universe)
 						.add("value", t.value)
+						//Python-side support
+						.add("__module__", "parameters")
+						.add("__class__", SwitchParameter.class.getSimpleName())
 						.build();
 			}
 
@@ -786,12 +792,14 @@ public final class Configuration {
 					for (int i : t.workerIdentifiers)
 						workerIds.add(i);
 					return Json.createObjectBuilder()
-							.add("__module__", "configuration") 
-							.add("__class__", Jsonifiers.toJson(BlobSpecifier.class))
+							.add("class", Jsonifiers.toJson(BlobSpecifier.class))
 							.add("machine", t.machine)
 							.add("cores", t.cores)
 							.add("blobFactory", Jsonifiers.toJson(t.blobFactory))
 							.add("workerIds", workerIds)
+							//Python-side support
+							.add("__module__", "configuration")
+							.add("__class__", BlobSpecifier.class.getSimpleName())
 							.build();
 				}
 				@Override
@@ -912,13 +920,15 @@ public final class Configuration {
 					for (BlobSpecifier blob : machine)
 						blobs.add(Jsonifiers.toJson(blob));
 				return Json.createObjectBuilder()
-						.add("__module__", "parameters") 
-						.add("__class__", Jsonifiers.toJson(PartitionParameter.class))
+						.add("class", Jsonifiers.toJson(PartitionParameter.class))
 						.add("name", t.getName())
 						.add("maxWorkerIdentifier", t.maxWorkerIdentifier)
 						.add("coresPerMachine", coresPerMachine)
 						.add("blobFactoryUniverse", blobFactoryUniverse)
 						.add("blobs", blobs)
+						//Python-side support
+						.add("__module__", "parameters")
+						.add("__class__", PartitionParameter.class.getSimpleName())
 						.build();
 			}
 
@@ -1006,12 +1016,12 @@ public final class Configuration {
 		System.out.println(cfg2);
 		String json2 = Jsonifiers.toJson(cfg2).toString();
 		System.out.println(json2);
-		
+
 		/*Configuration.Builder builder = Configuration.builder();
 		builder.addParameter(new IntParameter("foo", 0, 10, 8));
 		Configuration cfg1 = builder.build();
 		String json = Jsonifiers.toJson(cfg1).toString();
 		System.out.println(json);*/
-		
+
 	}
 }

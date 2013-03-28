@@ -71,6 +71,11 @@ public class StatelessJsonifierFactory implements JsonifierFactory, Jsonifier<Ob
 
 	@Override
 	public JsonValue toJson(Object t) {
-		return Json.createObjectBuilder().add("__class__", Jsonifiers.toJson(t.getClass())).build();
+		//No Python-side support here (__class__ parameter) -- there's no state
+		//here, so Python should never have to inspect this object.  (If Python
+		//creates actual objects here, it has to know about every class that
+		//might be serialized; if it just treats these objects as opaque strings,
+		//it doesn't have to know about any of them.  Easy decision!)
+		return Json.createObjectBuilder().add("class", Jsonifiers.toJson(t.getClass())).build();
 	}
 }

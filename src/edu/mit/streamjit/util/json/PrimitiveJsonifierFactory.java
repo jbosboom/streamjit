@@ -128,7 +128,7 @@ public class PrimitiveJsonifierFactory implements JsonifierFactory {
 		}
 		@Override
 		public JsonValue toJson(Class<?> t) {
-			return Jsonifiers.toJson(t.getSimpleName());
+			return Jsonifiers.toJson(t.getName());
 		}
 	}
 
