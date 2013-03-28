@@ -210,7 +210,8 @@ public final class Configuration {
 			for (Map.Entry<String, Configuration> subconfig : t.subconfigurations.entrySet())
 				subconfigsBuilder.add(subconfig.getKey(), Jsonifiers.toJson(subconfig.getValue()));
 			return Json.createObjectBuilder()
-					.add("class", Jsonifiers.toJson(Configuration.class))
+					.add("__module__", "configuration") 
+					.add("__class__", Jsonifiers.toJson(Configuration.class))
 					.add("params", paramsBuilder)
 					.add("subconfigs", subconfigsBuilder)
 					.build();
@@ -379,7 +380,8 @@ public final class Configuration {
 			@Override
 			public JsonValue toJson(IntParameter t) {
 				return Json.createObjectBuilder()
-					.add("class", IntParameter.class.getName())
+					.add("__class__", IntParameter.class.getSimpleName())
+					.add("__module__", "parameters")
 					.add("name", t.getName())
 					.add("min", t.getMin())
 					.add("max", t.getMax())
@@ -551,7 +553,8 @@ public final class Configuration {
 				for (Object o : t.universe)
 					universe.add(Jsonifiers.toJson(o));
 				return Json.createObjectBuilder()
-						.add("class", Jsonifiers.toJson(SwitchParameter.class))
+						.add("__module__", "parameters") 
+						.add("__class__", Jsonifiers.toJson(SwitchParameter.class))
 						.add("name", t.getName())
 						.add("universeType", Jsonifiers.toJson(t.type))
 						.add("universe", universe)
@@ -783,7 +786,8 @@ public final class Configuration {
 					for (int i : t.workerIdentifiers)
 						workerIds.add(i);
 					return Json.createObjectBuilder()
-							.add("class", Jsonifiers.toJson(BlobSpecifier.class))
+							.add("__module__", "configuration") 
+							.add("__class__", Jsonifiers.toJson(BlobSpecifier.class))
 							.add("machine", t.machine)
 							.add("cores", t.cores)
 							.add("blobFactory", Jsonifiers.toJson(t.blobFactory))
@@ -908,7 +912,8 @@ public final class Configuration {
 					for (BlobSpecifier blob : machine)
 						blobs.add(Jsonifiers.toJson(blob));
 				return Json.createObjectBuilder()
-						.add("class", Jsonifiers.toJson(PartitionParameter.class))
+						.add("__module__", "parameters") 
+						.add("__class__", Jsonifiers.toJson(PartitionParameter.class))
 						.add("name", t.getName())
 						.add("maxWorkerIdentifier", t.maxWorkerIdentifier)
 						.add("coresPerMachine", coresPerMachine)
@@ -1001,5 +1006,12 @@ public final class Configuration {
 		System.out.println(cfg2);
 		String json2 = Jsonifiers.toJson(cfg2).toString();
 		System.out.println(json2);
+		
+		/*Configuration.Builder builder = Configuration.builder();
+		builder.addParameter(new IntParameter("foo", 0, 10, 8));
+		Configuration cfg1 = builder.build();
+		String json = Jsonifiers.toJson(cfg1).toString();
+		System.out.println(json);*/
+		
 	}
 }

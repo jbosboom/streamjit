@@ -71,6 +71,6 @@ public class StatelessJsonifierFactory implements JsonifierFactory, Jsonifier<Ob
 
 	@Override
 	public JsonValue toJson(Object t) {
-		return Json.createObjectBuilder().add("class", Jsonifiers.toJson(t.getClass())).build();
+		return Json.createObjectBuilder().add("__class__", Jsonifiers.toJson(t.getClass())).build();
 	}
 }

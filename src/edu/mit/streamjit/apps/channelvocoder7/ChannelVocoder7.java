@@ -32,6 +32,7 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 public class ChannelVocoder7 {
@@ -70,13 +71,19 @@ public class ChannelVocoder7 {
 		int NUM_FILTERS = 16; // 18;
 
 		MainSplitjoin() {
-			super(new DuplicateSplitter<Float>(),
-					new RoundrobinJoiner<Float>(1)); // FIXME , RoundrobinJoiner
-														// can't be NUM_FILTERS
-														// b/c const prop didn't
-														// work
-			add(new Pipeline<Float, Float>(new PitchDetector(PITCH_WINDOW,
-					DECIMATION), new VocoderFilterBank(NUM_FILTERS, DECIMATION)));
+			super(new DuplicateSplitter<Float>(), new WeightedRoundrobinJoiner<Float>(new int[] {1, 16})); // FIXME
+																												// ,
+																												// RoundrobinJoiner
+																												// can't
+																												// be
+																												// NUM_FILTERS
+																												// b/c
+																												// const
+																												// prop
+																												// didn't
+																												// work
+			add(new PitchDetector(PITCH_WINDOW, DECIMATION));
+			add(new VocoderFilterBank(NUM_FILTERS, DECIMATION));
 		}
 
 	}
@@ -276,9 +283,7 @@ public class ChannelVocoder7 {
 	private static class BandStopFilter extends Pipeline<Float, Float> {
 
 		BandStopFilter(float gain, float wp, float ws, int numSamples) {
-			Splitjoin<Float, Float> sp1 = new Splitjoin<>(
-					new DuplicateSplitter<Float>(),
-					new RoundrobinJoiner<Float>());
+			Splitjoin<Float, Float> sp1 = new Splitjoin<>(new DuplicateSplitter<Float>(), new RoundrobinJoiner<Float>());
 			sp1.add(new LowPassFilter(gain, wp, numSamples));
 			sp1.add(new HighPassFilter(gain, ws, numSamples));
 			add(sp1);
@@ -408,8 +413,7 @@ public class ChannelVocoder7 {
 					 */
 					h[i] = (float) (sign * g * cutoffFreq / Math.PI);
 				else
-					h[i] = (float) (sign * g
-							* Math.sin(cutoffFreq * (idx - OFFSET)) / (Math.PI * (idx - OFFSET)));
+					h[i] = (float) (sign * g * Math.sin(cutoffFreq * (idx - OFFSET)) / (Math.PI * (idx - OFFSET)));
 			}
 
 		}
