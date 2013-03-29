@@ -79,6 +79,15 @@ public final class Jsonifiers {
 		return string.toString();
 	}
 
+	/**
+	 * Extracts the class of a JSON object (the value of the "class" key), or
+	 * throws JsonSerializationException if unsuccessful.  Used during
+	 * deserialization.
+	 * @param obj a JSON object
+	 * @return the class of the JSON object
+	 * @throws JsonSerializationException if the "class" key is not present, or
+	 * if the value is not a string or does not name a Java class
+	 */
 	private static Class<?> objectClass(JsonObject obj) {
 		if (!(obj.get("class") instanceof JsonString))
 			throw new JsonSerializationException("class not present or not a string", obj);
