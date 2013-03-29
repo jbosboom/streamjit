@@ -27,6 +27,8 @@ public final class Jsonifiers {
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public static JsonValue toJson(Object obj) {
+		if (obj == null)
+			return JsonValue.NULL;
 		//This is checked dynamically via obj.getClass().  Not sure what
 		//generics I need to make this work.
 		Jsonifier jsonifier = findJsonifierByClass(obj.getClass());
@@ -45,6 +47,18 @@ public final class Jsonifiers {
 	}
 
 	public static <T> T fromJson(JsonValue value, Class<T> klass) {
+		checkNotNull(value); //checks for Java null, not JSON null
+		if (value.getValueType() == JsonValue.ValueType.NULL)
+			//Surprisingly, int.class.cast(null) does not throw, instead
+			//returning null, which is probably not what the caller expects
+			//(if the caller tries to unbox immediately, it'll receive a
+			//NullPointerException for the implicit call to intValue().)  So we
+			//check explicitly.
+			if (klass.isPrimitive())
+				throw new JsonSerializationException("deserializing null as "+klass.getSimpleName());
+			else
+				return klass.cast(null);
+
 		Class<?> trueClass = klass;
 		if (value instanceof JsonObject)
 			trueClass = objectClass((JsonObject)value);
