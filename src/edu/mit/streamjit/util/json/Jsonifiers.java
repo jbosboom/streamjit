@@ -2,6 +2,8 @@ package edu.mit.streamjit.util.json;
 
 import static com.google.common.base.Preconditions.*;
 import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.Collections;
 import java.util.Map;
 import java.util.ServiceLoader;
 import javax.json.Json;
@@ -10,6 +12,9 @@ import javax.json.JsonObject;
 import javax.json.JsonString;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
+import javax.json.JsonWriter;
+import javax.json.JsonWriterFactory;
+import javax.json.stream.JsonGenerator;
 
 /**
  *
@@ -47,6 +52,31 @@ public final class Jsonifiers {
 		Jsonifier<?> jsonifier = findJsonifierByClass(trueClass);
 		Object obj = jsonifier.fromJson(value);
 		return klass.cast(obj);
+	}
+
+	/**
+	 * Parses the given JSON string, then prettyprints it.  This is a purely
+	 * syntactic transformation; no serialization or deserialization is done.
+	 * @param json a well-formed JSON string
+	 * @return a pretty-printed JSON string
+	 */
+	public static String prettyprint(String json) {
+		return prettyprint(Json.createReader(new StringReader(json)).read());
+	}
+
+	/**
+	 * Prettyprints the given JSON structure.  (All well-formed JSON strings
+	 * have an array or object at their top level.)
+	 * @param value a JSON structure
+	 * @return a pretty-printed JSON string
+	 */
+	public static String prettyprint(JsonStructure value) {
+		StringWriter string = new StringWriter();
+		JsonWriterFactory writerFactory = Json.createWriterFactory(Collections.singletonMap(JsonGenerator.PRETTY_PRINTING, null));
+		try (JsonWriter writer = writerFactory.createWriter(string)) {
+			writer.write(value);
+		}
+		return string.toString();
 	}
 
 	private static Class<?> objectClass(JsonObject obj) {
