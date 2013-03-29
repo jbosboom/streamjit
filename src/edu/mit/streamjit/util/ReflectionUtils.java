@@ -46,4 +46,35 @@ public final class ReflectionUtils {
 	public static <T> Class<T[]> getArrayType(Class<T> klass) {
 		return (Class<T[]>)Array.newInstance(klass, 0).getClass();
 	}
+
+	/**
+	 * Returns true if the given class uses Object equality (a.k.a. identity
+	 * equality) and false otherwise.  Specifically, this method returns true if
+	 * the given class inherits its equals() or hashCode() implementation from
+	 * Object.  (These methods should be overridden together, but they aren't
+	 * always; this method assumes the caller will use both.)
+	 *
+	 * If the given Class object represents a primitive type, this method will
+	 * return false, as primitive types use value-based equality.  (Even the
+	 * pseudo-type void vacuously uses value-based equality, as there are no
+	 * values of void type.)
+	 *
+	 * Note that a false return does not mean equals() and hashCode() are
+	 * implemented correctly -- indeed, an equals() implementation of
+	 * "super.equals(o)" with a corresponding hashCode() implementation will
+	 * return false.
+	 * @param klass the class to test
+	 * @return true if the given class uses Object equality
+	 */
+	public static boolean usesObjectEquality(Class<? extends Object> klass) {
+		if (klass.isPrimitive())
+			return false;
+		try {
+			return klass.getMethod("equals", new Class<?>[]{Object.class}).getDeclaringClass().equals(Object.class)
+					|| klass.getMethod("hashCode").getDeclaringClass().equals(Object.class);
+		} catch (NoSuchMethodException ex) {
+			//Every class has an equals() and hashCode().
+			throw new AssertionError("Can't happen! No equals() or hashCode()?", ex);
+		}
+	}
 }
