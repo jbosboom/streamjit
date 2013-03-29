@@ -14,7 +14,7 @@ import javax.json.JsonValue;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/27/2013
  */
-public class ArrayJsonifierFactory implements JsonifierFactory {
+public final class ArrayJsonifierFactory implements JsonifierFactory {
 	@Override
 	@SuppressWarnings({"unchecked","rawtypes"})
 	public <T> Jsonifier<T> getJsonifier(Class<T> klass) {

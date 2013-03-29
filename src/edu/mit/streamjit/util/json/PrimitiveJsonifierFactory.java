@@ -17,7 +17,7 @@ import javax.json.JsonValue;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/25/2013
  */
-public class PrimitiveJsonifierFactory implements JsonifierFactory {
+public final class PrimitiveJsonifierFactory implements JsonifierFactory {
 	/**
 	 * Public constructor provided for ServiceLoader.  Don't instantiate this
 	 * class directly; use the methods in Jsonifiers instead.

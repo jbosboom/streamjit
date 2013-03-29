@@ -23,7 +23,7 @@ import javax.json.JsonValue;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/26/2013
  */
-public class StatelessJsonifierFactory implements JsonifierFactory, Jsonifier<Object> {
+public final class StatelessJsonifierFactory implements JsonifierFactory, Jsonifier<Object> {
 	/**
 	 * The eligibility check involves expensive reflective operations, so we use
 	 * a cache.  The cache is thread-safe to meet the thread safety requirements

@@ -7,7 +7,7 @@ import javax.json.JsonValue;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/25/2013
  */
-public class JsonSerializationException extends RuntimeException {
+public final class JsonSerializationException extends RuntimeException {
 	private static final long serialVersionUID = 1L;
 	/**
 	 * A JsonValue involved in the exception, to aid in debugging.  May be null.
