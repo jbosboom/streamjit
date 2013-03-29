@@ -162,6 +162,23 @@ public final class Jsonifiers {
 		throw new JsonSerializationException("no Jsonifier for "+klass);
 	}
 
+	/**
+	 * Checks if the given value is a JSON object representing a Java object of
+	 * the given class.  If it is, the JSON object is returned; if not, a
+	 * JsonSerializationException is thrown.
+	 *
+	 * This method is provided for the benefit of Jsonifier implementations;
+	 * users of the JSON library have no need to call this method.
+	 *
+	 * Jsonifiers can call this method to test if the object they are
+	 * deserializing is an instance of the exact class they expect.
+	 * @param value a JSON value
+	 * @param klass a class
+	 * @return the JSON object if it represents a Java object of the given class
+	 * @throws JsonSerializationException if the JSON value is not a JSON object
+	 * or represents a Java object of a different class
+	 * @see #checkClassAssignable(javax.json.JsonValue, java.lang.Class)
+	 */
 	public static JsonObject checkClassEqual(JsonValue value, Class<?> klass) {
 		if (!(value instanceof JsonObject))
 			throw new JsonSerializationException("value not an object", value);
@@ -171,6 +188,23 @@ public final class Jsonifiers {
 		return obj;
 	}
 
+	/**
+	 * Checks if the given value is a JSON object representing a Java object assignable to
+	 * the given class.  If it is, the JSON object is returned; if not, a
+	 * JsonSerializationException is thrown.
+	 *
+	 * This method is provided for the benefit of Jsonifier implementations;
+	 * users of the JSON library have no need to call this method.
+	 *
+	 * Jsonifiers can call this method to test if the object they are
+	 * deserializing is an instance or subtype of the class they expect.
+	 * @param value a JSON value
+	 * @param klass a class
+	 * @return the JSON object if it represents a Java object assignable to the given class
+	 * @throws JsonSerializationException if the JSON value is not a JSON object
+	 * or represents a Java object of a different class
+	 * @see #checkClassEqual(javax.json.JsonValue, java.lang.Class)
+	 */
 	public static JsonObject checkClassAssignable(JsonValue value, Class<?> klass) {
 		if (!(value instanceof JsonObject))
 			throw new JsonSerializationException("value not an object", value);
