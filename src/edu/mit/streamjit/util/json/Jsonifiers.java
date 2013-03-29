@@ -25,6 +25,14 @@ public final class Jsonifiers {
 	private static final ServiceLoader<JsonifierFactory> FACTORY_LOADER = ServiceLoader.load(JsonifierFactory.class);
 	private Jsonifiers() {}
 
+	/**
+	 * Serializes the given Object to JSON.
+	 *
+	 * This method returns JsonValue; to get a JSON string, call the returned
+	 * value's toString() method.
+	 * @param obj an object
+	 * @return a JsonValue representing the serialized form of the object
+	 */
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public static JsonValue toJson(Object obj) {
 		if (obj == null)
@@ -35,8 +43,24 @@ public final class Jsonifiers {
 		return jsonifier.toJson(obj);
 	}
 
+	/**
+	 * Deserializes the given well-formed JSON string into an object of the given class.  If
+	 * the object is of a subtype of the given class, an instance of that
+	 * subtype will be created, rather than an instance of the given class.
+	 *
+	 * Note that well-formed JSON strings are always arrays or objects at their
+	 * top level; this method will not deserialize the number 3 to an Integer,
+	 * for example.
+	 * @param <T> the type of the given class
+	 * @param str a well-formed JSON string
+	 * @param klass the class of the value being deserialized (must not be null)
+	 * @return a deserialized Java object
+	 * @throws NullPointerException if either str or klass is null
+	 * @throws JsonSerializationException if a deserialization error occurs
+	 */
 	public static <T> T fromJson(String str, Class<T> klass) {
 		checkNotNull(str);
+		checkNotNull(klass);
 		JsonStructure struct;
 		try {
 			struct = Json.createReader(new StringReader(str)).read();
@@ -46,8 +70,22 @@ public final class Jsonifiers {
 		return fromJson(struct, klass);
 	}
 
+	/**
+	 * Deserializes the given JSON value into an object of the given class.  If
+	 * the object is of a subtype of the given class, an instance of that
+	 * subtype will be created, rather than an instance of the given class.
+	 * @param <T> the type of the given class
+	 * @param value the JSON value to deserialized (must not be null, but may
+	 * be a JSON null (JsonValue.NULL) object)
+	 * @param klass the class of the value being deserialized (must not be null)
+	 * @return a deserialized Java object
+	 * @throws NullPointerException if either value or klass is null
+	 * @throws JsonSerializationException if a deserialization error occurs
+	 */
 	public static <T> T fromJson(JsonValue value, Class<T> klass) {
 		checkNotNull(value); //checks for Java null, not JSON null
+		checkNotNull(klass);
+
 		if (value.getValueType() == JsonValue.ValueType.NULL)
 			//Surprisingly, int.class.cast(null) does not throw, instead
 			//returning null, which is probably not what the caller expects
