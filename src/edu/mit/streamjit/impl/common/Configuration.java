@@ -4,7 +4,6 @@ import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Strings;
 import com.google.common.collect.BoundType;
-import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -22,8 +21,6 @@ import edu.mit.streamjit.util.json.Jsonifier;
 import edu.mit.streamjit.util.json.JsonifierFactory;
 import edu.mit.streamjit.util.json.Jsonifiers;
 import java.io.Serializable;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -39,7 +36,6 @@ import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonValue;
-import javax.json.JsonWriter;
 
 /**
  * A Configuration contains parameters that can be manipulated by the autotuner

@@ -5,7 +5,6 @@
 package edu.mit.streamjit.apps.roundrobinspilitterexample;
 
 import edu.mit.streamjit.api.CompiledStream;
-import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
