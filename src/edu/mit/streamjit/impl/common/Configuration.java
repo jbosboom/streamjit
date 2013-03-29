@@ -507,6 +507,7 @@ public final class Configuration {
 			int size = 0;
 			ImmutableSet.Builder<T> builder = ImmutableSet.builder();
 			for (T t : universe) {
+				checkArgument(!ReflectionUtils.usesObjectEquality(t.getClass()), "all objects in universe must have proper equals()/hashCode()");
 				builder.add(t);
 				++size;
 			}
@@ -686,6 +687,7 @@ public final class Configuration {
 			}
 
 			public void addBlobFactory(BlobFactory factory) {
+				checkArgument(!ReflectionUtils.usesObjectEquality(factory.getClass()), "blob factories must have a proper equals() and hashCode()");
 				checkArgument(!blobFactoryUniverse.contains(checkNotNull(factory)), "blob factory already added");
 				blobFactoryUniverse.add(factory);
 			}
