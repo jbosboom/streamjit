@@ -36,9 +36,11 @@ public final class StatelessJsonifierFactory implements JsonifierFactory, Jsonif
 	@SuppressWarnings("unchecked")
 	public <T> Jsonifier<T> getJsonifier(Class<T> klass) {
 		Boolean value = eligibleClasses.get(klass);
-		if (value != null)
-			return (Jsonifier<T>)(value ? this : null);
-		return (Jsonifier<T>)(isClassEligible(klass) ? this : null);
+		if (value == null) {
+			value = isClassEligible(klass);
+			eligibleClasses.put(klass, value);
+		}
+		return (Jsonifier<T>)(value ? this : null);
 	}
 
 	private boolean isClassEligible(Class<?> klass) {
