@@ -17,6 +17,7 @@ import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
+import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.json.Jsonifier;
 import edu.mit.streamjit.util.json.JsonifierFactory;
 import edu.mit.streamjit.util.json.Jsonifiers;
@@ -541,10 +542,7 @@ public final class Configuration {
 				JsonObject obj = Jsonifiers.checkClassEqual(jsonvalue, SwitchParameter.class);
 				String name = obj.getString("name");
 				Class<?> universeType = Jsonifiers.fromJson(obj.get("universeType"), Class.class);
-				ImmutableList.Builder<Object> builder = ImmutableList.builder();
-				for (JsonValue v : obj.getJsonArray("universe"))
-					builder.add(Jsonifiers.fromJson(v, universeType));
-				ImmutableList<?> universe = builder.build();
+				ImmutableList<?> universe = ImmutableList.copyOf(Jsonifiers.fromJson(obj.get("universe"), ReflectionUtils.getArrayType(universeType)));
 				//We should have caught this in fromJson(v, universeType).
 				assert Jsonifiers.notHeapPolluted(universe, universeType);
 				int value = obj.getInt("value");
@@ -553,14 +551,11 @@ public final class Configuration {
 
 			@Override
 			public JsonValue toJson(SwitchParameter<?> t) {
-				JsonArrayBuilder universe = Json.createArrayBuilder();
-				for (Object o : t.universe)
-					universe.add(Jsonifiers.toJson(o));
 				return Json.createObjectBuilder()
 						.add("class", Jsonifiers.toJson(SwitchParameter.class))
 						.add("name", t.getName())
 						.add("universeType", Jsonifiers.toJson(t.type))
-						.add("universe", universe)
+						.add("universe", Jsonifiers.toJson(t.universe.toArray()))
 						.add("value", t.value)
 						//Python-side support
 						.add("__module__", "parameters")
