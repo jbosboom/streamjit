@@ -470,7 +470,7 @@ public final class Configuration {
 	 * List<String> can be handled okay)
 	 * @param <T>
 	 */
-	public static class SwitchParameter<T> implements GenericParameter<Boolean> {
+	public static final class SwitchParameter<T> implements GenericParameter<Boolean> {
 		private static final long serialVersionUID = 1L;
 		private final String name;
 		/**
@@ -530,7 +530,7 @@ public final class Configuration {
 			return new SwitchParameter<>(name, Boolean.class, value, Arrays.asList(false, true));
 		}
 
-		protected static class SwitchParameterJsonifier implements Jsonifier<SwitchParameter<?>>, JsonifierFactory {
+		protected static final class SwitchParameterJsonifier implements Jsonifier<SwitchParameter<?>>, JsonifierFactory {
 			public SwitchParameterJsonifier() {}
 			@Override
 			@SuppressWarnings({"unchecked", "rawtypes"})
@@ -631,7 +631,7 @@ public final class Configuration {
 	 * For the purposes of this class, machines are considered distinct, but
 	 * cores on the same machine are not.
 	 */
-	public static class PartitionParameter implements Parameter {
+	public static final class PartitionParameter implements Parameter {
 		private static final long serialVersionUID = 1L;
 		private final String name;
 		/**
