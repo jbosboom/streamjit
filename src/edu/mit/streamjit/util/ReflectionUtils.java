@@ -2,6 +2,7 @@ package edu.mit.streamjit.util;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableSet;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
@@ -31,5 +32,18 @@ public final class ReflectionUtils {
 			klass = klass.getSuperclass();
 		}
 		return builder.build();
+	}
+
+	/**
+	 * Returns the Class object representing an array of the type represented
+	 * by the given Class object.  That is, this method is the inverse of
+	 * Class.getComponentType().
+	 * @param <T> the type of the given Class object
+	 * @param klass the type to get an array type for
+	 * @return the type of an array of the given type
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Class<T[]> getArrayType(Class<T> klass) {
+		return (Class<T[]>)Array.newInstance(klass, 0).getClass();
 	}
 }
