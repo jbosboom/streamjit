@@ -92,7 +92,7 @@ public final class Jsonifiers {
 		return klass;
 	}
 
-	public static <T> Jsonifier<T> findJsonifierByClass(Class<T> klass) {
+	private static <T> Jsonifier<T> findJsonifierByClass(Class<T> klass) {
 		for (JsonifierFactory f : FACTORY_LOADER) {
 			Jsonifier<T> jsonifier = f.getJsonifier(klass);
 			if (jsonifier != null)
