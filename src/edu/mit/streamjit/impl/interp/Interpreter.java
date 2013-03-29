@@ -151,6 +151,11 @@ public class Interpreter implements Blob {
 			return new Interpreter(workers, Collections.<MessageConstraint>emptyList());
 		}
 		@Override
+		public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
+			//TODO: Interpreter doesn't yet have any parameters.
+			return Configuration.builder().build();
+		}
+		@Override
 		public boolean equals(Object o) {
 			//All InterpreterBlobFactory instances are equal.
 			return o != null && getClass() == o.getClass();

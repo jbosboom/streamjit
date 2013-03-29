@@ -39,4 +39,17 @@ public interface BlobFactory {
 	 * @return a Blob responsible for the given workers
 	 */
 	public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores);
+
+	/**
+	 * Creates a new Configuration with parameters and default values suitable
+	 * for running (and autotuning) the given set of workers using the blob type
+	 * produced by this BlobFactory. This method is necessary so that the
+	 * autotuner has a starting point.
+	 * <p/>
+	 * The set of workers should generally be the whole stream graph (see
+	 * Workers.getAllWorkersInGraph()).
+	 * @param workers a set of workers, usually the whole stream graph
+	 * @return a default configuration for this blob type
+	 */
+	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers);
 }
