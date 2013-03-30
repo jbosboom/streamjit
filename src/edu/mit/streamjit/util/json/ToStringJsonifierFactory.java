@@ -36,7 +36,7 @@ import javax.json.JsonValue;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/29/2013
  */
-public class ToStringJsonifierFactory implements JsonifierFactory {
+public final class ToStringJsonifierFactory implements JsonifierFactory {
 	/**
 	 * Sentinel to indicate that a class is not supported by this factory, so we
 	 * can distinguish it from null when calling cache.get().
