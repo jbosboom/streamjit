@@ -72,7 +72,8 @@ public class ToStringJsonifierFactory implements JsonifierFactory {
 		try {
 			toString = klass.getMethod("toString");
 		} catch (NoSuchMethodException ex) {
-			throw new AssertionError("Can't happen! No toString?", ex);
+			//Interfaces, maybe primitives, etc.
+			return null;
 		}
 		if (!toString.getDeclaringClass().equals(klass))
 			return null;
