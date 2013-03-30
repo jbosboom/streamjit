@@ -97,12 +97,21 @@ public final class Configuration {
 			this.subconfigurations = new HashMap<>(subconfigurations);
 		}
 
-		public void addParameter(Parameter parameter) {
+		/**
+		 * Adds a parameter to this builder.
+		 * @param parameter the parameter to add (cannot be null)
+		 * @return this
+		 * @throws NullPointerException if parameter is null
+		 * @throws IllegalArgumentException if this builder already contains a
+		 * parameter with the given name
+		 */
+		public Builder addParameter(Parameter parameter) {
 			checkNotNull(parameter);
 			//The parameter constructor should enforce this, so assert.
 			assert !Strings.isNullOrEmpty(parameter.getName()) : parameter;
 			checkArgument(!parameters.containsKey(parameter.getName()), "conflicting names %s %s", parameters.get(parameter.getName()), parameters);
 			parameters.put(parameter.getName(), parameter);
+			return this;
 		}
 
 		/**
@@ -116,11 +125,22 @@ public final class Configuration {
 			return parameters.remove(checkNotNull(Strings.emptyToNull(name)));
 		}
 
-		public void addSubconfiguration(String name, Configuration subconfiguration) {
+		/**
+		 * Adds a subconfiguration to this builder.
+		 * @param name the name of the subconfiguration to add (cannot be null)
+		 * @param subconfiguration the subconfiguration to add (cannot be null)
+		 * @return this
+		 * @throws NullPointerException if name is null or the empty string, or
+		 * if subconfiguration is null
+		 * @throws IllegalArgumentException if this builder already contains a
+		 * subconfiguration with the given name
+		 */
+		public Builder addSubconfiguration(String name, Configuration subconfiguration) {
 			checkNotNull(Strings.emptyToNull(name));
 			checkNotNull(subconfiguration);
 			checkArgument(!subconfigurations.containsKey(name), "name %s already in use", name);
 			subconfigurations.put(name, subconfiguration);
+			return this;
 		}
 
 		/**
@@ -686,13 +706,14 @@ public final class Configuration {
 					blobs.add(new ArrayList<BlobSpecifier>());
 			}
 
-			public void addBlobFactory(BlobFactory factory) {
+			public Builder addBlobFactory(BlobFactory factory) {
 				checkArgument(!ReflectionUtils.usesObjectEquality(factory.getClass()), "blob factories must have a proper equals() and hashCode()");
 				checkArgument(!blobFactoryUniverse.contains(checkNotNull(factory)), "blob factory already added");
 				blobFactoryUniverse.add(factory);
+				return this;
 			}
 
-			public void addBlob(int machine, int cores, BlobFactory blobFactory, Set<Worker<?, ?>> workers) {
+			public Builder addBlob(int machine, int cores, BlobFactory blobFactory, Set<Worker<?, ?>> workers) {
 				checkElementIndex(machine, coresPerMachine.size());
 				checkArgument(cores <= coresAvailable[machine],
 						"allocating %s cores but only %s available on machine %s",
@@ -712,6 +733,7 @@ public final class Configuration {
 				blobs.get(machine).add(new BlobSpecifier(workerIdentifiers, machine, cores, blobFactory));
 				workersInBlobs.addAll(workerIdentifiers);
 				coresAvailable[machine] -= cores;
+				return this;
 			}
 
 			public PartitionParameter build() {
