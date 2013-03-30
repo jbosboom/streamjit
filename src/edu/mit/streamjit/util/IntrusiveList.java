@@ -196,10 +196,44 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 		}
 	}
 
+	/**
+	 * Support provides access to the next and previous references stored in a T
+	 * instance without requiring them to be publicly accessible.
+	 * @param <T> the type containing the next and previous references
+	 */
 	public static interface Support<T> {
+		/**
+		 * Gets the previous reference stored in the given object.
+		 * @param t an object that can be contained in an intrusive list (never
+		 * null)
+		 * @return the given object's previous reference
+		 */
 		public T getPrevious(T t);
+		/**
+		 * Sets the previous reference stored in the given object, returning the
+		 * old value.
+		 * @param t an object that can be contained in an intrusive list (never
+		 * null)
+		 * @param newPrevious the new value of the previous reference (may be
+		 * null)
+		 * @return the old value of the given object's previous reference
+		 */
 		public T setPrevious(T t, T newPrevious);
+		/**
+		 * Gets the next reference stored in the given object.
+		 * @param t an object that can be contained in an intrusive list (never
+		 * null)
+		 * @return the given object's next reference
+		 */
 		public T getNext(T t);
+		/**
+		 * Sets the next reference stored in the given object, returning the old
+		 * value.
+		 * @param t an object that can be contained in an intrusive list (never
+		 * null)
+		 * @param newNext the new value of the next reference (may be null)
+		 * @return the old value of the given object's next reference
+		 */
 		public T setNext(T t, T newNext);
 	}
 
