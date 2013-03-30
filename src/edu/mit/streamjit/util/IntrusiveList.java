@@ -147,6 +147,8 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 			++nextIndex;
 			++modCount; //linking is a structural modification
 			++expectedModCount;
+
+			elementAdded(t);
 		}
 
 		@Override
@@ -167,6 +169,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 			} else
 				support.setPrevious(lastReturnedNext, lastReturnedPrev);
 
+			T removedElement = lastReturned;
 			if (next == lastReturned)
 				next = lastReturnedNext;
 			else
@@ -174,6 +177,8 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 			lastReturned = null;
 			++modCount; //unlinking is a structural modification
 			++expectedModCount;
+
+			elementRemoved(removedElement);
 		}
 
 		@Override
@@ -195,6 +200,18 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 			checkArgument(support.getPrevious(t) == null && support.getNext(t) == null, "already in an intrusive list: %s", t);
 		}
 	}
+
+	/**
+	 * Called after the given element is added to this list.
+	 * @param t an element added to this list
+	 */
+	protected void elementAdded(T t) {}
+
+	/**
+	 * Called after the given element is removed from this list.
+	 * @param t an element removed from this list
+	 */
+	protected void elementRemoved(T t) {}
 
 	/**
 	 * Support provides access to the next and previous references stored in a T
