@@ -10,3 +10,4 @@ edu.mit.streamjit.impl.common.Configuration$PartitionParameter$PartitionParamete
 edu.mit.streamjit.impl.common.Configuration$PartitionParameter$BlobSpecifier$BlobSpecifierJsonifier
 edu.mit.streamjit.util.json.StatelessJsonifierFactory
 edu.mit.streamjit.util.json.ToStringJsonifierFactory
+edu.mit.streamjit.util.json.SerializableJsonifierFactory
