@@ -9,3 +9,4 @@ edu.mit.streamjit.impl.common.Configuration$SwitchParameter$SwitchParameterJsoni
 edu.mit.streamjit.impl.common.Configuration$PartitionParameter$PartitionParameterJsonifier
 edu.mit.streamjit.impl.common.Configuration$PartitionParameter$BlobSpecifier$BlobSpecifierJsonifier
 edu.mit.streamjit.util.json.StatelessJsonifierFactory
+edu.mit.streamjit.util.json.ToStringJsonifierFactory
