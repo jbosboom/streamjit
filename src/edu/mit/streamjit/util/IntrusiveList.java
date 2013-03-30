@@ -238,6 +238,15 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 	}
 
 	private static final ConcurrentMap<Class<?>, Support<?>> SUPPORTS = new MapMaker().concurrencyLevel(1).makeMap();
+	/**
+	 * Registers a Support for the given class.
+	 * @param <T> the type being supported
+	 * @param klass the class being supported
+	 * @param support a Support for the given class
+	 * @throws IllegalArgumentException if a Support has already been registered
+	 * for the given class
+	 * @throws NullPointerException if klass or support is null
+	 */
 	public static <T> void registerSupport(Class<T> klass, Support<T> support) {
 		Support<?> previous = SUPPORTS.putIfAbsent(klass, support);
 		if (previous != null)
