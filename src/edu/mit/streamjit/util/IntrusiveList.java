@@ -128,7 +128,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 		@Override
 		public void add(T t) {
 			checkForComodification();
-			checkArgumentNotInList(t);
+			checkArgument(!inList(t), "already in intrusive list: %s", t);
 
 			T nextPrev;
 			if (next == null) {
@@ -194,11 +194,6 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 			if (modCount != expectedModCount)
 				throw new ConcurrentModificationException();
 		}
-
-		private void checkArgumentNotInList(T t) {
-			//This check is not perfect, as t could be in a single-element list.
-			checkArgument(support.getPrevious(t) == null && support.getNext(t) == null, "already in an intrusive list: %s", t);
-		}
 	}
 
 	/**
@@ -212,6 +207,25 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 	 * @param t an element removed from this list
 	 */
 	protected void elementRemoved(T t) {}
+
+	/**
+	 * Returns true if the given object is in an intrusive list (not necessarily
+	 * this one), or false if it is not or if unsure.  That is, false negatives
+	 * are tolerated but false positives are not.
+	 *
+	 * This implementation returns true if this object's previous or next
+	 * reference is non-null and false otherwise.  This implementation thus has
+	 * a false negative if the object is in a single-element list.
+	 *
+	 * Subclasses that can eliminate this false positive are encouraged to
+	 * override this method.
+	 * @param t an object that can be placed in an intrusive list (never null)
+	 * @return true if the object is definitely in an intrusive list, false if
+	 * it isn't or if unsure
+	 */
+	protected boolean inList(T t) {
+		return support.getPrevious(t) != null || support.getNext(t) != null;
+	}
 
 	/**
 	 * Support provides access to the next and previous references stored in a T
