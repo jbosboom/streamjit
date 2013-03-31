@@ -9,22 +9,22 @@ import java.util.Objects;
 
 /**
  * MethodType represents the type of a method, including the types of its
- * arguments and its return type, which must all be RegularTypes.
+ * parameters and its return type, which must all be RegularTypes.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/6/2013
  */
 public class MethodType extends Type {
 	private final RegularType returnType;
-	private final ImmutableList<RegularType> argumentTypes;
-	private MethodType(RegularType returnType, ImmutableList<RegularType> argumentTypes) {
+	private final ImmutableList<RegularType> parameterTypes;
+	private MethodType(RegularType returnType, ImmutableList<RegularType> parameterTypes) {
 		this.returnType = checkNotNull(returnType);
-		this.argumentTypes = argumentTypes;
+		this.parameterTypes = parameterTypes;
 	}
-	public static MethodType of(RegularType returnType, RegularType... argumentTypes) {
-		return new MethodType(returnType, ImmutableList.copyOf(argumentTypes));
+	public static MethodType of(RegularType returnType, RegularType... parameterTypes) {
+		return new MethodType(returnType, ImmutableList.copyOf(parameterTypes));
 	}
-	public static MethodType of(RegularType returnType, List<RegularType> argumentTypes) {
-		return new MethodType(returnType, ImmutableList.copyOf(argumentTypes));
+	public static MethodType of(RegularType returnType, List<RegularType> parameterTypes) {
+		return new MethodType(returnType, ImmutableList.copyOf(parameterTypes));
 	}
 	/**
 	 * Creates a MethodType from a JVM method descriptor.  The descriptor does
@@ -51,17 +51,13 @@ public class MethodType extends Type {
 		System.arraycopy(mt.parameterArray(), 0, argumentTypes, i, mt.parameterCount());
 		return MethodType.of(returnType, argumentTypes);
 	}
+
 	public RegularType getReturnType() {
 		return returnType;
 	}
-	public int getNumArguments() {
-		return argumentTypes.size();
-	}
-	public RegularType getArgumentType(int x) {
-		return argumentTypes.get(x);
-	}
-	public Iterator<RegularType> argumentTypeIterator() {
-		return argumentTypes.iterator();
+
+	public ImmutableList<RegularType> getParameterTypes() {
+		return parameterTypes;
 	}
 
 	@Override
@@ -73,7 +69,7 @@ public class MethodType extends Type {
 		final MethodType other = (MethodType)obj;
 		if (!Objects.equals(this.returnType, other.returnType))
 			return false;
-		if (!Objects.equals(this.argumentTypes, other.argumentTypes))
+		if (!Objects.equals(this.parameterTypes, other.parameterTypes))
 			return false;
 		return true;
 	}
@@ -82,12 +78,12 @@ public class MethodType extends Type {
 	public int hashCode() {
 		int hash = 3;
 		hash = 23 * hash + Objects.hashCode(this.returnType);
-		hash = 23 * hash + Objects.hashCode(this.argumentTypes);
+		hash = 23 * hash + Objects.hashCode(this.parameterTypes);
 		return hash;
 	}
 
 	@Override
 	public String toString() {
-		return returnType.toString() + '(' + Joiner.on(", ").join(argumentTypes) + ')';
+		return returnType.toString() + '(' + Joiner.on(", ").join(parameterTypes) + ')';
 	}
 }
