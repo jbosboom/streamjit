@@ -128,6 +128,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 		@Override
 		public void add(T t) {
 			checkForComodification();
+			checkNotNull(t); //can't put null in an intrusive list - no next/prev refs!
 			checkArgument(!inList(t), "already in intrusive list: %s", t);
 
 			T nextPrev;
