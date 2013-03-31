@@ -7,12 +7,14 @@ import edu.mit.streamjit.util.IntrusiveList;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * A ParentedList is an intrusive list of objects with parents that must be
- * kept in synch as objects are added and removed from the list.
- *
+ * A ParentedList is an intrusive list of objects with parents that must be kept
+ * in synch as objects are added and removed from the list. Only one instance of
+ * ParentedList per element type should be created per parent instance, or the
+ * instances may get confused as to which elements are in which list.
+ * <p/>
  * Each class wishing to participate in a ParentedList must register a
  * ParentedList.Support instance in its static initializer by calling
- * {@link #registerSupport(ParentedList.Support)}.  It is critical that the
+ * {@link #registerSupport(ParentedList.Support)}. It is critical that the
  * Support instance is registered prior to (happens-before) creating any
  * ParentedLists for the supported class.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
@@ -49,6 +51,16 @@ public class ParentedList<P, C extends Parented<P>> extends IntrusiveList<C> {
 		//If it's in a ParentedList, it has a parent.  Otherwise just do the
 		//normal check for any other IntrusiveLists (?) it might be in.
 		return t.getParent() != null || super.inList(t);
+	}
+
+	@Override
+	public boolean contains(Object o) {
+		//Assuming we're maintaining parents correctly, we own an object if it
+		//has our parent, letting us skip the traversal.
+		boolean parentCheck = o instanceof Parented<?> && ((Parented<?>)o).getParent() == parent;
+		//Make sure we agree with the list walk.
+		assert parentCheck == super.contains(o);
+		return parentCheck;
 	}
 
 	public static interface Parented<P> {
