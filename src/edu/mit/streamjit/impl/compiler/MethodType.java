@@ -39,17 +39,12 @@ public class MethodType extends Type {
 	public static MethodType fromDescriptor(String descriptor, RegularType receiverType) {
 		java.lang.invoke.MethodType mt = java.lang.invoke.MethodType.fromMethodDescriptorString(descriptor, null);
 		RegularType returnType = RegularType.of(mt.returnType());
-		ImmutableList.Builder<RegularType> builder = ImmutableList.builder();
+		ImmutableList.Builder<RegularType> argumentTypes = ImmutableList.builder();
 		if (receiverType != null)
-			builder.add(receiverType);
+			argumentTypes.add(receiverType);
 		for (Class<?> c : mt.parameterList())
-			builder.add(RegularType.of(c));
-		RegularType[] argumentTypes = new RegularType[mt.parameterCount() + (receiverType != null ? 1 : 0)];
-		int i = 0;
-		if (receiverType != null)
-			argumentTypes[++i] = receiverType;
-		System.arraycopy(mt.parameterArray(), 0, argumentTypes, i, mt.parameterCount());
-		return MethodType.of(returnType, argumentTypes);
+			argumentTypes.add(RegularType.of(c));
+		return MethodType.of(returnType, argumentTypes.build());
 	}
 
 	public RegularType getReturnType() {
