@@ -57,35 +57,21 @@ public abstract class User extends Value {
 		uses.get(i).setOperand(v);
 	}
 
-	//Provided for subclasses that want a variable-size argument list.
+	//Provided for subclasses that want a variable-size operand list.
 	protected void addOperand(int i, Value v) {
-		//easy case, just add at the end
-		if (i == uses.size()) {
-			//Don't let the value see a state where we use it as operand i but
-			//only have i-1 operands.
-			Use use = new Use(this, i, null);
-			uses.add(use);
-			use.setOperand(v);
-		} else {
-			//Insertion in the middle requires changing all the operand indexes.
-			//Strategy: turn the List<Use> into a List<Value> (removing uses),
-			//then add the new value, then recreate the List<Use>.
-			throw new UnsupportedOperationException("TODO");
-		}
+		Use use = new Use(this, i, null);
+		uses.add(i, use);
+		for (int j = i+1; i < uses.size(); ++i)
+			uses.get(j).setOperandIndex(j);
+		use.setOperand(v);
 	}
 
-	//Provided for subclasses that want a variable-size argument list.
+	//Provided for subclasses that want a variable-size operand list.
 	protected void removeOperand(int i) {
-		//easy case, removing from the end
-		if (i == uses.size()-1) {
-			Use use = uses.get(i);
-			use.setOperand(null);
-			uses.remove(i);
-		} else {
-			//Removal in the middle requires changing all the operand indexes.
-			//Strategy: turn the List<Use> into a List<Value> (removing uses),
-			//then remove the value, then recreate the List<Use>.
-			throw new UnsupportedOperationException("TODO");
-		}
+		Use use = uses.get(i);
+		use.setOperand(null);
+		uses.remove(i);
+		for (; i < uses.size(); ++i)
+			uses.get(i).setOperandIndex(i);
 	}
 }
