@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import edu.mit.streamjit.util.ReflectionUtils;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -44,13 +45,26 @@ public abstract class Value {
 		this.name = name;
 	}
 
-	public void addUse(Use use) {
+	/**
+	 * Registers a use of this Value.  Should only be called by Use itself.
+	 * @param use the use to add
+	 */
+	void addUse(Use use) {
+		//We assert rather than check because this is for internal use only.
+		assert use != null;
+		assert ReflectionUtils.calledDirectlyFrom(Use.class);
 		assert use.getOperand() == this : "Adding use of wrong object"+use+", "+this;
 		boolean added = uses.add(use);
 		assert added : "Adding duplicate use: " + use;
 	}
 
-	public void removeUse(Use use) {
+	/**
+	 * Unregisters a use of this Value.  Should only be called by Use itself.
+	 * @param use the use to remove
+	 */
+	void removeUse(Use use) {
+		assert use != null;
+		assert ReflectionUtils.calledDirectlyFrom(Use.class);
 		assert use.getOperand() == this : "Removing use of wrong object"+use+", "+this;
 		boolean removed = uses.remove(use);
 		assert removed : "Removing not-a-use use: " + use;
