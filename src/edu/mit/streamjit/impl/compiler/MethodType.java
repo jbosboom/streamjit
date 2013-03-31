@@ -26,10 +26,11 @@ public class MethodType extends Type {
 		return new MethodType(returnType, ImmutableList.copyOf(argumentTypes));
 	}
 	/**
-	 * Creates a MethodType from a JVM method descriptor.  If the method is an
-	 * instance method, the given receiverType is prepended to the argument list
-	 * from the descriptor.  (The descriptor does not contain implicit this
-	 * parameters; see the JVMS 4.3.3.)
+	 * Creates a MethodType from a JVM method descriptor.  The descriptor does
+	 * not contain implicit this parameters (see JVMS 4.3.3), so if the method
+	 * is an instance method, the given receiver type must be provided and will
+	 * be prepended to the parameters from the descriptor; if the method is
+	 * static, pass null.
 	 * @param descriptor a JVM method descriptor
 	 * @param receiverType the receiver type, or null if the method is static
 	 * @return a MethodType
