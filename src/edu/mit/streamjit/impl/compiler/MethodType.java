@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import java.util.Iterator;
@@ -16,7 +17,7 @@ public class MethodType extends Type {
 	private final RegularType returnType;
 	private final ImmutableList<RegularType> argumentTypes;
 	private MethodType(RegularType returnType, ImmutableList<RegularType> argumentTypes) {
-		this.returnType = returnType;
+		this.returnType = checkNotNull(returnType);
 		this.argumentTypes = argumentTypes;
 	}
 	public static MethodType of(RegularType returnType, RegularType... argumentTypes) {
