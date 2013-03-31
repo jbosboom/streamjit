@@ -1,8 +1,9 @@
 package edu.mit.streamjit.impl.compiler;
 
 import com.google.common.base.Joiner;
-import java.util.Arrays;
+import com.google.common.collect.ImmutableList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -13,13 +14,16 @@ import java.util.Objects;
  */
 public class MethodType extends Type {
 	private final RegularType returnType;
-	private final RegularType[] argumentTypes;
-	private MethodType(RegularType returnType, RegularType[] argumentTypes) {
+	private final ImmutableList<RegularType> argumentTypes;
+	private MethodType(RegularType returnType, ImmutableList<RegularType> argumentTypes) {
 		this.returnType = returnType;
 		this.argumentTypes = argumentTypes;
 	}
 	public static MethodType of(RegularType returnType, RegularType... argumentTypes) {
-		return new MethodType(returnType, argumentTypes);
+		return new MethodType(returnType, ImmutableList.copyOf(argumentTypes));
+	}
+	public static MethodType of(RegularType returnType, List<RegularType> argumentTypes) {
+		return new MethodType(returnType, ImmutableList.copyOf(argumentTypes));
 	}
 	/**
 	 * Creates a MethodType from a JVM method descriptor.  If the method is an
@@ -33,6 +37,11 @@ public class MethodType extends Type {
 	public static MethodType fromDescriptor(String descriptor, RegularType receiverType) {
 		java.lang.invoke.MethodType mt = java.lang.invoke.MethodType.fromMethodDescriptorString(descriptor, null);
 		RegularType returnType = RegularType.of(mt.returnType());
+		ImmutableList.Builder<RegularType> builder = ImmutableList.builder();
+		if (receiverType != null)
+			builder.add(receiverType);
+		for (Class<?> c : mt.parameterList())
+			builder.add(RegularType.of(c));
 		RegularType[] argumentTypes = new RegularType[mt.parameterCount() + (receiverType != null ? 1 : 0)];
 		int i = 0;
 		if (receiverType != null)
@@ -44,13 +53,13 @@ public class MethodType extends Type {
 		return returnType;
 	}
 	public int getNumArguments() {
-		return argumentTypes.length;
+		return argumentTypes.size();
 	}
 	public RegularType getArgumentType(int x) {
-		return argumentTypes[x];
+		return argumentTypes.get(x);
 	}
 	public Iterator<RegularType> argumentTypeIterator() {
-		return Arrays.asList(argumentTypes).iterator();
+		return argumentTypes.iterator();
 	}
 
 	@Override
@@ -62,7 +71,7 @@ public class MethodType extends Type {
 		final MethodType other = (MethodType)obj;
 		if (!Objects.equals(this.returnType, other.returnType))
 			return false;
-		if (!Arrays.deepEquals(this.argumentTypes, other.argumentTypes))
+		if (!Objects.equals(this.argumentTypes, other.argumentTypes))
 			return false;
 		return true;
 	}
@@ -71,7 +80,7 @@ public class MethodType extends Type {
 	public int hashCode() {
 		int hash = 3;
 		hash = 23 * hash + Objects.hashCode(this.returnType);
-		hash = 23 * hash + Arrays.deepHashCode(this.argumentTypes);
+		hash = 23 * hash + Objects.hashCode(this.argumentTypes);
 		return hash;
 	}
 
