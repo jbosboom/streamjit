@@ -77,4 +77,34 @@ public final class ReflectionUtils {
 			throw new AssertionError("Can't happen! No equals() or hashCode()?", ex);
 		}
 	}
+
+	/**
+	 * Returns true if the caller's caller is a method in the given class, and
+	 * throws AssertionError otherwise.  This method is useful for assertion
+	 * statements, but should not be used to make security decisions.
+	 *
+	 * This method returns a value so that it can be used in assertions (thus
+	 * disabling the expensive stack check when assertions are disabled).  If
+	 * this method returns, it returns true.
+	 * @param expectedCaller the expected class of the caller's caller
+	 * @return true
+	 * @throws AssertionError if the caller's caller is unexpected
+	 */
+	public static boolean calledDirectlyFrom(Class<?> expectedCaller) {
+		StackTraceElement[] trace = Thread.currentThread().getStackTrace();
+		//We're trace[0], the caller is trace[1], and the caller's caller is trace[2].
+		Class<?> actualCaller;
+		try {
+			actualCaller = Class.forName(trace[2].getClassName());
+		} catch (ClassNotFoundException ex) {
+			throw new AssertionError("Unknown caller "+trace[2].getClassName(), ex);
+		}
+		if (actualCaller != expectedCaller)
+			//This exception carries a stack trace, so we don't need to store
+			//it in the message.
+			throw new AssertionError(String.format(
+					"Expected caller %s, but was %s",
+					expectedCaller, actualCaller));
+		return true;
+	}
 }
