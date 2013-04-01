@@ -46,6 +46,12 @@ public class ParentedList<P, C extends Parented<P>> extends IntrusiveList<C> {
 		assert oldParent == parent;
 	}
 
+	/**
+	 * Returns true iff the object has a parent or if it's in an IntrusiveList
+	 * (by IntrusiveList.inList()).
+	 * @param t {@inheritDoc}
+	 * @return {@inheritDoc}
+	 */
 	@Override
 	protected boolean inList(C t) {
 		//If it's in a ParentedList, it has a parent.  Otherwise just do the
