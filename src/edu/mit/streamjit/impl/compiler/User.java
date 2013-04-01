@@ -16,8 +16,8 @@ import java.util.Objects;
  */
 public abstract class User extends Value {
 	private final List<Use> uses;
-	public User(Type type, int operands) {
-		super(type);
+	public User(Type type, String name, int operands) {
+		super(type, name);
 		uses = new ArrayList<>(operands);
 		for (int i = 0; i < operands; ++i)
 			uses.add(new Use(this, i, null));
