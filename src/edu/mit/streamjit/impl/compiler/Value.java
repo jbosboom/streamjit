@@ -116,4 +116,18 @@ public abstract class Value {
 			users.add(u.getUser());
 		return users.build();
 	}
+
+	/**
+	 * Replaces all uses of this value with the given value.  Unlike LLVM, we do
+	 * not require that the other value be the same type, but Users will perform
+	 * their own checks and may well reject the reassignment.
+	 *
+	 * If this method returns (rather than throwing an exception), this value
+	 * will have no uses.
+	 * @param value the value to replace this value with
+	 */
+	public void replaceAllUsesWith(Value value) {
+		for (Use use : uses())
+			use.setOperand(value);
+	}
 }
