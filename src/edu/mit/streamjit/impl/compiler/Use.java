@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.compiler;
 
+import java.util.Objects;
+
 /**
  * A Use represents a single use of a Value.  Note that a User can use the same
  * value more than once if it has multiple operands; this class thus keeps an
@@ -10,10 +12,14 @@ package edu.mit.streamjit.impl.compiler;
 public class Use {
 	private final User user;
 	private int operandIndex;
+	private Value value;
 
-	public Use(User user, int operandIndex) {
+	public Use(User user, int operandIndex, Value value) {
 		this.user = user;
 		this.operandIndex = operandIndex;
+		this.value = value;
+		if (value != null)
+			value.addUse(this);
 	}
 
 	public User getUser() {
@@ -29,11 +35,17 @@ public class Use {
 	}
 
 	public Value getOperand() {
-		return user.getOperand(operandIndex);
+		return value;
 	}
 
 	public void setOperand(Value other) {
-		user.setOperand(operandIndex, other);
+		if (Objects.equals(getOperand(), other))
+			return;
+		if (value != null)
+			value.removeUse(this);
+		this.value = other;
+		if (other != null)
+			other.addUse(this);
 	}
 
 	@Override
