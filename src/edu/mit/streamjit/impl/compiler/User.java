@@ -1,8 +1,10 @@
 package edu.mit.streamjit.impl.compiler;
 
+import com.google.common.collect.Iterators;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A User is a Value that can use other Values as operands.
@@ -15,11 +17,15 @@ import java.util.List;
  */
 public abstract class User extends Value {
 	private final List<Use> uses;
-	public User(Type type, int operands) {
+	private final List<Value> operands;
+	public User(Type type, int numOperands) {
 		super(type);
-		uses = new ArrayList<>(operands);
-		for (int i = 0; i < operands; ++i)
-			uses.add(new Use(this, i, null));
+		this.uses = new ArrayList<>(numOperands);
+		this.operands = new ArrayList<>(numOperands);
+		for (int i = 0; i < numOperands; ++i) {
+			operands.add(null);
+			uses.add(new Use(this, i));
+		}
 	}
 	public User(Type type, Value... values) {
 		this(type, values.length);
@@ -28,49 +34,43 @@ public abstract class User extends Value {
 	}
 
 	public int getNumOperands() {
-		return uses.size();
+		return operands.size();
 	}
 
 	public Iterator<Value> operandIterator() {
-		return new Iterator<Value>() {
-			private final Iterator<Use> iter = uses.iterator();
-			@Override
-			public boolean hasNext() {
-				return iter.hasNext();
-			}
-			@Override
-			public Value next() {
-				return iter.next().getOperand();
-			}
-			@Override
-			public void remove() {
-				throw new UnsupportedOperationException();
-			}
-		};
+		return Iterators.unmodifiableIterator(operands.iterator());
 	}
 
 	public Value getOperand(int i) {
-		return uses.get(i).getOperand();
+		return operands.get(i);
 	}
 
-	public void setOperand(int i, Value v) {
-		uses.get(i).setOperand(v);
+	public void setOperand(int i, Value newOperand) {
+		Value oldOperand = getOperand(i);
+		if (Objects.equals(oldOperand, newOperand))
+			return;
+		Use use = uses.get(i);
+		if (oldOperand != null)
+			oldOperand.removeUse(use);
+		operands.set(i, newOperand);
+		if (newOperand != null)
+			newOperand.addUse(use);
 	}
 
 	//Provided for subclasses that want a variable-size operand list.
 	protected void addOperand(int i, Value v) {
-		Use use = new Use(this, i, null);
-		uses.add(i, use);
+		//Must add operand before use so usee doesn't think it's an error.
+		operands.add(i, v);
+		uses.add(i, new Use(this, i));
 		for (int j = i+1; i < uses.size(); ++i)
 			uses.get(j).setOperandIndex(j);
-		use.setOperand(v);
 	}
 
 	//Provided for subclasses that want a variable-size operand list.
 	protected void removeOperand(int i) {
-		Use use = uses.get(i);
-		use.setOperand(null);
-		uses.remove(i);
+		//Must remove use before operand so usee doesn't think it's an error.
+		getOperand(i).removeUse(uses.remove(i));
+		operands.remove(i);
 		for (; i < uses.size(); ++i)
 			uses.get(i).setOperandIndex(i);
 	}
