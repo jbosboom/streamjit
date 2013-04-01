@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.compiler;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A User is a Value that can use other Values as operands.
@@ -55,6 +56,30 @@ public abstract class User extends Value {
 
 	public void setOperand(int i, Value v) {
 		uses.get(i).setOperand(v);
+	}
+
+	/**
+	 * Replaces all uses of the given value with the other given value.  Either
+	 * argument may be null.
+	 *
+	 * When replacements are made, checkOperand() will be called, but note that
+	 * some checks may be made after replacements have already occurred.
+	 * @param from the value to replace (may be null)
+	 * @param to the replacement value (may be null)
+	 * @return the number of replacements
+	 */
+	public int replaceUsesOfWith(Value from, Value to) {
+		if (Objects.equals(from, to))
+			return 0;
+		int replaced = 0;
+		for (int i = 0; i < uses.size(); ++i) {
+			Use use = uses.get(i);
+			if (Objects.equals(use.getOperand(), from)) {
+				use.setOperand(to);
+				++replaced;
+			}
+		}
+		return replaced;
 	}
 
 	//Provided for subclasses that want a variable-size operand list.
