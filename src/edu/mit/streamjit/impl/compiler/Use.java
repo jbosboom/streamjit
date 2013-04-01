@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import edu.mit.streamjit.util.ReflectionUtils;
 import java.util.Objects;
 
 /**
@@ -30,7 +31,9 @@ public class Use {
 		return operandIndex;
 	}
 
-	public void setOperandIndex(int index) {
+	//for internal use only!
+	void setOperandIndex(int index) {
+		assert ReflectionUtils.calledDirectlyFrom(User.class);
 		operandIndex = index;
 	}
 
