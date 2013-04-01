@@ -22,11 +22,6 @@ public abstract class User extends Value {
 		for (int i = 0; i < operands; ++i)
 			uses.add(new Use(this, i, null));
 	}
-	public User(Type type, Value... values) {
-		this(type, values.length);
-		for (int i = 0; i < values.length; ++i)
-			setOperand(i, values[i]);
-	}
 
 	public int getNumOperands() {
 		return uses.size();
