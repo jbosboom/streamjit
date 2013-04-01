@@ -90,8 +90,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 		@Override
 		public T next() {
 			checkForComodification();
-			if (!hasNext())
-				throw new NoSuchElementException();
+			checkState(hasNext());
 			lastReturned = next;
 			next = support.getNext(next);
 			++nextIndex;
@@ -106,8 +105,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 		@Override
 		public T previous() {
 			checkForComodification();
-			if (!hasPrevious())
-				throw new NoSuchElementException();
+			checkState(hasPrevious());
 			//If we're in the one-past-the-end position, return the tail.
 			next = !hasNext() ? tail : support.getPrevious(next);
 			lastReturned = next;
