@@ -5,8 +5,10 @@ import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.interp.Message;
 import java.util.ArrayDeque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 
 /**
  * This class provides static utility methods for Worker, including
@@ -101,6 +103,38 @@ public abstract class Workers {
 				.addAll(getAllPredecessors(worker))
 				.addAll(getAllSuccessors(worker))
 				.build();
+	}
+
+	/**
+	 * Returns a set of the topmost workers in the given set (workers that are
+	 * not the successor of any worker in the set). The returned set may contain
+	 * any number of workers between 0 and the given set's size, but will
+	 * contain 0 workers only when the given set is empty.
+	 * @param workers a set of workers
+	 * @return a set of the topmost workers
+	 */
+	public static ImmutableSet<Worker<?, ?>> getTopmostWorkers(Set<Worker<?, ?>> workers) {
+		Set<Worker<?, ?>> topmost = new HashSet<>(workers);
+		for (Worker<?, ?> w : workers)
+			//We don't need to limit the removals to successors in the set.
+			topmost.removeAll(Workers.getSuccessors(w));
+		return ImmutableSet.copyOf(topmost);
+	}
+
+	/**
+	 * Returns a set of the bottommost workers in the given set (workers that are
+	 * not the predecessor of any worker in the set). The returned set may contain
+	 * any number of workers between 0 and the given set's size, but will
+	 * contain 0 workers only when the given set is empty.
+	 * @param workers a set of workers
+	 * @return a set of the bottommost workers
+	 */
+	public static ImmutableSet<Worker<?, ?>> getBottommostWorkers(Set<Worker<?, ?>> workers) {
+		Set<Worker<?, ?>> bottommost = new HashSet<>(workers);
+		for (Worker<?, ?> w : workers)
+			//We don't need to limit the removals to successors in the set.
+			bottommost.removeAll(Workers.getPredecessors(w));
+		return ImmutableSet.copyOf(bottommost);
 	}
 
 	public enum StreamPosition {

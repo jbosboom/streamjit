@@ -1,8 +1,9 @@
 package edu.mit.streamjit.impl.compiler;
 
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import com.google.common.collect.ImmutableMultiset;
+import com.google.common.collect.ImmutableSet;
+import edu.mit.streamjit.util.ReflectionUtils;
+import java.util.Objects;
 
 /**
  * Value is the base class of all IR constructs that can be operands of other
@@ -18,8 +19,14 @@ import java.util.Set;
 public abstract class Value {
 	private final Type type;
 	private String name;
-	//TODO: most Values won't have many uses, so consider a list-backed set?
-	private final Set<Use> uses = new HashSet<>();
+	/**
+	 * The set of uses of this value.  ImmutableSet serves two purposes here:
+	 * 1) most values have few uses, and ImmutableSet stores them compactly and
+	 * in a cheap-to-iterate form; 2) we can cheaply return an unchanging set
+	 * from uses(), sparing the caller the question of whether they directly
+	 * or indirectly modify it (and thus need to make a copy to iterate over).
+	 */
+	private ImmutableSet<Use> uses = ImmutableSet.of();
 	public Value(Type type) {
 		this.type = type;
 	}
@@ -44,23 +51,83 @@ public abstract class Value {
 		this.name = name;
 	}
 
-	public void addUse(Use use) {
+	/**
+	 * Registers a use of this Value.  Should only be called by Use itself.
+	 * @param use the use to add
+	 */
+	void addUse(Use use) {
+		//We assert rather than check because this is for internal use only.
+		assert use != null;
+		assert ReflectionUtils.calledDirectlyFrom(Use.class);
 		assert use.getOperand() == this : "Adding use of wrong object"+use+", "+this;
-		boolean added = uses.add(use);
-		assert added : "Adding duplicate use: " + use;
+		ImmutableSet<Use> newUses = ImmutableSet.<Use>builder().addAll(uses).add(use).build();
+		assert newUses.size() == uses.size()+1 : "Adding duplicate use: " + use;
+		this.uses = newUses;
 	}
 
-	public void removeUse(Use use) {
+	/**
+	 * Unregisters a use of this Value.  Should only be called by Use itself.
+	 * @param use the use to remove
+	 */
+	void removeUse(Use use) {
+		assert use != null;
+		assert ReflectionUtils.calledDirectlyFrom(Use.class);
 		assert use.getOperand() == this : "Removing use of wrong object"+use+", "+this;
-		boolean removed = uses.remove(use);
-		assert removed : "Removing not-a-use use: " + use;
+		ImmutableSet.Builder<Use> builder = ImmutableSet.builder();
+		for (Use u : uses)
+			if (!Objects.equals(u, use))
+				builder.add(u);
+		ImmutableSet<Use> newUses = builder.build();
+		assert newUses.size() == uses.size()-1 : "Removing not-a-use use: " + use;
+		this.uses = newUses;
 	}
 
-	public int getUseCount() {
-		return uses.size();
+	/**
+	 * Returns an immutable set of the uses of this value. Note that a User may
+	 * use this value more than once, which is represented by multiple Use
+	 * objects.
+	 * <p/>
+	 * The returned set will not change even if uses are added to or removed
+	 * from this value, so it is safe to iterate over even if the loop body may
+	 * change this value's use set.
+	 * @return an immutable set of this value's uses
+	 */
+	public ImmutableSet<Use> uses() {
+		return uses;
 	}
 
-	public Iterator<Use> useIterator() {
-		return uses.iterator();
+	/**
+	 * Returns an immutable multiset of the users of this value. Note that a User may
+	 * use this value more than once, in which case it will appear that many times
+	 * in the multiset. To iterate over each user only once, call Multiset.elementSet()
+	 * on the returned multiset.
+	 * <p/>
+	 * The returned set will not change even if uses are added to or removed
+	 * from this value, so it is safe to iterate over even if the loop body may
+	 * change this value's use set.
+	 * @return an immutable multiset of this value's users
+	 */
+	public ImmutableMultiset<User> users() {
+		//If this method is called often, we can cache it in a field to avoid
+		//building many copies.  Calls to add/removeUse() would set the field to
+		//null to invalidate it and we'd rebuild in users() when required.
+		ImmutableMultiset.Builder<User> users = ImmutableMultiset.builder();
+		for (Use u : uses())
+			users.add(u.getUser());
+		return users.build();
+	}
+
+	/**
+	 * Replaces all uses of this value with the given value.  Unlike LLVM, we do
+	 * not require that the other value be the same type, but Users will perform
+	 * their own checks and may well reject the reassignment.
+	 *
+	 * If this method returns (rather than throwing an exception), this value
+	 * will have no uses.
+	 * @param value the value to replace this value with
+	 */
+	public void replaceAllUsesWith(Value value) {
+		for (Use use : uses())
+			use.setOperand(value);
 	}
 }

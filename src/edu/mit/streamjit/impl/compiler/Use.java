@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import edu.mit.streamjit.util.ReflectionUtils;
 import java.util.Objects;
 
 /**
@@ -11,7 +12,7 @@ import java.util.Objects;
  */
 public class Use {
 	private final User user;
-	private final int operandIndex;
+	private int operandIndex;
 	private Value value;
 
 	public Use(User user, int operandIndex, Value value) {
@@ -30,11 +31,18 @@ public class Use {
 		return operandIndex;
 	}
 
+	//for internal use only!
+	void setOperandIndex(int index) {
+		assert ReflectionUtils.calledDirectlyFrom(User.class);
+		operandIndex = index;
+	}
+
 	public Value getOperand() {
 		return value;
 	}
 
 	public void setOperand(Value other) {
+		user.checkOperand(operandIndex, other);
 		if (Objects.equals(getOperand(), other))
 			return;
 		if (value != null)
@@ -42,28 +50,6 @@ public class Use {
 		this.value = other;
 		if (other != null)
 			other.addUse(this);
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		final Use other = (Use)obj;
-		if (!Objects.equals(this.user, other.user))
-			return false;
-		if (this.operandIndex != other.operandIndex)
-			return false;
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int hash = 5;
-		hash = 97 * hash + Objects.hashCode(this.user);
-		hash = 97 * hash + this.operandIndex;
-		return hash;
 	}
 
 	@Override

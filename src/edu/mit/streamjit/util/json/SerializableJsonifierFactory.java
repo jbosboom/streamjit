@@ -22,7 +22,7 @@ import javax.json.JsonValue;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/29/2013
  */
-public class SerializableJsonifierFactory implements JsonifierFactory {
+public final class SerializableJsonifierFactory implements JsonifierFactory {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> Jsonifier<T> getJsonifier(Class<T> klass) {
@@ -31,7 +31,7 @@ public class SerializableJsonifierFactory implements JsonifierFactory {
 
 	//The bound should be <T extends Serializable> but that would require a
 	//cast above in getJsonifier().
-	private static class SerializableJsonifier<T> implements Jsonifier<T> {
+	private static final class SerializableJsonifier<T> implements Jsonifier<T> {
 		private final Class<T> klass;
 		private SerializableJsonifier(Class<T> klass) {
 			assert Serializable.class.isAssignableFrom(klass);

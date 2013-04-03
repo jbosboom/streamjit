@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.compiler;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A User is a Value that can use other Values as operands.
@@ -15,16 +16,11 @@ import java.util.List;
  */
 public abstract class User extends Value {
 	private final List<Use> uses;
-	public User(Type type, int operands) {
-		super(type);
+	public User(Type type, String name, int operands) {
+		super(type, name);
 		uses = new ArrayList<>(operands);
 		for (int i = 0; i < operands; ++i)
 			uses.add(new Use(this, i, null));
-	}
-	public User(Type type, Value... values) {
-		this(type, values.length);
-		for (int i = 0; i < values.length; ++i)
-			setOperand(i, values[i]);
 	}
 
 	public int getNumOperands() {
@@ -57,35 +53,74 @@ public abstract class User extends Value {
 		uses.get(i).setOperand(v);
 	}
 
-	//Provided for subclasses that want a variable-size argument list.
-	protected void addOperand(int i, Value v) {
-		//easy case, just add at the end
-		if (i == uses.size()) {
-			//Don't let the value see a state where we use it as operand i but
-			//only have i-1 operands.
-			Use use = new Use(this, i, null);
-			uses.add(use);
-			use.setOperand(v);
-		} else {
-			//Insertion in the middle requires changing all the operand indexes.
-			//Strategy: turn the List<Use> into a List<Value> (removing uses),
-			//then add the new value, then recreate the List<Use>.
-			throw new UnsupportedOperationException("TODO");
+	/**
+	 * Replaces all uses of the given value with the other given value.  Either
+	 * argument may be null.
+	 *
+	 * When replacements are made, checkOperand() will be called, but note that
+	 * some checks may be made after replacements have already occurred.
+	 * @param from the value to replace (may be null)
+	 * @param to the replacement value (may be null)
+	 * @return the number of replacements
+	 */
+	public int replaceUsesOfWith(Value from, Value to) {
+		if (Objects.equals(from, to))
+			return 0;
+		int replaced = 0;
+		for (int i = 0; i < uses.size(); ++i) {
+			Use use = uses.get(i);
+			if (Objects.equals(use.getOperand(), from)) {
+				use.setOperand(to);
+				++replaced;
+			}
 		}
+		return replaced;
 	}
 
-	//Provided for subclasses that want a variable-size argument list.
+	//Provided for subclasses that want a variable-size operand list.
+	protected void addOperand(int i, Value v) {
+		//Check before committing any changes, for debuggability.
+		checkOperand(i, v);
+		for (int j = i; i < uses.size(); ++i)
+			checkOperand(j+1, uses.get(j).getOperand());
+
+		Use use = new Use(this, i, null);
+		uses.add(i, use);
+		for (int j = i+1; i < uses.size(); ++i)
+			uses.get(j).setOperandIndex(j);
+		use.setOperand(v);
+	}
+
+	//Provided for subclasses that want a variable-size operand list.
 	protected void removeOperand(int i) {
-		//easy case, removing from the end
-		if (i == uses.size()-1) {
-			Use use = uses.get(i);
-			use.setOperand(null);
-			uses.remove(i);
-		} else {
-			//Removal in the middle requires changing all the operand indexes.
-			//Strategy: turn the List<Use> into a List<Value> (removing uses),
-			//then remove the value, then recreate the List<Use>.
-			throw new UnsupportedOperationException("TODO");
-		}
+		//Check before committing any changes, for debuggability.
+		for (int j = i; i < uses.size(); ++i)
+			checkOperand(j, uses.get(j+1).getOperand());
+
+		Use use = uses.get(i);
+		use.setOperand(null);
+		uses.remove(i);
+		for (; i < uses.size(); ++i)
+			uses.get(i).setOperandIndex(i);
+	}
+
+	/**
+	 * Called before the given value is set at the given operand index.
+	 * Subclasses that wish to enforce invariants on their operands can throw
+	 * exceptions from this method if setting the operand would violate an
+	 * invariant.
+	 * <p/>
+	 * Operand adds and removes are considered sets of every operand index that
+	 * would change (even if it's changing to the same value). For example, an
+	 * add at index 3 will result in checks for (3, new operand), (4, old
+	 * operand 3), (5, old operand 4), etc.; note that the last check will come
+	 * at an invalid index, as the add has not yet occurred. A remove would
+	 * check (3, old operand 4), (4, old operand 5), etc. No changes are applied
+	 * until all checks pass, though the process of applying the changes may
+	 * generate additional checks with the same arguments.
+	 * @param i the index of the operand being set
+	 * @param v the value the operand is being set to (may be null)
+	 */
+	protected void checkOperand(int i, Value v) {
 	}
 }

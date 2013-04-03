@@ -58,12 +58,7 @@ public class Interpreter implements Blob {
 	private final Map<Worker<?, ?>, List<MessageConstraint>> constraintsForRecipient = new IdentityHashMap<>();
 	public Interpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter) {
 		this.workers = ImmutableSet.copyOf(workersIter);
-		//Sinks are any filter that isn't a predecessor of another filter.
-		Set<Worker<?, ?>> sinksAccum = new HashSet<>();
-		Iterables.addAll(sinksAccum, workers);
-		for (Worker<?, ?> worker : workers)
-			sinksAccum.removeAll(Workers.getAllPredecessors(worker));
-		this.sinks = ImmutableSet.copyOf(sinksAccum);
+		this.sinks = Workers.getBottommostWorkers(workers);
 
 		for (MessageConstraint mc : constraintsIter)
 			if (this.workers.contains(mc.getSender()) != this.workers.contains(mc.getRecipient()))
