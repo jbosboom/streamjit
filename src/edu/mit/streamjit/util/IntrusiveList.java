@@ -168,6 +168,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 			++nextIndex;
 			++modCount; //linking is a structural modification
 			++expectedModCount;
+			++size;
 
 			elementAdded(t);
 		}
@@ -198,6 +199,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 			lastReturned = null;
 			++modCount; //unlinking is a structural modification
 			++expectedModCount;
+			--size;
 
 			elementRemoved(removedElement);
 		}
