@@ -44,12 +44,13 @@ public class RoundRobinSplitterExample {
 				new RoundrobinSplitter<Integer>(),
 				new RoundrobinJoiner<Integer>());
 		for (int i = 0; i < 3; i++) {
-			splitJoin1.add(new Pipeline<Integer, Integer>(new Multplier(i + 1)));
-		}
-		add(splitJoin1);
-		add(new IntPrinter());
+			splitJoin1.add(new Multplier(i + 1));
 		}
 		
+		splitJoin1.add(new Pipeline<>(new Multplier(1), new Multplier(2), new Multplier(3)));
+		add(splitJoin1);
+		add(new IntPrinter());
+		}		
 	}
 	
 	private static class IntPrinter extends Filter<Integer, Void> {
