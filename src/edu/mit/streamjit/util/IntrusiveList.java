@@ -150,6 +150,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 			checkForComodification();
 			checkNotNull(t); //can't put null in an intrusive list - no next/prev refs!
 			checkArgument(!inList(t), "already in intrusive list: %s", t);
+			elementAdding(t);
 
 			T nextPrev;
 			if (next == null) {
@@ -177,6 +178,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 		public void remove() {
 			checkForComodification();
 			checkState(lastReturned != null);
+			elementRemoving(lastReturned);
 
 			T lastReturnedPrev = setPrevious(lastReturned, null);
 			T lastReturnedNext = setNext(lastReturned, null);
@@ -220,10 +222,22 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 	}
 
 	/**
+	 * Called before the given element is added to this list.
+	 * @param t an element about to be added to this list
+	 */
+	protected void elementAdding(T t) {}
+
+	/**
 	 * Called after the given element is added to this list.
 	 * @param t an element added to this list
 	 */
 	protected void elementAdded(T t) {}
+
+	/**
+	 * Called before the given element is removed from this list.
+	 * @param t an element about to be removed from this list
+	 */
+	protected void elementRemoving(T t) {}
 
 	/**
 	 * Called after the given element is removed from this list.
