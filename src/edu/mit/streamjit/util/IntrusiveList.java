@@ -1,12 +1,16 @@
 package edu.mit.streamjit.util;
 
 import static com.google.common.base.Preconditions.*;
-import com.google.common.collect.MapMaker;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
 import java.util.AbstractSequentialList;
 import java.util.ConcurrentModificationException;
 import java.util.ListIterator;
-import java.util.concurrent.ConcurrentMap;
-import java.util.NoSuchElementException;
 
 /**
  * A List implementation using previous and next references embedded in the list
@@ -23,26 +27,44 @@ import java.util.NoSuchElementException;
  * IntrusiveList; Java doesn't provide a way to limit access to interface
  * methods, even if the interface is itself private.)
  *
- * Each class wishing to participate in an IntrusiveList must register an
- * IntrusiveList.Support instance in its static initializer by calling
- * {@link #registerSupport(IntrusiveList.Support)}.  It is critical that the
- * Support instance is registered prior to (happens-before) creating any
- * IntrusiveLists for the supported class.
+ * Each class wishing to participate in an IntrusiveList must annotate its
+ * previous and next references with @Previous and @Next respectively.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/30/2013
  */
 public class IntrusiveList<T> extends AbstractSequentialList<T> {
-	private final Support<T> support;
+	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private T head = null, tail = null;
 	private int size = 0;
+	private final MethodHandle mhGetPrevious, mhSetPrevious, mhGetNext, mhSetNext;
 	public IntrusiveList(Class<T> klass) {
 		checkNotNull(klass);
-		Support<?> supportQ = SUPPORTS.get(klass);
-		@SuppressWarnings("unchecked")
-		Support<T> supportT = (Support<T>)supportQ;
-		if (supportT == null)
-			throw new UnsupportedOperationException("no Support for "+klass.getName());
-		this.support = supportT;
+		Field previousField = null, nextField = null;
+		for (Field f : klass.getDeclaredFields()) {
+			if (f.isAnnotationPresent(Previous.class)) {
+				checkArgument(previousField == null, "multiple previous fields on %s", klass);
+				previousField = f;
+			}
+			if (f.isAnnotationPresent(Next.class)) {
+				checkArgument(nextField == null, "multiple next fields on %s", klass);
+				nextField = f;
+			}
+		}
+		checkArgument(previousField != null, "no previous field on %s", klass);
+		checkArgument(previousField.getType().equals(klass), "previous field on %s of wrong type", klass);
+		checkArgument(nextField != null, "no next field on %s", klass);
+		checkArgument(nextField.getType().equals(klass), "next field on %s of wrong type", klass);
+
+		try {
+			previousField.setAccessible(true);
+			nextField.setAccessible(true);
+			mhGetPrevious = LOOKUP.unreflectGetter(previousField);
+			mhSetPrevious = LOOKUP.unreflectSetter(previousField);
+			mhGetNext = LOOKUP.unreflectGetter(nextField);
+			mhSetNext = LOOKUP.unreflectSetter(nextField);
+		} catch (SecurityException | IllegalAccessException ex) {
+			throw new IllegalArgumentException("error accessing %s fields", ex);
+		}
 	}
 
 	@Override
@@ -58,11 +80,11 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 		if (index < size()/2) {
 			first = head;
 			for (int i = 0; i < index; ++i)
-				first = support.getNext(first);
+				first = getNext(first);
 		} else if (index < size()) {
 			first = tail;
 			for (int i = size()-1; i > index; --i)
-				first = support.getPrevious(first);
+				first = getPrevious(first);
 		} else { //index == size()
 			first = null;
 		}
@@ -92,7 +114,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 			checkForComodification();
 			checkState(hasNext());
 			lastReturned = next;
-			next = support.getNext(next);
+			next = getNext(next);
 			++nextIndex;
 			return lastReturned;
 		}
@@ -107,7 +129,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 			checkForComodification();
 			checkState(hasPrevious());
 			//If we're in the one-past-the-end position, return the tail.
-			next = !hasNext() ? tail : support.getPrevious(next);
+			next = !hasNext() ? tail : getPrevious(next);
 			lastReturned = next;
 			--nextIndex;
 			return lastReturned;
@@ -128,24 +150,26 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 			checkForComodification();
 			checkNotNull(t); //can't put null in an intrusive list - no next/prev refs!
 			checkArgument(!inList(t), "already in intrusive list: %s", t);
+			elementAdding(t);
 
 			T nextPrev;
 			if (next == null) {
 				nextPrev = tail;
 				tail = t;
 			} else
-				nextPrev = support.setPrevious(next, t);
-			support.setNext(t, next);
-			support.setPrevious(t, nextPrev);
+				nextPrev = setPrevious(next, t);
+			setNext(t, next);
+			setPrevious(t, nextPrev);
 			if (nextPrev == null)
 				head = t;
 			else
-				support.setNext(nextPrev, t);
+				setNext(nextPrev, t);
 
 			lastReturned = null;
 			++nextIndex;
 			++modCount; //linking is a structural modification
 			++expectedModCount;
+			++size;
 
 			elementAdded(t);
 		}
@@ -154,19 +178,20 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 		public void remove() {
 			checkForComodification();
 			checkState(lastReturned != null);
+			elementRemoving(lastReturned);
 
-			T lastReturnedPrev = support.setPrevious(lastReturned, null);
-			T lastReturnedNext = support.setNext(lastReturned, null);
+			T lastReturnedPrev = setPrevious(lastReturned, null);
+			T lastReturnedNext = setNext(lastReturned, null);
 			if (lastReturnedPrev == null) {
 				assert lastReturned == head;
 				head = lastReturnedNext;
 			} else
-				support.setNext(lastReturnedPrev, lastReturnedNext);
+				setNext(lastReturnedPrev, lastReturnedNext);
 			if (lastReturnedNext == null) {
 				assert lastReturned == tail;
 				tail = lastReturnedPrev;
 			} else
-				support.setPrevious(lastReturnedNext, lastReturnedPrev);
+				setPrevious(lastReturnedNext, lastReturnedPrev);
 
 			T removedElement = lastReturned;
 			if (next == lastReturned)
@@ -176,6 +201,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 			lastReturned = null;
 			++modCount; //unlinking is a structural modification
 			++expectedModCount;
+			--size;
 
 			elementRemoved(removedElement);
 		}
@@ -196,10 +222,22 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 	}
 
 	/**
+	 * Called before the given element is added to this list.
+	 * @param t an element about to be added to this list
+	 */
+	protected void elementAdding(T t) {}
+
+	/**
 	 * Called after the given element is added to this list.
 	 * @param t an element added to this list
 	 */
 	protected void elementAdded(T t) {}
+
+	/**
+	 * Called before the given element is removed from this list.
+	 * @param t an element about to be removed from this list
+	 */
+	protected void elementRemoving(T t) {}
 
 	/**
 	 * Called after the given element is removed from this list.
@@ -223,103 +261,63 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 	 * it isn't or if unsure
 	 */
 	protected boolean inList(T t) {
-		return support.getPrevious(t) != null || support.getNext(t) != null;
+		return getPrevious(t) != null || getNext(t) != null;
 	}
 
-	/**
-	 * Support provides access to the next and previous references stored in a T
-	 * instance without requiring them to be publicly accessible.
-	 * @param <T> the type containing the next and previous references
-	 */
-	public static interface Support<T> {
-		/**
-		 * Gets the previous reference stored in the given object.
-		 * @param t an object that can be contained in an intrusive list (never
-		 * null)
-		 * @return the given object's previous reference
-		 */
-		public T getPrevious(T t);
-		/**
-		 * Sets the previous reference stored in the given object, returning the
-		 * old value.
-		 * @param t an object that can be contained in an intrusive list (never
-		 * null)
-		 * @param newPrevious the new value of the previous reference (may be
-		 * null)
-		 * @return the old value of the given object's previous reference
-		 */
-		public T setPrevious(T t, T newPrevious);
-		/**
-		 * Gets the next reference stored in the given object.
-		 * @param t an object that can be contained in an intrusive list (never
-		 * null)
-		 * @return the given object's next reference
-		 */
-		public T getNext(T t);
-		/**
-		 * Sets the next reference stored in the given object, returning the old
-		 * value.
-		 * @param t an object that can be contained in an intrusive list (never
-		 * null)
-		 * @param newNext the new value of the next reference (may be null)
-		 * @return the old value of the given object's next reference
-		 */
-		public T setNext(T t, T newNext);
+	private T getPrevious(T t) {
+		try {
+			return (T)mhGetPrevious.invoke(t);
+		} catch (Throwable ex) {
+			Thread.currentThread().stop(ex);
+			throw new AssertionError("unreachable");
+		}
+	}
+	private T setPrevious(T t, T newPrevious) {
+		T oldPrevious = getPrevious(t);
+		try {
+			mhSetPrevious.invoke(t, newPrevious);
+		} catch (Throwable ex) {
+			Thread.currentThread().stop(ex);
+		}
+		return oldPrevious;
+	}
+	private T getNext(T t) {
+		try {
+			return (T)mhGetNext.invoke(t);
+		} catch (Throwable ex) {
+			Thread.currentThread().stop(ex);
+			throw new AssertionError("unreachable");
+		}
+	}
+	private T setNext(T t, T newNext) {
+		T oldNext = getNext(t);
+		try {
+			mhSetNext.invoke(t, newNext);
+		} catch (Throwable ex) {
+			Thread.currentThread().stop(ex);
+		}
+		return oldNext;
 	}
 
-	private static final ConcurrentMap<Class<?>, Support<?>> SUPPORTS = new MapMaker().concurrencyLevel(1).makeMap();
-	/**
-	 * Registers a Support for the given class.
-	 * @param <T> the type being supported
-	 * @param klass the class being supported
-	 * @param support a Support for the given class
-	 * @throws IllegalArgumentException if a Support has already been registered
-	 * for the given class
-	 * @throws NullPointerException if klass or support is null
-	 */
-	public static <T> void registerSupport(Class<T> klass, Support<T> support) {
-		Support<?> previous = SUPPORTS.putIfAbsent(klass, support);
-		if (previous != null)
-			throw new IllegalArgumentException(String.format(
-					"%s: registering %s, but %s already registered",
-					klass, support, previous));
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.FIELD)
+	public @interface Next {}
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.FIELD)
+	public @interface Previous {}
+
+	public static void main(String[] args) {
+		class Linkable {
+			@Previous
+			private Linkable previous;
+			@Next
+			private Linkable next;
+		}
+
+		IntrusiveList<Linkable> list = new IntrusiveList<>(Linkable.class);
+		list.add(new Linkable());
+		list.add(new Linkable());
+		list.add(new Linkable());
+		System.out.println(list);
 	}
-	//Previously, I considered allowing more generic supports, but that would
-	//require the IntrusiveList to perform additional type checks to ensure a
-	//List<T> didn't have a ? super T sneak in.  I don't really need this
-	//functionality right now so I'll put that off.  (You'd also have to widen
-	//registerSupport to take a Support<? super T>.)
-//	private static <T> Support<? super T> mostSpecificSupport(Class<T> klass) {
-//		//Get all the Supports that are assignable from the given klass.
-//		List<Support<? super T>> eligible = new ArrayList<>();
-//		for (Support<?> supports : SUPPORTS.values())
-//			if (supports.getSupportedClass().isAssignableFrom(klass)) {
-//				//checked just above
-//				@SuppressWarnings("unchecked")
-//				Support<? super T> cast = (Support<? super T>)supports;
-//				eligible.add(cast);
-//			}
-//		if (eligible.isEmpty())
-//			throw new UnsupportedOperationException("no IntrusiveList.Support for "+klass);
-//
-//		boolean removed = true;
-//		remove_loop: while (eligible.size() > 1 && removed) {
-//			removed = false;
-//			//For each support, check if its class is assignable to all eligible
-//			//supports.  If so, it can be removed.  (We are assured that no two
-//			//supports are for the same class because SUPPORTS is a Map.)
-//			s: for (Iterator<Support<? super T>> it = eligible.iterator(); it.hasNext();) {
-//				Support<? super T> s = it.next();
-//				for (Support<? super T> t : eligible)
-//					if (!t.getSupportedClass().isAssignableFrom(s.getSupportedClass()))
-//						continue s;
-//				it.remove();
-//				removed = true;
-//				continue remove_loop;
-//			}
-//		}
-//		if (eligible.size() > 1)
-//			throw new UnsupportedOperationException("ambiguous supports: "+eligible);
-//		return eligible.get(0);
-//	}
 }

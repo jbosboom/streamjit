@@ -50,6 +50,39 @@ public interface Blob {
 	 * @return a Runnable for part of this blob
 	 */
 	public Runnable getCoreCode(int core);
+
+	/**
+	 * Signals this Blob that its inputs have finished producing data and to
+	 * drain its portion of the stream graph as fully as possible (produce as
+	 * much output as possible), then call the given callback. As soon as this
+	 * method is called, this Blob may assume no input will be added to its
+	 * input channels, so once they are as empty as possible, the Blob may stop
+	 * executing.
+	 * <p/>
+	 * This method may or may not block, at the discretion of the blob
+	 * implementation. If it does block, it does so uninterruptibly.
+	 * <p/>
+	 * This method will cause the Runnables returned by getCoreCode() to stop
+	 * doing useful work at some point in the future, but does not stop their
+	 * threads.  The caller of drain() is responsible for stopping those threads
+	 * after the callback is called.
+	 * <p/>
+	 * The callback may be called from any thread, including but not limited to
+	 * the threads executing the Runnables returned by getCoreCode() and the
+	 * thread calling drain(), so the callback should not assume anything about
+	 * the thread it is executing on. In practice, this means the callback
+	 * should signal another known thread to perform whatever work is required.
+	 * <p/>
+	 * Note that the callback is called when all output has been placed in the
+	 * output channels, but if the next blob is on another machine, the data has
+	 * not yet reached that blob's input channels yet (since it has to be sent
+	 * over the network). The runtime system must take care not to call the next
+	 * blob's drain() method until the data reaches that blob's input channels
+	 * (i.e., the callback should not immediately call drain() without
+	 * additional synchronization).
+	 * @param callback the callback to call after draining is finished
+	 */
+	public void drain(Runnable callback);
 	//TODO: getConfig()
 
 	/**

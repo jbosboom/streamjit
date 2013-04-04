@@ -11,8 +11,10 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.util.EmptyRunnable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,6 +24,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * An Interpreter interprets a section of a stream graph.  An Interpreter's
@@ -56,6 +59,12 @@ public class Interpreter implements Blob {
 	 * Maps workers to all constraints of which they are recipients.
 	 */
 	private final Map<Worker<?, ?>, List<MessageConstraint>> constraintsForRecipient = new IdentityHashMap<>();
+	/**
+	 * When running normally, null.  After drain() has been called, contains the
+	 * callback we should execute.  After the callback is executed, becomes an
+	 * empty Runnable that we execute in place of interpret().
+	 */
+	private final AtomicReference<Runnable> callback = new AtomicReference<>();
 	public Interpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter) {
 		this.workers = ImmutableSet.copyOf(workersIter);
 		this.sinks = Workers.getBottommostWorkers(workers);
@@ -75,35 +84,8 @@ public class Interpreter implements Blob {
 
 		ImmutableMap.Builder<Token, Channel<?>> inputChannelsBuilder = ImmutableMap.builder();
 		ImmutableMap.Builder<Token, Channel<?>> outputChannelsBuilder = ImmutableMap.builder();
-		for (Worker<?, ?> worker : workers) {
-			List<Channel<?>> inChannels = ImmutableList.<Channel<?>>builder().addAll(Workers.getInputChannels(worker)).build();
-			ImmutableList<Worker<?, ?>> preds = ImmutableList.<Worker<?, ?>>builder().addAll(Workers.getPredecessors(worker)).build();
-			for (int i = 0; i < inChannels.size(); ++i) {
-				//Get the predecessor, or if the input channel is the actual
-				//input to the stream graph, null.
-				Worker<?, ?> pred = Iterables.get(preds, i, null);
-				//Null is "not in stream graph section" (so this works).
-				if (!workers.contains(pred)) {
-					Token token = pred == null ? Token.createOverallInputToken(worker) : new Token(pred, worker);
-					Channel<?> channel = inChannels.get(i);
-					inputChannelsBuilder.put(token, channel);
-				}
-			}
-
-			List<Channel<?>> outChannels = ImmutableList.<Channel<?>>builder().addAll(Workers.getOutputChannels(worker)).build();
-			ImmutableList<Worker<?, ?>> succs = ImmutableList.<Worker<?, ?>>builder().addAll(Workers.getSuccessors(worker)).build();
-			for (int i = 0; i < outChannels.size(); ++i) {
-				//Get the successor, or if the output channel is the actual
-				//output of the stream graph, null.
-				Worker<?, ?> succ = Iterables.get(succs, i, null);
-				//Null is "not in stream graph section" (so this works).
-				if (!workers.contains(succ)) {
-					Token token = succ == null ? Token.createOverallOutputToken(worker) : new Token(worker, succ);
-					Channel<?> channel = outChannels.get(i);
-					outputChannelsBuilder.put(token, channel);
-				}
-			}
-		}
+		for (IOInfo info : IOInfo.create(workers))
+			(info.isInput() ? inputChannelsBuilder : outputChannelsBuilder).put(info.token(), info.channel());
 		this.inputChannels = inputChannelsBuilder.build();
 		this.outputChannels = outputChannelsBuilder.build();
 	}
@@ -134,9 +116,24 @@ public class Interpreter implements Blob {
 		return new Runnable() {
 			@Override
 			public void run() {
-				interpret();
+				Runnable callback = Interpreter.this.callback.get();
+				if (callback == null)
+					interpret();
+				else {
+					//Run the callback (which may be empty).
+					callback.run();
+					//Set the callback to empty so we only run it once.
+					Interpreter.this.callback.set(new EmptyRunnable());
+				}
 			}
 		};
+	}
+
+	@Override
+	public void drain(Runnable callback) {
+		//Set the callback; the core code will run it after its next interpret().
+		if (!this.callback.compareAndSet(callback, null))
+			throw new IllegalStateException("drain() called multiple times");
 	}
 
 	public static final class InterpreterBlobFactory implements BlobFactory {
