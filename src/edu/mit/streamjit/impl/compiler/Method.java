@@ -1,7 +1,7 @@
 package edu.mit.streamjit.impl.compiler;
 
 import com.google.common.collect.ImmutableList;
-import java.util.ArrayList;
+import edu.mit.streamjit.util.IntrusiveList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -17,9 +17,13 @@ import java.util.List;
  * @since 3/6/2013
  */
 public class Method extends Value implements ParentedList.Parented<Module> {
-	//Intrusive list fields.
-	private Method next, previous;
+	@IntrusiveList.Next
+	private Method next;
+	@IntrusiveList.Previous
+	private Method previous;
+	@ParentedList.Parent
 	private Module parent;
+
 	private final ImmutableList<Argument> arguments;
 	public Method(MethodType type, String name, Module parent) {
 		super(type, name);
