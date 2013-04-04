@@ -1,10 +1,14 @@
 package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
-import com.google.common.collect.MapMaker;
 import edu.mit.streamjit.impl.compiler.ParentedList.Parented;
 import edu.mit.streamjit.util.IntrusiveList;
-import java.util.concurrent.ConcurrentMap;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 
 /**
  * A ParentedList is an intrusive list of objects with parents that must be kept
@@ -12,38 +16,45 @@ import java.util.concurrent.ConcurrentMap;
  * ParentedList per element type should be created per parent instance, or the
  * instances may get confused as to which elements are in which list.
  * <p/>
- * Each class wishing to participate in a ParentedList must register a
- * ParentedList.Support instance in its static initializer by calling
- * {@link #registerSupport(ParentedList.Support)}. It is critical that the
- * Support instance is registered prior to (happens-before) creating any
- * ParentedLists for the supported class.
+ * Each class wishing to participate in a ParentedList must annotate their
+ * parent field with @Parent.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/30/2013
  */
 public class ParentedList<P, C extends Parented<P>> extends IntrusiveList<C> {
-	private final Support<P, C> support;
+	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private final P parent;
+	private final MethodHandle mhSetParent;
 	public ParentedList(P parent, Class<C> klass) {
 		super(klass);
-		Support<?, ?> supportQ = SUPPORTS.get(klass);
-		if (supportQ == null)
-			throw new UnsupportedOperationException("no support for class: "+klass);
-		@SuppressWarnings("unchecked")
-		Support<P, C> supportPC = (Support<P, C>)supportQ;
-		this.support = supportPC;
 		this.parent = checkNotNull(parent);
+		java.lang.reflect.Field parentField = null;
+		for (java.lang.reflect.Field f : klass.getDeclaredFields())
+			if (f.isAnnotationPresent(Parent.class)) {
+				checkArgument(parentField == null, "two parent fields in %s", klass);
+				parentField = f;
+			}
+		checkArgument(parentField != null, "no parent field in %s", klass);
+		checkArgument(parentField.getType().isAssignableFrom(parent.getClass()), "parent field on %s of wrong type", klass);
+
+		try {
+			parentField.setAccessible(true);
+			mhSetParent = LOOKUP.unreflectSetter(parentField);
+		} catch (SecurityException | IllegalAccessException ex) {
+			throw new IllegalArgumentException("error accessing %s field", ex);
+		}
 	}
 
 	@Override
 	protected void elementAdded(C t) {
-		P oldParent = support.setParent(t, parent);
-		assert oldParent == null;
+		assert t.getParent() == null;
+		setParent(t, parent);
 	}
 
 	@Override
 	protected void elementRemoved(C t) {
-		P oldParent = support.setParent(t, null);
-		assert oldParent == parent;
+		assert t.getParent() == parent;
+		setParent(t, null);
 	}
 
 	/**
@@ -69,45 +80,19 @@ public class ParentedList<P, C extends Parented<P>> extends IntrusiveList<C> {
 		return parentCheck;
 	}
 
+	private void setParent(C t, P newParent) {
+		try {
+			mhSetParent.invoke(t, newParent);
+		} catch (Throwable ex) {
+			Thread.currentThread().stop(ex);
+		}
+	}
+
 	public static interface Parented<P> {
 		public P getParent();
 	}
 
-	/**
-	 * Support provides a method for setting a Parented object's parent
-	 * reference without requiring it to be publicly available, in addition to
-	 * the methods on IntrusiveList.Support.
-	 * @param <P> the parent's type
-	 * @param <T> the Parented's type
-	 */
-	public static interface Support<P, T extends Parented<P>> extends IntrusiveList.Support<T> {
-		/**
-		 * Sets the given Parented's parent, returning the previous parent.
-		 * @param t a Parented object (never null)
-		 * @param newParent the new parent (may be null)
-		 * @return the old parent
-		 */
-		public P setParent(T t, P newParent);
-	}
-
-	private static final ConcurrentMap<Class<?>, Support<?, ?>> SUPPORTS = new MapMaker().concurrencyLevel(1).makeMap();
-	/**
-	 * Registers a Support for the given class.  Also registers the Support with
-	 * IntrusiveList.
-	 * @param <P> the parent's type
-	 * @param <T> the type being supported
-	 * @param klass the class being supported
-	 * @param support a Support for the given class
-	 * @throws IllegalArgumentException if a Support has already been registered
-	 * for the given class
-	 * @throws NullPointerException if klass or support is null
-	 */
-	public static <P, T extends Parented<P>> void registerSupport(Class<T> klass, Support<P, T> support) {
-		IntrusiveList.registerSupport(klass, support);
-		Support<?, ?> previous = SUPPORTS.putIfAbsent(klass, support);
-		if (previous != null)
-			throw new IllegalArgumentException(String.format(
-					"%s: registering %s, but %s already registered",
-					klass, support, previous));
-	}
+	@Retention(RetentionPolicy.RUNTIME)
+	@Target(ElementType.FIELD)
+	public @interface Parent {}
 }
