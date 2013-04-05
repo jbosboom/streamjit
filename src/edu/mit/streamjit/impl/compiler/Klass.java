@@ -76,24 +76,27 @@ public class Klass implements Accessible, ParentedList.Parented<Module> {
 		module.klasses().add(this); //sets parent
 		this.name = klass.getName();
 		this.modifiers = Sets.immutableEnumSet(Modifier.fromClassBits(Shorts.checkedCast(klass.getModifiers())));
-		this.superclass = findOrConstruct(klass.getSuperclass(), module);
+		this.superclass = module.findOrConstruct(klass.getSuperclass());
 		ImmutableList.Builder<Klass> interfacesB = ImmutableList.builder();
 		for (Class<?> c : klass.getInterfaces())
-			interfacesB.add(findOrConstruct(c, module));
+			interfacesB.add(module.findOrConstruct(c));
 		this.interfaces = interfacesB.build();
-		//TODO: fields, methods
-		this.fields = Collections.unmodifiableList(new ParentedList<>(this, Field.class));
+		ParentedList<Klass, Field> fieldList = new ParentedList<>(this, Field.class);
+		for (java.lang.reflect.Field f : klass.getDeclaredFields())
+			fieldList.add(new Field(f, this, module));
+		this.fields = Collections.unmodifiableList(fieldList);
+		//TODO: methods
 		this.methods = Collections.unmodifiableList(new ParentedList<>(this, Method.class));
 		this.backingClass = klass;
 	}
 
-	private static Klass findOrConstruct(Class<?> klass, Module module) {
-		if (klass == null)
-			return null;
-		Klass klassByName = module.getKlassByName(klass.getName());
-		if (klassByName != null)
-			return klassByName;
-		return new Klass(klass, module);
+	/**
+	 * Returns true iff this Klass is mutable (not yet created as a live Class
+	 * object).
+	 * @return true iff this Klass is mutable
+	 */
+	public boolean isMutable() {
+		return getBackingClass() == null;
 	}
 
 	/**
@@ -122,6 +125,13 @@ public class Klass implements Accessible, ParentedList.Parented<Module> {
 	}
 	public List<Method> methods() {
 		return methods;
+	}
+
+	public Field getFieldByName(String name) {
+		for (Field f : fields())
+			if (f.getName().equals(name))
+				return f;
+		return null;
 	}
 
 	@Override

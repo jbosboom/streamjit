@@ -26,6 +26,23 @@ public class Module {
 	}
 
 	/**
+	 * Returns the Klass for the given Class if we've already created it (or are
+	 * in the process of creating it), or creates and returns it otherwise.
+	 *
+	 * For internal use only during creation of Klasses from Classes.
+	 * @param klass a Class
+	 * @return a Klass
+	 */
+	final Klass findOrConstruct(Class<?> klass) {
+		if (klass == null)
+			return null;
+		Klass klassByName = getKlassByName(klass.getName());
+		if (klassByName != null)
+			return klassByName;
+		return new Klass(klass, this);
+	}
+
+	/**
 	 * Ensures we don't end up with two classes with the same name in the list.
 	 */
 	private static class KlassList extends ParentedList<Module, Klass> {

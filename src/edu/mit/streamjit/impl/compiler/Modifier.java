@@ -40,7 +40,11 @@ public enum Modifier {
 	ANNOTATION(Opcodes.ACC_ANNOTATION),
 	ENUM(Opcodes.ACC_ENUM);
 	private static final ImmutableSet<Modifier> CLASS_MODIFIERS = Sets.immutableEnumSet(
-			PUBLIC, FINAL, SUPER, INTERFACE, ABSTRACT, SYNTHETIC, ANNOTATION, ENUM
+			PUBLIC, FINAL, SUPER, INTERFACE, ABSTRACT, SYNTHETIC, ANNOTATION, ENUM,
+			//TODO: the below bits appear in java.lang.reflect.Modifier-style
+			//bits but aren't in class files, so we need to mask them out later
+			//when emitting bytecodes.
+			PRIVATE, PROTECTED, STATIC
 	);
 	private static final ImmutableSet<Modifier> FIELD_MODIFIERS = Sets.immutableEnumSet(
 			PUBLIC, PRIVATE, PROTECTED, STATIC, FINAL, VOLATILE, TRANSIENT,
