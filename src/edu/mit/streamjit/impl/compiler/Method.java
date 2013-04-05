@@ -16,16 +16,16 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/6/2013
  */
-public class Method extends Value implements ParentedList.Parented<Module> {
+public class Method extends Value implements ParentedList.Parented<Klass> {
 	@IntrusiveList.Next
 	private Method next;
 	@IntrusiveList.Previous
 	private Method previous;
 	@ParentedList.Parent
-	private Module parent;
+	private Klass parent;
 
 	private final ImmutableList<Argument> arguments;
-	public Method(MethodType type, String name, Module parent) {
+	public Method(MethodType type, String name, Klass parent) {
 		super(type, name);
 		ImmutableList.Builder<Argument> builder = ImmutableList.builder();
 		for (Iterator<RegularType> it = type.argumentTypeIterator(); it.hasNext();)
@@ -40,12 +40,8 @@ public class Method extends Value implements ParentedList.Parented<Module> {
 	}
 
 	@Override
-	public Module getParent() {
+	public Klass getParent() {
 		return parent;
-	}
-
-	void setParent(Module module) {
-		parent = module;
 	}
 
 	public ImmutableList<Argument> arguments() {
@@ -64,37 +60,5 @@ public class Method extends Value implements ParentedList.Parented<Module> {
 
 	public List<BasicBlock> basicBlocks() {
 		return basicBlocks;
-	}
-
-	private static final class MethodSupport implements ParentedList.Support<Module, Method> {
-		@Override
-		public Module setParent(Method t, Module newParent) {
-			Module parent = t.getParent();
-			t.parent = newParent;
-			return parent;
-		}
-		@Override
-		public Method getPrevious(Method t) {
-			return t.previous;
-		}
-		@Override
-		public Method setPrevious(Method t, Method newPrevious) {
-			Method previous = getPrevious(t);
-			t.previous = newPrevious;
-			return previous;
-		}
-		@Override
-		public Method getNext(Method t) {
-			return t.next;
-		}
-		@Override
-		public Method setNext(Method t, Method newNext) {
-			Method next = getNext(t);
-			t.next = newNext;
-			return next;
-		}
-	}
-	static {
-		ParentedList.registerSupport(Method.class, new MethodSupport());
 	}
 }

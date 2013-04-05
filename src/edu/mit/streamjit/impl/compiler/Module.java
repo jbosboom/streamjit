@@ -1,5 +1,8 @@
 package edu.mit.streamjit.impl.compiler;
 
+import static com.google.common.base.Preconditions.*;
+import java.util.List;
+
 /**
  * Module is the top-level IR node for a single compilation, analogous to a
  * translation unit in other compilers.
@@ -7,5 +10,33 @@ package edu.mit.streamjit.impl.compiler;
  * @since 3/6/2013
  */
 public class Module {
+	private KlassList klasses = new KlassList(this);
+	public Module() {
+	}
 
+	public List<Klass> klasses() {
+		return klasses;
+	}
+
+	public Klass getKlassByName(String name) {
+		for (Klass klass : klasses())
+			if (klass.getName().equals(name))
+				return klass;
+		return null;
+	}
+
+	/**
+	 * Ensures we don't end up with two classes with the same name in the list.
+	 */
+	private static class KlassList extends ParentedList<Module, Klass> {
+		private KlassList(Module parent) {
+			super(parent, Klass.class);
+		}
+		@Override
+		protected void elementAdding(Klass t) {
+			for (Klass klass : this)
+				checkArgument(!klass.getName().equals(t.getName()), "adding duplicate %s", t.getName());
+			super.elementAdding(t);
+		}
+	}
 }
