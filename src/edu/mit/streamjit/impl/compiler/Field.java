@@ -29,6 +29,10 @@ public class Field implements ParentedList.Parented<Klass> {
 		this.modifiers = Sets.immutableEnumSet(Modifier.fromFieldBits(Shorts.checkedCast(f.getModifiers())));
 	}
 
+	public boolean isMutable() {
+		return (parent == null) || parent.isMutable();
+	}
+
 	public java.lang.reflect.Field getBackingField() {
 		//We don't call this very often (if at all), so look it up every time
 		//rather than burn a field on all Fields.
