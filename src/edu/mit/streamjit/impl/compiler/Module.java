@@ -55,5 +55,14 @@ public final class Module {
 				checkArgument(!klass.getName().equals(t.getName()), "adding duplicate %s", t.getName());
 			super.elementAdding(t);
 		}
+		@Override
+		protected void elementRemoving(Klass t) {
+			//Removing an immutable Klass makes no sense as any replacement
+			//would have no effect (because the module-based ClassLoader prefers
+			//classes loaded by the parent) and could break other mutable
+			//Klasses if they depended on the changed definitions.
+			checkArgument(t.isMutable(), "removing immutable Klass %s", t.getName());
+			super.elementRemoving(t);
+		}
 	}
 }
