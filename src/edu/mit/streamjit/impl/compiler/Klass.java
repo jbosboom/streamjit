@@ -18,7 +18,7 @@ import java.util.Set;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/3/2013
  */
-public class Klass implements Accessible, ParentedList.Parented<Module> {
+public final class Klass implements Accessible, ParentedList.Parented<Module> {
 	@IntrusiveList.Next
 	private Klass next;
 	@IntrusiveList.Previous

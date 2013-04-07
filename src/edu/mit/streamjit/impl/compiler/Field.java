@@ -12,7 +12,7 @@ import java.util.Set;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/3/2013
  */
-public class Field implements Accessible, ParentedList.Parented<Klass> {
+public final class Field implements Accessible, ParentedList.Parented<Klass> {
 	@IntrusiveList.Previous
 	private Field previous;
 	@IntrusiveList.Next

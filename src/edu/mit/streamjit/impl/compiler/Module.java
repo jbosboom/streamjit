@@ -9,7 +9,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/6/2013
  */
-public class Module {
+public final class Module {
 	private KlassList klasses = new KlassList(this);
 	public Module() {
 	}
