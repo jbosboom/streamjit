@@ -10,7 +10,7 @@ import java.util.Set;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/3/2013
  */
-public class Field implements ParentedList.Parented<Klass> {
+public class Field implements Accessible, ParentedList.Parented<Klass> {
 	@IntrusiveList.Previous
 	private Field previous;
 	@IntrusiveList.Next
@@ -52,6 +52,17 @@ public class Field implements ParentedList.Parented<Klass> {
 	}
 	public Set<Modifier> modifiers() {
 		return modifiers;
+	}
+
+	@Override
+	public Access getAccess() {
+		return Access.fromModifiers(modifiers());
+	}
+
+	@Override
+	public void setAccess(Access access) {
+		modifiers().removeAll(Access.allAccessModifiers());
+		modifiers().addAll(access.modifiers());
 	}
 
 	@Override
