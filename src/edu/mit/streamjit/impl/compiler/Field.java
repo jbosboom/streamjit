@@ -1,8 +1,10 @@
 package edu.mit.streamjit.impl.compiler;
 
+import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Shorts;
 import edu.mit.streamjit.util.IntrusiveList;
+import java.util.EnumSet;
 import java.util.Set;
 
 /**
@@ -27,6 +29,17 @@ public class Field implements Accessible, ParentedList.Parented<Klass> {
 		this.name = f.getName();
 		this.type = RegularType.of(module.findOrConstruct(f.getType()));
 		this.modifiers = Sets.immutableEnumSet(Modifier.fromFieldBits(Shorts.checkedCast(f.getModifiers())));
+	}
+	public Field(RegularType type, String name, Set<Modifier> modifiers, Klass parent) {
+		checkNotNull(type);
+		checkNotNull(name);
+		checkNotNull(modifiers);
+		this.name = name;
+		this.type = type;
+		this.modifiers = EnumSet.noneOf(Modifier.class);
+		modifiers().addAll(modifiers);
+		if (parent != null)
+			parent.fields().add(this);
 	}
 
 	public boolean isMutable() {
