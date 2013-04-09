@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Shorts;
@@ -53,32 +54,44 @@ public class Method extends Value implements ParentedList.Parented<Klass> {
 		//We're unresolved, so we don't have arguments or basic blocks.
 	}
 
+	public boolean isMutable() {
+		return getParent().isMutable();
+	}
+
+	public boolean isResolved() {
+		return basicBlocks != null;
+	}
+
+	public void resolve() {
+		throw new UnsupportedOperationException("TODO");
+	}
+
 	@Override
 	public MethodType getType() {
 		return (MethodType)super.getType();
 	}
 
-	@Override
-	public Klass getParent() {
-		return parent;
+	public Set<Modifier> modifiers() {
+		return modifiers;
 	}
 
 	public ImmutableList<Argument> arguments() {
 		return arguments;
 	}
 
-	public void add(BasicBlock block) {
-		basicBlocks.add(block);
-		block.setParent(this);
-	}
-
-	public void remove(BasicBlock block) {
-		basicBlocks.remove(block);
-		block.setParent(null);
-	}
-
 	public List<BasicBlock> basicBlocks() {
 		return basicBlocks;
+	}
+
+	@Override
+	public void setName(String name) {
+		checkState(isMutable(), "can't change name of method on immutable class %s", getParent());
+		super.setName(name);
+	}
+
+	@Override
+	public Klass getParent() {
+		return parent;
 	}
 
 	@Override
