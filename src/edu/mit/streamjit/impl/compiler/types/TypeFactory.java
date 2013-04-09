@@ -23,17 +23,21 @@ public final class TypeFactory implements Iterable<Type> {
 		assert ReflectionUtils.usesObjectEquality(Klass.class);
 		Class<?>[] TYPE_CLASSES = {
 			WrapperType.class, ArrayType.class, ReferenceType.class,
-			PrimitiveType.class, RegularType.class, VoidType.class,
-			ReturnType.class
+			PrimitiveType.class, VoidType.class
 		};
 		MethodHandles.Lookup lookup = MethodHandles.lookup();
 		ImmutableList.Builder<MethodHandle> builder = ImmutableList.builder();
-		for (Class<?> c : TYPE_CLASSES)
+		for (Class<?> c : TYPE_CLASSES) {
+			//Don't try to construct abstract classes.  (Doing so results in an
+			//InstantiationException from inside the MethodHandle machinery with
+			//no message string, which is a bit confusing.)
+			assert !java.lang.reflect.Modifier.isAbstract(c.getModifiers()) : c;
 			try {
 				builder.add(lookup.findConstructor(c, java.lang.invoke.MethodType.methodType(void.class, Klass.class)));
 			} catch (NoSuchMethodException | IllegalAccessException ex) {
 				throw new AssertionError(ex);
 			}
+		}
 		typeCtors = builder.build();
 	}
 	private static final ImmutableList<MethodHandle> typeCtors;
