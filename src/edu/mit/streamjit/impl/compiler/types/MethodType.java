@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.compiler.types;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import edu.mit.streamjit.impl.compiler.Module;
 import java.util.List;
 
 /**
@@ -31,5 +32,15 @@ public class MethodType extends Type {
 	@Override
 	public String toString() {
 		return returnType.toString() + '(' + Joiner.on(", ").join(parameterTypes) + ')';
+	}
+
+	@Override
+	protected Module getModule() {
+		return returnType.getModule();
+	}
+
+	@Override
+	protected TypeFactory getTypeFactory() {
+		return returnType.getTypeFactory();
 	}
 }

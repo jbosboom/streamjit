@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.compiler.types;
 
+import edu.mit.streamjit.impl.compiler.Module;
+
 /**
  * The types of Values.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
@@ -7,4 +9,7 @@ package edu.mit.streamjit.impl.compiler.types;
  */
 public abstract class Type {
 	Type() {}
+
+	protected abstract Module getModule();
+	protected abstract TypeFactory getTypeFactory();
 }
