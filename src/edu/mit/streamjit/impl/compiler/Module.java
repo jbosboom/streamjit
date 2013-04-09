@@ -4,7 +4,9 @@ import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Strings;
 import edu.mit.streamjit.impl.compiler.types.TypeFactory;
 import java.lang.reflect.Array;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Module is the top-level IR node for a single compilation, analogous to a
@@ -15,6 +17,7 @@ import java.util.List;
 public final class Module {
 	private final TypeFactory typeFactory = new TypeFactory(this);
 	private KlassList klasses = new KlassList(this);
+	private Map<String, Klass> klassesMap = new HashMap<>();
 	public Module() {
 	}
 
@@ -34,10 +37,7 @@ public final class Module {
 	 */
 	public Klass getKlass(String name) {
 		checkNotNull(name);
-		for (Klass klass : klasses())
-			if (klass.getName().equals(name))
-				return klass;
-		return null;
+		return klassesMap.get(name);
 	}
 
 	/**
@@ -71,15 +71,19 @@ public final class Module {
 	/**
 	 * Ensures we don't end up with two classes with the same name in the list.
 	 */
-	private static class KlassList extends ParentedList<Module, Klass> {
+	private class KlassList extends ParentedList<Module, Klass> {
 		private KlassList(Module parent) {
 			super(parent, Klass.class);
 		}
 		@Override
 		protected void elementAdding(Klass t) {
-			for (Klass klass : this)
-				checkArgument(!klass.getName().equals(t.getName()), "adding duplicate %s", t.getName());
+			checkArgument(!klassesMap.containsKey(t.getName()), "adding duplicate %s", t.getName());
 			super.elementAdding(t);
+		}
+		@Override
+		protected void elementAdded(Klass t) {
+			super.elementAdded(t);
+			klassesMap.put(t.getName(), t);
 		}
 		@Override
 		protected void elementRemoving(Klass t) {
