@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.compiler;
 
+import edu.mit.streamjit.impl.compiler.types.RegularType;
+import edu.mit.streamjit.impl.compiler.types.MethodType;
 import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.util.IntrusiveList;
 import java.util.Iterator;

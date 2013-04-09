@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Strings;
+import edu.mit.streamjit.impl.compiler.types.TypeFactory;
 import java.lang.reflect.Array;
 import java.util.List;
 
@@ -12,12 +13,17 @@ import java.util.List;
  * @since 3/6/2013
  */
 public final class Module {
+	private final TypeFactory typeFactory = new TypeFactory(this);
 	private KlassList klasses = new KlassList(this);
 	public Module() {
 	}
 
 	public List<Klass> klasses() {
 		return klasses;
+	}
+
+	public TypeFactory types() {
+		return typeFactory;
 	}
 
 	/**

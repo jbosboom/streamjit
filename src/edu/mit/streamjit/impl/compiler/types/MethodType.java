@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.compiler;
+package edu.mit.streamjit.impl.compiler.types;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Joiner;

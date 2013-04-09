@@ -1,10 +1,10 @@
-package edu.mit.streamjit.impl.compiler;
+package edu.mit.streamjit.impl.compiler.types;
 
 /**
  * The types of Values.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/6/2013
  */
-public class Type {
-	protected Type() {}
+public abstract class Type {
+	Type() {}
 }

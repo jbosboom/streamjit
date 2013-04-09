@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import edu.mit.streamjit.impl.compiler.types.Type;
 import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.ImmutableSet;
 import edu.mit.streamjit.util.ReflectionUtils;

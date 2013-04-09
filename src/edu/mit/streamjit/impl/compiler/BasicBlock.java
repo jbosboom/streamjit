@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.compiler;
 
+import edu.mit.streamjit.impl.compiler.types.BasicBlockType;
+
 /**
  *
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>

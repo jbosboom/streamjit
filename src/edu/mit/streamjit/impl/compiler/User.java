@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import edu.mit.streamjit.impl.compiler.types.Type;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
