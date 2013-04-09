@@ -72,14 +72,16 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 		checkNotNull(klass);
 		checkNotNull(module);
 		checkArgument(module.getKlass(klass.getName()) == null, "klass named %s already in module", klass.getName());
+
 		this.backingClass = klass;
+		this.name = klass.getName();
+		this.modifiers = Sets.immutableEnumSet(Modifier.fromClassBits(Shorts.checkedCast(klass.getModifiers())));
+
 		//We're committed now.  Even through we aren't fully constructed,
 		//register us with the module so any circular dependencies can find us.
 		//Note that this means we can't use any of the klasses we recurse for
 		//during our own construction!
 		module.klasses().add(this); //sets parent
-		this.name = klass.getName();
-		this.modifiers = Sets.immutableEnumSet(Modifier.fromClassBits(Shorts.checkedCast(klass.getModifiers())));
 		this.superclass = klass.getSuperclass() != null ? module.getKlass(klass.getSuperclass()) : null;
 		ImmutableList.Builder<Klass> interfacesB = ImmutableList.builder();
 		for (Class<?> c : klass.getInterfaces())
