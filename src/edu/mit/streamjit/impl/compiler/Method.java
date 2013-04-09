@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.compiler;
 import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
 import com.google.common.primitives.Shorts;
 import edu.mit.streamjit.util.IntrusiveList;
 import java.util.List;
@@ -42,7 +43,7 @@ public class Method extends Value implements ParentedList.Parented<Klass> {
 		//parent is set by our parent adding us to its list prior to making it
 		//unmodifiable.  (We can't add ourselves and have the list wrapped
 		//unmodifiable later because it's stored in a final field.)
-		this.modifiers = Modifier.fromMethodBits(Shorts.checkedCast(method.getModifiers()));
+		this.modifiers = Sets.immutableEnumSet(Modifier.fromMethodBits(Shorts.checkedCast(method.getModifiers())));
 		//We're unresolved, so we don't have arguments or basic blocks.
 	}
 	public Method(java.lang.reflect.Constructor<?> ctor, Klass parent) {
@@ -50,7 +51,7 @@ public class Method extends Value implements ParentedList.Parented<Klass> {
 		//parent is set by our parent adding us to its list prior to making it
 		//unmodifiable.  (We can't add ourselves and have the list wrapped
 		//unmodifiable later because it's stored in a final field.)
-		this.modifiers = Modifier.fromMethodBits(Shorts.checkedCast(ctor.getModifiers()));
+		this.modifiers = Sets.immutableEnumSet(Modifier.fromMethodBits(Shorts.checkedCast(ctor.getModifiers())));
 		//We're unresolved, so we don't have arguments or basic blocks.
 	}
 
