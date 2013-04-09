@@ -2,12 +2,14 @@ package edu.mit.streamjit.impl.compiler.types;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import edu.mit.streamjit.impl.compiler.Klass;
 import edu.mit.streamjit.impl.compiler.Module;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -15,7 +17,7 @@ import java.util.Map;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/7/2013
  */
-public final class TypeFactory {
+public final class TypeFactory implements Iterable<Type> {
 	static {
 		//We depend on this because we use an IdentityHashMap.
 		assert ReflectionUtils.usesObjectEquality(Klass.class);
@@ -37,6 +39,7 @@ public final class TypeFactory {
 	private static final ImmutableList<MethodHandle> typeCtors;
 	private final Module parent;
 	private final Map<Klass, ReturnType> typeMap = new IdentityHashMap<>();
+	private final Iterable<Type> iterable = Iterables.unmodifiableIterable(Iterables.<Type>concat(typeMap.values()));
 	public TypeFactory(Module parent) {
 		assert ReflectionUtils.calledDirectlyFrom(Module.class);
 		this.parent = checkNotNull(parent);
@@ -77,6 +80,20 @@ public final class TypeFactory {
 
 	public <T extends ReturnType> T getType(Klass klass, Class<T> typeClass) {
 		return typeClass.cast(getType(klass));
+	}
+
+	/**
+	 * Returns all the types created by this TypeFactory.  There are no
+	 * guarantees on iteration order.  Calling methods on this TypeFactory while
+	 * the iteration is in progress may result in
+	 * ConcurrentModificationException.  Types present during one iteration may
+	 * not be present during another, depending on this TypeFactory's caching
+	 * policy.
+	 * @return an iterator over Types created by this TypeFactory
+	 */
+	@Override
+	public Iterator<Type> iterator() {
+		return iterable.iterator();
 	}
 
 	private ReturnType makeType(Klass klass) {
