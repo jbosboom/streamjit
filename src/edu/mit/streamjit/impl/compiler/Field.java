@@ -28,7 +28,7 @@ public final class Field implements Accessible, ParentedList.Parented<Klass> {
 		//unmodifiable.  (We can't add ourselves and have the list wrapped
 		//unmodifiable later because it's stored in a final field.)
 		this.name = f.getName();
-		this.type = null;//RegularType.of(module.getKlass(f.getType()));
+		this.type = module.types().getRegularType(module.getKlass(f.getType()));
 		this.modifiers = Sets.immutableEnumSet(Modifier.fromFieldBits(Shorts.checkedCast(f.getModifiers())));
 	}
 	public Field(RegularType type, String name, Set<Modifier> modifiers, Klass parent) {
