@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler.types;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.impl.compiler.Klass;
 
 /**
@@ -18,6 +19,7 @@ public final class PrimitiveType extends RegularType {
 	}
 
 	public WrapperType wrap() {
-		throw new UnsupportedOperationException("TODO");
+		//PrimitiveTypes are always backed by Classes.
+		return getTypeFactory().getWrapperType(getModule().getKlass(Primitives.wrap(getKlass().getBackingClass())));
 	}
 }

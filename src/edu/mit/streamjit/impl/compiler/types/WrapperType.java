@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler.types;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.impl.compiler.Klass;
 
 /**
@@ -18,6 +19,7 @@ public final class WrapperType extends ReferenceType {
 	}
 
 	public PrimitiveType unwrap() {
-		throw new UnsupportedOperationException("TODO");
+		//Wrapper types are always backed by Classes.
+		return getTypeFactory().getPrimitiveType(getModule().getKlass(Primitives.unwrap(getKlass().getBackingClass())));
 	}
 }

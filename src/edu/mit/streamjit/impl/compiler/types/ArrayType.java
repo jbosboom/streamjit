@@ -15,14 +15,14 @@ public final class ArrayType extends ReferenceType {
 	}
 
 	public int getDimensions() {
-		throw new UnsupportedOperationException("TODO");
+		return getKlass().getDimensions();
 	}
 
-	public Type getComponentType() {
-		throw new UnsupportedOperationException("TODO");
+	public RegularType getComponentType() {
+		return getTypeFactory().getRegularType(getKlass().getComponentKlass());
 	}
 
-	public Type getElementType() {
-		throw new UnsupportedOperationException("TODO");
+	public RegularType getElementType() {
+		return getTypeFactory().getRegularType(getKlass().getElementKlass());
 	}
 }
