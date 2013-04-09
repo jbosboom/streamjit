@@ -1,10 +1,13 @@
 package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Shorts;
 import edu.mit.streamjit.util.IntrusiveList;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -46,7 +49,7 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 	public Klass(String name, Klass superclass, List<Klass> interfaces, Module module) {
 		checkNotNull(name);
 		checkNotNull(module);
-		checkState(module.getKlassByName(name) == null, "klass named %s already in module");
+		checkState(module.getKlass(name) == null, "klass named %s already in module");
 		module.klasses().add(this); //sets parent
 		this.name = name;
 		this.modifiers = EnumSet.noneOf(Modifier.class);
@@ -68,7 +71,7 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 	public Klass(Class<?> klass, Module module) {
 		checkNotNull(klass);
 		checkNotNull(module);
-		checkArgument(module.getKlassByName(klass.getName()) == null, "klass named %s already in module");
+		checkArgument(module.getKlass(klass.getName()) == null, "klass named %s already in module", klass.getName());
 		//We're committed now.  Even through we aren't fully constructed,
 		//register us with the module so any circular dependencies can find us.
 		//Note that this means we can't use any of the klasses we recurse for
@@ -76,10 +79,10 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 		module.klasses().add(this); //sets parent
 		this.name = klass.getName();
 		this.modifiers = Sets.immutableEnumSet(Modifier.fromClassBits(Shorts.checkedCast(klass.getModifiers())));
-		this.superclass = module.findOrConstruct(klass.getSuperclass());
+		this.superclass = klass.getSuperclass() != null ? module.getKlass(klass.getSuperclass()) : null;
 		ImmutableList.Builder<Klass> interfacesB = ImmutableList.builder();
 		for (Class<?> c : klass.getInterfaces())
-			interfacesB.add(module.findOrConstruct(c));
+			interfacesB.add(module.getKlass(c));
 		this.interfaces = interfacesB.build();
 		ParentedList<Klass, Field> fieldList = new ParentedList<>(this, Field.class);
 		for (java.lang.reflect.Field f : klass.getDeclaredFields())
@@ -91,12 +94,41 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 	}
 
 	/**
-	 * Returns true iff this Klass is mutable (not yet created as a live Class
-	 * object).
+	 * Creates the array class with the given component type and (additional)
+	 * dimensions.
+	 * @param componentType
+	 * @param dimensions
+	 * @param module
+	 */
+	public Klass(Klass componentType, int dimensions, Module module) {
+		checkNotNull(componentType);
+		checkArgument(dimensions >= 1);
+		checkNotNull(module);
+		StringBuilder nameBuilder = new StringBuilder(Strings.repeat("[", dimensions));
+		//Always a reference type; if not already an array, add L and ;.
+		nameBuilder.append(componentType.isArray() ? componentType.getName() : "L" + componentType.getName() + ";");
+		this.name = nameBuilder.toString();
+		checkArgument(module.getKlass(name) == null, "array klass %s already in module", name);
+		module.klasses().add(this); //sets parent
+		//The access modifier for an array class is that of its element type.
+		//Even if the element type is mutable, we only check the modifier once.
+		this.modifiers = ImmutableSet.<Modifier>builder().addAll(componentType.getAccess().modifiers())
+				.add(Modifier.ABSTRACT).add(Modifier.FINAL).build();
+		this.superclass = module.getKlass(Object.class);
+		this.interfaces = ImmutableList.of(module.getKlass(Cloneable.class), module.getKlass(Serializable.class));
+		this.fields = ImmutableList.of();
+		this.methods = ImmutableList.of();
+		this.backingClass = null;
+	}
+
+	/**
+	 * Returns true iff this Klass is mutable.  Klasses created from a Class
+	 * object are immutable.  Klasses representing array classes, even arrays of
+	 * mutable Klasses, are immutable.
 	 * @return true iff this Klass is mutable
 	 */
 	public boolean isMutable() {
-		return getBackingClass() == null;
+		return getBackingClass() == null && !isArray();
 	}
 
 	/**
@@ -145,6 +177,52 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 		modifiers().addAll(access.modifiers());
 	}
 
+	public final boolean isArray() {
+		return getName().startsWith("[");
+	}
+
+	/**
+	 * If this Klass represents an array class, returns the number of array
+	 * dimensions; otherwise, returns 0.
+	 * @return the number of dimensions, or 0
+	 */
+	public final int getDimensions() {
+		return getName().lastIndexOf('[')+1;
+	}
+
+	/**
+	 * Returns the component Klass of this array class; that is, the Klass with
+	 * one fewer dimension (possibly with zero dimensions).  Thus [[I becomes
+	 * [I.
+	 * @return the component Klass of this array class
+	 * @throws IllegalStateException if this Klass is not an array class
+	 */
+	public final Klass getComponentKlass() {
+		checkState(isArray(), "not array class: %s", getName());
+		return getParent().getArrayKlass(getElementKlass(), getDimensions()-1);
+	}
+
+	/**
+	 * Returns the element Klass of this array class; that is, the Klass with
+	 * all dimensions stripped off.  Thus [[I becomes I.
+	 * @return the element Klass of this array class
+	 * @throws IllegalStateException if this Klass is not an array class
+	 */
+	public final Klass getElementKlass() {
+		checkState(isArray(), "not array class: %s", getName());
+		if (getBackingClass() != null) {
+			Class<?> b = getBackingClass();
+			while (b.getComponentType() != null)
+				b = b.getComponentType();
+			return getParent().getKlass(b);
+		}
+		//Our element type is mutable, so we must have already created it.
+		String elementName = getName().replaceAll("\\[*L(.*);", "$1");
+		Klass elementKlass = getParent().getKlass(elementName);
+		assert elementKlass != null;
+		return elementKlass;
+	}
+
 	@Override
 	public final Module getParent() {
 		return parent;
@@ -162,6 +240,10 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 		System.out.println(new Klass(javax.swing.JCheckBoxMenuItem.class, m));
 		System.out.println(new Klass(java.nio.file.Files.class, m));
 		System.out.println(new Klass(javax.net.ssl.SSLSocket.class, m));
+		Klass mutableKlass = new Klass("Foooo", m.getKlass(Object.class), Collections.<Klass>emptyList(), m);
+		Klass arrayKlass = m.getArrayKlass(mutableKlass, 5);
+		Klass componentKlass = arrayKlass.getComponentKlass();
+		Klass elementKlass = arrayKlass.getElementKlass();
 		for (Klass k : m.klasses())
 			System.out.println(k);
 		System.out.println(m.klasses().size()+" classes reflectively parsed");

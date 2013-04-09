@@ -1,6 +1,8 @@
 package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.base.Strings;
+import java.lang.reflect.Array;
 import java.util.List;
 
 /**
@@ -18,7 +20,14 @@ public final class Module {
 		return klasses;
 	}
 
-	public Klass getKlassByName(String name) {
+	/**
+	 * Gets the Klass with the given name, or null if this Module doesn't
+	 * contain a Klass with the given name.
+	 * @param name the name of the Klass to get
+	 * @return the Klass with the given name, or null
+	 */
+	public Klass getKlass(String name) {
+		checkNotNull(name);
 		for (Klass klass : klasses())
 			if (klass.getName().equals(name))
 				return klass;
@@ -26,20 +35,31 @@ public final class Module {
 	}
 
 	/**
-	 * Returns the Klass for the given Class if we've already created it (or are
-	 * in the process of creating it), or creates and returns it otherwise.
-	 *
-	 * For internal use only during creation of Klasses from Classes.
-	 * @param klass a Class
-	 * @return a Klass
+	 * Gets the Klass representing the given Class object, creating and adding
+	 * it to this module if necessary.
+	 * @param klass the class to get a Klass for
+	 * @return a Klass representing the given Class
 	 */
-	final Klass findOrConstruct(Class<?> klass) {
-		if (klass == null)
-			return null;
-		Klass klassByName = getKlassByName(klass.getName());
+	public Klass getKlass(Class<?> klass) {
+		Klass klassByName = getKlass(klass.getName());
 		if (klassByName != null)
 			return klassByName;
 		return new Klass(klass, this);
+	}
+
+	public Klass getArrayKlass(Klass componentType, int dimensions) {
+		checkNotNull(componentType);
+		checkArgument(dimensions >= 1);
+		if (componentType.getBackingClass() != null)
+			return getKlass(Array.newInstance(componentType.getBackingClass(), new int[dimensions]).getClass());
+		StringBuilder nameBuilder = new StringBuilder(Strings.repeat("[", dimensions));
+		//Always a reference type; if not already an array, add L and ;.
+		nameBuilder.append(componentType.isArray() ? componentType.getName() : "L" + componentType.getName() + ";");
+		String name = nameBuilder.toString();
+		Klass alreadyExists = getKlass(name);
+		if (alreadyExists != null)
+			return alreadyExists;
+		return new Klass(componentType, dimensions, this);
 	}
 
 	/**
