@@ -129,6 +129,26 @@ public final class TypeFactory implements Iterable<Type> {
 				Thread.currentThread().getContextClassLoader()));
 	}
 
+	public MethodType getMethodType(java.lang.reflect.Method method) {
+		ReturnType returnType = getType(parent.getKlass(method.getReturnType()));
+		Class<?>[] parameterClasses = method.getParameterTypes();
+		List<RegularType> parameterTypes = new ArrayList<>(parameterClasses.length);
+		if (!java.lang.reflect.Modifier.isStatic(method.getModifiers()))
+			parameterTypes.add(getRegularType(parent.getKlass(method.getDeclaringClass())));
+		for (Class<?> c : parameterClasses)
+			parameterTypes.add(getRegularType(parent.getKlass(c)));
+		return getMethodType(returnType, parameterTypes);
+	}
+
+	public MethodType getMethodType(java.lang.reflect.Constructor<?> ctor) {
+		ReturnType returnType = getType(parent.getKlass(ctor.getDeclaringClass()));
+		Class<?>[] parameterClasses = ctor.getParameterTypes();
+		List<RegularType> parameterTypes = new ArrayList<>(parameterClasses.length);
+		for (Class<?> c : parameterClasses)
+			parameterTypes.add(getRegularType(parent.getKlass(c)));
+		return getMethodType(returnType, parameterTypes);
+	}
+
 	/**
 	 * Returns all the types created by this TypeFactory.  There are no
 	 * guarantees on iteration order.  Calling methods on this TypeFactory while
