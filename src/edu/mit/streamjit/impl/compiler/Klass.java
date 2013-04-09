@@ -91,8 +91,9 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 		for (java.lang.reflect.Field f : klass.getDeclaredFields())
 			fieldList.add(new Field(f, this, module));
 		this.fields = Collections.unmodifiableList(fieldList);
-		//TODO: constructors
 		ParentedList<Klass, Method> methodList = new ParentedList<>(this, Method.class);
+		for (java.lang.reflect.Constructor<?> c : klass.getDeclaredConstructors())
+			methodList.add(new Method(c, this));
 		for (java.lang.reflect.Method m : klass.getDeclaredMethods())
 			methodList.add(new Method(m, this));
 		this.methods = Collections.unmodifiableList(methodList);

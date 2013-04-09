@@ -44,6 +44,14 @@ public class Method extends Value implements ParentedList.Parented<Klass> {
 		this.modifiers = Modifier.fromMethodBits(Shorts.checkedCast(method.getModifiers()));
 		//We're unresolved, so we don't have arguments or basic blocks.
 	}
+	public Method(java.lang.reflect.Constructor<?> ctor, Klass parent) {
+		super(parent.getParent().types().getMethodType(ctor), "<init>");
+		//parent is set by our parent adding us to its list prior to making it
+		//unmodifiable.  (We can't add ourselves and have the list wrapped
+		//unmodifiable later because it's stored in a final field.)
+		this.modifiers = Modifier.fromMethodBits(Shorts.checkedCast(ctor.getModifiers()));
+		//We're unresolved, so we don't have arguments or basic blocks.
+	}
 
 	@Override
 	public MethodType getType() {
