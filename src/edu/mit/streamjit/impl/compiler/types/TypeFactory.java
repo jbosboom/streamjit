@@ -8,8 +8,11 @@ import edu.mit.streamjit.impl.compiler.Module;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -43,7 +46,8 @@ public final class TypeFactory implements Iterable<Type> {
 	private static final ImmutableList<MethodHandle> typeCtors;
 	private final Module parent;
 	private final Map<Klass, ReturnType> typeMap = new IdentityHashMap<>();
-	private final Iterable<Type> iterable = Iterables.unmodifiableIterable(Iterables.<Type>concat(typeMap.values()));
+	private final List<MethodType> methodTypes = new ArrayList<>();
+	private final Iterable<Type> iterable = Iterables.unmodifiableIterable(Iterables.<Type>concat(typeMap.values(), methodTypes));
 	public TypeFactory(Module parent) {
 		assert ReflectionUtils.calledDirectlyFrom(Module.class);
 		this.parent = checkNotNull(parent);
@@ -84,6 +88,45 @@ public final class TypeFactory implements Iterable<Type> {
 
 	public <T extends ReturnType> T getType(Klass klass, Class<T> typeClass) {
 		return typeClass.cast(getType(klass));
+	}
+
+	public MethodType getMethodType(ReturnType returnType, List<RegularType> parameterTypes) {
+		//If this linear search gets too expensive, we can break it up by return
+		//type and perhaps first parameter type.  Another strategy would be to
+		//overlay a tree through all the MethodType instances, so that a lookup
+		//just chases pointers from the return type roots.
+		for (MethodType t : methodTypes)
+			if (t.getReturnType().equals(returnType) && t.getParameterTypes().equals(parameterTypes))
+				return t;
+		MethodType t = new MethodType(returnType, parameterTypes);
+		methodTypes.add(t);
+		return t;
+	}
+
+	public MethodType getMethodType(ReturnType returnType, RegularType... parameterTypes) {
+		return getMethodType(returnType, Arrays.asList(parameterTypes));
+	}
+
+	public MethodType getMethodType(java.lang.invoke.MethodType methodType) {
+		ReturnType returnType = getType(parent.getKlass(methodType.returnType()));
+		List<RegularType> parameterTypes = new ArrayList<>(methodType.parameterCount());
+		for (Class<?> c : methodType.parameterList())
+			parameterTypes.add(getRegularType(parent.getKlass(c)));
+		return getMethodType(returnType, parameterTypes);
+	}
+
+	/**
+	 * Creates a MethodType from a JVM method descriptor.  The descriptor does
+	 * not contain implicit this parameters (see JVMS 4.3.3), so calling
+	 * MethodType.prependParameter() on the returned MethodType may be
+	 * necessary.
+	 * @param methodDescriptor a method descriptor
+	 * @return a MethodType corresponding to the given method descriptor
+	 */
+	public MethodType getMethodType(String methodDescriptor) {
+		//TODO: is this the right ClassLoader?
+		return getMethodType(java.lang.invoke.MethodType.fromMethodDescriptorString(methodDescriptor,
+				Thread.currentThread().getContextClassLoader()));
 	}
 
 	/**
