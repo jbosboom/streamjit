@@ -246,12 +246,6 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 		System.out.println(new Klass(javax.swing.JCheckBoxMenuItem.class, m));
 		System.out.println(new Klass(java.nio.file.Files.class, m));
 		System.out.println(new Klass(javax.net.ssl.SSLSocket.class, m));
-		Klass mutableKlass = new Klass("Foooo", m.getKlass(Object.class), Collections.<Klass>emptyList(), m);
-		Klass arrayKlass = m.getArrayKlass(mutableKlass, 5);
-		Klass componentKlass = arrayKlass.getComponentKlass();
-		Klass elementKlass = arrayKlass.getElementKlass();
-		for (Klass k : m.klasses())
-			System.out.println(k);
 		System.out.println(m.klasses().size()+" classes reflectively parsed");
 	}
 }
