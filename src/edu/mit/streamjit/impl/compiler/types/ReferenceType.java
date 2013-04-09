@@ -2,7 +2,6 @@ package edu.mit.streamjit.impl.compiler.types;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import edu.mit.streamjit.impl.compiler.Klass;
-import edu.mit.streamjit.impl.compiler.Modifier;
 
 /**
  * A reference type, including array types.
@@ -12,13 +11,11 @@ import edu.mit.streamjit.impl.compiler.Modifier;
 public class ReferenceType extends RegularType {
 	public ReferenceType(Klass klass) {
 		super(klass);
-		//java.lang.Object, or
-		checkArgument(Object.class.equals(klass.getBackingClass()) ||
-				//something with a superclass (includes array types), or
-				klass.getSuperclass() != null ||
-				//an interface (which subclasses Object at the bytecode level,
-				//but not according to Java reflection).
-				klass.modifiers().contains(Modifier.INTERFACE),
+		//A RegularType that isn't a primitive type.  Primitives all have
+		//backing classes, so we can check isPrimitive(); RegularType will
+		//exclude void (for which isPrimitive() returns true).
+		Class<?> backing = klass.getBackingClass();
+		checkArgument(backing == null || !backing.isPrimitive(),
 				"not a ReferenceType: %s", klass);
 	}
 }
