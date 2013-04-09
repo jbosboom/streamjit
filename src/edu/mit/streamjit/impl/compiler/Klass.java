@@ -72,6 +72,7 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 		checkNotNull(klass);
 		checkNotNull(module);
 		checkArgument(module.getKlass(klass.getName()) == null, "klass named %s already in module", klass.getName());
+		this.backingClass = klass;
 		//We're committed now.  Even through we aren't fully constructed,
 		//register us with the module so any circular dependencies can find us.
 		//Note that this means we can't use any of the klasses we recurse for
@@ -90,7 +91,6 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 		this.fields = Collections.unmodifiableList(fieldList);
 		//TODO: methods
 		this.methods = Collections.unmodifiableList(new ParentedList<>(this, Method.class));
-		this.backingClass = klass;
 	}
 
 	/**
