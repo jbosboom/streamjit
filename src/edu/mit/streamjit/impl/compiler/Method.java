@@ -77,10 +77,12 @@ public class Method extends Value implements ParentedList.Parented<Klass> {
 	}
 
 	public ImmutableList<Argument> arguments() {
+		checkState(isResolved(), "not resolved: %s", this);
 		return arguments;
 	}
 
 	public List<BasicBlock> basicBlocks() {
+		checkState(isResolved(), "not resolved: %s", this);
 		return basicBlocks;
 	}
 
