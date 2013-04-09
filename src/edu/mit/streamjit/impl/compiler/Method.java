@@ -1,20 +1,22 @@
 package edu.mit.streamjit.impl.compiler;
 
-import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import com.google.common.collect.ImmutableList;
+import com.google.common.primitives.Shorts;
 import edu.mit.streamjit.util.IntrusiveList;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Method represents an executable element of a class file (instance method,
  * class (static) method, instance initializer (constructor), or class (static)
  * initializer).
  *
- * Methods may may be internal (with basic blocks) or external (without).
- * Internal methods will be emitted in the output, while external methods will
- * only be referenced by call instructions.
+ * Methods may be resolved or unresolved.  Resolved methods have basic blocks,
+ * while unresolved methods are just declarations for generating call
+ * instructions.  Methods mirroring actual methods of live Class objects are
+ * created unresolved, while mutable Methods are created resolved but with an
+ * empty list of basic blocks.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/6/2013
  */
@@ -25,15 +27,22 @@ public class Method extends Value implements ParentedList.Parented<Klass> {
 	private Method previous;
 	@ParentedList.Parent
 	private Klass parent;
-
-	private final ImmutableList<Argument> arguments;
-	public Method(MethodType type, String name, Klass parent) {
-		super(type, name);
-		ImmutableList.Builder<Argument> builder = ImmutableList.builder();
-		for (Iterator<RegularType> it = type.argumentTypeIterator(); it.hasNext();)
-			builder.add(new Argument(this, it.next()));
-		this.arguments = builder.build();
-		parent.add(this);
+	private final Set<Modifier> modifiers;
+	/**
+	 * Lazily initialized during resolution.
+	 */
+	private ImmutableList<Argument> arguments;
+	/**
+	 * Lazily initialized during resolution.
+	 */
+	private ParentedList<Method, BasicBlock> basicBlocks;
+	public Method(java.lang.reflect.Method method, Klass parent) {
+		super(parent.getParent().types().getMethodType(method), method.getName());
+		//parent is set by our parent adding us to its list prior to making it
+		//unmodifiable.  (We can't add ourselves and have the list wrapped
+		//unmodifiable later because it's stored in a final field.)
+		this.modifiers = Modifier.fromMethodBits(Shorts.checkedCast(method.getModifiers()));
+		//We're unresolved, so we don't have arguments or basic blocks.
 	}
 
 	@Override
