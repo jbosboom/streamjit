@@ -80,4 +80,9 @@ public class Method extends Value implements ParentedList.Parented<Klass> {
 	public List<BasicBlock> basicBlocks() {
 		return basicBlocks;
 	}
+
+	@Override
+	public String toString() {
+		return modifiers.toString() + " " + getName() + " " +getType();
+	}
 }
