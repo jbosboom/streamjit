@@ -29,6 +29,28 @@ public class MethodType extends Type {
 		return parameterTypes;
 	}
 
+	public MethodType withReturnType(ReturnType newReturnType) {
+		return getTypeFactory().getMethodType(newReturnType, parameterTypes);
+	}
+
+	public MethodType prependArgument(RegularType newParameterType) {
+		return getTypeFactory().getMethodType(returnType,
+				ImmutableList.<RegularType>builder().add(newParameterType).addAll(parameterTypes).build());
+	}
+
+	public MethodType dropFirstArgument() {
+		return getTypeFactory().getMethodType(returnType, parameterTypes.subList(1, parameterTypes.size()));
+	}
+
+	public MethodType appendArgument(RegularType newParameterType) {
+		return getTypeFactory().getMethodType(returnType,
+				ImmutableList.<RegularType>builder().addAll(parameterTypes).add(newParameterType).build());
+	}
+
+	public MethodType dropLastArgument() {
+		return getTypeFactory().getMethodType(returnType, parameterTypes.subList(0, parameterTypes.size()-1));
+	}
+
 	@Override
 	public String toString() {
 		return returnType.toString() + '(' + Joiner.on(", ").join(parameterTypes) + ')';
