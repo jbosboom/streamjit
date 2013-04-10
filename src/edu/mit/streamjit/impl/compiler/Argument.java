@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.compiler;
 
+import edu.mit.streamjit.impl.compiler.types.RegularType;
+
 /**
  * An Argument represents an argument to a Method.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>

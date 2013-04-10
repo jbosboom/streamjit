@@ -1,37 +1,70 @@
 package edu.mit.streamjit.impl.compiler;
 
+import static com.google.common.base.Preconditions.*;
+import edu.mit.streamjit.impl.compiler.types.MethodType;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
+import com.google.common.primitives.Shorts;
 import edu.mit.streamjit.util.IntrusiveList;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Method represents an executable element of a class file (instance method,
  * class (static) method, instance initializer (constructor), or class (static)
  * initializer).
  *
- * Methods may may be internal (with basic blocks) or external (without).
- * Internal methods will be emitted in the output, while external methods will
- * only be referenced by call instructions.
+ * Methods may be resolved or unresolved.  Resolved methods have basic blocks,
+ * while unresolved methods are just declarations for generating call
+ * instructions.  Methods mirroring actual methods of live Class objects are
+ * created unresolved, while mutable Methods are created resolved but with an
+ * empty list of basic blocks.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/6/2013
  */
-public class Method extends Value implements ParentedList.Parented<Module> {
+public class Method extends Value implements ParentedList.Parented<Klass> {
 	@IntrusiveList.Next
 	private Method next;
 	@IntrusiveList.Previous
 	private Method previous;
 	@ParentedList.Parent
-	private Module parent;
+	private Klass parent;
+	private final Set<Modifier> modifiers;
+	/**
+	 * Lazily initialized during resolution.
+	 */
+	private ImmutableList<Argument> arguments;
+	/**
+	 * Lazily initialized during resolution.
+	 */
+	private ParentedList<Method, BasicBlock> basicBlocks;
+	public Method(java.lang.reflect.Method method, Klass parent) {
+		super(parent.getParent().types().getMethodType(method), method.getName());
+		//parent is set by our parent adding us to its list prior to making it
+		//unmodifiable.  (We can't add ourselves and have the list wrapped
+		//unmodifiable later because it's stored in a final field.)
+		this.modifiers = Sets.immutableEnumSet(Modifier.fromMethodBits(Shorts.checkedCast(method.getModifiers())));
+		//We're unresolved, so we don't have arguments or basic blocks.
+	}
+	public Method(java.lang.reflect.Constructor<?> ctor, Klass parent) {
+		super(parent.getParent().types().getMethodType(ctor), "<init>");
+		//parent is set by our parent adding us to its list prior to making it
+		//unmodifiable.  (We can't add ourselves and have the list wrapped
+		//unmodifiable later because it's stored in a final field.)
+		this.modifiers = Sets.immutableEnumSet(Modifier.fromMethodBits(Shorts.checkedCast(ctor.getModifiers())));
+		//We're unresolved, so we don't have arguments or basic blocks.
+	}
 
-	private final ImmutableList<Argument> arguments;
-	public Method(MethodType type, String name, Module parent) {
-		super(type, name);
-		ImmutableList.Builder<Argument> builder = ImmutableList.builder();
-		for (Iterator<RegularType> it = type.argumentTypeIterator(); it.hasNext();)
-			builder.add(new Argument(this, it.next()));
-		this.arguments = builder.build();
-		parent.add(this);
+	public boolean isMutable() {
+		return getParent().isMutable();
+	}
+
+	public boolean isResolved() {
+		return basicBlocks != null;
+	}
+
+	public void resolve() {
+		throw new UnsupportedOperationException("TODO");
 	}
 
 	@Override
@@ -39,62 +72,33 @@ public class Method extends Value implements ParentedList.Parented<Module> {
 		return (MethodType)super.getType();
 	}
 
-	@Override
-	public Module getParent() {
-		return parent;
-	}
-
-	void setParent(Module module) {
-		parent = module;
+	public Set<Modifier> modifiers() {
+		return modifiers;
 	}
 
 	public ImmutableList<Argument> arguments() {
+		checkState(isResolved(), "not resolved: %s", this);
 		return arguments;
 	}
 
-	public void add(BasicBlock block) {
-		basicBlocks.add(block);
-		block.setParent(this);
-	}
-
-	public void remove(BasicBlock block) {
-		basicBlocks.remove(block);
-		block.setParent(null);
-	}
-
 	public List<BasicBlock> basicBlocks() {
+		checkState(isResolved(), "not resolved: %s", this);
 		return basicBlocks;
 	}
 
-	private static final class MethodSupport implements ParentedList.Support<Module, Method> {
-		@Override
-		public Module setParent(Method t, Module newParent) {
-			Module parent = t.getParent();
-			t.parent = newParent;
-			return parent;
-		}
-		@Override
-		public Method getPrevious(Method t) {
-			return t.previous;
-		}
-		@Override
-		public Method setPrevious(Method t, Method newPrevious) {
-			Method previous = getPrevious(t);
-			t.previous = newPrevious;
-			return previous;
-		}
-		@Override
-		public Method getNext(Method t) {
-			return t.next;
-		}
-		@Override
-		public Method setNext(Method t, Method newNext) {
-			Method next = getNext(t);
-			t.next = newNext;
-			return next;
-		}
+	@Override
+	public void setName(String name) {
+		checkState(isMutable(), "can't change name of method on immutable class %s", getParent());
+		super.setName(name);
 	}
-	static {
-		ParentedList.registerSupport(Method.class, new MethodSupport());
+
+	@Override
+	public Klass getParent() {
+		return parent;
+	}
+
+	@Override
+	public String toString() {
+		return modifiers.toString() + " " + getName() + " " +getType();
 	}
 }

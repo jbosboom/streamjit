@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.compiler;
+package edu.mit.streamjit.impl.compiler.types;
 
 /**
  * The type of a BasicBlock.  Currently, this is a singleton type.  (We might
