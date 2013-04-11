@@ -1,11 +1,14 @@
 package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.base.Predicate;
 import com.google.common.base.Strings;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Shorts;
+import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.util.IntrusiveList;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -170,6 +173,22 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 			if (f.getName().equals(name))
 				return f;
 		return null;
+	}
+
+	public Method getMethod(String name, MethodType type) {
+		for (Method m : methods())
+			if (m.getName().equals(name) && m.getType().equals(type))
+				return m;
+		return null;
+	}
+
+	public Iterable<Method> getMethods(final String name) {
+		return FluentIterable.from(methods()).filter(new Predicate<Method>() {
+			@Override
+			public boolean apply(Method input) {
+				return input.getName().equals(name);
+			}
+		});
 	}
 
 	@Override
