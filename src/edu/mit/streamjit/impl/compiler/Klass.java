@@ -165,7 +165,7 @@ public final class Klass implements Accessible, ParentedList.Parented<Module> {
 		return methods;
 	}
 
-	public Field getFieldByName(String name) {
+	public Field getField(String name) {
 		for (Field f : fields())
 			if (f.getName().equals(name))
 				return f;
