@@ -17,6 +17,38 @@ import java.util.Objects;
  */
 public abstract class User extends Value {
 	private final List<Use> uses;
+	/**
+	 * Creates a User of the given type with an empty operand list.
+	 * @param type the type of this User
+	 */
+	public User(Type type) {
+		this(type, null);
+	}
+	/**
+	 * Creates a User of the given type with an operand list of the given size,
+	 * with all operands initialized to null.
+	 * @param type the type of this User
+	 * @param operands the number of operands of this User
+	 */
+	public User(Type type, int operands) {
+		this(type, operands, null);
+	}
+	/**
+	 * Creates a User of the given type with an empty operand list.
+	 * @param type the type of this User
+	 * @param name the name of this User (may be null)
+	 */
+	public User(Type type, String name) {
+		super(type, name);
+		uses = new ArrayList<>();
+	}
+	/**
+	 * Creates a User of the given type with an operand list of the given size,
+	 * with all operands initialized to null.
+	 * @param type the type of this User
+	 * @param operands the number of operands of this User
+	 * @param name the name of this User (may be null)
+	 */
 	public User(Type type, int operands, String name) {
 		super(type, name);
 		uses = new ArrayList<>(operands);
