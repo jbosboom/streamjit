@@ -1,5 +1,8 @@
 package edu.mit.streamjit.impl.compiler;
 
+import edu.mit.streamjit.impl.compiler.insts.Instruction;
+import edu.mit.streamjit.util.IntrusiveList;
+
 /**
  *
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
@@ -7,6 +10,7 @@ package edu.mit.streamjit.impl.compiler;
  */
 public class BasicBlock extends Value implements ParentedList.Parented<Method> {
 	private Method parent;
+	private final IntrusiveList<Instruction> instructions = new ParentedList<>(this, Instruction.class);
 	/**
 	 * Creates a new, empty BasicBlock not attached to any parent.  The Module
 	 * is used to get the correct BasicBlockType.
@@ -19,9 +23,5 @@ public class BasicBlock extends Value implements ParentedList.Parented<Method> {
 	@Override
 	public Method getParent() {
 		return parent;
-	}
-
-	void setParent(Method method) {
-		parent = method;
 	}
 }
