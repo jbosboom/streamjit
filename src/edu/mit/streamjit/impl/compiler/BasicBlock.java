@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.compiler;
 import com.google.common.collect.ImmutableSet;
 import edu.mit.streamjit.impl.compiler.insts.Instruction;
 import edu.mit.streamjit.impl.compiler.insts.TerminatorInst;
+import edu.mit.streamjit.impl.compiler.types.BasicBlockType;
 import edu.mit.streamjit.util.IntrusiveList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -22,6 +23,11 @@ public class BasicBlock extends Value implements ParentedList.Parented<Method> {
 	 */
 	public BasicBlock(Module module) {
 		super(module.types().getBasicBlockType());
+	}
+
+	@Override
+	public BasicBlockType getType() {
+		return (BasicBlockType)super.getType();
 	}
 
 	@Override
