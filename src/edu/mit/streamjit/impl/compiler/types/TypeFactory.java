@@ -10,7 +10,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -49,10 +48,12 @@ public final class TypeFactory implements Iterable<Type> {
 	private final Map<Klass, ReturnType> typeMap = new IdentityHashMap<>();
 	private final List<MethodType> methodTypes = new ArrayList<>();
 	private final BasicBlockType basicBlockType;
+	private final NullType nullType;
 	public TypeFactory(Module parent) {
 		assert ReflectionUtils.calledDirectlyFrom(Module.class);
 		this.parent = checkNotNull(parent);
 		this.basicBlockType = new BasicBlockType(parent);
+		this.nullType = new NullType(parent);
 	}
 
 	public ReturnType getType(Klass klass) {
@@ -90,6 +91,10 @@ public final class TypeFactory implements Iterable<Type> {
 
 	public <T extends ReturnType> T getType(Klass klass, Class<T> typeClass) {
 		return typeClass.cast(getType(klass));
+	}
+
+	public NullType getNullType() {
+		return nullType;
 	}
 
 	public MethodType getMethodType(ReturnType returnType, List<RegularType> parameterTypes) {
@@ -166,7 +171,7 @@ public final class TypeFactory implements Iterable<Type> {
 	 */
 	@Override
 	public Iterator<Type> iterator() {
-		return Iterables.unmodifiableIterable(Iterables.<Type>concat(typeMap.values(), methodTypes, Collections.singleton(basicBlockType))).iterator();
+		return Iterables.unmodifiableIterable(Iterables.<Type>concat(typeMap.values(), methodTypes, ImmutableList.of(basicBlockType, nullType))).iterator();
 	}
 
 	private ReturnType makeType(Klass klass) {
