@@ -60,20 +60,25 @@ public abstract class User extends Value {
 		return uses.size();
 	}
 
-	public Iterator<Value> operandIterator() {
-		return new Iterator<Value>() {
-			private final Iterator<Use> iter = uses.iterator();
+	public Iterable<Value> operands() {
+		return new Iterable<Value>() {
 			@Override
-			public boolean hasNext() {
-				return iter.hasNext();
-			}
-			@Override
-			public Value next() {
-				return iter.next().getOperand();
-			}
-			@Override
-			public void remove() {
-				throw new UnsupportedOperationException();
+			public Iterator<Value> iterator() {
+				return new Iterator<Value>() {
+					private final Iterator<Use> iter = uses().iterator();
+					@Override
+					public boolean hasNext() {
+						return iter.hasNext();
+					}
+					@Override
+					public Value next() {
+						return iter.next().getOperand();
+					}
+					@Override
+					public void remove() {
+						throw new UnsupportedOperationException();
+					}
+				};
 			}
 		};
 	}
