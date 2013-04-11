@@ -10,6 +10,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -47,10 +48,11 @@ public final class TypeFactory implements Iterable<Type> {
 	private final Module parent;
 	private final Map<Klass, ReturnType> typeMap = new IdentityHashMap<>();
 	private final List<MethodType> methodTypes = new ArrayList<>();
-	private final Iterable<Type> iterable = Iterables.unmodifiableIterable(Iterables.<Type>concat(typeMap.values(), methodTypes));
+	private final BasicBlockType basicBlockType;
 	public TypeFactory(Module parent) {
 		assert ReflectionUtils.calledDirectlyFrom(Module.class);
 		this.parent = checkNotNull(parent);
+		this.basicBlockType = new BasicBlockType(parent);
 	}
 
 	public ReturnType getType(Klass klass) {
@@ -149,6 +151,10 @@ public final class TypeFactory implements Iterable<Type> {
 		return getMethodType(returnType, parameterTypes);
 	}
 
+	public BasicBlockType getBasicBlockType() {
+		return basicBlockType;
+	}
+
 	/**
 	 * Returns all the types created by this TypeFactory.  There are no
 	 * guarantees on iteration order.  Calling methods on this TypeFactory while
@@ -160,7 +166,7 @@ public final class TypeFactory implements Iterable<Type> {
 	 */
 	@Override
 	public Iterator<Type> iterator() {
-		return iterable.iterator();
+		return Iterables.unmodifiableIterable(Iterables.<Type>concat(typeMap.values(), methodTypes, Collections.singleton(basicBlockType))).iterator();
 	}
 
 	private ReturnType makeType(Klass klass) {

@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.compiler.types;
 
+import edu.mit.streamjit.impl.compiler.Module;
+
 /**
  * The type of a BasicBlock.  Currently, this is a singleton type.  (We might
  * choose to make it per-Method at some point to prevent branch instructions
@@ -10,15 +12,24 @@ package edu.mit.streamjit.impl.compiler.types;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/6/2013
  */
-public class BasicBlockType extends Type {
-	private static final BasicBlockType INSTANCE = new BasicBlockType();
-	private BasicBlockType() {}
-	public static BasicBlockType of() {
-		return INSTANCE;
+public final class BasicBlockType extends Type {
+	private final Module module;
+	BasicBlockType(Module module) {
+		this.module = module;
 	}
 
 	@Override
 	public String toString() {
 		return "BasicBlock";
+	}
+
+	@Override
+	protected Module getModule() {
+		return module;
+	}
+
+	@Override
+	protected TypeFactory getTypeFactory() {
+		return getModule().types();
 	}
 }
