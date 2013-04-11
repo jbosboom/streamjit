@@ -1,7 +1,11 @@
 package edu.mit.streamjit.impl.compiler;
 
+import com.google.common.collect.ImmutableSet;
 import edu.mit.streamjit.impl.compiler.insts.Instruction;
+import edu.mit.streamjit.impl.compiler.insts.TerminatorInst;
 import edu.mit.streamjit.util.IntrusiveList;
+import java.util.Collections;
+import java.util.Iterator;
 
 /**
  *
@@ -23,5 +27,30 @@ public class BasicBlock extends Value implements ParentedList.Parented<Method> {
 	@Override
 	public Method getParent() {
 		return parent;
+	}
+
+	public TerminatorInst getTerminator() {
+		if (instructions.isEmpty())
+			return null;
+		Instruction lastInst = instructions.listIterator(instructions.size()).previous();
+		return lastInst instanceof TerminatorInst ? (TerminatorInst)lastInst : null;
+	}
+
+	public Iterable<BasicBlock> predecessors() {
+		return new Iterable<BasicBlock>() {
+			@Override
+			public Iterator<BasicBlock> iterator() {
+				ImmutableSet.Builder<BasicBlock> builder = ImmutableSet.builder();
+				for (User user : users().elementSet())
+					if (user instanceof TerminatorInst && ((Instruction)user).getParent() != null)
+						builder.add(((Instruction)user).getParent());
+				return builder.build().iterator();
+			}
+		};
+	}
+
+	public Iterable<BasicBlock> successors() {
+		TerminatorInst terminator = getTerminator();
+		return terminator != null ? terminator.successors() : Collections.<BasicBlock>emptyList();
 	}
 }
