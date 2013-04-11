@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.types.Type;
 import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.ImmutableSet;
@@ -29,10 +30,10 @@ public abstract class Value {
 	 */
 	private ImmutableSet<Use> uses = ImmutableSet.of();
 	public Value(Type type) {
-		this.type = type;
+		this(type, null);
 	}
 	public Value(Type type, String name) {
-		this.type = type;
+		this.type = checkNotNull(type);
 		this.name = name;
 	}
 
