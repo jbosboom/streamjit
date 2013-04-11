@@ -94,5 +94,12 @@ public final class Module {
 			checkArgument(t.isMutable(), "removing immutable Klass %s", t.getName());
 			super.elementRemoving(t);
 		}
+
+		@Override
+		protected void elementRemoved(Klass t) {
+			super.elementRemoved(t);
+			Klass removed = klassesMap.remove(t.getName());
+			assert t.equals(removed) : t +", "+removed;
+		}
 	}
 }
