@@ -63,7 +63,20 @@ public class Method extends Value implements ParentedList.Parented<Klass> {
 		return basicBlocks != null;
 	}
 
+	/**
+	 * Returns true iff this method can be resolved.  This method is safe to
+	 * call at all times after this Method's construction is complete, even if
+	 * this method has already been resolved.
+	 * @return true iff this method can be resolved
+	 */
+	public boolean isResolvable() {
+		//Abstract methods don't have code; native methods have code, but not of
+		//a form we can parse.
+		return !modifiers().contains(Modifier.ABSTRACT) && !modifiers.contains(Modifier.NATIVE);
+	}
+
 	public void resolve() {
+		checkState(isResolvable(), "cannot resolve %s", this);
 		throw new UnsupportedOperationException("TODO");
 	}
 
