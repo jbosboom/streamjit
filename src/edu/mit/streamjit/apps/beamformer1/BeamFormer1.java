@@ -13,6 +13,7 @@ import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 public class BeamFormer1 {
@@ -24,6 +25,7 @@ public class BeamFormer1 {
 
 		BeamFormer1Kernel core = new BeamFormer1Kernel();
 		StreamCompiler sc = new DebugStreamCompiler();
+		//StreamCompiler sc = new ConcurrentStreamCompiler(2);
 		CompiledStream<Float, Void> stream = sc.compile(core);
 		for (float i = 0; i < 100000; ++i) {
 			stream.offer(i);		// This offer value i has no effect in the program. As we can not call stream.offer(), just sending garbage value.

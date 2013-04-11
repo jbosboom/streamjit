@@ -11,6 +11,7 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 public class RoundRobinSplitterExample {
@@ -21,7 +22,7 @@ public class RoundRobinSplitterExample {
 	public static void main(String[] args) throws InterruptedException{
 		
 		RoundRobinSplitterMain rbs = new RoundRobinSplitterMain();
-		StreamCompiler sc = new DebugStreamCompiler();
+		StreamCompiler sc = new ConcurrentStreamCompiler(2);
 		CompiledStream<Integer, Void> stream = sc.compile(rbs);
 		Float output;
 
@@ -33,7 +34,7 @@ public class RoundRobinSplitterExample {
 			 */
 		}
 		stream.drain();
-		stream.awaitDraining();
+		//stream.awaitDraining();
 	}
 
 	public static class RoundRobinSplitterMain extends Pipeline<Integer, Void> {
@@ -47,7 +48,7 @@ public class RoundRobinSplitterExample {
 			splitJoin1.add(new Multplier(i + 1));
 		}
 		
-		splitJoin1.add(new Pipeline<>(new Multplier(1), new Multplier(2), new Multplier(3)));
+		//splitJoin1.add(new Pipeline<>(new Multplier(1), new Multplier(2), new Multplier(3)));
 		add(splitJoin1);
 		add(new IntPrinter());
 		}		
