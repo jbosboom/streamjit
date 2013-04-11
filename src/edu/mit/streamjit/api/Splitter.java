@@ -9,7 +9,7 @@ import edu.mit.streamjit.impl.common.Workers;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
-public abstract class Splitter<I, O> extends Worker<I, O> implements StreamElement<I, O> {
+public abstract class Splitter<I, O> extends Worker<I, O> {
 	public static final int UNLIMITED = Integer.MAX_VALUE;
 
 	/**
