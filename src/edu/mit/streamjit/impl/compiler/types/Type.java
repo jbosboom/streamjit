@@ -10,6 +10,6 @@ import edu.mit.streamjit.impl.compiler.Module;
 public abstract class Type {
 	Type() {}
 
-	protected abstract Module getModule();
-	protected abstract TypeFactory getTypeFactory();
+	public abstract Module getModule();
+	public abstract TypeFactory getTypeFactory();
 }

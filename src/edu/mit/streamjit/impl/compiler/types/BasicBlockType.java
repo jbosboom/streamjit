@@ -24,12 +24,12 @@ public final class BasicBlockType extends Type {
 	}
 
 	@Override
-	protected Module getModule() {
+	public Module getModule() {
 		return module;
 	}
 
 	@Override
-	protected TypeFactory getTypeFactory() {
+	public TypeFactory getTypeFactory() {
 		return getModule().types();
 	}
 }

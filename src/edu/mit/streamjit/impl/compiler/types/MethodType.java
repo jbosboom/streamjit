@@ -57,12 +57,12 @@ public class MethodType extends Type {
 	}
 
 	@Override
-	protected Module getModule() {
+	public Module getModule() {
 		return returnType.getModule();
 	}
 
 	@Override
-	protected TypeFactory getTypeFactory() {
+	public TypeFactory getTypeFactory() {
 		return returnType.getTypeFactory();
 	}
 }

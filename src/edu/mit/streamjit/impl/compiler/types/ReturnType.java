@@ -26,7 +26,7 @@ public abstract class ReturnType extends Type {
 	 * @return the Module this ReturnType belongs to
 	 */
 	@Override
-	protected Module getModule() {
+	public Module getModule() {
 		return getKlass().getParent();
 	}
 
@@ -36,7 +36,7 @@ public abstract class ReturnType extends Type {
 	 * @return the TypeFactory of the Module this ReturnType belongs to
 	 */
 	@Override
-	protected TypeFactory getTypeFactory() {
+	public TypeFactory getTypeFactory() {
 		return getModule().types();
 	}
 
