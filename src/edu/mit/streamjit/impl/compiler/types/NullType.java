@@ -22,6 +22,18 @@ public final class NullType extends Type {
 	public TypeFactory getTypeFactory() {
 		return parent.types();
 	}
+
+	/**
+	 * The null type is a subtype itself and of every reference type and no
+	 * other types.
+	 * @param other {@inheritDoc}
+	 * @return {@inheritDoc}
+	 */
+	@Override
+	public boolean isSubtypeOf(Type other) {
+		return other instanceof VoidType || other instanceof ReferenceType;
+	}
+
 	@Override
 	public String toString() {
 		return "<nulltype>";
