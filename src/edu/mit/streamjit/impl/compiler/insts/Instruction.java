@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler.insts;
 
 import edu.mit.streamjit.impl.compiler.BasicBlock;
+import edu.mit.streamjit.impl.compiler.Parented;
 import edu.mit.streamjit.impl.compiler.ParentedList;
 import edu.mit.streamjit.impl.compiler.User;
 import edu.mit.streamjit.impl.compiler.types.Type;
@@ -11,7 +12,7 @@ import edu.mit.streamjit.util.IntrusiveList;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/11/2013
  */
-public abstract class Instruction extends User implements ParentedList.Parented<BasicBlock> {
+public abstract class Instruction extends User implements Parented<BasicBlock> {
 	@IntrusiveList.Previous
 	private Instruction previous;
 	@IntrusiveList.Next

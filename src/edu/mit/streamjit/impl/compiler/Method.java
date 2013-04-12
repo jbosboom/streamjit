@@ -22,7 +22,7 @@ import java.util.Set;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/6/2013
  */
-public class Method extends Value implements ParentedList.Parented<Klass> {
+public class Method extends Value implements Parented<Klass> {
 	@IntrusiveList.Next
 	private Method next;
 	@IntrusiveList.Previous

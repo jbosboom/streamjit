@@ -1,7 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
-import edu.mit.streamjit.impl.compiler.ParentedList.Parented;
 import edu.mit.streamjit.util.IntrusiveList;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -86,10 +85,6 @@ public class ParentedList<P, C extends Parented<P>> extends IntrusiveList<C> {
 		} catch (Throwable ex) {
 			Thread.currentThread().stop(ex);
 		}
-	}
-
-	public static interface Parented<P> {
-		public P getParent();
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
