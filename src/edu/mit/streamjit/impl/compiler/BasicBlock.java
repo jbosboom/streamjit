@@ -14,6 +14,11 @@ import java.util.Iterator;
  * @since 3/6/2013
  */
 public class BasicBlock extends Value implements Parented<Method> {
+	@IntrusiveList.Previous
+	private BasicBlock previous;
+	@IntrusiveList.Next
+	private BasicBlock next;
+	@ParentedList.Parent
 	private Method parent;
 	private final IntrusiveList<Instruction> instructions = new ParentedList<>(this, Instruction.class);
 	/**
