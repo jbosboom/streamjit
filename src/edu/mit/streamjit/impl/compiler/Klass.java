@@ -266,5 +266,7 @@ public final class Klass implements Accessible, Parented<Module> {
 		System.out.println(new Klass(java.nio.file.Files.class, m));
 		System.out.println(new Klass(javax.net.ssl.SSLSocket.class, m));
 		System.out.println(m.klasses().size()+" classes reflectively parsed");
+		System.out.println(m.constants().getNullConstant());
+		System.out.println(m.constants().getSmallestIntConstant(-255));
 	}
 }

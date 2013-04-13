@@ -16,6 +16,7 @@ import java.util.Map;
  */
 public final class Module {
 	private final TypeFactory typeFactory = new TypeFactory(this);
+	private final ConstantFactory constantFactory = new ConstantFactory(this);
 	private KlassList klasses = new KlassList(this);
 	private Map<String, Klass> klassesMap = new HashMap<>();
 	public Module() {
@@ -27,6 +28,10 @@ public final class Module {
 
 	public TypeFactory types() {
 		return typeFactory;
+	}
+
+	public ConstantFactory constants() {
+		return constantFactory;
 	}
 
 	/**
