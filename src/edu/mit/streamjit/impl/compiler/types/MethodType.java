@@ -51,6 +51,16 @@ public class MethodType extends Type {
 		return getTypeFactory().getMethodType(returnType, parameterTypes.subList(0, parameterTypes.size()-1));
 	}
 
+	public String getDescriptor() {
+		StringBuilder sb = new StringBuilder();
+		sb.append('(');
+		for (RegularType t : getParameterTypes())
+			sb.append(t.getDescriptor());
+		sb.append(')');
+		sb.append(returnType.getDescriptor());
+		return sb.toString();
+	}
+
 	@Override
 	public String toString() {
 		return returnType.toString() + '(' + Joiner.on(", ").join(parameterTypes) + ')';
