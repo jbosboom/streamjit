@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.compiler.types;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ArrayTable;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Table;
 import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.impl.compiler.Klass;
@@ -44,6 +45,21 @@ public final class PrimitiveType extends RegularType {
 		if (!(other instanceof PrimitiveType))
 			return false;
 		return getCastOpcode((PrimitiveType)other).isEmpty();
+	}
+
+	private final ImmutableMap<String, String> DESCRIPTORS = ImmutableMap.<String, String>builder()
+			.put(boolean.class.getName(), "Z")
+			.put(byte.class.getName(), "B")
+			.put(char.class.getName(), "C")
+			.put(short.class.getName(), "S")
+			.put(int.class.getName(), "I")
+			.put(long.class.getName(), "J")
+			.put(float.class.getName(), "F")
+			.put(double.class.getName(), "D")
+			.build();
+	@Override
+	public String getDescriptor() {
+		return DESCRIPTORS.get(getKlass().getBackingClass().getName());
 	}
 
 	private static final List<String> PRIMITIVE_TYPE_NAMES = Arrays.asList(

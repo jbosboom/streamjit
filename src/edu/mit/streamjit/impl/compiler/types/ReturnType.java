@@ -40,6 +40,8 @@ public abstract class ReturnType extends Type {
 		return getModule().types();
 	}
 
+	public abstract String getDescriptor();
+
 	@Override
 	public String toString() {
 		return klass.getName();

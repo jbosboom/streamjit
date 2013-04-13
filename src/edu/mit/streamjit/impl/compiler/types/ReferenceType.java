@@ -41,4 +41,11 @@ public class ReferenceType extends RegularType {
 				return true;
 		return false;
 	}
+
+	@Override
+	public String getDescriptor() {
+		//We replace . with / because the JVM does for historical reasons.
+		//(This format is called the "internal name".)
+		return "L"+getKlass().getName().replace('.', '/')+";";
+	}
 }
