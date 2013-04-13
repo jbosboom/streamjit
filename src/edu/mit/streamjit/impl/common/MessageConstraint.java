@@ -19,9 +19,6 @@ import java.util.Queue;
 import java.util.Set;
 import edu.mit.streamjit.impl.common.Workers.StreamPosition;
 import edu.mit.streamjit.util.ReflectionUtils;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -221,16 +218,14 @@ public final class MessageConstraint {
 	 * @return
 	 */
 	private static ImmutableList<WorkerData> parseBytecodes(Class<?> klass) {
-		ClassReader r = null;
+		MethodNode mn;
 		try {
-			r = new ClassReader(klass.getName());
+			mn = MethodNodeBuilder.buildMethodNode(klass, "work", "()V");
 		} catch (IOException ex) {
 			throw new IllegalStreamGraphException("Couldn't get bytecode for "+klass.getName(), ex);
+		} catch (NoSuchMethodException ex) {
+			throw new AssertionError("Can't happen! Worker without work()? "+klass.getName(), ex);
 		}
-
-		WorkClassVisitor wcv = new WorkClassVisitor();
-		r.accept(wcv, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-		MethodNode mn = wcv.getWorkMethodNode();
 
 		ImmutableList.Builder<WorkerData> workerDatas = ImmutableList.builder();
 		for (AbstractInsnNode insn = mn.instructions.getFirst(); insn != null; insn = insn.getNext()) {
@@ -357,27 +352,6 @@ public final class MessageConstraint {
 		}
 
 		return latencyField != null ? new WorkerData(portalField, latencyField) : new WorkerData(portalField, constantLatency);
-	}
-
-	/**
-	 * Builds a MethodNode for the work() method.
-	 */
-	private static class WorkClassVisitor extends ClassVisitor {
-		private MethodNode mn;
-		WorkClassVisitor() {
-			super(Opcodes.ASM4);
-		}
-		@Override
-		public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-			if (name.equals("work") && desc.equals("()V")) {
-				mn = new MethodNode(Opcodes.ASM4, access, name, desc, signature, exceptions);
-				return mn;
-			}
-			return null;
-		}
-		public MethodNode getWorkMethodNode() {
-			return mn;
-		}
 	}
 	//</editor-fold>
 
