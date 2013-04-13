@@ -230,7 +230,7 @@ public class Interpreter implements Blob {
 					//If deliveryTime == current.getExecutions() + 1, it's for
 					//our next execution.  (If it's <= current.getExecutions(),
 					//we already missed it!)
-					if (deliveryTime <= (Workers.getExecutions(sender) + 1)) {
+					if (deliveryTime <= (Workers.getExecutions(current) + 1)) {
 						//We checked in our constructor that message constraints
 						//do not cross the interpreter boundary.  Assert that.
 						assert workers.contains(sender);
