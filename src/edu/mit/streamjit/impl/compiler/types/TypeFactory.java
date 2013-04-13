@@ -65,6 +65,10 @@ public final class TypeFactory implements Iterable<Type> {
 		return t;
 	}
 
+	public ReturnType getType(Class<?> klass) {
+		return getType(parent.getKlass(klass));
+	}
+
 	public VoidType getVoidType() {
 		return (VoidType)getType(parent.getKlass(void.class));
 	}
@@ -73,24 +77,48 @@ public final class TypeFactory implements Iterable<Type> {
 		return (RegularType)getType(klass);
 	}
 
+	public RegularType getRegularType(Class<?> klass) {
+		return getRegularType(parent.getKlass(klass));
+	}
+
 	public PrimitiveType getPrimitiveType(Klass klass) {
 		return (PrimitiveType)getType(klass);
+	}
+
+	public PrimitiveType getPrimitiveType(Class<?> klass) {
+		return getPrimitiveType(parent.getKlass(klass));
 	}
 
 	public ReferenceType getReferenceType(Klass klass) {
 		return (ReferenceType)getType(klass);
 	}
 
+	public ReferenceType getReferenceType(Class<?> klass) {
+		return getReferenceType(parent.getKlass(klass));
+	}
+
 	public ArrayType getArrayType(Klass klass) {
 		return (ArrayType)getType(klass);
+	}
+
+	public ArrayType getArrayType(Class<?> klass) {
+		return getArrayType(parent.getKlass(klass));
 	}
 
 	public WrapperType getWrapperType(Klass klass) {
 		return (WrapperType)getType(klass);
 	}
 
+	public WrapperType getWrapperType(Class<?> klass) {
+		return getWrapperType(parent.getKlass(klass));
+	}
+
 	public <T extends ReturnType> T getType(Klass klass, Class<T> typeClass) {
 		return typeClass.cast(getType(klass));
+	}
+
+	public <T extends ReturnType> T getType(Class<?> klass, Class<T> typeClass) {
+		return getType(parent.getKlass(klass), typeClass);
 	}
 
 	public NullType getNullType() {
