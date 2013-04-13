@@ -17,8 +17,8 @@ import java.util.Map;
 public final class Module {
 	private final TypeFactory typeFactory = new TypeFactory(this);
 	private final ConstantFactory constantFactory = new ConstantFactory(this);
-	private KlassList klasses = new KlassList(this);
-	private Map<String, Klass> klassesMap = new HashMap<>();
+	private final KlassList klasses = new KlassList(this);
+	private final Map<String, Klass> klassesMap = new HashMap<>();
 	public Module() {
 	}
 
