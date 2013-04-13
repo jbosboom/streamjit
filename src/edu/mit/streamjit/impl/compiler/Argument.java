@@ -7,7 +7,7 @@ import edu.mit.streamjit.impl.compiler.types.RegularType;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/6/2013
  */
-public class Argument extends Value {
+public class Argument extends Value implements Parented<Method> {
 	private final Method parent;
 	public Argument(Method parent, RegularType type) {
 		super(type);
@@ -18,6 +18,7 @@ public class Argument extends Value {
 		this.parent = parent;
 	}
 
+	@Override
 	public Method getParent() {
 		return parent;
 	}
