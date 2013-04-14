@@ -47,6 +47,8 @@ public final class TypeFactory implements Iterable<Type> {
 	private final Module parent;
 	private final Map<Klass, ReturnType> typeMap = new IdentityHashMap<>();
 	private final List<MethodType> methodTypes = new ArrayList<>();
+	private final List<StaticFieldType> staticFieldTypes = new ArrayList<>();
+	private final List<InstanceFieldType> instanceFieldTypes = new ArrayList<>();
 	private final BasicBlockType basicBlockType;
 	private final NullType nullType;
 	public TypeFactory(Module parent) {
@@ -184,6 +186,32 @@ public final class TypeFactory implements Iterable<Type> {
 		return getMethodType(returnType, parameterTypes);
 	}
 
+	public StaticFieldType getFieldType(RegularType fieldType) {
+		for (StaticFieldType t : staticFieldTypes)
+			if (t.getFieldType().equals(fieldType))
+				return t;
+		StaticFieldType t = new StaticFieldType(fieldType);
+		staticFieldTypes.add(t);
+		return t;
+	}
+
+	public InstanceFieldType getFieldType(ReferenceType instanceType, RegularType fieldType) {
+		for (InstanceFieldType t : instanceFieldTypes)
+			if (t.getFieldType().equals(fieldType) && t.getInstanceType().equals(instanceType))
+				return t;
+		InstanceFieldType t = new InstanceFieldType(instanceType, fieldType);
+		instanceFieldTypes.add(t);
+		return t;
+	}
+
+	public FieldType getFieldType(java.lang.reflect.Field field) {
+		RegularType fieldType = getRegularType(field.getType());
+		if (java.lang.reflect.Modifier.isStatic(field.getModifiers()))
+			return getFieldType(fieldType);
+		else
+			return getFieldType(getReferenceType(field.getDeclaringClass()), fieldType);
+	}
+
 	public BasicBlockType getBasicBlockType() {
 		return basicBlockType;
 	}
@@ -198,8 +226,15 @@ public final class TypeFactory implements Iterable<Type> {
 	 * @return an iterator over Types created by this TypeFactory
 	 */
 	@Override
+	@SuppressWarnings("unchecked")
 	public Iterator<Type> iterator() {
-		return Iterables.unmodifiableIterable(Iterables.<Type>concat(typeMap.values(), methodTypes, ImmutableList.of(basicBlockType, nullType))).iterator();
+		return Iterables.unmodifiableIterable(Iterables.<Type>concat(
+				typeMap.values(),
+				methodTypes,
+				staticFieldTypes,
+				instanceFieldTypes,
+				ImmutableList.of(basicBlockType, nullType))
+				).iterator();
 	}
 
 	private ReturnType makeType(Klass klass) {
