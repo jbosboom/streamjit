@@ -273,6 +273,26 @@ public final class MethodResolver {
 				assert frame.locals[var].getType() instanceof ReferenceType;
 				frame.stack.push(frame.locals[var]);
 				break;
+			case Opcodes.ISTORE:
+				assert frame.stack.peek().getType().isSubtypeOf(typeFactory.getType(int.class));
+				frame.locals[var] = frame.stack.pop();
+				break;
+			case Opcodes.LSTORE:
+				assert frame.stack.peek().getType().isSubtypeOf(typeFactory.getType(long.class));
+				frame.locals[var] = frame.stack.pop();
+				break;
+			case Opcodes.FSTORE:
+				assert frame.stack.peek().getType().isSubtypeOf(typeFactory.getType(float.class));
+				frame.locals[var] = frame.stack.pop();
+				break;
+			case Opcodes.DSTORE:
+				assert frame.stack.peek().getType().isSubtypeOf(typeFactory.getType(double.class));
+				frame.locals[var] = frame.stack.pop();
+				break;
+			case Opcodes.ASTORE:
+				assert frame.stack.peek().getType() instanceof ReferenceType;
+				frame.locals[var] = frame.stack.pop();
+				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
