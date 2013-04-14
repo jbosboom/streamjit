@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.compiler;
 
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.impl.common.MethodNodeBuilder;
+import edu.mit.streamjit.impl.compiler.types.ReferenceType;
 import edu.mit.streamjit.impl.compiler.types.Type;
 import edu.mit.streamjit.impl.compiler.types.TypeFactory;
 import java.io.IOException;
@@ -187,7 +188,28 @@ public final class MethodResolver {
 		}
 	}
 	private void interpret(VarInsnNode insn, FrameState frame, BBInfo block) {
+		int var = insn.var;
 		switch (insn.getOpcode()) {
+			case Opcodes.ILOAD:
+				assert frame.locals[var].getType().isSubtypeOf(typeFactory.getType(int.class));
+				frame.stack.push(frame.locals[var]);
+				break;
+			case Opcodes.LLOAD:
+				assert frame.locals[var].getType().isSubtypeOf(typeFactory.getType(long.class));
+				frame.stack.push(frame.locals[var]);
+				break;
+			case Opcodes.FLOAD:
+				assert frame.locals[var].getType().isSubtypeOf(typeFactory.getType(float.class));
+				frame.stack.push(frame.locals[var]);
+				break;
+			case Opcodes.DLOAD:
+				assert frame.locals[var].getType().isSubtypeOf(typeFactory.getType(double.class));
+				frame.stack.push(frame.locals[var]);
+				break;
+			case Opcodes.ALOAD:
+				assert frame.locals[var].getType() instanceof ReferenceType;
+				frame.stack.push(frame.locals[var]);
+				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
