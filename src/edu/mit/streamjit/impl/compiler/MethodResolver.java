@@ -2,9 +2,12 @@ package edu.mit.streamjit.impl.compiler;
 
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.impl.common.MethodNodeBuilder;
+import edu.mit.streamjit.impl.compiler.insts.CallInst;
+import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.ReferenceType;
 import edu.mit.streamjit.impl.compiler.types.Type;
 import edu.mit.streamjit.impl.compiler.types.TypeFactory;
+import edu.mit.streamjit.impl.compiler.types.VoidType;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -45,10 +48,12 @@ public final class MethodResolver {
 	private final Method method;
 	private final MethodNode methodNode;
 	private final List<BBInfo> blocks = new ArrayList<>();
+	private final Module module;
 	private final TypeFactory typeFactory;
 	private MethodResolver(Method m) {
 		this.method = m;
-		this.typeFactory = method.getType().getTypeFactory();
+		this.module = method.getParent().getParent();
+		this.typeFactory = module.types();
 		try {
 			this.methodNode = MethodNodeBuilder.buildMethodNode(method);
 		} catch (IOException | NoSuchMethodException ex) {
@@ -164,10 +169,28 @@ public final class MethodResolver {
 		}
 	}
 	private void interpret(MethodInsnNode insn, FrameState frame, BBInfo block) {
-		switch (insn.getOpcode()) {
-			default:
-				throw new UnsupportedOperationException(""+insn.getOpcode());
+		Class<?> c = null;
+		try {
+			c = Class.forName(insn.owner.replace('/', '.'));
+		} catch (ClassNotFoundException ex) {
+			Thread.currentThread().stop(ex);
 		}
+
+		Klass k = module.getKlass(c);
+		MethodType mt = typeFactory.getMethodType(insn.desc);
+		//The receiver argument is not in the descriptor, but we represent it in
+		//the IR type system.
+		if (insn.getOpcode() != Opcodes.INVOKESTATIC)
+			mt = mt.prependArgument(typeFactory.getRegularType(k));
+		Method m = k.getMethodByVirtual(insn.name, mt);
+		CallInst inst = new CallInst(m);
+		block.block.instructions().add(inst);
+
+		//Args are pushed from left-to-right, popped from right-to-left.
+		for (int i = mt.getParameterTypes().size()-1; i >= 0; --i)
+			inst.setArgument(i, frame.stack.pop());
+		if (!(mt.getReturnType() instanceof VoidType))
+			frame.stack.push(inst);
 	}
 	private void interpret(MultiANewArrayInsnNode insn, FrameState frame, BBInfo block) {
 		switch (insn.getOpcode()) {
