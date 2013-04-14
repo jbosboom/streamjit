@@ -5,6 +5,7 @@ import edu.mit.streamjit.impl.compiler.types.MethodType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Shorts;
+import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.util.IntrusiveList;
 import java.util.List;
 import java.util.Set;
@@ -77,7 +78,20 @@ public class Method extends Value implements Parented<Klass> {
 
 	public void resolve() {
 		checkState(isResolvable(), "cannot resolve %s", this);
-		throw new UnsupportedOperationException("TODO");
+		if (isResolved())
+			return;
+
+		ImmutableList<RegularType> paramTypes = getType().getParameterTypes();
+		ImmutableList.Builder<Argument> builder = ImmutableList.builder();
+		for (int i = 0; i < paramTypes.size(); ++i) {
+			//TODO: I'm not sure if ctors are static, but they don't have a this
+			//parameter from our perspective.
+			String name = (i == 0 && !modifiers().contains(Modifier.STATIC)) ? "this" : "arg"+i;
+			builder.add(new Argument(this, paramTypes.get(i), name));
+		}
+		this.arguments = builder.build();
+		this.basicBlocks = new ParentedList<>(this, BasicBlock.class);
+		MethodResolver.resolve(this);
 	}
 
 	@Override
