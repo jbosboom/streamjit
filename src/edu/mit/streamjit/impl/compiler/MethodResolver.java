@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
+import java.util.TreeSet;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
@@ -29,6 +30,7 @@ import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.IntInsnNode;
 import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.LookupSwitchInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
@@ -75,7 +77,13 @@ public final class MethodResolver {
 
 	private void findBlockBoundaries() {
 		InsnList insns = methodNode.instructions;
-		int lastEnd = 0;
+		//We find the indices of any block-ending instruction and of any jump
+		//target, sort, remove duplicates, then use pairs to define blocks. Note
+		//these are end-exclusive indices, thus one after the block-enders, but
+		//right on the jump targets (they're one-past-the-end of the preceding
+		//block).
+		List<Integer> indices = new ArrayList<>();
+		indices.add(0);
 		for (int i = 0; i < insns.size(); ++i) {
 			AbstractInsnNode insn = insns.get(i);
 			int opcode = insn.getOpcode();
@@ -84,11 +92,25 @@ public final class MethodResolver {
 					opcode == Opcodes.IRETURN || opcode == Opcodes.LRETURN ||
 					opcode == Opcodes.FRETURN || opcode == Opcodes.DRETURN ||
 					opcode == Opcodes.ARETURN || opcode == Opcodes.RETURN) {
-				int end = i+1;
-				blocks.add(new BBInfo(lastEnd, end));
-				lastEnd = end;
+				indices.add(i+1);
+			}
+			if (insn instanceof JumpInsnNode)
+				indices.add(insns.indexOf(((JumpInsnNode)insn).label));
+			else if (insn instanceof LookupSwitchInsnNode) {
+				indices.add(insns.indexOf(((LookupSwitchInsnNode)insn).dflt));
+				for (Object label : ((LookupSwitchInsnNode)insn).labels)
+					indices.add(insns.indexOf((LabelNode)label));
+			} else if (insn instanceof TableSwitchInsnNode) {
+				indices.add(insns.indexOf(((TableSwitchInsnNode)insn).dflt));
+				for (Object label : ((TableSwitchInsnNode)insn).labels)
+					indices.add(insns.indexOf((LabelNode)label));
 			}
 		}
+
+		//Remove duplicates and sort via TreeSet.
+		indices = new ArrayList<>(new TreeSet<>(indices));
+		for (int i = 1; i < indices.size(); ++i)
+			blocks.add(new BBInfo(indices.get(i-1), indices.get(i)));
 	}
 
 	private void buildInstructions(BBInfo block) {
