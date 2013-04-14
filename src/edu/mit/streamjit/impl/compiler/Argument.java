@@ -27,4 +27,11 @@ public class Argument extends Value implements Parented<Method> {
 	public RegularType getType() {
 		return (RegularType)super.getType();
 	}
+
+	@Override
+	public String toString() {
+		if (getName() != null)
+			return getName();
+		return getClass().getSimpleName()+"@"+hashCode();
+	}
 }
