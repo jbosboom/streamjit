@@ -1,8 +1,11 @@
 package edu.mit.streamjit.impl.compiler;
 
+import com.google.common.collect.ImmutableMap;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.impl.common.MethodNodeBuilder;
+import edu.mit.streamjit.impl.compiler.insts.BranchInst;
 import edu.mit.streamjit.impl.compiler.insts.CallInst;
+import edu.mit.streamjit.impl.compiler.insts.JumpInst;
 import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.ReferenceType;
@@ -183,12 +186,76 @@ public final class MethodResolver {
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
 	}
+	//<editor-fold defaultstate="collapsed" desc="JumpInsnNode (goto and branches)">
+	private static final ImmutableMap<Integer, BranchInst.Sense> OPCODE_TO_SENSE = ImmutableMap.<Integer, BranchInst.Sense>builder()
+			.put(Opcodes.IFEQ, BranchInst.Sense.EQ)
+			.put(Opcodes.IFNE, BranchInst.Sense.NE)
+			.put(Opcodes.IFLT, BranchInst.Sense.LT)
+			.put(Opcodes.IFGE, BranchInst.Sense.GE)
+			.put(Opcodes.IFGT, BranchInst.Sense.GT)
+			.put(Opcodes.IFLE, BranchInst.Sense.LE)
+			.put(Opcodes.IF_ICMPEQ, BranchInst.Sense.EQ)
+			.put(Opcodes.IF_ICMPNE, BranchInst.Sense.NE)
+			.put(Opcodes.IF_ICMPLT, BranchInst.Sense.LT)
+			.put(Opcodes.IF_ICMPGE, BranchInst.Sense.GE)
+			.put(Opcodes.IF_ICMPGT, BranchInst.Sense.GT)
+			.put(Opcodes.IF_ICMPLE, BranchInst.Sense.LE)
+			.put(Opcodes.IF_ACMPEQ, BranchInst.Sense.EQ)
+			.put(Opcodes.IF_ACMPNE, BranchInst.Sense.NE)
+			.put(Opcodes.IFNULL, BranchInst.Sense.EQ)
+			.put(Opcodes.IFNONNULL, BranchInst.Sense.NE)
+			.build();
 	private void interpret(JumpInsnNode insn, FrameState frame, BBInfo block) {
+		//All JumpInsnNodes have a target.  Find it.
+		BBInfo target = null;
+		int targetIdx = methodNode.instructions.indexOf(insn.label);
+		for (BBInfo b : blocks)
+			if (b.start <= targetIdx && targetIdx < b.end)
+				target = b;
+		assert target != null;
+
+		if (insn.getOpcode() == Opcodes.GOTO) {
+			block.block.instructions().add(new JumpInst(target.block));
+			return;
+		} else if (insn.getOpcode() == Opcodes.JSR)
+			throw new UnsupportedOperationException("jsr not supported; upgrade to Java 6-era class files");
+
+		//Remaining opcodes are branches.
+		BBInfo fallthrough = blocks.get(blocks.indexOf(block)+1);
+		BranchInst.Sense sense = OPCODE_TO_SENSE.get(insn.getOpcode());
+		//The second operand may come from the stack or may be a constant 0 or null.
+		Value right;
 		switch (insn.getOpcode()) {
+			case Opcodes.IFEQ:
+			case Opcodes.IFNE:
+			case Opcodes.IFLT:
+			case Opcodes.IFGE:
+			case Opcodes.IFGT:
+			case Opcodes.IFLE:
+				right = module.constants().getConstant(0);
+				break;
+			case Opcodes.IFNULL:
+			case Opcodes.IFNONNULL:
+				right = module.constants().getNullConstant();
+				break;
+			case Opcodes.IF_ICMPEQ:
+			case Opcodes.IF_ICMPNE:
+			case Opcodes.IF_ICMPLT:
+			case Opcodes.IF_ICMPGE:
+			case Opcodes.IF_ICMPGT:
+			case Opcodes.IF_ICMPLE:
+			case Opcodes.IF_ACMPEQ:
+			case Opcodes.IF_ACMPNE:
+				right = frame.stack.pop();
+				break;
 			default:
-				throw new UnsupportedOperationException(""+insn.getOpcode());
+				throw new AssertionError("Can't happen! Branch opcode missing? "+insn.getOpcode());
 		}
+		//First operand always comes from the stack.
+		Value left = frame.stack.pop();
+		block.block.instructions().add(new BranchInst(left, sense, right, target.block, fallthrough.block));
 	}
+	//</editor-fold>
 	private void interpret(LdcInsnNode insn, FrameState frame, BBInfo block) {
 		switch (insn.getOpcode()) {
 			default:
