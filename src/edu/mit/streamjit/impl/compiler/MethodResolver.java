@@ -18,7 +18,10 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Queue;
+import java.util.Set;
 import java.util.TreeSet;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -71,8 +74,28 @@ public final class MethodResolver {
 
 	private void resolve() {
 		findBlockBoundaries();
-		for (BBInfo block : blocks)
+
+		//Process blocks such that at least one predecessor has already been
+		//visited.  (We only process a block once; we add phi instructions when
+		//frame merging and replace uses of the previous values in the block.)
+		Set<BBInfo> visited = new HashSet<>();
+		Queue<BBInfo> worklist = new ArrayDeque<>();
+		worklist.add(blocks.get(0));
+		while (!worklist.isEmpty()) {
+			BBInfo block = worklist.remove();
 			buildInstructions(block);
+			visited.add(block);
+			for (BasicBlock b : block.block.successors()) {
+				for (BBInfo bi : blocks)
+					if (bi.block == b) {
+						if (!visited.contains(bi))
+							worklist.add(bi);
+						break;
+					}
+			}
+		}
+		//I'm assuming there's no trivially dead blocks.
+		assert visited.size() == blocks.size();
 	}
 
 	private void findBlockBoundaries() {
