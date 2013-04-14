@@ -9,6 +9,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Shorts;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
+import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.util.IntrusiveList;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -189,6 +190,36 @@ public final class Klass implements Accessible, Parented<Module> {
 				return input.getName().equals(name);
 			}
 		});
+	}
+
+	/**
+	 * Looks up the method with the given name and type as though performing
+	 * virtual dispatch.  That is, if this class does not contain the given
+	 * method, it will be searched for in superclasses, with the required
+	 * adjustment to the receiver type.
+	 * @param name the name of the method to look up
+	 * @param type the type of the method to look up, including the receiver as
+	 * the first argument
+	 * @return the method that would be called by virtual dispatch, or null if
+	 * no method matches
+	 */
+	public Method getMethodByVirtual(String name, MethodType type) {
+		/* TODO: this doesn't correctly enforce the visibility rules for
+		 * overrides -- see JVMS 5.4.5. */
+		//We require an exact match on the non-receiver args.
+		MethodType descriptorType = type.dropFirstArgument();
+		RegularType receiver = type.getParameterTypes().get(0);
+		for (Klass k = this; k != null; k = k.getSuperclass()) {
+			for (Method m : k.getMethods(name)) {
+				if (m == null || m.modifiers().contains(Modifier.STATIC))
+					continue;
+				MethodType desc = m.getType().dropFirstArgument();
+				RegularType rec = m.getType().getParameterTypes().get(0);
+				if (desc.equals(descriptorType) && receiver.isSubtypeOf(rec))
+					return m;
+			}
+		}
+		return null;
 	}
 
 	@Override
