@@ -89,6 +89,10 @@ public final class Field extends Value implements Accessible, Parented<Klass> {
 		modifiers().addAll(access.modifiers());
 	}
 
+	public boolean isStatic() {
+		return modifiers().contains(Modifier.STATIC);
+	}
+
 	@Override
 	public Klass getParent() {
 		return parent;
