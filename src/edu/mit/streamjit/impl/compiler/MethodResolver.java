@@ -211,11 +211,18 @@ public final class MethodResolver {
 
 		Klass k = module.getKlass(c);
 		MethodType mt = typeFactory.getMethodType(insn.desc);
-		//The receiver argument is not in the descriptor, but we represent it in
-		//the IR type system.
-		if (insn.getOpcode() != Opcodes.INVOKESTATIC)
-			mt = mt.prependArgument(typeFactory.getRegularType(k));
-		Method m = k.getMethodByVirtual(insn.name, mt);
+		Method m;
+		if (insn.getOpcode() == Opcodes.INVOKESTATIC ||
+				//TODO: invokespecial rules are more complex than this
+				(insn.getOpcode() == Opcodes.INVOKESPECIAL && insn.name.equals("<init>")))
+			m = k.getMethod(insn.name, mt);
+		else {
+			//The receiver argument is not in the descriptor, but we represent it in
+			//the IR type system.
+			if (insn.getOpcode() != Opcodes.INVOKESTATIC)
+				mt = mt.prependArgument(typeFactory.getRegularType(k));
+			m = k.getMethodByVirtual(insn.name, mt);
+		}
 		CallInst inst = new CallInst(m);
 		block.block.instructions().add(inst);
 
@@ -352,7 +359,7 @@ public final class MethodResolver {
 
 	public static void main(String[] args) {
 		Module m = new Module();
-		Klass k = m.getKlass(Identity.class);
-		k.getMethods("work").iterator().next().resolve();
+		Klass k = m.getKlass(MethodResolver.class);
+		k.getMethods("buildInstructions").iterator().next().resolve();
 	}
 }
