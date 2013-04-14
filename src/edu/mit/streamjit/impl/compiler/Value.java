@@ -132,4 +132,11 @@ public abstract class Value {
 		for (Use use : uses())
 			use.setOperand(value);
 	}
+
+	@Override
+	public String toString() {
+		if (getName() != null)
+			return String.format("%s (%s)", getName(), getType());
+		return String.format("%s@%d (%s)", getClass().getSimpleName(), hashCode(), getType());
+	}
 }
