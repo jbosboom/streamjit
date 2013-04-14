@@ -3,8 +3,10 @@ package edu.mit.streamjit.impl.compiler;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.impl.common.MethodNodeBuilder;
 import edu.mit.streamjit.impl.compiler.insts.CallInst;
+import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.ReferenceType;
+import edu.mit.streamjit.impl.compiler.types.ReturnType;
 import edu.mit.streamjit.impl.compiler.types.Type;
 import edu.mit.streamjit.impl.compiler.types.TypeFactory;
 import edu.mit.streamjit.impl.compiler.types.VoidType;
@@ -134,7 +136,37 @@ public final class MethodResolver {
 		}
 	}
 	private void interpret(InsnNode insn, FrameState frame, BBInfo block) {
+		ReturnType returnType = block.block.getParent().getType().getReturnType();
 		switch (insn.getOpcode()) {
+			case Opcodes.IRETURN:
+				assert returnType.isSubtypeOf(typeFactory.getType(int.class));
+				assert frame.stack.peek().getType().isSubtypeOf(returnType);
+				block.block.instructions().add(new ReturnInst(returnType, frame.stack.pop()));
+				break;
+			case Opcodes.LRETURN:
+				assert returnType.isSubtypeOf(typeFactory.getType(long.class));
+				assert frame.stack.peek().getType().isSubtypeOf(returnType);
+				block.block.instructions().add(new ReturnInst(returnType, frame.stack.pop()));
+				break;
+			case Opcodes.FRETURN:
+				assert returnType.isSubtypeOf(typeFactory.getType(float.class));
+				assert frame.stack.peek().getType().isSubtypeOf(returnType);
+				block.block.instructions().add(new ReturnInst(returnType, frame.stack.pop()));
+				break;
+			case Opcodes.DRETURN:
+				assert returnType.isSubtypeOf(typeFactory.getType(double.class));
+				assert frame.stack.peek().getType().isSubtypeOf(returnType);
+				block.block.instructions().add(new ReturnInst(returnType, frame.stack.pop()));
+				break;
+			case Opcodes.ARETURN:
+				assert returnType.isSubtypeOf(typeFactory.getType(Object.class));
+				assert frame.stack.peek().getType().isSubtypeOf(returnType);
+				block.block.instructions().add(new ReturnInst(returnType, frame.stack.pop()));
+				break;
+			case Opcodes.RETURN:
+				assert returnType instanceof VoidType;
+				block.block.instructions().add(new ReturnInst(returnType));
+				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
