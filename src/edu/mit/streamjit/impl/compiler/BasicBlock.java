@@ -7,6 +7,7 @@ import edu.mit.streamjit.impl.compiler.types.BasicBlockType;
 import edu.mit.streamjit.util.IntrusiveList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  *
@@ -38,6 +39,12 @@ public class BasicBlock extends Value implements Parented<Method> {
 	@Override
 	public Method getParent() {
 		return parent;
+	}
+
+	public List<Instruction> instructions() {
+		//TODO: figure out how to make this immutable when the parent is
+		//immutable.  Note that we add to this list during resolution.
+		return instructions;
 	}
 
 	public TerminatorInst getTerminator() {
