@@ -27,7 +27,9 @@ public final class BranchInst extends TerminatorInst {
 	public BranchInst(Value a, Sense s, Value b, BasicBlock t, BasicBlock f) {
 		super(a.getType().getTypeFactory(), 4);
 		Type intType = a.getType().getTypeFactory().getPrimitiveType(int.class);
-		checkArgument((a.getType() instanceof ReferenceType && b.getType() instanceof ReferenceType) ||
+		Type objectType = a.getType().getTypeFactory().getReferenceType(Object.class);
+		//This used to check instanceof ReferenceType, but NullType is okay too.
+		checkArgument((a.getType().isSubtypeOf(objectType) && b.getType().isSubtypeOf(objectType)) ||
 				(a.getType().isSubtypeOf(intType) && b.getType().isSubtypeOf(intType)) ||
 				(a.getType().equals(b.getType())),
 				"bad types for branch: %s %s", a, b);
