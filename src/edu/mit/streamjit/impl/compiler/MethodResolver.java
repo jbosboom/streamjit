@@ -151,6 +151,13 @@ public final class MethodResolver {
 		//jump target rather than due to a terminator opcode.)
 		if (block.block.getTerminator() == null)
 			block.block.instructions().add(new JumpInst(blocks.get(blocks.indexOf(block)+1).block));
+
+		for (BasicBlock b : block.block.successors())
+			for (BBInfo bi : blocks)
+				if (bi.block == b) {
+					merge(frame, bi);
+					break;
+				}
 	}
 
 	private void interpret(FieldInsnNode insn, FrameState frame, BBInfo block) {
@@ -390,6 +397,20 @@ public final class MethodResolver {
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
+	}
+
+	/**
+	 * Merge the given frame state with the entry state of the given block,
+	 * RAUW-ing as required if phi instructions are inserted.
+	 * @param p the final frame state of a predecessor
+	 * @param s the successor block
+	 */
+	private void merge(FrameState p, BBInfo s) {
+		if (s.entryState == null) {
+			s.entryState = p.copy();
+			return;
+		} else
+			throw new UnsupportedOperationException("TODO: phi insertion");
 	}
 
 	private final class BBInfo {
