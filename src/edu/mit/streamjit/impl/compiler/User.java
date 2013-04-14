@@ -16,6 +16,10 @@ import java.util.Objects;
  * @since 3/6/2013
  */
 public abstract class User extends Value {
+	/**
+	 * The operands of this User, stored in these "outgoing" Uses.  Not to be
+	 * confused with the "incoming" Uses stored in Value and returned by uses().
+	 */
 	private final List<Use> uses;
 	/**
 	 * Creates a User of the given type with an empty operand list.
@@ -65,7 +69,7 @@ public abstract class User extends Value {
 			@Override
 			public Iterator<Value> iterator() {
 				return new Iterator<Value>() {
-					private final Iterator<Use> iter = uses().iterator();
+					private final Iterator<Use> iter = uses.iterator();
 					@Override
 					public boolean hasNext() {
 						return iter.hasNext();
