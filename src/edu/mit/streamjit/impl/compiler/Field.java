@@ -11,7 +11,9 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- *
+ * TODO: field static-ness is immutable even if the field isn't, because it's
+ * part of the type and Values can't change type (would screw up loads and
+ * stores, in this case)
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/3/2013
  */
