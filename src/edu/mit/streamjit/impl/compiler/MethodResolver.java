@@ -145,7 +145,12 @@ public final class MethodResolver {
 			else if (insn instanceof VarInsnNode)
 				interpret((VarInsnNode)insn, frame, block);
 		}
-		//TODO: merge state with successors
+
+		//If the block doesn't have a TerminatorInst, add a JumpInst to the
+		//fallthrough block.  (This occurs when blocks begin due to being a
+		//jump target rather than due to a terminator opcode.)
+		if (block.block.getTerminator() == null)
+			block.block.instructions().add(new JumpInst(blocks.get(blocks.indexOf(block)+1).block));
 	}
 
 	private void interpret(FieldInsnNode insn, FrameState frame, BBInfo block) {
