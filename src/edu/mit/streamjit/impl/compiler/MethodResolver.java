@@ -11,6 +11,7 @@ import edu.mit.streamjit.impl.compiler.types.VoidType;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import org.objectweb.asm.Opcodes;
@@ -295,6 +296,10 @@ public final class MethodResolver {
 			System.arraycopy(locals, 0, s.locals, 0, locals.length);
 			return s;
 		}
+		@Override
+		public String toString() {
+			return "Locals: "+Arrays.toString(locals)+", Stack: "+stack.toString();
+		}
 	}
 
 	/**
@@ -306,6 +311,10 @@ public final class MethodResolver {
 	private static class UninitializedValue extends Value {
 		private UninitializedValue(Type type, String name) {
 			super(type, name);
+		}
+		@Override
+		public String toString() {
+			return getName();
 		}
 	}
 
