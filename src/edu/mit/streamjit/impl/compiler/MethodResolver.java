@@ -30,6 +30,9 @@ import org.objectweb.asm.tree.VarInsnNode;
 
 /**
  * Resolves methods.
+ *
+ * This class assumes it's parsing valid bytecode, so it asserts rather than
+ * throws on simple checks like "aload_0 is loading a reference type".
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/12/2013
  */
@@ -82,33 +85,112 @@ public final class MethodResolver {
 			AbstractInsnNode insn = methodNode.instructions.get(i);
 			if (insn.getOpcode() == -1) continue;//pseudo-instruction node
 			if (insn instanceof FieldInsnNode)
-				throw new UnsupportedOperationException();
+				interpret((FieldInsnNode)insn, frame, block);
 			else if (insn instanceof IincInsnNode)
-				throw new UnsupportedOperationException();
+				interpret((IincInsnNode)insn, frame, block);
 			else if (insn instanceof InsnNode)
-				throw new UnsupportedOperationException();
+				interpret((InsnNode)insn, frame, block);
 			else if (insn instanceof IntInsnNode)
-				throw new UnsupportedOperationException();
+				interpret((IntInsnNode)insn, frame, block);
 			else if (insn instanceof InvokeDynamicInsnNode)
-				throw new UnsupportedOperationException();
+				interpret((InvokeDynamicInsnNode)insn, frame, block);
 			else if (insn instanceof JumpInsnNode)
-				throw new UnsupportedOperationException();
+				interpret((JumpInsnNode)insn, frame, block);
 			else if (insn instanceof LdcInsnNode)
-				throw new UnsupportedOperationException();
+				interpret((LdcInsnNode)insn, frame, block);
 			else if (insn instanceof LookupSwitchInsnNode)
-				throw new UnsupportedOperationException();
+				interpret((LookupSwitchInsnNode)insn, frame, block);
 			else if (insn instanceof MethodInsnNode)
-				throw new UnsupportedOperationException();
+				interpret((MethodInsnNode)insn, frame, block);
 			else if (insn instanceof MultiANewArrayInsnNode)
-				throw new UnsupportedOperationException();
+				interpret((MultiANewArrayInsnNode)insn, frame, block);
 			else if (insn instanceof TableSwitchInsnNode)
-				throw new UnsupportedOperationException();
+				interpret((TableSwitchInsnNode)insn, frame, block);
 			else if (insn instanceof TypeInsnNode)
-				throw new UnsupportedOperationException();
+				interpret((TypeInsnNode)insn, frame, block);
 			else if (insn instanceof VarInsnNode)
-				throw new UnsupportedOperationException();
+				interpret((VarInsnNode)insn, frame, block);
 		}
 		//TODO: merge state with successors
+	}
+
+	private void interpret(FieldInsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
+	}
+	private void interpret(IincInsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
+	}
+	private void interpret(InsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
+	}
+	private void interpret(IntInsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
+	}
+	private void interpret(InvokeDynamicInsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
+	}
+	private void interpret(JumpInsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
+	}
+	private void interpret(LdcInsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
+	}
+	private void interpret(LookupSwitchInsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
+	}
+	private void interpret(MethodInsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
+	}
+	private void interpret(MultiANewArrayInsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
+	}
+	private void interpret(TableSwitchInsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
+	}
+	private void interpret(TypeInsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
+	}
+	private void interpret(VarInsnNode insn, FrameState frame, BBInfo block) {
+		switch (insn.getOpcode()) {
+			default:
+				throw new UnsupportedOperationException(""+insn.getOpcode());
+		}
 	}
 
 	private final class BBInfo {
