@@ -4,6 +4,7 @@ import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.Field;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.InstanceFieldType;
+import edu.mit.streamjit.impl.compiler.types.StaticFieldType;
 
 /**
  * Loads a static or instance field.  (Does not load array elements.)
@@ -12,7 +13,7 @@ import edu.mit.streamjit.impl.compiler.types.InstanceFieldType;
  */
 public class LoadInst extends Instruction {
 	public LoadInst(Field f) {
-		super(f.getType().getFieldType(), f.isStatic() ? 1 : 2);
+		super(checkNotNull(f).getType().getFieldType(), f.isStatic() ? 1 : 2);
 		setOperand(0, f);
 	}
 	public LoadInst(Field f, Value v) {
@@ -36,10 +37,11 @@ public class LoadInst extends Instruction {
 	@Override
 	protected void checkOperand(int i, Value v) {
 		checkElementIndex(i, 2);
-		if (i == 0)
-			checkArgument(v instanceof Field && ((Field)v).isStatic() == getField().isStatic());
-		else if (i == 1) {
-			checkState(!getField().isStatic());
+		if (i == 0) {
+			checkArgument(v instanceof Field);
+			checkArgument(((Field)v).isStatic() == getType() instanceof StaticFieldType);
+		} else if (i == 1) {
+			checkState(getType() instanceof InstanceFieldType);
 			checkArgument(v.getType().isSubtypeOf(((InstanceFieldType)getField().getType()).getInstanceType()));
 		}
 		super.checkOperand(i, v);
