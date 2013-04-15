@@ -268,6 +268,7 @@ public final class MethodResolver {
 				conditionallyPermute(frame, swapPermutations);
 				break;
 			//</editor-fold>
+			//<editor-fold defaultstate="collapsed" desc="Constant-stacking opcodes (iconst_0, etc.; see also bipush, sipush)">
 			case Opcodes.ACONST_NULL:
 				frame.stack.push(module.constants().getNullConstant());
 				break;
@@ -313,6 +314,8 @@ public final class MethodResolver {
 			case Opcodes.DCONST_1:
 				frame.stack.push(module.constants().getConstant(1d));
 				break;
+			//</editor-fold>
+			//<editor-fold defaultstate="collapsed" desc="Return opcodes">
 			case Opcodes.IRETURN:
 				assert returnType.isSubtypeOf(typeFactory.getType(int.class));
 				assert frame.stack.peek().getType().isSubtypeOf(returnType);
@@ -342,6 +345,7 @@ public final class MethodResolver {
 				assert returnType instanceof VoidType;
 				block.block.instructions().add(new ReturnInst(returnType));
 				break;
+			//</editor-fold>
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
