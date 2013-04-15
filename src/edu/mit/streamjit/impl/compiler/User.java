@@ -123,12 +123,12 @@ public abstract class User extends Value {
 	protected void addOperand(int i, Value v) {
 		//Check before committing any changes, for debuggability.
 		checkOperand(i, v);
-		for (int j = i; i < uses.size(); ++i)
+		for (int j = i; j < uses.size(); ++j)
 			checkOperand(j+1, uses.get(j).getOperand());
 
 		Use use = new Use(this, i, null);
 		uses.add(i, use);
-		for (int j = i+1; i < uses.size(); ++i)
+		for (int j = i+1; j < uses.size(); ++j)
 			uses.get(j).setOperandIndex(j);
 		use.setOperand(v);
 	}
@@ -136,7 +136,7 @@ public abstract class User extends Value {
 	//Provided for subclasses that want a variable-size operand list.
 	protected void removeOperand(int i) {
 		//Check before committing any changes, for debuggability.
-		for (int j = i; i < uses.size(); ++i)
+		for (int j = i; j < uses.size(); ++j)
 			checkOperand(j, uses.get(j+1).getOperand());
 
 		Use use = uses.get(i);
