@@ -211,6 +211,53 @@ public final class MethodResolver {
 	private void interpret(InsnNode insn, FrameState frame, BBInfo block) {
 		ReturnType returnType = block.block.getParent().getType().getReturnType();
 		switch (insn.getOpcode()) {
+			case Opcodes.NOP:
+				break;
+			case Opcodes.ACONST_NULL:
+				frame.stack.push(module.constants().getNullConstant());
+				break;
+			case Opcodes.ICONST_M1:
+				frame.stack.push(module.constants().getSmallestIntConstant(-1));
+				break;
+			case Opcodes.ICONST_0:
+				frame.stack.push(module.constants().getSmallestIntConstant(0));
+				break;
+			case Opcodes.ICONST_1:
+				frame.stack.push(module.constants().getSmallestIntConstant(1));
+				break;
+			case Opcodes.ICONST_2:
+				frame.stack.push(module.constants().getSmallestIntConstant(2));
+				break;
+			case Opcodes.ICONST_3:
+				frame.stack.push(module.constants().getSmallestIntConstant(3));
+				break;
+			case Opcodes.ICONST_4:
+				frame.stack.push(module.constants().getSmallestIntConstant(4));
+				break;
+			case Opcodes.ICONST_5:
+				frame.stack.push(module.constants().getSmallestIntConstant(5));
+				break;
+			case Opcodes.LCONST_0:
+				frame.stack.push(module.constants().getConstant(0L));
+				break;
+			case Opcodes.LCONST_1:
+				frame.stack.push(module.constants().getConstant(1L));
+				break;
+			case Opcodes.FCONST_0:
+				frame.stack.push(module.constants().getConstant(0f));
+				break;
+			case Opcodes.FCONST_1:
+				frame.stack.push(module.constants().getConstant(1f));
+				break;
+			case Opcodes.FCONST_2:
+				frame.stack.push(module.constants().getConstant(2f));
+				break;
+			case Opcodes.DCONST_0:
+				frame.stack.push(module.constants().getConstant(0d));
+				break;
+			case Opcodes.DCONST_1:
+				frame.stack.push(module.constants().getConstant(1d));
+				break;
 			case Opcodes.IRETURN:
 				assert returnType.isSubtypeOf(typeFactory.getType(int.class));
 				assert frame.stack.peek().getType().isSubtypeOf(returnType);
