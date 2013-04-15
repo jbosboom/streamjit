@@ -86,7 +86,15 @@ public final class Klass implements Accessible, Parented<Module> {
 		//Note that this means we can't use any of the klasses we recurse for
 		//during our own construction!
 		module.klasses().add(this); //sets parent
-		this.superclass = klass.getSuperclass() != null ? module.getKlass(klass.getSuperclass()) : null;
+		if (klass.getSuperclass() != null)
+			this.superclass = module.getKlass(klass.getSuperclass());
+		else if (klass.isInterface())
+			//At the JVM level, interfaces have Object as superclass.
+			this.superclass = module.getKlass(Object.class);
+		else {
+			assert klass.equals(Object.class) || klass.isPrimitive();
+			this.superclass = null;
+		}
 		ImmutableList.Builder<Klass> interfacesB = ImmutableList.builder();
 		for (Class<?> c : klass.getInterfaces())
 			interfacesB.add(module.getKlass(c));
