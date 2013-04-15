@@ -41,8 +41,11 @@ public class LoadInst extends Instruction {
 			checkArgument(v instanceof Field);
 			checkArgument(((Field)v).isStatic() == getType() instanceof StaticFieldType);
 		} else if (i == 1) {
-			checkState(getType() instanceof InstanceFieldType);
-			checkArgument(v.getType().isSubtypeOf(((InstanceFieldType)getField().getType()).getInstanceType()));
+			Field f = getField();
+			if (f != null) {
+				checkState(f.getType() instanceof InstanceFieldType);
+				checkArgument(v.getType().isSubtypeOf(((InstanceFieldType)f.getType()).getInstanceType()));
+			}
 		}
 		super.checkOperand(i, v);
 	}
