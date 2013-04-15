@@ -515,11 +515,14 @@ public final class MethodResolver {
 		Klass k = getKlassByInternalName(insn.owner);
 		MethodType mt = typeFactory.getMethodType(insn.desc);
 		Method m;
-		if (insn.getOpcode() == Opcodes.INVOKESTATIC ||
-				//TODO: invokespecial rules are more complex than this
-				(insn.getOpcode() == Opcodes.INVOKESPECIAL && insn.name.equals("<init>")))
+		if (insn.getOpcode() == Opcodes.INVOKESTATIC)
 			m = k.getMethod(insn.name, mt);
-		else {
+		else if (insn.getOpcode() == Opcodes.INVOKESPECIAL && insn.name.equals("<init>")) {
+			//TODO: invokespecial rules are more complex than this
+			//We consider constructors to return their type.
+			mt = mt.withReturnType(typeFactory.getType(k));
+			m = k.getMethod(insn.name, mt);
+		} else {
 			//The receiver argument is not in the descriptor, but we represent it in
 			//the IR type system.
 			if (insn.getOpcode() != Opcodes.INVOKESTATIC)
