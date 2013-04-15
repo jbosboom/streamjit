@@ -533,11 +533,7 @@ public final class MethodResolver {
 				for (Argument a : method.arguments()) {
 					entryLocals[i] = a;
 					Type argType = a.getType();
-					if (argType.equals(typeFactory.getType(long.class)) ||
-							argType.equals(typeFactory.getType(double.class)))
-						i += 2;
-					else
-						++i;
+					i += categoryOf(argType);
 				}
 			}
 			this.frame = findOnlyFrameNode();
@@ -554,6 +550,16 @@ public final class MethodResolver {
 			}
 			return f;
 		}
+	}
+
+	/**
+	 * Returns the "category" of the given type, the number of stack or local
+	 * slots it occupies in a frame.
+	 * @param t a type
+	 * @return the type's category
+	 */
+	private int categoryOf(Type t) {
+		return (t.equals(typeFactory.getType(long.class)) || t.equals(typeFactory.getType(double.class))) ? 2 : 1;
 	}
 
 	private final class FrameState {
