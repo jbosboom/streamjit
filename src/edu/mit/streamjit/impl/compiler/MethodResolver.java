@@ -6,6 +6,7 @@ import edu.mit.streamjit.impl.common.MethodNodeBuilder;
 import edu.mit.streamjit.impl.compiler.insts.BinaryInst;
 import edu.mit.streamjit.impl.compiler.insts.BranchInst;
 import edu.mit.streamjit.impl.compiler.insts.CallInst;
+import edu.mit.streamjit.impl.compiler.insts.CastInst;
 import edu.mit.streamjit.impl.compiler.insts.JumpInst;
 import edu.mit.streamjit.impl.compiler.insts.LoadInst;
 import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
@@ -554,6 +555,11 @@ public final class MethodResolver {
 				//don't because we treat constructors as if they were static
 				//methods.  (We do push an uninitalizedThis value inside the
 				//constructor, but that isn't exposed.)
+				break;
+			case Opcodes.CHECKCAST:
+				CastInst c = new CastInst(t, frame.stack.pop());
+				block.block.instructions().add(c);
+				frame.stack.push(c);
 				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
