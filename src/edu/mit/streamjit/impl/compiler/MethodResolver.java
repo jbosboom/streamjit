@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.compiler;
 import com.google.common.collect.ImmutableMap;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.impl.common.MethodNodeBuilder;
+import edu.mit.streamjit.impl.compiler.insts.BinaryInst;
 import edu.mit.streamjit.impl.compiler.insts.BranchInst;
 import edu.mit.streamjit.impl.compiler.insts.CallInst;
 import edu.mit.streamjit.impl.compiler.insts.JumpInst;
@@ -346,6 +347,71 @@ public final class MethodResolver {
 				block.block.instructions().add(new ReturnInst(returnType));
 				break;
 			//</editor-fold>
+			//<editor-fold defaultstate="collapsed" desc="Binary math opcodes">
+			case Opcodes.IADD:
+			case Opcodes.LADD:
+			case Opcodes.FADD:
+			case Opcodes.DADD:
+				binary(BinaryInst.Operation.ADD, frame, block);
+				break;
+			case Opcodes.ISUB:
+			case Opcodes.LSUB:
+			case Opcodes.FSUB:
+			case Opcodes.DSUB:
+				binary(BinaryInst.Operation.SUB, frame, block);
+				break;
+			case Opcodes.IMUL:
+			case Opcodes.LMUL:
+			case Opcodes.FMUL:
+			case Opcodes.DMUL:
+				binary(BinaryInst.Operation.MUL, frame, block);
+				break;
+			case Opcodes.IDIV:
+			case Opcodes.LDIV:
+			case Opcodes.FDIV:
+			case Opcodes.DDIV:
+				binary(BinaryInst.Operation.DIV, frame, block);
+				break;
+			case Opcodes.IREM:
+			case Opcodes.LREM:
+			case Opcodes.FREM:
+			case Opcodes.DREM:
+				binary(BinaryInst.Operation.REM, frame, block);
+				break;
+			case Opcodes.ISHL:
+			case Opcodes.LSHL:
+				binary(BinaryInst.Operation.SHL, frame, block);
+				break;
+			case Opcodes.ISHR:
+			case Opcodes.LSHR:
+				binary(BinaryInst.Operation.SHR, frame, block);
+				break;
+			case Opcodes.IUSHR:
+			case Opcodes.LUSHR:
+				binary(BinaryInst.Operation.USHR, frame, block);
+				break;
+			case Opcodes.IAND:
+			case Opcodes.LAND:
+				binary(BinaryInst.Operation.AND, frame, block);
+				break;
+			case Opcodes.IOR:
+			case Opcodes.LOR:
+				binary(BinaryInst.Operation.OR, frame, block);
+				break;
+			case Opcodes.IXOR:
+			case Opcodes.LXOR:
+				binary(BinaryInst.Operation.XOR, frame, block);
+				break;
+			case Opcodes.LCMP:
+			case Opcodes.FCMPL:
+			case Opcodes.DCMPL:
+				binary(BinaryInst.Operation.CMP, frame, block);
+				break;
+			case Opcodes.FCMPG:
+			case Opcodes.DCMPG:
+				binary(BinaryInst.Operation.CMPG, frame, block);
+				break;
+			//</editor-fold>
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
@@ -608,6 +674,14 @@ public final class MethodResolver {
 		return x;
 	}
 	//</editor-fold>
+
+	private void binary(BinaryInst.Operation operation, FrameState frame, BBInfo block) {
+		Value right = frame.stack.pop();
+		Value left = frame.stack.pop();
+		BinaryInst inst = new BinaryInst(left, operation, right);
+		block.block.instructions().add(inst);
+		frame.stack.push(inst);
+	}
 
 	/**
 	 * Merge the given frame state with the entry state of the given block,
