@@ -68,6 +68,10 @@ public final class MethodResolver {
 	 * If we're resolving a constructor, this is the uninitializedThis value.
 	 */
 	private final UninitializedValue uninitializedThis;
+	/**
+	 * Used for generating sequential names (e.g., uninitialized object names).
+	 */
+	private int counter = 1;
 	private MethodResolver(Method m) {
 		this.method = m;
 		this.module = method.getParent().getParent();
@@ -543,7 +547,16 @@ public final class MethodResolver {
 		//Args are pushed from left-to-right, popped from right-to-left.
 		for (int i = mt.getParameterTypes().size()-1; i >= 0; --i)
 			inst.setArgument(i, frame.stack.pop());
-		if (!(mt.getReturnType() instanceof VoidType))
+
+		//If we called a ctor, we have an uninit object on the stack.  Replace
+		//it with the constructed object, or with uninitializedThis if we're a
+		//ctor ourselves.
+		if (insn.name.equals("<init>")) {
+			Value replacement = method.getName().equals("<init>") ? uninitializedThis : inst;
+			Value toBeReplaced = frame.stack.pop();
+			assert toBeReplaced instanceof UninitializedValue;
+			frame.replace(toBeReplaced, replacement);
+		} else if (!(mt.getReturnType() instanceof VoidType))
 			frame.stack.push(inst);
 	}
 	private void interpret(MultiANewArrayInsnNode insn, FrameState frame, BBInfo block) {
@@ -562,10 +575,7 @@ public final class MethodResolver {
 		ReferenceType t = typeFactory.getReferenceType(getKlassByInternalName(insn.desc));
 		switch (insn.getOpcode()) {
 			case Opcodes.NEW:
-				//The verifier would push an uninitialized object here, but we
-				//don't because we treat constructors as if they were static
-				//methods.  (We do push an uninitalizedThis value inside the
-				//constructor, but that isn't exposed.)
+				frame.stack.push(new UninitializedValue(t, "uninit"+(counter++)));
 				break;
 			case Opcodes.CHECKCAST:
 				CastInst c = new CastInst(t, frame.stack.pop());
@@ -776,6 +786,19 @@ public final class MethodResolver {
 			FrameState s = new FrameState(locals.length);
 			System.arraycopy(locals, 0, s.locals, 0, locals.length);
 			return s;
+		}
+		private void replace(Value toBeReplaced, Value replacement) {
+			for (int i = 0; i < locals.length; ++i)
+				if (toBeReplaced.equals(locals[i]))
+					locals[i] = replacement;
+			//Best we can do with a deque.
+			Value[] v = stack.toArray(new Value[0]);
+			for (int i = 0; i < v.length; ++i)
+				if (toBeReplaced.equals(v[i]))
+					v[i] = replacement;
+			stack.clear();
+			for (Value x : v)
+				stack.push(x);
 		}
 		@Override
 		public String toString() {
