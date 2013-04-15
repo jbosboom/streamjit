@@ -213,6 +213,61 @@ public final class MethodResolver {
 		switch (insn.getOpcode()) {
 			case Opcodes.NOP:
 				break;
+			//<editor-fold defaultstate="collapsed" desc="Stack manipulation opcodes (pop, dup, swap)">
+			case Opcodes.POP:
+				assert categoryOf(frame.stack.peek().getType()) == 1;
+				frame.stack.pop();
+				break;
+			case Opcodes.POP2:
+				final int[][][] pop2Permutations = {
+					{{1,1}, {}},
+					{{2}, {}}
+				};
+				conditionallyPermute(frame, pop2Permutations);
+				break;
+			case Opcodes.DUP:
+				final int[][][] dupPermutations = {{{1}, {1,1}}};
+				conditionallyPermute(frame, dupPermutations);
+				break;
+			case Opcodes.DUP_X1:
+				final int[][][] dup_x1Permutations = {{{1,2}, {1,2,1}}};
+				conditionallyPermute(frame, dup_x1Permutations);
+				break;
+			case Opcodes.DUP_X2:
+				final int[][][] dup_x2Permutations = {
+					{{1,1,1}, {1,3,2,1}},
+					{{1,2}, {1,2,1}}
+				};
+				conditionallyPermute(frame, dup_x2Permutations);
+				break;
+			case Opcodes.DUP2:
+				final int[][][] dup2Permutations = {
+					{{1,1}, {2,1,2,1}},
+					{{2}, {1,1}}
+				};
+				conditionallyPermute(frame, dup2Permutations);
+				break;
+			case Opcodes.DUP2_X1:
+				final int[][][] dup2_x1Permutations = {
+					{{1,1,1}, {2,1,3,2,1}},
+					{{2,1}, {1,2,1}}
+				};
+				conditionallyPermute(frame, dup2_x1Permutations);
+				break;
+			case Opcodes.DUP2_X2:
+				final int[][][] dup2_x2Permutations = {
+					{{1,1,1,1}, {2,1,4,3,2,1}},
+					{{2,1,1}, {1,3,2,1}},
+					{{3,2,1}, {2,1,3,2,1}},
+					{{2,2}, {1,2,1}}
+				};
+				conditionallyPermute(frame, dup2_x2Permutations);
+				break;
+			case Opcodes.SWAP:
+				final int[][][] swapPermutations = {{{1,1}, {1,2}}};
+				conditionallyPermute(frame, swapPermutations);
+				break;
+			//</editor-fold>
 			case Opcodes.ACONST_NULL:
 				frame.stack.push(module.constants().getNullConstant());
 				break;
@@ -496,6 +551,59 @@ public final class MethodResolver {
 		}
 		return module.getKlass(c);
 	}
+
+	//<editor-fold defaultstate="collapsed" desc="Stack manipulation opcodes support">
+	/**
+	 * Conditionally permutes the values on the operand stack in the given
+	 * frame. The permutations are given as an array of 2-element arrays, the
+	 * first element of which specifies the condition as a constraint on the
+	 * categories of the stacked operand types, with the top of the stack
+	 * beginning at index 0, and the second element of which specifies 1-based
+	 * indices giving the resulting permutation, with the element at index 0
+	 * being towards the bottom of the stack (pushed first). (This matches the
+	 * instruction descriptions in the JVMS.)
+	 *
+	 * Strictly speaking, the permutations need not be permutations; they may
+	 * contain duplicate or dropped indices.
+	 *
+	 * Only one permutation will be applied.  If no permutation matches, an
+	 * AssertionError is thrown.
+	 *
+	 * This is used for the implementation of the DUP instruction family.
+	 * @param frame the frame containing the stack to permute
+	 * @param permutations the conditional permutations to apply
+	 */
+	private void conditionallyPermute(FrameState frame, int[][][] permutations) {
+		for (int[][] permutation : permutations) {
+			int[] categories = permutation[0];
+			if (Arrays.equals(categories, categoriesOnStack(frame, categories.length))) {
+				Value[] v = new Value[categories.length];
+				for (int i = 0; i < v.length; ++i)
+					v[i] = frame.stack.pop();
+				for (int i : permutation[1])
+					frame.stack.push(v[i-1]);
+				return;
+			}
+		}
+		throw new AssertionError("no permutations matched");
+	}
+
+	/**
+	 * Returns an array containing the categories of the first n values on the
+	 * operand stack of the given frame.  If there are fewer values, the rest
+	 * are filled with -1.
+	 * @param frame the frame to check categories on stack of
+	 * @return an array of categories
+	 */
+	private int[] categoriesOnStack(FrameState frame, int n) {
+		int[] x = new int[n];
+		Arrays.fill(x, -1);
+		Value[] v = frame.stack.toArray(new Value[0]);
+		for (int i = 0; i < v.length && i < x.length; ++i)
+			x[i] = categoryOf(v[i].getType());
+		return x;
+	}
+	//</editor-fold>
 
 	/**
 	 * Merge the given frame state with the entry state of the given block,
