@@ -6,6 +6,7 @@ import edu.mit.streamjit.impl.common.MethodNodeBuilder;
 import edu.mit.streamjit.impl.compiler.insts.BranchInst;
 import edu.mit.streamjit.impl.compiler.insts.CallInst;
 import edu.mit.streamjit.impl.compiler.insts.JumpInst;
+import edu.mit.streamjit.impl.compiler.insts.LoadInst;
 import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.ReferenceType;
@@ -184,7 +185,19 @@ public final class MethodResolver {
 	}
 
 	private void interpret(FieldInsnNode insn, FrameState frame, BBInfo block) {
+		Klass k = getKlassByInternalName(insn.owner);
+		Field f = k.getField(insn.name);
 		switch (insn.getOpcode()) {
+			case Opcodes.GETSTATIC:
+				LoadInst li = new LoadInst(f);
+				block.block.instructions().add(li);
+				frame.stack.push(li);
+				break;
+			case Opcodes.GETFIELD:
+				LoadInst li2 = new LoadInst(f, frame.stack.pop());
+				block.block.instructions().add(li2);
+				frame.stack.push(li2);
+				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
@@ -326,14 +339,7 @@ public final class MethodResolver {
 		}
 	}
 	private void interpret(MethodInsnNode insn, FrameState frame, BBInfo block) {
-		Class<?> c = null;
-		try {
-			c = Class.forName(insn.owner.replace('/', '.'));
-		} catch (ClassNotFoundException ex) {
-			Thread.currentThread().stop(ex);
-		}
-
-		Klass k = module.getKlass(c);
+		Klass k = getKlassByInternalName(insn.owner);
 		MethodType mt = typeFactory.getMethodType(insn.desc);
 		Method m;
 		if (insn.getOpcode() == Opcodes.INVOKESTATIC ||
@@ -420,6 +426,21 @@ public final class MethodResolver {
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
+	}
+
+	private Klass getKlassByInternalName(String internalName) {
+		String binaryName = internalName.replace('/', '.');
+		Klass k = module.getKlass(binaryName);
+		if (k != null)
+			return k;
+
+		Class<?> c = null;
+		try {
+			c = Class.forName(binaryName);
+		} catch (ClassNotFoundException ex) {
+			Thread.currentThread().stop(ex);
+		}
+		return module.getKlass(c);
 	}
 
 	/**
