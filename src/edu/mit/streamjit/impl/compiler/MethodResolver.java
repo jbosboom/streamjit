@@ -422,7 +422,14 @@ public final class MethodResolver {
 		}
 	}
 	private void interpret(TypeInsnNode insn, FrameState frame, BBInfo block) {
+		ReferenceType t = typeFactory.getReferenceType(getKlassByInternalName(insn.desc));
 		switch (insn.getOpcode()) {
+			case Opcodes.NEW:
+				//The verifier would push an uninitialized object here, but we
+				//don't because we treat constructors as if they were static
+				//methods.  (We do push an uninitalizedThis value inside the
+				//constructor, but that isn't exposed.)
+				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
