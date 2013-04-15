@@ -64,6 +64,10 @@ public final class MethodResolver {
 	private final List<BBInfo> blocks = new ArrayList<>();
 	private final Module module;
 	private final TypeFactory typeFactory;
+	/**
+	 * If we're resolving a constructor, this is the uninitializedThis value.
+	 */
+	private final UninitializedValue uninitializedThis;
 	private MethodResolver(Method m) {
 		this.method = m;
 		this.module = method.getParent().getParent();
@@ -73,6 +77,10 @@ public final class MethodResolver {
 		} catch (IOException | NoSuchMethodException ex) {
 			throw new RuntimeException(ex);
 		}
+		if (m.getName().equals("<init>"))
+			this.uninitializedThis = new UninitializedValue(typeFactory.getType(m.getParent()), "uninitializedThis");
+		else
+			this.uninitializedThis = null;
 	}
 
 	private void resolve() {
@@ -724,7 +732,7 @@ public final class MethodResolver {
 				//If the method is a constructor, it begins with an
 				//UninitializedThis object in local variable 0.
 				if (method.getName().equals("<init>"))
-					entryLocals[i++] = new UninitializedValue(typeFactory.getType(method.getParent()), "uninitializedThis");
+					entryLocals[i++] = uninitializedThis;
 				for (Argument a : method.arguments()) {
 					entryLocals[i] = a;
 					Type argType = a.getType();
