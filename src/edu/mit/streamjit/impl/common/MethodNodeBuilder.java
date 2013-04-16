@@ -27,12 +27,16 @@ public final class MethodNodeBuilder {
 	public static MethodNode buildMethodNode(Method method) throws IOException, NoSuchMethodException {
 		Class<?> klass = method.getParent().getBackingClass();
 		String methodName = method.getName();
+		MethodType internalType = method.getType();
 		//Methods taking a this parameter have it explicitly represented in
 		//their MethodType, but the JVM doesn't specify it in the method
 		//descriptor.
-		MethodType internalType = method.getType();
 		if (method.hasReceiver())
 			internalType = internalType.dropFirstArgument();
+		//We consider constructors to return their class (because the CallInst
+		//defines a Value of that type), but the JVM thinks they return void.
+		if (method.isConstructor())
+			internalType = internalType.withReturnType(internalType.getTypeFactory().getType(void.class));
 		String methodDescriptor = internalType.getDescriptor();
 		return buildMethodNode(klass, methodName, methodDescriptor);
 	}
