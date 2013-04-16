@@ -900,10 +900,6 @@ public final class MethodResolver {
 		private UninitializedValue(Type type, String name) {
 			super(type, name);
 		}
-		@Override
-		public String toString() {
-			return getName();
-		}
 	}
 
 	public static void main(String[] args) {
