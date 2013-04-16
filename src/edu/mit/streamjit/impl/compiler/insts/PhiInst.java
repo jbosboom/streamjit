@@ -7,6 +7,7 @@ import com.google.common.collect.Iterables;
 import edu.mit.streamjit.impl.compiler.BasicBlock;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.Type;
+import java.util.Iterator;
 
 /**
  * A phi instruction resolves conflicting definitions from predecessor predecessors.
@@ -44,5 +45,15 @@ public class PhiInst extends Instruction {
 
 	public Iterable<Value> incomingValues() {
 		return FluentIterable.from(operands()).filter(Value.class);
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder(getName());
+		sb.append(" = ");
+		for (Iterator<Value> i = operands().iterator(); i.hasNext();)
+			sb.append("[").append(i.next().getName()).append(", ").append(i.next().getName()).append("], ");
+		sb.delete(sb.length()-2, sb.length());
+		return sb.toString();
 	}
 }
