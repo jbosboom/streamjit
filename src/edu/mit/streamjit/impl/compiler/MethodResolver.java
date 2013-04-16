@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.compiler;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Worker;
@@ -1042,6 +1043,7 @@ public final class MethodResolver {
 		private FrameState copy() {
 			FrameState s = new FrameState(locals.length);
 			System.arraycopy(locals, 0, s.locals, 0, locals.length);
+			Iterables.addAll(s.stack, stack);
 			return s;
 		}
 		private void replace(Value toBeReplaced, Value replacement) {
@@ -1076,7 +1078,7 @@ public final class MethodResolver {
 	}
 
 	public static void main(String[] args) throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
-		Class<?> sgc = Class.forName("edu.mit.streamjit.apps.fft5.FFT5$FFT5Kernel");
+		Class<?> sgc = Class.forName("edu.mit.streamjit.apps.filterbank6.FilterBank6$FilterBank6Kernel");
 		Constructor<?> ctor = sgc.getDeclaredConstructor();
 		ctor.setAccessible(true);
 		OneToOneElement<?, ?> sgh = (OneToOneElement<?, ?>)ctor.newInstance();
