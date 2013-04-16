@@ -559,9 +559,11 @@ public final class MethodResolver {
 
 		//If we called a ctor, we have an uninit object on the stack.  Replace
 		//it with the constructed object, or with uninitializedThis if we're a
-		//ctor ourselves.
+		//ctor ourselves and we called a superclass ctor.
 		if (m.isConstructor()) {
-			Value replacement = method.isConstructor() ? uninitializedThis : inst;
+			//TODO: always a direct superclass? seems likely but unsure.
+			Value replacement = method.isConstructor() && method.getParent().getSuperclass().equals(k)
+					? uninitializedThis : inst;
 			Value toBeReplaced = frame.stack.pop();
 			assert toBeReplaced instanceof UninitializedValue;
 			frame.replace(toBeReplaced, replacement);
