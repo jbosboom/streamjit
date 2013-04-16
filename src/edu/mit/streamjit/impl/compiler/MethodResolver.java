@@ -454,6 +454,53 @@ public final class MethodResolver {
 				binary(BinaryInst.Operation.CMPG, frame, block);
 				break;
 			//</editor-fold>
+			//<editor-fold defaultstate="collapsed" desc="Primitive casts">
+			case Opcodes.I2L:
+				cast(int.class, long.class, frame, block);
+				break;
+			case Opcodes.I2F:
+				cast(int.class, float.class, frame, block);
+				break;
+			case Opcodes.I2D:
+				cast(int.class, double.class, frame, block);
+				break;
+			case Opcodes.L2I:
+				cast(long.class, int.class, frame, block);
+				break;
+			case Opcodes.L2F:
+				cast(long.class, float.class, frame, block);
+				break;
+			case Opcodes.L2D:
+				cast(long.class, double.class, frame, block);
+				break;
+			case Opcodes.F2I:
+				cast(float.class, int.class, frame, block);
+				break;
+			case Opcodes.F2L:
+				cast(float.class, long.class, frame, block);
+				break;
+			case Opcodes.F2D:
+				cast(float.class, double.class, frame, block);
+				break;
+			case Opcodes.D2I:
+				cast(double.class, int.class, frame, block);
+				break;
+			case Opcodes.D2L:
+				cast(double.class, long.class, frame, block);
+				break;
+			case Opcodes.D2F:
+				cast(double.class, float.class, frame, block);
+				break;
+			case Opcodes.I2B:
+				cast(int.class, byte.class, frame, block);
+				break;
+			case Opcodes.I2C:
+				cast(int.class, char.class, frame, block);
+				break;
+			case Opcodes.I2S:
+				cast(int.class, short.class, frame, block);
+				break;
+			//</editor-fold>
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
@@ -792,6 +839,13 @@ public final class MethodResolver {
 		BinaryInst inst = new BinaryInst(left, operation, right);
 		block.block.instructions().add(inst);
 		frame.stack.push(inst);
+	}
+
+	private void cast(Class<?> from, Class<?> to, FrameState frame, BBInfo block) {
+		Type targetType = typeFactory.getType(to);
+		CastInst c = new CastInst(targetType, frame.stack.pop());
+		block.block.instructions().add(c);
+		frame.stack.push(c);
 	}
 
 	private BBInfo blockByInsn(AbstractInsnNode insn) {
