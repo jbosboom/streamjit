@@ -530,10 +530,25 @@ public final class MethodResolver {
 	}
 	//</editor-fold>
 	private void interpret(LdcInsnNode insn, FrameState frame, BBInfo block) {
-		switch (insn.getOpcode()) {
-			default:
-				throw new UnsupportedOperationException(""+insn.getOpcode());
-		}
+		assert insn.getOpcode() == Opcodes.LDC;
+		ConstantFactory cf = module.constants();
+		Object c = insn.cst;
+		if (c instanceof Integer)
+			frame.stack.push(cf.getSmallestIntConstant((Integer)c));
+		else if (c instanceof Long)
+			frame.stack.push(cf.getConstant((Long)c));
+		else if (c instanceof Float)
+			frame.stack.push(cf.getConstant((Float)c));
+		else if (c instanceof Double)
+			frame.stack.push(cf.getConstant((Double)c));
+		else if (c instanceof String)
+			frame.stack.push(cf.getConstant((String)c));
+		else if (c instanceof org.objectweb.asm.Type) {
+			org.objectweb.asm.Type t = (org.objectweb.asm.Type)c;
+			Constant<Class<?>> d = cf.getConstant(getKlassByInternalName(t.getInternalName()).getBackingClass());
+			frame.stack.push(d);
+		} else
+			throw new AssertionError(c);
 	}
 	private void interpret(LookupSwitchInsnNode insn, FrameState frame, BBInfo block) {
 		switch (insn.getOpcode()) {
