@@ -17,7 +17,7 @@ import edu.mit.streamjit.impl.compiler.Value;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/13/2013
  */
-public class CallInst extends Instruction {
+public final class CallInst extends Instruction {
 	public CallInst(Method m) {
 		super(checkNotNull(m).getType().getReturnType(), 1+m.getType().getParameterTypes().size());
 		setOperand(0, m);

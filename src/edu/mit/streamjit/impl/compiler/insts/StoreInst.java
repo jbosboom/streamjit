@@ -11,7 +11,7 @@ import edu.mit.streamjit.impl.compiler.types.StaticFieldType;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/14/2013
  */
-public class StoreInst extends Instruction {
+public final class StoreInst extends Instruction {
 	public StoreInst(Field f) {
 		super(f.getType().getTypeFactory().getVoidType(), f.isStatic() ? 2 : 3);
 		setOperand(0, f);

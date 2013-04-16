@@ -10,7 +10,7 @@ import edu.mit.streamjit.impl.compiler.types.ArrayType;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/16/2013
  */
-public class NewArrayInst extends Instruction {
+public final class NewArrayInst extends Instruction {
 	public NewArrayInst(ArrayType type, int dimensionsToCreate) {
 		super(type, dimensionsToCreate);
 		checkArgument(dimensionsToCreate >= 1);

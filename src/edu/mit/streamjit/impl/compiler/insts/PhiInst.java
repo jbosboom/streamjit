@@ -14,7 +14,7 @@ import java.util.Iterator;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/15/2013
  */
-public class PhiInst extends Instruction {
+public final class PhiInst extends Instruction {
 	public PhiInst(Type type) {
 		super(type);
 	}

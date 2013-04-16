@@ -10,7 +10,7 @@ import edu.mit.streamjit.impl.compiler.types.VoidType;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/11/2013
  */
-public class ReturnInst extends TerminatorInst {
+public final class ReturnInst extends TerminatorInst {
 	private final ReturnType returnType;
 	public ReturnInst(ReturnType returnType) {
 		super(returnType.getTypeFactory(), returnType instanceof VoidType ? 0 : 1);

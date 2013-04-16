@@ -10,7 +10,7 @@ import edu.mit.streamjit.impl.compiler.types.PrimitiveType;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/15/2013
  */
-public class BinaryInst extends Instruction {
+public final class BinaryInst extends Instruction {
 	public enum Operation {
 		ADD("int", "long", "float", "double"),
 		SUB("int", "long", "float", "double"),

@@ -9,7 +9,7 @@ import edu.mit.streamjit.impl.compiler.Value;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/11/2013
  */
-public class JumpInst extends TerminatorInst {
+public final class JumpInst extends TerminatorInst {
 	public JumpInst(BasicBlock target) {
 		super(target.getType().getTypeFactory(), 1);
 		setOperand(0, target);

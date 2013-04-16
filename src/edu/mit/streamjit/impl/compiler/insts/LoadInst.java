@@ -10,7 +10,7 @@ import edu.mit.streamjit.impl.compiler.types.InstanceFieldType;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/14/2013
  */
-public class LoadInst extends Instruction {
+public final class LoadInst extends Instruction {
 	public LoadInst(Field f) {
 		super(checkNotNull(f).getType().getFieldType(), f.isStatic() ? 1 : 2);
 		setOperand(0, f);

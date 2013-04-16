@@ -8,7 +8,7 @@ import edu.mit.streamjit.impl.compiler.types.Type;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/15/2013
  */
-public class CastInst extends Instruction {
+public final class CastInst extends Instruction {
 	public CastInst(Type targetType) {
 		super(targetType, 1);
 	}

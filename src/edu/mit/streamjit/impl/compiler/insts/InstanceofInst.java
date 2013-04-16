@@ -9,7 +9,7 @@ import edu.mit.streamjit.impl.compiler.types.ReferenceType;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 4/15/2013
  */
-public class InstanceofInst extends Instruction {
+public final class InstanceofInst extends Instruction {
 	private final ReferenceType testType;
 	public InstanceofInst(ReferenceType testType) {
 		super(testType.getTypeFactory().getPrimitiveType(boolean.class), 1);
