@@ -7,6 +7,7 @@ import edu.mit.streamjit.impl.compiler.insts.BinaryInst;
 import edu.mit.streamjit.impl.compiler.insts.BranchInst;
 import edu.mit.streamjit.impl.compiler.insts.CallInst;
 import edu.mit.streamjit.impl.compiler.insts.CastInst;
+import edu.mit.streamjit.impl.compiler.insts.InstanceofInst;
 import edu.mit.streamjit.impl.compiler.insts.JumpInst;
 import edu.mit.streamjit.impl.compiler.insts.LoadInst;
 import edu.mit.streamjit.impl.compiler.insts.PhiInst;
@@ -583,6 +584,11 @@ public final class MethodResolver {
 				CastInst c = new CastInst(t, frame.stack.pop());
 				block.block.instructions().add(c);
 				frame.stack.push(c);
+				break;
+			case Opcodes.INSTANCEOF:
+				InstanceofInst ioi = new InstanceofInst(t, frame.stack.pop());
+				block.block.instructions().add(ioi);
+				frame.stack.push(ioi);
 				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
