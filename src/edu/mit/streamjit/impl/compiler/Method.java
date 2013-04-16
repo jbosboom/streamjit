@@ -84,9 +84,7 @@ public class Method extends Value implements Parented<Klass> {
 		ImmutableList<RegularType> paramTypes = getType().getParameterTypes();
 		ImmutableList.Builder<Argument> builder = ImmutableList.builder();
 		for (int i = 0; i < paramTypes.size(); ++i) {
-			//TODO: I'm not sure if ctors are static, but they don't have a this
-			//parameter from our perspective.
-			String name = (i == 0 && !modifiers().contains(Modifier.STATIC)) ? "this" : "arg"+i;
+			String name = hasReceiver() ? "this" : "arg"+i;
 			builder.add(new Argument(this, paramTypes.get(i), name));
 		}
 		this.arguments = builder.build();
@@ -115,6 +113,10 @@ public class Method extends Value implements Parented<Klass> {
 
 	public boolean isConstructor() {
 		return getName().equals("<init>");
+	}
+
+	public boolean hasReceiver() {
+		return !(modifiers().contains(Modifier.STATIC) || isConstructor());
 	}
 
 	@Override

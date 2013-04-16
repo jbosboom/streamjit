@@ -1,7 +1,6 @@
 package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.impl.compiler.Method;
-import edu.mit.streamjit.impl.compiler.Modifier;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import java.io.IOException;
 import org.objectweb.asm.ClassReader;
@@ -32,7 +31,7 @@ public final class MethodNodeBuilder {
 		//their MethodType, but the JVM doesn't specify it in the method
 		//descriptor.
 		MethodType internalType = method.getType();
-		if (!method.modifiers().contains(Modifier.STATIC))
+		if (method.hasReceiver())
 			internalType = internalType.dropFirstArgument();
 		String methodDescriptor = internalType.getDescriptor();
 		return buildMethodNode(klass, methodName, methodDescriptor);
