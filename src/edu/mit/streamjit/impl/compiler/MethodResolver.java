@@ -5,11 +5,13 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.apps.fmradio.FMRadio;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MethodNodeBuilder;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.compiler.insts.ArrayLengthInst;
 import edu.mit.streamjit.impl.compiler.insts.ArrayLoadInst;
 import edu.mit.streamjit.impl.compiler.insts.ArrayStoreInst;
 import edu.mit.streamjit.impl.compiler.insts.BinaryInst;
@@ -97,7 +99,8 @@ public final class MethodResolver {
 		try {
 			this.methodNode = MethodNodeBuilder.buildMethodNode(method);
 		} catch (IOException | NoSuchMethodException ex) {
-			throw new RuntimeException(ex);
+			Thread.currentThread().stop(ex);
+			throw new AssertionError();
 		}
 		if (m.isConstructor())
 			this.uninitializedThis = new UninitializedValue(typeFactory.getType(m.getParent()), "uninitializedThis");
@@ -536,6 +539,11 @@ public final class MethodResolver {
 				frame.stack.push(ali);
 				break;
 			//</editor-fold>
+			case Opcodes.ARRAYLENGTH:
+				ArrayLengthInst lengthInst = new ArrayLengthInst(frame.stack.pop());
+				block.block.instructions().add(lengthInst);
+				frame.stack.push(lengthInst);
+				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
@@ -1082,13 +1090,13 @@ public final class MethodResolver {
 	}
 
 	public static void main(String[] args) throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
-		Class<?> sgc = Class.forName("edu.mit.streamjit.apps.dct.DCT2$DCT2Kernel");
-		Constructor<?> ctor = sgc.getDeclaredConstructor();
-		ctor.setAccessible(true);
-		OneToOneElement<?, ?> sgh = (OneToOneElement<?, ?>)ctor.newInstance();
-		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
-		sgh.visit(cwv);
-		ImmutableSet<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
+//		Class<?> sgc = Class.forName("edu.mit.streamjit.api.WeightedRoundrobinSplitter");
+//		Constructor<?> ctor = sgc.getDeclaredConstructor();
+//		ctor.setAccessible(true);
+//		OneToOneElement<?, ?> sgh = (OneToOneElement<?, ?>)ctor.newInstance();
+//		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
+//		sgh.visit(cwv);
+		ImmutableSet<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(new WeightedRoundrobinJoiner<>(5, 10, 5));
 
 		Module m = new Module();
 		for (Worker<?, ?> w : workers) {
