@@ -9,6 +9,7 @@ import edu.mit.streamjit.impl.compiler.insts.CallInst;
 import edu.mit.streamjit.impl.compiler.insts.CastInst;
 import edu.mit.streamjit.impl.compiler.insts.JumpInst;
 import edu.mit.streamjit.impl.compiler.insts.LoadInst;
+import edu.mit.streamjit.impl.compiler.insts.PhiInst;
 import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.ReferenceType;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
@@ -193,7 +195,7 @@ public final class MethodResolver {
 		for (BasicBlock b : block.block.successors())
 			for (BBInfo bi : blocks)
 				if (bi.block == b) {
-					merge(frame, bi);
+					merge(block, frame, bi);
 					break;
 				}
 	}
@@ -716,12 +718,32 @@ public final class MethodResolver {
 	 * @param p the final frame state of a predecessor
 	 * @param s the successor block
 	 */
-	private void merge(FrameState p, BBInfo s) {
+	private void merge(BBInfo predecessor, FrameState p, BBInfo s) {
 		if (s.entryState == null) {
+			//If this state didn't have a frame, it has only one predecessor, so
+			//just use our state.
 			s.entryState = p.copy();
 			return;
-		} else
-			throw new UnsupportedOperationException("TODO: phi insertion");
+		}
+
+		//This block has multiple predecessors, so it had a frame, so we gave it
+		//phi instructions in its entry state.
+		for (int i = 0; i < p.locals.length; ++i) {
+			//If we're null, we don't have a definition.
+			if (p.locals[i] == null)
+				continue;
+			//We might not unify with the other predecessors.
+			if (!(s.entryState.locals[i] instanceof PhiInst))
+				continue;
+			//Otherwise, register our definition.
+			((PhiInst)s.entryState.locals[i]).put(predecessor.block, p.locals[i]);
+		}
+		Iterator<Value> us = p.stack.iterator(), them = s.entryState.stack.iterator();
+		while (us.hasNext()) {
+			Value theirVal = them.next(), ourVal = us.next();
+			if (theirVal instanceof PhiInst)
+				((PhiInst)theirVal).put(predecessor.block, ourVal);
+		}
 	}
 
 	private final class BBInfo {
@@ -750,6 +772,8 @@ public final class MethodResolver {
 				}
 			}
 			this.frame = findOnlyFrameNode();
+			if (this.frame != null)
+				entryStateFromFrame();
 		}
 
 		private FrameNode findOnlyFrameNode() {
@@ -762,6 +786,54 @@ public final class MethodResolver {
 				}
 			}
 			return f;
+		}
+
+		private void entryStateFromFrame() {
+			this.entryState = new FrameState(methodNode.maxLocals);
+			valueArrayFromFrameList(frame.local, entryState.locals, true);
+			Value[] stack = new Value[frame.stack.size()];
+			valueArrayFromFrameList(frame.stack, stack, false);
+			for (Value v : stack)
+				entryState.stack.push(v);
+
+			//Attach those PhiInsts.
+			for (Value v : this.entryState.locals)
+				if (v instanceof PhiInst)
+					block.instructions().add((PhiInst)v);
+			for (Value v : this.entryState.stack)
+				if (v instanceof PhiInst)
+					block.instructions().add((PhiInst)v);
+		}
+
+		private void valueArrayFromFrameList(List<?> frameList, Value[] values, boolean expandCat2Types) {
+			for (int i = 0; i < frameList.size(); ++i) {
+				Object o = frameList.get(i);
+				if (o instanceof Integer) {
+					Integer t = (Integer)o;
+					if (t.equals(Opcodes.INTEGER))
+						values[i] = new PhiInst(typeFactory.getType(int.class));
+					else if (t.equals(Opcodes.FLOAT))
+						values[i] = new PhiInst(typeFactory.getType(float.class));
+					else if (t.equals(Opcodes.DOUBLE)) {
+						values[i] = new PhiInst(typeFactory.getType(double.class));
+						if (expandCat2Types)
+							++i; //two local slots
+					} else if (t.equals(Opcodes.LONG)) {
+						values[i] = new PhiInst(typeFactory.getType(long.class));
+						if (expandCat2Types)
+							++i; //two local slots
+					} else if (t.equals(Opcodes.NULL))
+						values[i] = module.constants().getNullConstant();
+					else if (t.equals(Opcodes.UNINITIALIZED_THIS)) {
+						assert uninitializedThis != null;
+						values[i] = uninitializedThis;
+					}
+					//TOP ignored
+				} else if (o instanceof String) {
+					Type t = typeFactory.getType(getKlassByInternalName((String)o));
+					values[i] = new PhiInst(t);
+				} //else Label (uninit -- ignored)
+			}
 		}
 	}
 
