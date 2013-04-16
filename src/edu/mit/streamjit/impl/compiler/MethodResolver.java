@@ -13,6 +13,7 @@ import edu.mit.streamjit.impl.compiler.insts.LoadInst;
 import edu.mit.streamjit.impl.compiler.insts.PhiInst;
 import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
 import edu.mit.streamjit.impl.compiler.insts.StoreInst;
+import edu.mit.streamjit.impl.compiler.insts.SwitchInst;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.ReferenceType;
 import edu.mit.streamjit.impl.compiler.types.ReturnType;
@@ -547,10 +548,12 @@ public final class MethodResolver {
 			throw new AssertionError(c);
 	}
 	private void interpret(LookupSwitchInsnNode insn, FrameState frame, BBInfo block) {
-		switch (insn.getOpcode()) {
-			default:
-				throw new UnsupportedOperationException(""+insn.getOpcode());
-		}
+		assert insn.getOpcode() == Opcodes.LOOKUPSWITCH;
+		ConstantFactory cf = module.constants();
+		SwitchInst inst = new SwitchInst(frame.stack.pop(), blockByInsn(insn.dflt).block);
+		for (int i = 0; i < insn.keys.size(); ++i)
+			inst.put(cf.getConstant((Integer)insn.keys.get(i)), blockByInsn((LabelNode)insn.labels.get(i)).block);
+		block.block.instructions().add(inst);
 	}
 	private void interpret(MethodInsnNode insn, FrameState frame, BBInfo block) {
 		Klass k = getKlassByInternalName(insn.owner);
@@ -935,6 +938,7 @@ public final class MethodResolver {
 	public static void main(String[] args) {
 		Module m = new Module();
 		Klass k = m.getKlass(MethodResolver.class);
-		k.getMethods("<init>").iterator().next().resolve();
+		for (Method method : k.getMethods("interpret"))
+			method.resolve();
 	}
 }
