@@ -84,7 +84,7 @@ public final class MethodResolver {
 		} catch (IOException | NoSuchMethodException ex) {
 			throw new RuntimeException(ex);
 		}
-		if (m.getName().equals("<init>"))
+		if (m.isConstructor())
 			this.uninitializedThis = new UninitializedValue(typeFactory.getType(m.getParent()), "uninitializedThis");
 		else
 			this.uninitializedThis = null;
@@ -560,8 +560,8 @@ public final class MethodResolver {
 		//If we called a ctor, we have an uninit object on the stack.  Replace
 		//it with the constructed object, or with uninitializedThis if we're a
 		//ctor ourselves.
-		if (insn.name.equals("<init>")) {
-			Value replacement = method.getName().equals("<init>") ? uninitializedThis : inst;
+		if (m.isConstructor()) {
+			Value replacement = method.isConstructor() ? uninitializedThis : inst;
 			Value toBeReplaced = frame.stack.pop();
 			assert toBeReplaced instanceof UninitializedValue;
 			frame.replace(toBeReplaced, replacement);
@@ -775,7 +775,7 @@ public final class MethodResolver {
 				int i = 0;
 				//If the method is a constructor, it begins with an
 				//UninitializedThis object in local variable 0.
-				if (method.getName().equals("<init>"))
+				if (method.isConstructor())
 					entryLocals[i++] = uninitializedThis;
 				for (Argument a : method.arguments()) {
 					entryLocals[i] = a;
@@ -909,6 +909,6 @@ public final class MethodResolver {
 	public static void main(String[] args) {
 		Module m = new Module();
 		Klass k = m.getKlass(MethodResolver.class);
-		k.getMethods("buildInstructions").iterator().next().resolve();
+		k.getMethods("<init>").iterator().next().resolve();
 	}
 }

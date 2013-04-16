@@ -113,6 +113,10 @@ public class Method extends Value implements Parented<Klass> {
 		return basicBlocks;
 	}
 
+	public boolean isConstructor() {
+		return getName().equals("<init>");
+	}
+
 	@Override
 	public void setName(String name) {
 		checkState(isMutable(), "can't change name of method on immutable class %s", getParent());
