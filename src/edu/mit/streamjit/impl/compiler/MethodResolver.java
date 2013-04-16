@@ -721,10 +721,14 @@ public final class MethodResolver {
 			frame.stack.push(inst);
 	}
 	private void interpret(MultiANewArrayInsnNode insn, FrameState frame, BBInfo block) {
-		switch (insn.getOpcode()) {
-			default:
-				throw new UnsupportedOperationException(""+insn.getOpcode());
-		}
+		assert insn.getOpcode() == Opcodes.MULTIANEWARRAY;
+		Klass k = getKlassByInternalName(insn.desc);
+		Value[] dims = new Value[insn.dims];
+		for (int i = dims.length-1; i >= 0; --i)
+			dims[i] = frame.stack.pop();
+		NewArrayInst nai = new NewArrayInst(typeFactory.getArrayType(k), dims);
+		block.block.instructions().add(nai);
+		frame.stack.push(nai);
 	}
 	private void interpret(TableSwitchInsnNode insn, FrameState frame, BBInfo block) {
 		switch (insn.getOpcode()) {
@@ -1078,7 +1082,7 @@ public final class MethodResolver {
 	}
 
 	public static void main(String[] args) throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
-		Class<?> sgc = Class.forName("edu.mit.streamjit.apps.filterbank6.FilterBank6$FilterBank6Kernel");
+		Class<?> sgc = Class.forName("edu.mit.streamjit.apps.dct.DCT2$DCT2Kernel");
 		Constructor<?> ctor = sgc.getDeclaredConstructor();
 		ctor.setAccessible(true);
 		OneToOneElement<?, ?> sgh = (OneToOneElement<?, ?>)ctor.newInstance();
