@@ -263,7 +263,11 @@ public final class Klass implements Accessible, Parented<Module> {
 	 */
 	public final Klass getComponentKlass() {
 		checkState(isArray(), "not array class: %s", getName());
-		return getParent().getArrayKlass(getElementKlass(), getDimensions()-1);
+		int nd = getDimensions()-1;
+		if (nd == 0)
+			return getElementKlass();
+		else
+			return getParent().getArrayKlass(getElementKlass(), getDimensions()-1);
 	}
 
 	/**
