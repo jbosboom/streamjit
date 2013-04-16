@@ -9,6 +9,7 @@ import edu.mit.streamjit.apps.fmradio.FMRadio;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MethodNodeBuilder;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.compiler.insts.ArrayStoreInst;
 import edu.mit.streamjit.impl.compiler.insts.BinaryInst;
 import edu.mit.streamjit.impl.compiler.insts.BranchInst;
 import edu.mit.streamjit.impl.compiler.insts.CallInst;
@@ -499,6 +500,22 @@ public final class MethodResolver {
 				break;
 			case Opcodes.I2S:
 				cast(int.class, short.class, frame, block);
+				break;
+			//</editor-fold>
+			//<editor-fold defaultstate="collapsed" desc="Array store opcodes">
+			case Opcodes.IASTORE:
+			case Opcodes.LASTORE:
+			case Opcodes.FASTORE:
+			case Opcodes.DASTORE:
+			case Opcodes.AASTORE:
+			case Opcodes.BASTORE:
+			case Opcodes.CASTORE:
+			case Opcodes.SASTORE:
+				Value data = frame.stack.pop();
+				Value index = frame.stack.pop();
+				Value array = frame.stack.pop();
+				ArrayStoreInst asi = new ArrayStoreInst(array, index, data);
+				block.block.instructions().add(asi);
 				break;
 			//</editor-fold>
 			default:
