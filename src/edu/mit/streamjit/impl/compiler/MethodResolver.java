@@ -798,7 +798,7 @@ public final class MethodResolver {
 					v[i] = replacement;
 			stack.clear();
 			for (Value x : v)
-				stack.push(x);
+				stack.add(x);
 		}
 		@Override
 		public String toString() {
