@@ -34,7 +34,7 @@ public abstract class Value {
 	}
 	public Value(Type type, String name) {
 		this.type = checkNotNull(type);
-		this.name = name;
+		this.name = name != null ? name : getDefaultName();
 	}
 
 	public Type getType() {
@@ -135,8 +135,10 @@ public abstract class Value {
 
 	@Override
 	public String toString() {
-		if (getName() != null)
-			return String.format("%s (%s)", getName(), getType());
-		return String.format("%s@%d (%s)", getClass().getSimpleName(), hashCode(), getType());
+		return String.format("%s (%s)", getName(), getType());
+	}
+
+	private String getDefaultName() {
+		return String.format("%s@%h", getClass().getSimpleName(), hashCode());
 	}
 }
