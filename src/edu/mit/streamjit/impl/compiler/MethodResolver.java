@@ -732,7 +732,8 @@ public final class MethodResolver {
 		}
 	}
 	private void interpret(TypeInsnNode insn, FrameState frame, BBInfo block) {
-		ReferenceType t = typeFactory.getReferenceType(getKlassByInternalName(insn.desc));
+		Klass k = getKlassByInternalName(insn.desc);
+		ReferenceType t = typeFactory.getReferenceType(k);
 		switch (insn.getOpcode()) {
 			case Opcodes.NEW:
 				frame.stack.push(new UninitializedValue(t, "uninit"+(counter++)));
@@ -746,6 +747,12 @@ public final class MethodResolver {
 				InstanceofInst ioi = new InstanceofInst(t, frame.stack.pop());
 				block.block.instructions().add(ioi);
 				frame.stack.push(ioi);
+				break;
+			case Opcodes.ANEWARRAY:
+				ArrayType at = typeFactory.getArrayType(module.getArrayKlass(k, 1));
+				NewArrayInst nai = new NewArrayInst(at, frame.stack.pop());
+				block.block.instructions().add(nai);
+				frame.stack.push(nai);
 				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
