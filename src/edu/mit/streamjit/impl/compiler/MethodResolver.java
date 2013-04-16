@@ -221,6 +221,12 @@ public final class MethodResolver {
 	}
 	private void interpret(IincInsnNode insn, FrameState frame, BBInfo block) {
 		switch (insn.getOpcode()) {
+			case Opcodes.IINC:
+				Constant<Integer> c = module.constants().getConstant(insn.incr);
+				BinaryInst bi = new BinaryInst(frame.locals[insn.var], BinaryInst.Operation.ADD, c);
+				block.block.instructions().add(bi);
+				frame.locals[insn.var] = bi;
+				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
