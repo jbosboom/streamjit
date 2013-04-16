@@ -28,11 +28,14 @@ public class PhiInst extends Instruction {
 		checkNotNull(v);
 		checkArgument(v.getType().isSubtypeOf(getType()), "%s not a %s", v, getType());
 		int bbi = Iterables.indexOf(operands(), Predicates.<Value>equalTo(b));
+		Value oldVal = get(b);
 		if (bbi != -1)
-			return getOperand(bbi+1);
-		addOperand(getNumOperands(), b);
-		addOperand(getNumOperands(), v);
-		return null;
+			setOperand(bbi+1, v);
+		else {
+			addOperand(getNumOperands(), b);
+			addOperand(getNumOperands(), v);
+		}
+		return oldVal;
 	}
 
 	public Iterable<BasicBlock> predecessors() {
