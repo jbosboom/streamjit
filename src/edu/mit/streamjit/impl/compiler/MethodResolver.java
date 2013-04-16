@@ -9,6 +9,7 @@ import edu.mit.streamjit.apps.fmradio.FMRadio;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MethodNodeBuilder;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.compiler.insts.ArrayLoadInst;
 import edu.mit.streamjit.impl.compiler.insts.ArrayStoreInst;
 import edu.mit.streamjit.impl.compiler.insts.BinaryInst;
 import edu.mit.streamjit.impl.compiler.insts.BranchInst;
@@ -516,6 +517,22 @@ public final class MethodResolver {
 				Value array = frame.stack.pop();
 				ArrayStoreInst asi = new ArrayStoreInst(array, index, data);
 				block.block.instructions().add(asi);
+				break;
+			//</editor-fold>
+			//<editor-fold defaultstate="collapsed" desc="Array load opcodes">
+			case Opcodes.IALOAD:
+			case Opcodes.LALOAD:
+			case Opcodes.FALOAD:
+			case Opcodes.DALOAD:
+			case Opcodes.AALOAD:
+			case Opcodes.BALOAD:
+			case Opcodes.CALOAD:
+			case Opcodes.SALOAD:
+				Value index2 = frame.stack.pop();
+				Value array2 = frame.stack.pop();
+				ArrayLoadInst ali = new ArrayLoadInst(array2, index2);
+				block.block.instructions().add(ali);
+				frame.stack.push(ali);
 				break;
 			//</editor-fold>
 			default:
