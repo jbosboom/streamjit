@@ -37,7 +37,12 @@ public class BinaryInst extends Instruction {
 	private final Operation operation;
 	public BinaryInst(Value left, Operation op, Value right) {
 		super(computeType(left, op, right), 2);
-		checkArgument(op.applicableTypes().contains(getType().toString()), "%s %s", op, getType());
+		if (op == Operation.CMP || op == Operation.CMPG)
+			checkArgument(op.applicableTypes().contains(left.getType().toString()) &&
+					op.applicableTypes().contains(left.getType().toString()),
+					"%s %s %s", left.getType(), op, right.getType());
+		else
+			checkArgument(op.applicableTypes().contains(getType().toString()), "%s %s", op, getType());
 		setOperand(0, left);
 		setOperand(1, right);
 		this.operation = op;
