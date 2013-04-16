@@ -374,7 +374,7 @@ public final class MethodResolver {
 				block.block.instructions().add(new ReturnInst(returnType, frame.stack.pop()));
 				break;
 			case Opcodes.RETURN:
-				assert returnType instanceof VoidType;
+				assert returnType instanceof VoidType || method.isConstructor();
 				block.block.instructions().add(new ReturnInst(returnType));
 				break;
 			//</editor-fold>
