@@ -4,7 +4,6 @@ import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.Field;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.InstanceFieldType;
-import edu.mit.streamjit.impl.compiler.types.StaticFieldType;
 
 /**
  * Loads a static or instance field.  (Does not load array elements.)
@@ -39,7 +38,7 @@ public class LoadInst extends Instruction {
 		checkElementIndex(i, 2);
 		if (i == 0) {
 			checkArgument(v instanceof Field);
-			checkArgument(((Field)v).isStatic() == getType() instanceof StaticFieldType);
+			checkArgument(((Field)v).getType().getFieldType().isSubtypeOf(getType()));
 		} else if (i == 1) {
 			Field f = getField();
 			if (f != null) {
