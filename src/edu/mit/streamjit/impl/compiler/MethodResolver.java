@@ -1,8 +1,14 @@
 package edu.mit.streamjit.impl.compiler;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import edu.mit.streamjit.api.Identity;
+import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.apps.fmradio.FMRadio;
+import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MethodNodeBuilder;
+import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.compiler.insts.BinaryInst;
 import edu.mit.streamjit.impl.compiler.insts.BranchInst;
 import edu.mit.streamjit.impl.compiler.insts.CallInst;
@@ -10,10 +16,12 @@ import edu.mit.streamjit.impl.compiler.insts.CastInst;
 import edu.mit.streamjit.impl.compiler.insts.InstanceofInst;
 import edu.mit.streamjit.impl.compiler.insts.JumpInst;
 import edu.mit.streamjit.impl.compiler.insts.LoadInst;
+import edu.mit.streamjit.impl.compiler.insts.NewArrayInst;
 import edu.mit.streamjit.impl.compiler.insts.PhiInst;
 import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
 import edu.mit.streamjit.impl.compiler.insts.StoreInst;
 import edu.mit.streamjit.impl.compiler.insts.SwitchInst;
+import edu.mit.streamjit.impl.compiler.types.ArrayType;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.ReferenceType;
 import edu.mit.streamjit.impl.compiler.types.ReturnType;
@@ -21,6 +29,8 @@ import edu.mit.streamjit.impl.compiler.types.Type;
 import edu.mit.streamjit.impl.compiler.types.TypeFactory;
 import edu.mit.streamjit.impl.compiler.types.VoidType;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -449,7 +459,42 @@ public final class MethodResolver {
 		}
 	}
 	private void interpret(IntInsnNode insn, FrameState frame, BBInfo block) {
+		int operand = insn.operand;
 		switch (insn.getOpcode()) {
+			case Opcodes.NEWARRAY:
+				ArrayType t;
+				switch (operand) {
+					case Opcodes.T_BOOLEAN:
+						t = module.types().getArrayType(boolean[].class);
+						break;
+					case Opcodes.T_BYTE:
+						t = module.types().getArrayType(byte[].class);
+						break;
+					case Opcodes.T_CHAR:
+						t = module.types().getArrayType(char[].class);
+						break;
+					case Opcodes.T_SHORT:
+						t = module.types().getArrayType(short[].class);
+						break;
+					case Opcodes.T_INT:
+						t = module.types().getArrayType(int[].class);
+						break;
+					case Opcodes.T_LONG:
+						t = module.types().getArrayType(long[].class);
+						break;
+					case Opcodes.T_FLOAT:
+						t = module.types().getArrayType(float[].class);
+						break;
+					case Opcodes.T_DOUBLE:
+						t = module.types().getArrayType(double[].class);
+						break;
+					default:
+						throw new AssertionError(operand);
+				}
+				NewArrayInst i = new NewArrayInst(t, frame.stack.pop());
+				block.block.instructions().add(i);
+				frame.stack.push(i);
+				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
 		}
@@ -935,10 +980,23 @@ public final class MethodResolver {
 		}
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
+		Class<?> sgc = Class.forName("edu.mit.streamjit.apps.fmradio.FMRadio$FMRadioCore");
+		Constructor<?> ctor = sgc.getDeclaredConstructor();
+		ctor.setAccessible(true);
+		OneToOneElement<?, ?> sgh = (OneToOneElement<?, ?>)ctor.newInstance();
+		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
+		sgh.visit(cwv);
+		ImmutableSet<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
+
 		Module m = new Module();
-		Klass k = m.getKlass(MethodResolver.class);
-		for (Method method : k.getMethods("interpret"))
-			method.resolve();
+		for (Worker<?, ?> w : workers) {
+			Klass k = m.getKlass(w.getClass());
+			for (Method method : k.methods())
+				if (!method.isResolved() && method.isResolvable()) {
+					method.resolve();
+					System.out.println("Resolved "+k.getName()+" "+method);
+				}
+		}
 	}
 }
