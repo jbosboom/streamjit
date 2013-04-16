@@ -44,4 +44,9 @@ public final class ArrayType extends ReferenceType {
 		} else
 			return false;
 	}
+
+	@Override
+	public String getDescriptor() {
+		return "["+getComponentType().getDescriptor();
+	}
 }
