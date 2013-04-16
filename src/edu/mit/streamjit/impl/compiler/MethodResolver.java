@@ -12,6 +12,7 @@ import edu.mit.streamjit.impl.compiler.insts.JumpInst;
 import edu.mit.streamjit.impl.compiler.insts.LoadInst;
 import edu.mit.streamjit.impl.compiler.insts.PhiInst;
 import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
+import edu.mit.streamjit.impl.compiler.insts.StoreInst;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.ReferenceType;
 import edu.mit.streamjit.impl.compiler.types.ReturnType;
@@ -214,6 +215,14 @@ public final class MethodResolver {
 				LoadInst li2 = new LoadInst(f, frame.stack.pop());
 				block.block.instructions().add(li2);
 				frame.stack.push(li2);
+				break;
+			case Opcodes.PUTSTATIC:
+				StoreInst si = new StoreInst(f, frame.stack.pop());
+				block.block.instructions().add(si);
+				break;
+			case Opcodes.PUTFIELD:
+				StoreInst si2 = new StoreInst(f, frame.stack.pop(), frame.stack.pop());
+				block.block.instructions().add(si2);
 				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
