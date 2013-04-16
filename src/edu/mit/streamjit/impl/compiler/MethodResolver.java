@@ -275,7 +275,7 @@ public final class MethodResolver {
 				conditionallyPermute(frame, dupPermutations);
 				break;
 			case Opcodes.DUP_X1:
-				final int[][][] dup_x1Permutations = {{{1,2}, {1,2,1}}};
+				final int[][][] dup_x1Permutations = {{{1,1}, {1,2,1}}};
 				conditionallyPermute(frame, dup_x1Permutations);
 				break;
 			case Opcodes.DUP_X2:
@@ -1076,7 +1076,7 @@ public final class MethodResolver {
 	}
 
 	public static void main(String[] args) throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
-		Class<?> sgc = Class.forName("edu.mit.streamjit.apps.fmradio.FMRadio$FMRadioCore");
+		Class<?> sgc = Class.forName("edu.mit.streamjit.apps.fft5.FFT5$FFT5Kernel");
 		Constructor<?> ctor = sgc.getDeclaredConstructor();
 		ctor.setAccessible(true);
 		OneToOneElement<?, ?> sgh = (OneToOneElement<?, ?>)ctor.newInstance();
