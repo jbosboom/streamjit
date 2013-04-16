@@ -480,11 +480,7 @@ public final class MethodResolver {
 			.build();
 	private void interpret(JumpInsnNode insn, FrameState frame, BBInfo block) {
 		//All JumpInsnNodes have a target.  Find it.
-		BBInfo target = null;
-		int targetIdx = methodNode.instructions.indexOf(insn.label);
-		for (BBInfo b : blocks)
-			if (b.start <= targetIdx && targetIdx < b.end)
-				target = b;
+		BBInfo target = blockByInsn(insn.label);
 		assert target != null;
 
 		if (insn.getOpcode() == Opcodes.GOTO) {
@@ -748,6 +744,14 @@ public final class MethodResolver {
 		BinaryInst inst = new BinaryInst(left, operation, right);
 		block.block.instructions().add(inst);
 		frame.stack.push(inst);
+	}
+
+	private BBInfo blockByInsn(AbstractInsnNode insn) {
+		int targetIdx = methodNode.instructions.indexOf(insn);
+		for (BBInfo b : blocks)
+			if (b.start <= targetIdx && targetIdx < b.end)
+				return b;
+		return null;
 	}
 
 	/**
