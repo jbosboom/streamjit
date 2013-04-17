@@ -24,7 +24,7 @@ public class Minimal {
 		StreamCompiler sc = new ConcurrentStreamCompiler(2);
 		CompiledStream<Integer, Void> stream = sc.compile(kernel);
 		Integer output;
-		for (int i = 0; i < 100; ++i) {
+		for (int i = 0; i < 1000000; ++i) {
 			stream.offer(i);
 		//	System.out.println("Offered" + i);
 			// while ((output = stream.poll()) != null)

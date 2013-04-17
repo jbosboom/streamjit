@@ -8,13 +8,15 @@ import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 public class FFT5 {
 
 	public static void main(String[] args) throws InterruptedException {
 		FFT5Kernel kernel = new FFT5Kernel();
-		StreamCompiler sc = new DebugStreamCompiler();
+		//StreamCompiler sc = new DebugStreamCompiler();
+		StreamCompiler sc = new ConcurrentStreamCompiler(4);
 		CompiledStream<Float, Void> stream = sc.compile(kernel);
 		//Float output;
 		for (float i = 0; i < 100000; i++) {

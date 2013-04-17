@@ -7,6 +7,7 @@ import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.DuplicateSplitter;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
@@ -17,7 +18,8 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 public class FMRadio {
 	public static void main(String[] args) throws InterruptedException {
 		FMRadioCore core = new FMRadioCore();
-		StreamCompiler sc = new DebugStreamCompiler();
+		//StreamCompiler sc = new DebugStreamCompiler();
+		StreamCompiler sc = new ConcurrentStreamCompiler(4);
 		CompiledStream<Float, Float> stream = sc.compile(core);
 		Float output;
 		for (int i = 0; i < 10000; ++i) {

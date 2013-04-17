@@ -39,12 +39,14 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 public class DCT2 {
 	public static void main(String[] args) throws InterruptedException {
 		DCT2Kernel kernel = new DCT2Kernel();
-		StreamCompiler sc = new DebugStreamCompiler();
+		//StreamCompiler sc = new DebugStreamCompiler();
+		StreamCompiler sc = new ConcurrentStreamCompiler(4);
 		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
 		Integer output;
 		for (int i = 0; i < 100000; i++) {
@@ -54,7 +56,7 @@ public class DCT2 {
 		}
 		
 		stream.drain();
-		stream.awaitDraining();
+		//stream.awaitDraining();
 
 	}
 

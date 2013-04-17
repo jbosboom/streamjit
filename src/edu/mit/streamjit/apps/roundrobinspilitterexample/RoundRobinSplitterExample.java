@@ -22,11 +22,11 @@ public class RoundRobinSplitterExample {
 	public static void main(String[] args) throws InterruptedException{
 		
 		RoundRobinSplitterMain rbs = new RoundRobinSplitterMain();
-		StreamCompiler sc = new ConcurrentStreamCompiler(2);
+		StreamCompiler sc = new ConcurrentStreamCompiler(4);
 		CompiledStream<Integer, Void> stream = sc.compile(rbs);
 		Float output;
 
-		for (int i = 0; i < 10000; ++i) {
+		for (int i = 0; i < 1000000; ++i) {
 			stream.offer(i);
 			/*
 			 * while ((output = stream.poll()) != null)
@@ -48,7 +48,7 @@ public class RoundRobinSplitterExample {
 			splitJoin1.add(new Multplier(i + 1));
 		}
 		
-		//splitJoin1.add(new Pipeline<>(new Multplier(1), new Multplier(2), new Multplier(3)));
+		splitJoin1.add(new Pipeline<>(new Multplier(1), new Multplier(2), new Multplier(3)));
 		add(splitJoin1);
 		add(new IntPrinter());
 		}		

@@ -126,7 +126,6 @@ public class ConcurrentBlob implements Blob {
 				while (infinityRunFlag) {
 					interpret();
 				}
-				System.out.println(Thread.currentThread().getName() + ": Blob Execution finished. Going to drain...");
 				myDrain();
 			}
 

@@ -33,18 +33,20 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 public class ChannelVocoder7 {
 	public static void main(String[] args) throws InterruptedException {
 		ChannelVocoder7Kernel kernel = new ChannelVocoder7Kernel();
-		StreamCompiler sc = new DebugStreamCompiler();
+		//StreamCompiler sc = new DebugStreamCompiler();
+		StreamCompiler sc = new ConcurrentStreamCompiler(4);
 		CompiledStream<Integer, Void> stream = sc.compile(kernel);
 		for (int i = 0; i < 10000; ++i) {
 			stream.offer(i);
 		}
 		stream.drain();
-		stream.awaitDraining();
+		//stream.awaitDraining();
 	}
 
 	private static class ChannelVocoder7Kernel extends Pipeline<Integer, Void> {
