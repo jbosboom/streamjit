@@ -35,6 +35,7 @@ import edu.mit.streamjit.impl.compiler.types.Type;
 import edu.mit.streamjit.impl.compiler.types.TypeFactory;
 import edu.mit.streamjit.impl.compiler.types.VoidType;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayDeque;
@@ -1099,18 +1100,14 @@ public final class MethodResolver {
 //		sgh.visit(cwv);
 		ImmutableSet<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(new WeightedRoundrobinJoiner<>(5, 10, 5));
 
+		PrintWriter pw = new PrintWriter(System.out, true);
 		Module m = new Module();
 		for (Worker<?, ?> w : workers) {
 			Klass k = m.getKlass(w.getClass());
 			for (Method method : k.methods())
 				if (!method.isResolved() && method.isResolvable()) {
 					method.resolve();
-					System.out.println("Resolved "+k.getName()+" "+method);
-					for (BasicBlock b : method.basicBlocks()) {
-						System.out.println(b.getName()+": ");
-						for (Instruction s : b.instructions())
-							System.out.println(s);
-					}
+					method.dump(pw);
 				}
 		}
 	}

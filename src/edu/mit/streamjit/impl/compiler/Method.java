@@ -1,12 +1,17 @@
 package edu.mit.streamjit.impl.compiler;
 
+import com.google.common.base.Function;
+import com.google.common.base.Joiner;
 import static com.google.common.base.Preconditions.*;
+import com.google.common.collect.FluentIterable;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Shorts;
+import edu.mit.streamjit.impl.compiler.insts.Instruction;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.util.IntrusiveList;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Set;
 
@@ -133,5 +138,41 @@ public class Method extends Value implements Parented<Klass> {
 	@Override
 	public String toString() {
 		return modifiers.toString() + " " + getName() + " " +getType();
+	}
+
+	public void dump(PrintWriter writer) {
+		writer.write(Joiner.on(' ').join(modifiers()));
+		writer.write(" ");
+		writer.write(getType().getReturnType().toString());
+		writer.write(" ");
+		writer.write(getName());
+		writer.write("(");
+		writer.write(Joiner.on(", ").join(FluentIterable.from(arguments()).transform(new Function<Argument, String>() {
+			@Override
+			public String apply(Argument input) {
+				return input.getType()+" "+input.getName();
+			}
+		})));
+		writer.write(")");
+
+		if (!isResolved()) {
+			writer.write(";");
+			writer.println();
+			return;
+		}
+		writer.write(" {");
+		writer.println();
+
+		for (BasicBlock b : basicBlocks()) {
+			writer.write(b.getName());
+			writer.write(": ");
+			writer.println();
+
+			for (Instruction i : b.instructions()) {
+				writer.write("\t");
+				writer.write(i.toString());
+				writer.println();
+			}
+		}
 	}
 }
