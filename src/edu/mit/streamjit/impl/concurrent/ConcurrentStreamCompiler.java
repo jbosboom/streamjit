@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import com.sun.corba.se.spi.orbutil.threadpool.Work;
 
@@ -137,6 +138,18 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 					e.printStackTrace();
 				}
 			}
+		}
+
+		@Override
+		public boolean awaitDraining() throws InterruptedException {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public boolean awaitDraining(long timeout, TimeUnit unit) throws InterruptedException {
+			// TODO Auto-generated method stub
+			return false;
 		}
 	}
 }

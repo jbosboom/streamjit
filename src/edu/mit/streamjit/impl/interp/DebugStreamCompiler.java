@@ -20,6 +20,8 @@ import edu.mit.streamjit.impl.common.Workers;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A StreamCompiler that interprets the stream graph on the thread that calls
@@ -68,6 +70,42 @@ public class DebugStreamCompiler implements StreamCompiler {
 	 */
 	private static class DebugCompiledStream<I, O> extends AbstractCompiledStream<I, O> {
 		private final Interpreter interpreter;
+		
+		/**
+		 * The latch that threads blocked in awaitDraining() block on.
+		 */
+		private final CountDownLatch awaitDrainingLatch = new CountDownLatch(1);
+		
+		/**
+		 * Once the awaitDrainingLatch is cleared, indicates whether the stream was
+		 * fully drained or if there were data items stuck in buffers.
+		 */
+		private volatile boolean fullyDrained = false;	
+		
+		@Override
+		public final boolean awaitDraining() throws InterruptedException {
+			awaitDrainingLatch.await();
+			return fullyDrained;
+		}
+
+		@Override
+		public final boolean awaitDraining(long timeout, TimeUnit unit) throws InterruptedException {
+			awaitDrainingLatch.await(timeout, unit);
+			return fullyDrained;
+		}
+
+		/**
+		 * Called when draining is complete, to release clients
+		 * blocked in awaitDraining().  This method should only be called once.
+		 * @param fullyDrained true if the stream was fully drained, false if data
+		 * items remained in buffers
+		 */
+		private final void finishedDraining(boolean fullyDrained) {
+			//TODO: enforce that the method is called once?
+			this.fullyDrained = fullyDrained;
+			awaitDrainingLatch.countDown();
+		}
+		
 		DebugCompiledStream(Channel<? super I> head, Channel<? extends O> tail, Worker<?, ?> source, Worker<?, ?> sink, List<MessageConstraint> constraints) {
 			super(head, tail);
 			this.interpreter = new Interpreter(Workers.getAllWorkersInGraph(source), constraints) {

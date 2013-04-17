@@ -31,15 +31,6 @@ public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, 
 	 * or not.
 	 */
 	private volatile boolean draining = false;
-	/**
-	 * Once the awaitDrainingLatch is cleared, indicates whether the stream was
-	 * fully drained or if there were data items stuck in buffers.
-	 */
-	private volatile boolean fullyDrained = false;
-	/**
-	 * The latch that threads blocked in awaitDraining() block on.
-	 */
-	private final CountDownLatch awaitDrainingLatch = new CountDownLatch(1);
 
 	/**
 	 * Creates a new AbstractCompiledStream, using the given channels for input
@@ -85,19 +76,7 @@ public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, 
 		draining = true;
 		doDrain();
 	}
-
-	@Override
-	public final boolean awaitDraining() throws InterruptedException {
-		awaitDrainingLatch.await();
-		return fullyDrained;
-	}
-
-	@Override
-	public final boolean awaitDraining(long timeout, TimeUnit unit) throws InterruptedException {
-		awaitDrainingLatch.await(timeout, unit);
-		return fullyDrained;
-	}
-
+	
 	/**
 	 * Called when a client calls drain() on this stream, to be implemented by
 	 * subclasses to begin draining and resource reclamation.  Note that this
@@ -108,16 +87,5 @@ public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, 
 	 * draining is finished.
 	 */
 	protected abstract void doDrain();
-
-	/**
-	 * Called by an implementation when draining is complete, to release clients
-	 * blocked in awaitDraining().  This method should only be called once.
-	 * @param fullyDrained true if the stream was fully drained, false if data
-	 * items remained in buffers
-	 */
-	protected final void finishedDraining(boolean fullyDrained) {
-		//TODO: enforce that the method is called once?
-		this.fullyDrained = fullyDrained;
-		awaitDrainingLatch.countDown();
-	}
+	
 }
