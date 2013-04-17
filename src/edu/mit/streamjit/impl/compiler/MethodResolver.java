@@ -392,7 +392,7 @@ public final class MethodResolver {
 				break;
 			case Opcodes.RETURN:
 				assert returnType instanceof VoidType || method.isConstructor();
-				block.block.instructions().add(new ReturnInst(returnType));
+				block.block.instructions().add(new ReturnInst(typeFactory.getVoidType()));
 				break;
 			//</editor-fold>
 			//<editor-fold defaultstate="collapsed" desc="Binary math opcodes">
