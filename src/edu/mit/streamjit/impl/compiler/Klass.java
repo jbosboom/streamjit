@@ -5,6 +5,7 @@ import com.google.common.base.Joiner;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicate;
 import com.google.common.base.Strings;
+import com.google.common.collect.AbstractSequentialIterator;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -18,6 +19,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -180,6 +182,25 @@ public final class Klass implements Accessible, Parented<Module> {
 		return methods;
 	}
 
+	/**
+	 * Returns an iterable of all superclasses of this class, in ascending
+	 * order; thus, the first class is the immediate superclass.
+	 * @returnan an iterable of all superclasses of this class
+	 */
+	public Iterable<Klass> superclasses() {
+		return new Iterable<Klass>() {
+			@Override
+			public Iterator<Klass> iterator() {
+				return new AbstractSequentialIterator<Klass>(getSuperclass()) {
+					@Override
+					protected Klass computeNext(Klass previous) {
+						return previous.getSuperclass();
+					}
+				};
+			}
+		};
+	}
+
 	public Field getField(String name) {
 		for (Field f : fields())
 			if (f.getName().equals(name))
@@ -312,7 +333,7 @@ public final class Klass implements Accessible, Parented<Module> {
 		if (getSuperclass() != null) {
 			writer.write('\t');
 			writer.write("extends ");
-			writer.write(getSuperclass().getName());
+			writer.write(Joiner.on(", ").join(superclasses()));
 			writer.println();
 		}
 		if (!interfaces().isEmpty()) {
