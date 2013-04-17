@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler;
 
 import com.google.common.base.Function;
+import com.google.common.base.Functions;
 import com.google.common.base.Joiner;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.FluentIterable;
@@ -146,13 +147,19 @@ public class Method extends Value implements Parented<Klass> {
 		writer.write(getType().getReturnType().toString());
 		writer.write(" ");
 		writer.write(getName());
+
 		writer.write("(");
-		writer.write(Joiner.on(", ").join(FluentIterable.from(arguments()).transform(new Function<Argument, String>() {
-			@Override
-			public String apply(Argument input) {
-				return input.getType()+" "+input.getName();
-			}
-		})));
+		String argString;
+		if (isResolved())
+			argString = Joiner.on(", ").join(FluentIterable.from(arguments()).transform(new Function<Argument, String>() {
+				@Override
+				public String apply(Argument input) {
+					return input.getType()+" "+input.getName();
+				}
+			}));
+		else
+			argString = Joiner.on(", ").join(FluentIterable.from(getType().getParameterTypes()).transform(Functions.toStringFunction()));
+		writer.write(argString);
 		writer.write(")");
 
 		if (!isResolved()) {
