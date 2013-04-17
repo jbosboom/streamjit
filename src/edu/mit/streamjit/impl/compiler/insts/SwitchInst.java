@@ -7,6 +7,7 @@ import com.google.common.collect.Iterables;
 import edu.mit.streamjit.impl.compiler.BasicBlock;
 import edu.mit.streamjit.impl.compiler.Constant;
 import edu.mit.streamjit.impl.compiler.Value;
+import java.util.Iterator;
 
 /**
  * Transfers control to one of several possible blocks by comparing a value
@@ -62,5 +63,16 @@ public final class SwitchInst extends TerminatorInst {
 	protected void checkOperand(int i, Value v) {
 		checkArgument(v instanceof BasicBlock || v.getType().isSubtypeOf(v.getType().getTypeFactory().getType(int.class)));
 		super.checkOperand(i, v);
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder(getName());
+		sb.append(": = switch ").append(getValue().getName());
+		sb.append(" default ").append(getDefault().getName()).append(" ");
+		for (Iterator<Value> i = operands().iterator(); i.hasNext();)
+			sb.append("[").append(i.next().getName()).append(", ").append(i.next().getName()).append("], ");
+		sb.delete(sb.length()-2, sb.length());
+		return sb.toString();
 	}
 }

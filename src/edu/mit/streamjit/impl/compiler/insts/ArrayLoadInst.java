@@ -41,4 +41,10 @@ public final class ArrayLoadInst extends Instruction {
 			checkArgument(v.getType().isSubtypeOf(getType().getTypeFactory().getType(int.class)));
 		super.checkOperand(i, v);
 	}
+
+	@Override
+	public String toString() {
+		return String.format("%s (%s) = arrayload %s [%s]",
+				getName(), getType(), getOperand(0).getName(), getOperand(1).getName());
+	}
 }

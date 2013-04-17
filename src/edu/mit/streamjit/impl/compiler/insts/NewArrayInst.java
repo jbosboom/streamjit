@@ -23,8 +23,26 @@ public final class NewArrayInst extends Instruction {
 	}
 
 	@Override
+	public ArrayType getType() {
+		return (ArrayType)super.getType();
+	}
+
+	@Override
 	protected void checkOperand(int i, Value v) {
 		checkArgument(v.getType().isSubtypeOf(v.getType().getTypeFactory().getType(int.class)));
 		super.checkOperand(i, v);
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder(getName());
+		sb.append(" (").append(getType()).append(") = new ").append(getType().getElementType());
+		for (int i = 0; i < getType().getDimensions(); ++i) {
+			sb.append('[');
+			if (i < getNumOperands())
+				sb.append(getOperand(i).getName());
+			sb.append(']');
+		}
+		return sb.toString();
 	}
 }

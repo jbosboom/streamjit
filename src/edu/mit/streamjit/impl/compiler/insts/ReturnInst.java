@@ -36,4 +36,10 @@ public final class ReturnInst extends TerminatorInst {
 		checkArgument(v.getType().isSubtypeOf(returnType), "not subtype of %s: %s", returnType, v);
 		super.checkOperand(i, v);
 	}
+
+	@Override
+	public String toString() {
+		return String.format("%s: return %s", getName(),
+				getReturnType() instanceof VoidType ? "void" : getOperand(0).getName());
+	}
 }

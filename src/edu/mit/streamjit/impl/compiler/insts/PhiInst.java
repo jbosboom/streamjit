@@ -50,7 +50,7 @@ public final class PhiInst extends Instruction {
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder(getName());
-		sb.append(" = ");
+		sb.append(" (").append(getType()).append(") = phi ");
 		for (Iterator<Value> i = operands().iterator(); i.hasNext();)
 			sb.append("[").append(i.next().getName()).append(", ").append(i.next().getName()).append("], ");
 		sb.delete(sb.length()-2, sb.length());

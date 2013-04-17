@@ -22,4 +22,10 @@ public final class CastInst extends Instruction {
 		//TODO: check the cast is legal/possible
 		super.checkOperand(i, v);
 	}
+
+	@Override
+	public String toString() {
+		return String.format("%s (%s) = cast %s to %s",
+				getName(), getType(), getOperand(0).getName(), getType());
+	}
 }

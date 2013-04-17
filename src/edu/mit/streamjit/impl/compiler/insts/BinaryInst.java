@@ -65,4 +65,11 @@ public final class BinaryInst extends Instruction {
 			return (PrimitiveType)left.getType();
 		throw new IllegalArgumentException("type mismatch: "+left+" "+operation+" "+right);
 	}
+
+	@Override
+	public String toString() {
+		return String.format("%s (%s) = %s %s, %s",
+				getName(), getType(), getOperation(),
+				getOperand(0).getName(), getOperand(1).getName());
+	}
 }

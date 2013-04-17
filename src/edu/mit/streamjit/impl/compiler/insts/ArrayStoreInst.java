@@ -65,4 +65,10 @@ public final class ArrayStoreInst extends Instruction {
 		}
 		super.checkOperand(i, v);
 	}
+
+	@Override
+	public String toString() {
+		return String.format("%s: arraystore %s [%s] = %s",
+				getName(), getOperand(0).getName(), getOperand(1).getName(), getOperand(2).getName());
+	}
 }

@@ -26,4 +26,10 @@ public final class InstanceofInst extends Instruction {
 		checkArgument(v.getType().isSubtypeOf(v.getType().getTypeFactory().getType(Object.class)));
 		super.checkOperand(i, v);
 	}
+
+	@Override
+	public String toString() {
+		return String.format("%s (%s) = %s instanceof %s",
+				getName(), getType(), getOperand(0).getName(), testType);
+	}
 }

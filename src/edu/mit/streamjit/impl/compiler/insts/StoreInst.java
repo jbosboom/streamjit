@@ -63,4 +63,19 @@ public final class StoreInst extends Instruction {
 		}
 		super.checkOperand(i, v);
 	}
+
+	@Override
+	public String toString() {
+		if (getField().isStatic())
+			return String.format("%s: putstatic %s#%s = %s",
+					getName(),
+					getField().getParent().getName(), getField().getName(),
+					getData().getName());
+		else
+			return String.format("%s: putfield %s#%s of %s = %s",
+					getName(),
+					getField().getParent().getName(), getField().getName(),
+					getInstance().getName(),
+					getData().getName());
+	}
 }

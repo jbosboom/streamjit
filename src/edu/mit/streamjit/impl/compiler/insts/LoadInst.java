@@ -48,4 +48,17 @@ public final class LoadInst extends Instruction {
 		}
 		super.checkOperand(i, v);
 	}
+
+	@Override
+	public String toString() {
+		if (getField().isStatic())
+			return String.format("%s (%s) = getstatic %s#%s",
+					getName(), getType(),
+					getField().getParent().getName(), getField().getName());
+		else
+			return String.format("%s (%s) = getfield %s#%s from %s",
+					getName(), getType(),
+					getField().getParent().getName(), getField().getName(),
+					getOperand(1).getName());
+	}
 }

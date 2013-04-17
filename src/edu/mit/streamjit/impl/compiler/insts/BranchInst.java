@@ -47,4 +47,11 @@ public final class BranchInst extends TerminatorInst {
 		//TODO: check type combo is legal, check BBs are really BBs
 		super.checkOperand(i, v);
 	}
+
+	@Override
+	public String toString() {
+		return String.format("%s: branch if %s %s %s then %s else %s",
+				getName(), getOperand(0).getName(), sense, getOperand(1).getName(),
+				getOperand(2).getName(), getOperand(3).getName());
+	}
 }

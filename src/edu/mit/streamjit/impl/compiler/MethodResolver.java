@@ -19,6 +19,7 @@ import edu.mit.streamjit.impl.compiler.insts.BranchInst;
 import edu.mit.streamjit.impl.compiler.insts.CallInst;
 import edu.mit.streamjit.impl.compiler.insts.CastInst;
 import edu.mit.streamjit.impl.compiler.insts.InstanceofInst;
+import edu.mit.streamjit.impl.compiler.insts.Instruction;
 import edu.mit.streamjit.impl.compiler.insts.JumpInst;
 import edu.mit.streamjit.impl.compiler.insts.LoadInst;
 import edu.mit.streamjit.impl.compiler.insts.NewArrayInst;
@@ -1105,6 +1106,11 @@ public final class MethodResolver {
 				if (!method.isResolved() && method.isResolvable()) {
 					method.resolve();
 					System.out.println("Resolved "+k.getName()+" "+method);
+					for (BasicBlock b : method.basicBlocks()) {
+						System.out.println(b.getName()+": ");
+						for (Instruction s : b.instructions())
+							System.out.println(s);
+					}
 				}
 		}
 	}

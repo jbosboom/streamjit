@@ -21,4 +21,9 @@ public final class JumpInst extends TerminatorInst {
 		checkArgument(v instanceof BasicBlock, v.toString());
 		super.checkOperand(i, v);
 	}
+
+	@Override
+	public String toString() {
+		return String.format("%s: goto %s", getName(), getOperand(0));
+	}
 }
