@@ -29,7 +29,7 @@ import java.util.Set;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/6/2013
  */
-public class Method extends Value implements Parented<Klass> {
+public class Method extends Value implements Accessible, Parented<Klass> {
 	@IntrusiveList.Next
 	private Method next;
 	@IntrusiveList.Previous
@@ -123,6 +123,17 @@ public class Method extends Value implements Parented<Klass> {
 
 	public boolean hasReceiver() {
 		return !(modifiers().contains(Modifier.STATIC) || isConstructor());
+	}
+
+	@Override
+	public Access getAccess() {
+		return Access.fromModifiers(modifiers());
+	}
+
+	@Override
+	public void setAccess(Access access) {
+		modifiers().removeAll(Access.allAccessModifiers());
+		modifiers().addAll(access.modifiers());
 	}
 
 	@Override
