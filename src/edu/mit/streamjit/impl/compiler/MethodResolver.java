@@ -30,6 +30,7 @@ import edu.mit.streamjit.impl.compiler.insts.SwitchInst;
 import edu.mit.streamjit.impl.compiler.types.ArrayType;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.ReferenceType;
+import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.impl.compiler.types.ReturnType;
 import edu.mit.streamjit.impl.compiler.types.Type;
 import edu.mit.streamjit.impl.compiler.types.TypeFactory;
@@ -266,7 +267,7 @@ public final class MethodResolver {
 				break;
 			//<editor-fold defaultstate="collapsed" desc="Stack manipulation opcodes (pop, dup, swap)">
 			case Opcodes.POP:
-				assert categoryOf(frame.stack.peek().getType()) == 1;
+				assert frame.stack.peek().getType().getCategory() == 1;
 				frame.stack.pop();
 				break;
 			case Opcodes.POP2:
@@ -884,7 +885,7 @@ public final class MethodResolver {
 		Arrays.fill(x, -1);
 		Value[] v = frame.stack.toArray(new Value[0]);
 		for (int i = 0; i < v.length && i < x.length; ++i)
-			x[i] = categoryOf(v[i].getType());
+			x[i] = v[i].getType().getCategory();
 		return x;
 	}
 	//</editor-fold>
@@ -968,7 +969,7 @@ public final class MethodResolver {
 				for (Argument a : method.arguments()) {
 					entryLocals[i] = a;
 					Type argType = a.getType();
-					i += categoryOf(argType);
+					i += argType.getCategory();
 				}
 			}
 			this.frame = findOnlyFrameNode();
@@ -1035,16 +1036,6 @@ public final class MethodResolver {
 				} //else Label (uninit -- ignored)
 			}
 		}
-	}
-
-	/**
-	 * Returns the "category" of the given type, the number of stack or local
-	 * slots it occupies in a frame.
-	 * @param t a type
-	 * @return the type's category
-	 */
-	private int categoryOf(Type t) {
-		return (t.equals(typeFactory.getType(long.class)) || t.equals(typeFactory.getType(double.class))) ? 2 : 1;
 	}
 
 	private final class FrameState {

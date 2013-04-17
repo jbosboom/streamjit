@@ -17,6 +17,10 @@ public abstract class FieldType extends Type {
 		return fieldType;
 	}
 	@Override
+	public int getCategory() {
+		throw new UnsupportedOperationException();
+	}
+	@Override
 	public Module getModule() {
 		return fieldType.getModule();
 	}

@@ -18,4 +18,9 @@ public final class VoidType extends ReturnType {
 	public String getDescriptor() {
 		return "V";
 	}
+
+	@Override
+	public int getCategory() {
+		throw new UnsupportedOperationException();
+	}
 }

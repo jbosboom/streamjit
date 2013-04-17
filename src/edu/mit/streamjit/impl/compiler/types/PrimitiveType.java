@@ -62,6 +62,13 @@ public final class PrimitiveType extends RegularType {
 		return DESCRIPTORS.get(getKlass().getBackingClass().getName());
 	}
 
+	@Override
+	public int getCategory() {
+		if (equals(getTypeFactory().getType(long.class)) || equals(getTypeFactory().getType(double.class)))
+			return 2;
+		return super.getCategory();
+	}
+
 	private static final List<String> PRIMITIVE_TYPE_NAMES = Arrays.asList(
 			boolean.class.getName(), byte.class.getName(),
 			char.class.getName(), short.class.getName(),

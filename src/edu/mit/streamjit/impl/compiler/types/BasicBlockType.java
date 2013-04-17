@@ -24,6 +24,11 @@ public final class BasicBlockType extends Type {
 	}
 
 	@Override
+	public int getCategory() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public Module getModule() {
 		return module;
 	}

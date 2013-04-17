@@ -26,4 +26,17 @@ public abstract class Type {
 	public boolean isSubtypeOf(Type other) {
 		return equals(other);
 	}
+
+	/**
+	 * Returns the category of this type, the number of local variables required
+	 * to store it.
+	 *
+	 * All regular types are category 1 types except long and double, which are
+	 * category 2 types.  The null type is a category 1 type.
+	 *
+	 * Other types do not have a category and will throw
+	 * UnsupportedOperationException.
+	 * @return this type's category
+	 */
+	public abstract int getCategory();
 }

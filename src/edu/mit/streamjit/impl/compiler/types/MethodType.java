@@ -62,6 +62,11 @@ public class MethodType extends Type {
 	}
 
 	@Override
+	public int getCategory() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public String toString() {
 		return returnType.toString() + '(' + Joiner.on(", ").join(parameterTypes) + ')';
 	}

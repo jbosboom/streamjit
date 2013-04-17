@@ -35,6 +35,11 @@ public final class NullType extends Type {
 	}
 
 	@Override
+	public int getCategory() {
+		return 1;
+	}
+
+	@Override
 	public String toString() {
 		return "<nulltype>";
 	}
