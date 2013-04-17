@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import com.google.common.base.Joiner;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.Sets;
@@ -96,5 +97,13 @@ public final class Field extends Value implements Accessible, Parented<Klass> {
 	@Override
 	public Klass getParent() {
 		return parent;
+	}
+
+	@Override
+	public String toString() {
+		return String.format("%s %s %s",
+				Joiner.on(' ').join(modifiers()),
+				getType().getFieldType(),
+				getName());
 	}
 }
