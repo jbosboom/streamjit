@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.compiler;
 
+import com.google.common.base.Function;
+import com.google.common.base.Joiner;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicate;
 import com.google.common.base.Strings;
@@ -11,6 +13,7 @@ import com.google.common.primitives.Shorts;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.util.IntrusiveList;
+import java.io.PrintWriter;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -301,9 +304,44 @@ public final class Klass implements Accessible, Parented<Module> {
 		return getName();
 	}
 
+	public void dump(PrintWriter writer) {
+		writer.write(Joiner.on(' ').join(modifiers()));
+		writer.write(" ");
+		writer.write(getName());
+		writer.println();
+		if (getSuperclass() != null) {
+			writer.write('\t');
+			writer.write("extends ");
+			writer.write(getSuperclass().getName());
+			writer.println();
+		}
+		if (!interfaces().isEmpty()) {
+			writer.write('\t');
+			writer.write("implements ");
+			writer.write(Joiner.on(", ").join(FluentIterable.from(interfaces()).transform(new Function<Klass, String>() {
+				@Override
+				public String apply(Klass input) {
+					return input.getName();
+				}
+			})));
+			writer.println();
+		}
+		writer.println();
+
+		for (Field f : fields)
+			writer.println(f.toString());
+		writer.println();
+
+		for (Method m : methods)
+			m.dump(writer);
+
+		writer.flush();
+	}
+
 	public static void main(String[] args) {
 		Module m = new Module();
 		System.out.println(new Klass(ParentedList.class, m));
+		m.getKlass(ParentedList.class).dump(new PrintWriter(System.out, true));
 		System.out.println(new Klass(ImmutableList.class, m));
 		System.out.println(new Klass(javax.swing.JCheckBoxMenuItem.class, m));
 		System.out.println(new Klass(java.nio.file.Files.class, m));
