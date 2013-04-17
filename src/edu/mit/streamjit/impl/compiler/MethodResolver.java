@@ -1070,18 +1070,6 @@ public final class MethodResolver {
 		}
 	}
 
-	/**
-	 * A dummy value used when building SSA form.  Exists only to get RAUW'd to
-	 * the result of the constructor call.
-	 *
-	 * Has the type of the object under construction.
-	 */
-	private static class UninitializedValue extends Value {
-		private UninitializedValue(Type type, String name) {
-			super(type, name);
-		}
-	}
-
 	public static void main(String[] args) throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
 //		Class<?> sgc = Class.forName("edu.mit.streamjit.api.WeightedRoundrobinSplitter");
 //		Constructor<?> ctor = sgc.getDeclaredConstructor();
