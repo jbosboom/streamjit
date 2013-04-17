@@ -347,6 +347,7 @@ public final class Klass implements Accessible, Parented<Module> {
 			})));
 			writer.println();
 		}
+		//TODO: "indirectly implements"
 		writer.println();
 
 		for (Field f : fields)
