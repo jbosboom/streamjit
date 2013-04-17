@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import sun.org.mozilla.javascript.internal.ast.ThrowStatement;
+
 import com.sun.corba.se.spi.orbutil.threadpool.Work;
 
 import edu.mit.streamjit.api.CompiledStream;
@@ -131,25 +133,33 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		@Override
 		protected void doDrain() {
 			new DrainerCallback(blobList).run();
+		}
+
+		@Override
+		public boolean awaitDraining() throws InterruptedException {
 			for (Thread t : blobThreads) {
 				try {
 					t.join();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
+					throw e;
 				}
 			}
-		}
-
-		@Override
-		public boolean awaitDraining() throws InterruptedException {
-			// TODO Auto-generated method stub
-			return false;
+			return true;
 		}
 
 		@Override
 		public boolean awaitDraining(long timeout, TimeUnit unit) throws InterruptedException {
-			// TODO Auto-generated method stub
-			return false;
+			long milliTimeout = unit.toMillis(timeout);
+			for (Thread t : blobThreads) {
+				try {
+					t.join(milliTimeout);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+					throw e;
+				}
+			}
+			return true;
 		}
 	}
 }

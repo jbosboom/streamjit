@@ -46,7 +46,7 @@ public class ChannelVocoder7 {
 			stream.offer(i);
 		}
 		stream.drain();
-		//stream.awaitDraining();
+		stream.awaitDraining();
 	}
 
 	private static class ChannelVocoder7Kernel extends Pipeline<Integer, Void> {

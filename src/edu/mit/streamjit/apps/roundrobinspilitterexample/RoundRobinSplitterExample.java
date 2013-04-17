@@ -26,7 +26,7 @@ public class RoundRobinSplitterExample {
 		CompiledStream<Integer, Void> stream = sc.compile(rbs);
 		Float output;
 
-		for (int i = 0; i < 1000000; ++i) {
+		for (int i = 0; i < 10000; ++i) {
 			stream.offer(i);
 			/*
 			 * while ((output = stream.poll()) != null)
@@ -34,7 +34,7 @@ public class RoundRobinSplitterExample {
 			 */
 		}
 		stream.drain();
-		//stream.awaitDraining();
+		stream.awaitDraining();
 	}
 
 	public static class RoundRobinSplitterMain extends Pipeline<Integer, Void> {

@@ -32,7 +32,7 @@ public class Minimal {
 		}
 		stream.drain();
 		System.out.println("Drain called");
-		//stream.awaitDraining();
+		stream.awaitDraining();
 		System.out.println("awaitDraining finished, Exiting");
 	}
 

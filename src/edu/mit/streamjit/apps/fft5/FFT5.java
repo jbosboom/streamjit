@@ -19,7 +19,7 @@ public class FFT5 {
 		StreamCompiler sc = new ConcurrentStreamCompiler(4);
 		CompiledStream<Float, Void> stream = sc.compile(kernel);
 		//Float output;
-		for (float i = 0; i < 100000; i++) {
+		for (float i = 0; i < 1000; i++) {
 			stream.offer(i);	
 			/*while ((output = stream.poll()) != null)
 				System.out.println(output);*/

@@ -20,22 +20,24 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
-public class nestedSplitJoin {
+public class NestedSplitJoin {
 
 	/**
 	 * @param args
+	 * @throws InterruptedException 
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		Pipeline core = new Pipeline<Integer, Void>(new nestedSplitJoinCore(), new IntPrinter());
 		//StreamCompiler sc = new DebugStreamCompiler();
 		StreamCompiler sc = new ConcurrentStreamCompiler(2);
 		CompiledStream<Integer, Integer> stream = sc.compile(core);
 		Integer output;
-		for (int i = 0; i < 1000000; i++) {
+		for (int i = 0; i < 10000; i++) {
 			stream.offer(i);
 		}
 
 		stream.drain();
+		stream.awaitDraining();
 	}
 
 	private static class nestedSplitJoinCore extends Splitjoin<Integer, Integer> {

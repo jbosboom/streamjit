@@ -56,7 +56,7 @@ public class DCT2 {
 		}
 		
 		stream.drain();
-		//stream.awaitDraining();
+		stream.awaitDraining();
 
 	}
 
