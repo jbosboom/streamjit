@@ -49,6 +49,7 @@ public final class Constant<T> extends Value implements Parented<Module> {
 			checkArgument(false,
 					"bad constant type %s; value was %s (%s)", type, constant, constant.getClass().getName());
 		this.constant = constant;
+		setName(toString());
 	}
 
 	public T getConstant() {
