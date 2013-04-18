@@ -625,7 +625,9 @@ public final class MethodUnresolver {
 				for (Value v : i.operands())
 					if (v instanceof UninitializedValue && v.getName().equals("uninitializedThis"))
 						return (UninitializedValue)v;
-		throw new AssertionError("no uninitializedThis in "+method.getName());
+		//We didn't use it for anything, so we didn't save it, but we need one.
+		ReturnType type = method.getParent().getParent().types().getType(method.getParent());
+		return new UninitializedValue(type, "uninitializedThis");
 	}
 
 	private static String methodDescriptor(Method m) {
