@@ -30,6 +30,7 @@ import edu.mit.streamjit.impl.compiler.types.Type;
 import edu.mit.streamjit.impl.compiler.types.TypeFactory;
 import edu.mit.streamjit.impl.compiler.types.VoidType;
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
@@ -98,6 +99,8 @@ public final class MethodUnresolver {
 			createLabels();
 			for (BasicBlock b : method.basicBlocks())
 				methodNode.instructions.add(emit(b));
+			this.methodNode.maxLocals = Collections.max(registers.values())+2;
+			this.methodNode.maxStack = Short.MAX_VALUE;
 		}
 
 		return methodNode;
