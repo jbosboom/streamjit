@@ -7,6 +7,8 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.impl.compiler.Method;
 import edu.mit.streamjit.impl.compiler.Value;
+import edu.mit.streamjit.impl.compiler.types.PrimitiveType;
+import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.impl.compiler.types.VoidType;
 
 /**
@@ -47,9 +49,15 @@ public final class CallInst extends Instruction {
 		if (i == 0)
 			checkArgument(v instanceof Method);
 		else {
-			checkArgument(v.getType().isSubtypeOf(getMethod().getType().getParameterTypes().get(i-1)),
-					"cannot assign %s (%s) to parameter type %s",
-					v, v.getType(), getMethod().getType().getParameterTypes().get(i-1));
+			RegularType paramType = getMethod().getType().getParameterTypes().get(i-1);
+			PrimitiveType intType = paramType.getTypeFactory().getPrimitiveType(int.class);
+			//Due to the JVM's type system not distinguishing types smaller than
+			//int, we can implicitly convert to int then to the parameter type.
+			//Otherwise, we need a subtype match.
+			if (!(v.getType().isSubtypeOf(intType) && paramType.isSubtypeOf(intType)))
+				checkArgument(v.getType().isSubtypeOf(paramType),
+						"cannot assign %s (%s) to parameter type %s",
+						v, v.getType(), getMethod().getType().getParameterTypes().get(i-1));
 		}
 		super.checkOperand(i, v);
 	}
