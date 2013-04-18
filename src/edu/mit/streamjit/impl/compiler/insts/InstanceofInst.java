@@ -20,6 +20,10 @@ public final class InstanceofInst extends Instruction {
 		setOperand(0, v);
 	}
 
+	public ReferenceType getTestType() {
+		return testType;
+	}
+
 	@Override
 	protected void checkOperand(int i, Value v) {
 		checkElementIndex(i, 1);

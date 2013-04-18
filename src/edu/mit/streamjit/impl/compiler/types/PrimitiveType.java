@@ -152,7 +152,7 @@ public final class PrimitiveType extends RegularType {
 	 * @return a list of the opcodes required to convert from this type to the
 	 * given type, or an empty list if no cast instructions are required
 	 */
-	private ImmutableList<Integer> getCastOpcode(PrimitiveType other) {
+	public ImmutableList<Integer> getCastOpcode(PrimitiveType other) {
 		return CAST_OPCODE_TABLE.get(getKlass().getBackingClass().getName(), other.getKlass().getBackingClass().getName());
 	}
 }

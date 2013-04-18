@@ -42,6 +42,10 @@ public final class BranchInst extends TerminatorInst {
 		this.sense = s;
 	}
 
+	public Sense getSense() {
+		return sense;
+	}
+
 	@Override
 	protected void checkOperand(int i, Value v) {
 		//TODO: check type combo is legal, check BBs are really BBs
