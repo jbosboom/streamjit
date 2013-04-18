@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.api.Identity;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Map;
 import org.objectweb.asm.ClassWriter;
@@ -9,6 +10,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.util.CheckClassAdapter;
+import org.objectweb.asm.util.TraceClassVisitor;
 
 /**
  * Builds a .class file (as a byte[]) from a Klass.
@@ -54,7 +56,8 @@ public final class KlassUnresolver {
 
 		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 		CheckClassAdapter cca = new CheckClassAdapter(cw, true);
-		classNode.accept(cca);
+		TraceClassVisitor tcv = new TraceClassVisitor(cca, new PrintWriter(System.out, true));
+		classNode.accept(tcv);
 		return cw.toByteArray();
 	}
 
@@ -64,10 +67,12 @@ public final class KlassUnresolver {
 
 	public static void main(String[] args) {
 		Module m = new Module();
-		Klass k = m.getKlass(Identity.class);
+		Klass k = m.getKlass(Module.class);
 		for (Method method : k.methods())
-			if (method.isResolvable())
+			if (method.isResolvable()) {
 				method.resolve();
+				method.dump(new PrintWriter(System.out, true));
+			}
 		byte[] b = unresolve(k);
 		System.out.println(Arrays.toString(b));
 	}
