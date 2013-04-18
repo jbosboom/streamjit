@@ -418,7 +418,7 @@ public final class MethodUnresolver {
 	private void emit(CallInst i, InsnList insns) {
 		Method m = i.getMethod();
 		if (m.isConstructor()) {
-			insns.add(new TypeInsnNode(Opcodes.NEW, m.getType().getReturnType().getDescriptor()));
+			insns.add(new TypeInsnNode(Opcodes.NEW, internalName(m.getType().getReturnType().getKlass())));
 			insns.add(new InsnNode(Opcodes.DUP));
 		}
 		int opcode;
@@ -444,7 +444,7 @@ public final class MethodUnresolver {
 	private void emit(CastInst i, InsnList insns) {
 		load(i.getOperand(0), insns);
 		if (i.getType() instanceof ReferenceType) {
-			insns.add(new TypeInsnNode(Opcodes.CHECKCAST, ((ReferenceType)i.getType()).getDescriptor()));
+			insns.add(new TypeInsnNode(Opcodes.CHECKCAST, internalName(((ReferenceType)i.getType()).getKlass())));
 		} else {
 			PrimitiveType from = (PrimitiveType)i.getOperand(0).getType();
 			PrimitiveType to = (PrimitiveType)i.getType();
@@ -455,7 +455,7 @@ public final class MethodUnresolver {
 	}
 	private void emit(InstanceofInst i, InsnList insns) {
 		load(i.getOperand(0), insns);
-		insns.add(new TypeInsnNode(Opcodes.INSTANCEOF, i.getTestType().getDescriptor()));
+		insns.add(new TypeInsnNode(Opcodes.INSTANCEOF, internalName(i.getTestType().getKlass())));
 		store(i, insns);
 	}
 	private void emit(JumpInst i, InsnList insns) {
@@ -495,7 +495,7 @@ public final class MethodUnresolver {
 				else if (ct.equals(doubleType))
 					insns.add(new IntInsnNode(Opcodes.NEWARRAY, Opcodes.T_DOUBLE));
 			} else {
-				insns.add(new TypeInsnNode(Opcodes.ANEWARRAY, ct.getDescriptor()));
+				insns.add(new TypeInsnNode(Opcodes.ANEWARRAY, internalName(ct.getKlass())));
 			}
 		} else {
 			for (Value v : i.operands())
