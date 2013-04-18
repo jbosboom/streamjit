@@ -37,6 +37,7 @@ import java.util.Iterator;
 import java.util.Map;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
@@ -432,7 +433,7 @@ public final class MethodUnresolver {
 			//TODO: may not be correct?
 			opcode = Opcodes.INVOKEINTERFACE;
 		else
-			opcode = Opcodes.INVOKESTATIC;
+			opcode = Opcodes.INVOKEVIRTUAL;
 
 		for (Value v : i.arguments())
 			load(v, insns);
@@ -646,10 +647,13 @@ public final class MethodUnresolver {
 
 	public static void main(String[] args) {
 		Module m = new Module();
-		Klass k = m.getKlass(Map.class);
-		Method ar = k.getMethods("get").iterator().next();
-//		ar.resolve();
+		Klass k = m.getKlass(Module.class);
+		Method ar = k.getMethods("getArrayKlass").iterator().next();
+		ar.resolve();
 		MethodNode mn = unresolve(ar);
-		System.out.println(mn);
+		for (int i = 0; i < mn.instructions.size(); ++i) {
+			AbstractInsnNode insn = mn.instructions.get(i);
+			System.out.format("%d: %d %s%n", i, insn.getOpcode(), insn);
+		}
 	}
 }
