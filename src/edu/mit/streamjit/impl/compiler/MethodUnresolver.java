@@ -61,7 +61,8 @@ public final class MethodUnresolver {
 		//Unresolving immutable methods (live Class methods) is only useful
 		//during testing.
 		//checkArgument(m.isMutable(), "unresolving immutable method %s", m);
-		checkArgument(m.isResolved(), "unresolving unresolved method %s", m);
+		if (!m.modifiers().contains(Modifier.ABSTRACT))
+			checkArgument(m.isResolved(), "unresolving unresolved method %s", m);
 		return new MethodUnresolver(m).unresolve();
 	}
 
@@ -75,7 +76,7 @@ public final class MethodUnresolver {
 		this.method = m;
 		this.methodNode = new MethodNode(Opcodes.ASM4);
 		this.registers = new IdentityHashMap<>();
-		this.labels = new IdentityHashMap<>(method.basicBlocks().size());
+		this.labels = new IdentityHashMap<>();
 		TypeFactory tf = m.getParent().getParent().types();
 		this.booleanType = tf.getPrimitiveType(boolean.class);
 		this.byteType = tf.getPrimitiveType(byte.class);
@@ -92,10 +93,12 @@ public final class MethodUnresolver {
 		this.methodNode.name = method.getName();
 		this.methodNode.desc = methodDescriptor(method);
 
-		allocateRegisters();
-		createLabels();
-		for (BasicBlock b : method.basicBlocks())
-			methodNode.instructions.add(emit(b));
+		if (!method.modifiers().contains(Modifier.ABSTRACT)) {
+			allocateRegisters();
+			createLabels();
+			for (BasicBlock b : method.basicBlocks())
+				methodNode.instructions.add(emit(b));
+		}
 
 		return methodNode;
 	}
@@ -637,9 +640,9 @@ public final class MethodUnresolver {
 
 	public static void main(String[] args) {
 		Module m = new Module();
-		Klass k = m.getKlass(MethodUnresolver.class);
-		Method ar = k.getMethods("<init>").iterator().next();
-		ar.resolve();
+		Klass k = m.getKlass(Map.class);
+		Method ar = k.getMethods("get").iterator().next();
+//		ar.resolve();
 		MethodNode mn = unresolve(ar);
 		System.out.println(mn);
 	}
