@@ -93,6 +93,7 @@ public final class MethodUnresolver {
 		this.methodNode.access = Modifier.toBits(method.modifiers());
 		this.methodNode.name = method.getName();
 		this.methodNode.desc = methodDescriptor(method);
+		this.methodNode.exceptions = Collections.emptyList();
 
 		if (!method.modifiers().contains(Modifier.ABSTRACT)) {
 			allocateRegisters();
