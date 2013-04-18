@@ -1,11 +1,13 @@
 package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
+import edu.mit.streamjit.api.Identity;
 import java.util.Arrays;
 import java.util.Map;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.util.CheckClassAdapter;
 
 /**
@@ -38,7 +40,14 @@ public final class KlassUnresolver {
 		for (Klass k : klass.interfaces())
 			this.classNode.interfaces.add(internalName(k));
 
-
+		for (Field f : klass.fields()) {
+			FieldNode fn = new FieldNode(Opcodes.ASM4,
+					Modifier.toBits(f.modifiers()),
+					f.getName(),
+					f.getType().getFieldType().getDescriptor(),
+					null, null);
+			this.classNode.fields.add(fn);
+		}
 
 		for (Method m : klass.methods())
 			this.classNode.methods.add(MethodUnresolver.unresolve(m));
@@ -55,7 +64,10 @@ public final class KlassUnresolver {
 
 	public static void main(String[] args) {
 		Module m = new Module();
-		Klass k = m.getKlass(Map.class);
+		Klass k = m.getKlass(Identity.class);
+		for (Method method : k.methods())
+			if (method.isResolvable())
+				method.resolve();
 		byte[] b = unresolve(k);
 		System.out.println(Arrays.toString(b));
 	}
