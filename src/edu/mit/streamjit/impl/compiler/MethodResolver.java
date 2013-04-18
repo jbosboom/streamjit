@@ -120,15 +120,17 @@ public final class MethodResolver {
 		Set<BBInfo> visited = new HashSet<>();
 		Queue<BBInfo> worklist = new ArrayDeque<>();
 		worklist.add(blocks.get(0));
+		visited.add(blocks.get(0));
 		while (!worklist.isEmpty()) {
 			BBInfo block = worklist.remove();
 			buildInstructions(block);
-			visited.add(block);
 			for (BasicBlock b : block.block.successors()) {
 				for (BBInfo bi : blocks)
 					if (bi.block == b) {
-						if (!visited.contains(bi))
+						if (!visited.contains(bi)) {
 							worklist.add(bi);
+							visited.add(bi);
+						}
 						break;
 					}
 			}
