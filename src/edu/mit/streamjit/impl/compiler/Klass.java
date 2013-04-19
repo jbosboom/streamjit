@@ -16,11 +16,13 @@ import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.util.IntrusiveList;
 import java.io.PrintWriter;
 import java.io.Serializable;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
 
 /**
@@ -250,6 +252,20 @@ public final class Klass implements Accessible, Parented<Module> {
 				if (desc.equals(descriptorType) && receiver.isSubtypeOf(rec))
 					return m;
 			}
+		}
+		//If we can't find a match in a class, try interfaces.
+		Queue<Klass> interfaceWorklist = new ArrayDeque<>(interfaces());
+		while (!interfaceWorklist.isEmpty()) {
+			Klass k = interfaceWorklist.remove();
+			for (Method m : k.getMethods(name)) {
+				if (m == null || m.modifiers().contains(Modifier.STATIC))
+					continue;
+				MethodType desc = m.getType().dropFirstArgument();
+				RegularType rec = m.getType().getParameterTypes().get(0);
+				if (desc.equals(descriptorType) && receiver.isSubtypeOf(rec))
+					return m;
+			}
+			interfaceWorklist.addAll(k.interfaces());
 		}
 		return null;
 	}
