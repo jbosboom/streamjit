@@ -832,7 +832,7 @@ public final class MethodResolver {
 				frame.stack.push(frame.locals[var]);
 				break;
 			case Opcodes.ALOAD:
-				assert frame.locals[var].getType() instanceof ReferenceType;
+				assert frame.locals[var].getType().isSubtypeOf(typeFactory.getType(Object.class));
 				frame.stack.push(frame.locals[var]);
 				break;
 			case Opcodes.ISTORE:
@@ -852,7 +852,7 @@ public final class MethodResolver {
 				frame.locals[var] = frame.stack.pop();
 				break;
 			case Opcodes.ASTORE:
-				assert frame.stack.peek().getType() instanceof ReferenceType;
+				assert frame.stack.peek().getType().isSubtypeOf(typeFactory.getType(Object.class));
 				frame.locals[var] = frame.stack.pop();
 				break;
 			default:
