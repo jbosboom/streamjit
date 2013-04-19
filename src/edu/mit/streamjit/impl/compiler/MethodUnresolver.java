@@ -210,21 +210,23 @@ public final class MethodUnresolver {
 		load(i.getArray(), insns);
 		load(i.getIndex(), insns);
 		load(i.getData(), insns);
-		if (i.getData().getType() instanceof ReferenceType)
+		//TODO: what if the array is a null constant?
+		RegularType componentType = ((ArrayType)i.getArray().getType()).getComponentType();
+		if (componentType instanceof ReferenceType)
 			insns.add(new InsnNode(Opcodes.AASTORE));
-		else if (i.getData().getType().equals(booleanType) || i.getType().equals(byteType))
+		else if (componentType.equals(booleanType) || componentType.equals(byteType))
 			insns.add(new InsnNode(Opcodes.BASTORE));
-		else if (i.getData().getType().equals(charType))
+		else if (componentType.equals(charType))
 			insns.add(new InsnNode(Opcodes.CASTORE));
-		else if (i.getData().getType().equals(shortType))
+		else if (componentType.equals(shortType))
 			insns.add(new InsnNode(Opcodes.SASTORE));
-		else if (i.getData().getType().equals(intType))
+		else if (componentType.equals(intType))
 			insns.add(new InsnNode(Opcodes.IASTORE));
-		else if (i.getData().getType().equals(longType))
+		else if (componentType.equals(longType))
 			insns.add(new InsnNode(Opcodes.LASTORE));
-		else if (i.getData().getType().equals(floatType))
+		else if (componentType.equals(floatType))
 			insns.add(new InsnNode(Opcodes.FASTORE));
-		else if (i.getData().getType().equals(doubleType))
+		else if (componentType.equals(doubleType))
 			insns.add(new InsnNode(Opcodes.DASTORE));
 		else
 			throw new AssertionError(i);
