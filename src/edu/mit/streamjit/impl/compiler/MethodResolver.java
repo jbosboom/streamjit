@@ -588,6 +588,10 @@ public final class MethodResolver {
 	private void interpret(IntInsnNode insn, FrameState frame, BBInfo block) {
 		int operand = insn.operand;
 		switch (insn.getOpcode()) {
+			case Opcodes.BIPUSH:
+			case Opcodes.SIPUSH:
+				frame.stack.push(module.constants().getSmallestIntConstant(insn.operand));
+				break;
 			case Opcodes.NEWARRAY:
 				ArrayType t;
 				switch (operand) {
