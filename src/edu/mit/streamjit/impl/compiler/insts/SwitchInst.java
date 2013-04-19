@@ -39,7 +39,7 @@ public final class SwitchInst extends TerminatorInst {
 
 	public BasicBlock get(Constant<Integer> cst) {
 		int ci = Iterables.indexOf(operands(), Predicates.<Value>equalTo(cst));
-		return (BasicBlock)getOperand(ci+1);
+		return ci != -1 ? (BasicBlock)getOperand(ci+1) : null;
 	}
 
 	public BasicBlock put(Constant<Integer> cst, BasicBlock bb) {
