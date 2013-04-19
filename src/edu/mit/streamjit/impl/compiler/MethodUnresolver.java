@@ -19,6 +19,7 @@ import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
 import edu.mit.streamjit.impl.compiler.insts.StoreInst;
 import edu.mit.streamjit.impl.compiler.insts.SwitchInst;
 import edu.mit.streamjit.impl.compiler.insts.TerminatorInst;
+import edu.mit.streamjit.impl.compiler.insts.ThrowInst;
 import edu.mit.streamjit.impl.compiler.types.ArrayType;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.NullType;
@@ -172,6 +173,8 @@ public final class MethodUnresolver {
 				emit((StoreInst)i, insns);
 			else if (i instanceof SwitchInst)
 				emit((SwitchInst)i, insns);
+			else if (i instanceof ThrowInst)
+				emit((ThrowInst)i, insns);
 			else
 				throw new AssertionError("can't emit "+i);
 		}
@@ -550,6 +553,10 @@ public final class MethodUnresolver {
 			insn.labels.add(labels.get(targets.next()));
 		}
 		insns.add(insn);
+	}
+	private void emit(ThrowInst i, InsnList insns) {
+		load(i.getOperand(0), insns);
+		insns.add(new InsnNode(Opcodes.ATHROW));
 	}
 
 	private void emitPhiMoves(BasicBlock block, InsnList insns) {
