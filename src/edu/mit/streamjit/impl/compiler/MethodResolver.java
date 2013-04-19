@@ -27,6 +27,7 @@ import edu.mit.streamjit.impl.compiler.insts.PhiInst;
 import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
 import edu.mit.streamjit.impl.compiler.insts.StoreInst;
 import edu.mit.streamjit.impl.compiler.insts.SwitchInst;
+import edu.mit.streamjit.impl.compiler.insts.ThrowInst;
 import edu.mit.streamjit.impl.compiler.types.ArrayType;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.ReferenceType;
@@ -66,6 +67,7 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.MultiANewArrayInsnNode;
 import org.objectweb.asm.tree.TableSwitchInsnNode;
+import org.objectweb.asm.tree.TryCatchBlockNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
@@ -135,7 +137,13 @@ public final class MethodResolver {
 					}
 			}
 		}
-		//I'm assuming there's no trivially dead blocks.
+
+		//We don't parse exception handlers, but we record them as visited for
+		//the purposes of the following assertion.
+		for (TryCatchBlockNode handler : methodNode.tryCatchBlocks)
+			visited.add(blockByInsn(handler.handler));
+
+		//Assert there are no statically dead blocks.
 		assert visited.size() == blocks.size();
 	}
 
@@ -569,6 +577,9 @@ public final class MethodResolver {
 				ArrayLengthInst lengthInst = new ArrayLengthInst(frame.stack.pop());
 				block.block.instructions().add(lengthInst);
 				frame.stack.push(lengthInst);
+				break;
+			case Opcodes.ATHROW:
+				block.block.instructions().add(new ThrowInst(frame.stack.pop()));
 				break;
 			default:
 				throw new UnsupportedOperationException(""+insn.getOpcode());
