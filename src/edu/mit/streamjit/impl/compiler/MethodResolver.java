@@ -1134,8 +1134,7 @@ public final class MethodResolver {
 				if (toBeReplaced.equals(v[i]))
 					v[i] = replacement;
 			stack.clear();
-			for (Value x : v)
-				stack.add(x);
+			stack.addAll(Arrays.asList(v));
 		}
 		@Override
 		public String toString() {
