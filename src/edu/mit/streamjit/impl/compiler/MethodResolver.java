@@ -400,6 +400,27 @@ public final class MethodResolver {
 				block.block.instructions().add(new ReturnInst(typeFactory.getVoidType()));
 				break;
 			//</editor-fold>
+			//<editor-fold defaultstate="collapsed" desc="Unary math opcodes (negation)">
+			//Unary minus is rendered as a multiplication by -1.  (The obvious
+			//other choice, subtraction from 0, is not equivalent for floats and
+			//doubles due to negative zero.)
+			case Opcodes.INEG:
+				frame.stack.push(module.constants().getSmallestIntConstant(-1));
+				binary(BinaryInst.Operation.MUL, frame, block);
+				break;
+			case Opcodes.LNEG:
+				frame.stack.push(module.constants().getConstant(-1L));
+				binary(BinaryInst.Operation.MUL, frame, block);
+				break;
+			case Opcodes.FNEG:
+				frame.stack.push(module.constants().getConstant(-1f));
+				binary(BinaryInst.Operation.MUL, frame, block);
+				break;
+			case Opcodes.DNEG:
+				frame.stack.push(module.constants().getConstant(-1d));
+				binary(BinaryInst.Operation.MUL, frame, block);
+				break;
+			//</editor-fold>
 			//<editor-fold defaultstate="collapsed" desc="Binary math opcodes">
 			case Opcodes.IADD:
 			case Opcodes.LADD:
