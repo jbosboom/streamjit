@@ -780,10 +780,12 @@ public final class MethodResolver {
 		frame.stack.push(nai);
 	}
 	private void interpret(TableSwitchInsnNode insn, FrameState frame, BBInfo block) {
-		switch (insn.getOpcode()) {
-			default:
-				throw new UnsupportedOperationException(""+insn.getOpcode());
-		}
+		assert insn.getOpcode() == Opcodes.TABLESWITCH;
+		ConstantFactory cf = module.constants();
+		SwitchInst inst = new SwitchInst(frame.stack.pop(), blockByInsn(insn.dflt).block);
+		for (int i = insn.min; i <= insn.max; ++i)
+			inst.put(cf.getConstant(i), blockByInsn(insn.labels.get(i-insn.min)).block);
+		block.block.instructions().add(inst);
 	}
 	private void interpret(TypeInsnNode insn, FrameState frame, BBInfo block) {
 		Klass k = getKlassByInternalName(insn.desc);
