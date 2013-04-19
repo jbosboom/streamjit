@@ -587,7 +587,9 @@ public final class MethodUnresolver {
 					insns.add(new LdcInsnNode(1));
 				else
 					insns.add(new LdcInsnNode(0));
-			else if (c instanceof Byte || c instanceof Character || c instanceof Short)
+			else if (c instanceof Character)
+				insns.add(new LdcInsnNode((int)((Character)c).charValue()));
+			else if (c instanceof Byte || c instanceof Short)
 				insns.add(new LdcInsnNode(((Number)c).intValue()));
 			else
 				insns.add(new LdcInsnNode(c));
