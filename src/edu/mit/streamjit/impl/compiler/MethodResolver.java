@@ -45,8 +45,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
@@ -93,6 +95,11 @@ public final class MethodResolver {
 	 * If we're resolving a constructor, this is the uninitializedThis value.
 	 */
 	private final UninitializedValue uninitializedThis;
+	/**
+	 * Maps 'new' instructions to the uninitialized values representing the
+	 * uninitialized object instances they create.
+	 */
+	private final Map<AbstractInsnNode, UninitializedValue> newValues = new IdentityHashMap<>();
 	/**
 	 * Used for generating sequential names (e.g., uninitialized object names).
 	 */
@@ -159,6 +166,7 @@ public final class MethodResolver {
 		for (int i = 0; i < insns.size(); ++i) {
 			AbstractInsnNode insn = insns.get(i);
 			int opcode = insn.getOpcode();
+			//Terminator opcodes end blocks.
 			if (insn instanceof JumpInsnNode || insn instanceof LookupSwitchInsnNode ||
 					insn instanceof TableSwitchInsnNode || opcode == Opcodes.ATHROW ||
 					opcode == Opcodes.IRETURN || opcode == Opcodes.LRETURN ||
@@ -166,6 +174,7 @@ public final class MethodResolver {
 					opcode == Opcodes.ARETURN || opcode == Opcodes.RETURN) {
 				indices.add(i+1);
 			}
+			//Jump targets of this instruction end blocks.
 			if (insn instanceof JumpInsnNode)
 				indices.add(insns.indexOf(((JumpInsnNode)insn).label));
 			else if (insn instanceof LookupSwitchInsnNode) {
@@ -176,6 +185,14 @@ public final class MethodResolver {
 				indices.add(insns.indexOf(((TableSwitchInsnNode)insn).dflt));
 				for (Object label : ((TableSwitchInsnNode)insn).labels)
 					indices.add(insns.indexOf((LabelNode)label));
+			}
+
+			//While we're scanning the instructions, make the UninitializedValue
+			//values for 'new' opcodes.
+			if (opcode == Opcodes.NEW) {
+				Klass k = getKlassByInternalName(((TypeInsnNode)insn).desc);
+				ReferenceType t = typeFactory.getReferenceType(k);
+				newValues.put(insn, new UninitializedValue(t, "new"+(counter++)));
 			}
 		}
 
@@ -792,7 +809,10 @@ public final class MethodResolver {
 		ReferenceType t = typeFactory.getReferenceType(k);
 		switch (insn.getOpcode()) {
 			case Opcodes.NEW:
-				frame.stack.push(new UninitializedValue(t, "uninit"+(counter++)));
+				UninitializedValue newValue = newValues.get(insn);
+				assert newValue != null;
+				assert newValue.getType().equals(t);
+				frame.stack.push(newValue);
 				break;
 			case Opcodes.CHECKCAST:
 				CastInst c = new CastInst(t, frame.stack.pop());
@@ -1073,9 +1093,22 @@ public final class MethodResolver {
 				} else if (o instanceof String) {
 					Type t = typeFactory.getType(getKlassByInternalName((String)o));
 					values[i] = new PhiInst(t);
-				} //else Label (uninit -- ignored)
+				} else if (o instanceof LabelNode) {
+					AbstractInsnNode newInst = nextRealInstruction((LabelNode)o);
+					assert newInst.getOpcode() == Opcodes.NEW;
+					UninitializedValue v = newValues.get(newInst);
+					assert v != null;
+					values[i] = v;
+				}
 			}
 		}
+	}
+
+	private static AbstractInsnNode nextRealInstruction(AbstractInsnNode node) {
+		assert node.getOpcode() == -1;
+		while (node.getOpcode() == -1)
+			node = node.getNext();
+		return node;
 	}
 
 	private final class FrameState {
