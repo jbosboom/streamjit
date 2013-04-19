@@ -90,7 +90,7 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		ImmutableList<RegularType> paramTypes = getType().getParameterTypes();
 		ImmutableList.Builder<Argument> builder = ImmutableList.builder();
 		for (int i = 0; i < paramTypes.size(); ++i) {
-			String name = hasReceiver() ? "this" : "arg"+i;
+			String name = (i == 0 && hasReceiver()) ? "this" : "arg"+i;
 			builder.add(new Argument(this, paramTypes.get(i), name));
 		}
 		this.arguments = builder.build();
