@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import sun.awt.windows.ThemeReader;
+import sun.org.mozilla.javascript.internal.ast.WhileLoop;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -28,6 +29,7 @@ import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.Interpreter;
+import edu.mit.streamjit.partitioner.Partitioner;
 
 /**
  * {@link ConcurrentBlob} interprets a section(partition) of a stream graph. For the moment, {@link ConcurrentBlob} is single threaded
@@ -128,17 +130,36 @@ public class ConcurrentBlob implements Blob {
 				}
 				myDrain();
 			}
-
 		};
 	}
 
 	/**
-	 * Drain the this Blob and pass the call back to next blob.
+	 * Drains this {@link Blob} and pass the call back to next blob. Assumes all prior {@link Blob}s are drained when the current
+	 * {@link Blob} is called for draining. For the time being, it is {@link Partitioner}'s responsibility to generate the partitions
+	 * for the blobs those are not circularly dependent.
 	 */
 	private void myDrain() {
 		assert this.callbackContainer.get() != null : "Illegal call. Call back is not set";
-		// TODO: implement all draining code here...
+		// TODO: We can optimize the draining in a way that just processing the workers those are related to the non-empty input
+		// channels. Current algorithm processes all workers in the Blob until all input channels of the Blob become empty.
+		while (!allInputChannelsEmpty()) {
+			System.out.println("DEBUG: Draing...");
+			interpret();
+		}
+		System.out.println("DEBUG: Draing of " + Thread.currentThread().getName() + " is finished");
 		this.callbackContainer.get().run();
+	}
+
+	/**
+	 * @return <code>true</code> if all input channels of the {@link Blob} are empty.
+	 */
+	private boolean allInputChannelsEmpty() {
+		boolean empty = true;
+		for (Channel<?> inchnl : inputChannels.values()) {
+			if (!inchnl.isEmpty())
+				empty = false;
+		}
+		return empty;
 	}
 
 	@Override
