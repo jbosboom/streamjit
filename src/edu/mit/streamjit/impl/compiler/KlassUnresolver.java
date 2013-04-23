@@ -75,5 +75,6 @@ public final class KlassUnresolver {
 			}
 		byte[] b = unresolve(k);
 		System.out.println(Arrays.toString(b));
+		System.out.println(b.length);
 	}
 }

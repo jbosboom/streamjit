@@ -31,6 +31,7 @@ import edu.mit.streamjit.impl.compiler.types.Type;
 import edu.mit.streamjit.impl.compiler.types.TypeFactory;
 import edu.mit.streamjit.impl.compiler.types.VoidType;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
@@ -46,6 +47,7 @@ import org.objectweb.asm.tree.IntInsnNode;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.LookupSwitchInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
@@ -104,6 +106,7 @@ public final class MethodUnresolver {
 				methodNode.instructions.add(emit(b));
 			this.methodNode.maxLocals = Collections.max(registers.values())+2;
 			this.methodNode.maxStack = Short.MAX_VALUE;
+			buildLocalVariableTable();
 		}
 
 		return methodNode;
@@ -133,6 +136,21 @@ public final class MethodUnresolver {
 	private void createLabels() {
 		for (BasicBlock b : method.basicBlocks())
 			labels.put(b, new LabelNode(new Label()));
+	}
+
+	private void buildLocalVariableTable() {
+		LabelNode first = new LabelNode(), last = new LabelNode();
+		methodNode.instructions.insert(first);
+		methodNode.instructions.add(last);
+		methodNode.localVariables = new ArrayList<>(registers.size());
+		for (Map.Entry<Value, Integer> r : registers.entrySet())
+			methodNode.localVariables.add(new LocalVariableNode(
+					r.getKey().getName(),
+					((RegularType)r.getKey().getType()).getDescriptor(),
+					null,
+					first,
+					last,
+					r.getValue()));
 	}
 
 	private InsnList emit(BasicBlock block) {
