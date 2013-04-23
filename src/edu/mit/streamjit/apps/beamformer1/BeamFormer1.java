@@ -43,7 +43,7 @@ public class BeamFormer1 {
 	 * This class represents "pipeline Beamformer1" in the BeamFormer1.str benchmark. "pipeline Beamformer1" is actually void->void.
 	 * But, as StreamJit currently doesn't support void input at source worker, Slightly changed to float->void and filereading is
 	 * ignored. TODO: Implement the file reading and writing filters in StreamJit and modify this application to work exactly as the
-	 * original BeamFormer1.str FIXME: I couldn't represent "join roundrobin(2);" in StreamJit. It need to be fixed soon.
+	 * original BeamFormer1.str
 	 * 
 	 * @author sumanan
 	 */
@@ -71,9 +71,8 @@ public class BeamFormer1 {
 
 		public BeamFormer1Kernel() {
 
-			// FIXME: join roundrobin(2); is needed with dynamic number of split join branch elements.
 			// FIXME: split roundrobin(0); is needed. i.e., null splitter, have no pushes to it's children
-			Splitjoin<Float, Float> splitJoin1 = new Splitjoin<>(new RoundrobinSplitter<Float>(), new RoundrobinJoiner<Float>());
+			Splitjoin<Float, Float> splitJoin1 = new Splitjoin<>(new RoundrobinSplitter<Float>(), new RoundrobinJoiner<Float>(2));
 			for (int i = 0; i < numChannels; i++) {
 				splitJoin1.add(new Pipeline<Float, Float>(new InputGenerate(i, numSamples, targetBeam, targetSample, cfarThreshold),
 						new BeamFirFilter(numCoarseFilterTaps, numSamples, coarseDecimationRatio), new BeamFirFilter(
