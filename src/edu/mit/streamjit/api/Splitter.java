@@ -9,7 +9,7 @@ import edu.mit.streamjit.impl.common.Workers;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
-public abstract class Splitter<I, O> extends Worker<I, O> {
+public abstract class Splitter<I> extends Worker<I, I> {
 	public static final int UNLIMITED = Integer.MAX_VALUE;
 
 	/**
@@ -77,7 +77,7 @@ public abstract class Splitter<I, O> extends Worker<I, O> {
 	 * @param channel the index of the output channel to push onto
 	 * @param item the item to push
 	 */
-	protected final void push(int channel, O item) {
+	protected final void push(int channel, I item) {
 		Workers.getOutputChannels(this).get(channel).push(item);
 	};
 }

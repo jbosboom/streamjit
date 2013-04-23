@@ -89,10 +89,10 @@ public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 				levelMap.get(level).add(cur);
 				cur = Workers.getSuccessors(cur).get(0);
 
-			} else if (cur instanceof Splitter<?, ?>) {
-				buildlevelMapSplitJoin((Splitter<?, ?>) cur, level + 1, this.levelMap);
-				level += getDepthofSplitJoin((Splitter<?, ?>) cur);
-				Joiner<?, ?> joiner = getJoiner((Splitter<?, ?>) cur);
+			} else if (cur instanceof Splitter<?>) {
+				buildlevelMapSplitJoin((Splitter<?>) cur, level + 1, this.levelMap);
+				level += getDepthofSplitJoin((Splitter<?>) cur);
+				Joiner<?> joiner = getJoiner((Splitter<?>) cur);
 				cur = Workers.getSuccessors(joiner).isEmpty() ? joiner : Workers.getSuccessors(joiner).get(0);
 			} else {
 				throw new AssertionError("Either Filter or Splitter needs to come here in the while loop");
@@ -113,11 +113,11 @@ public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 	 *            : level where the splitter is located in the stream graph.
 	 * @param levelMap
 	 */
-	private void buildlevelMapSplitJoin(Splitter<?, ?> splitter, int spliterLevel, Map<Integer, Set<Worker<?, ?>>> levelMap) {
+	private void buildlevelMapSplitJoin(Splitter<?> splitter, int spliterLevel, Map<Integer, Set<Worker<?, ?>>> levelMap) {
 		assert graphDepth == levelMap.size();
 
 		int curLevel = spliterLevel;
-		Joiner<?, ?> joiner = getJoiner(splitter);
+		Joiner<?> joiner = getJoiner(splitter);
 		int joinerLevel = spliterLevel + getDepthofSplitJoin(splitter) - 1;
 
 		levelMap.get(curLevel).add(splitter);
@@ -131,11 +131,11 @@ public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 				if (cur instanceof Filter<?, ?>) {
 					cur = Workers.getSuccessors(cur).get(0);
 					curLevel++;
-				} else if (cur instanceof Splitter<?, ?>) {
-					buildlevelMapSplitJoin((Splitter<?, ?>) cur, curLevel, levelMap);
-					curLevel += getDepthofSplitJoin((Splitter<?, ?>) cur);
-					cur = Workers.getSuccessors(getJoiner((Splitter<?, ?>) cur)).get(0);
-				} else if (cur instanceof Joiner<?, ?>) {
+				} else if (cur instanceof Splitter<?>) {
+					buildlevelMapSplitJoin((Splitter<?>) cur, curLevel, levelMap);
+					curLevel += getDepthofSplitJoin((Splitter<?>) cur);
+					cur = Workers.getSuccessors(getJoiner((Splitter<?>) cur)).get(0);
+				} else if (cur instanceof Joiner<?>) {
 					System.out.println("Joiner Encounted...Check the algo");
 				}
 			}

@@ -10,7 +10,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
-public final class DuplicateSplitter<T> extends Splitter<T, T>{
+public final class DuplicateSplitter<T> extends Splitter<T>{
 	public DuplicateSplitter() {
 	}
 

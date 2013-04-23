@@ -52,13 +52,13 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 		Worker<?, ?> cur = source;
 
 		while (!Workers.getSuccessors(cur).isEmpty()) {
-			if (cur instanceof Splitter<?, ?>) {
-				depth += getDepthofSplitJoin((Splitter<?, ?>) cur);
-				cur = getJoiner((Splitter<?, ?>) cur);
+			if (cur instanceof Splitter<?>) {
+				depth += getDepthofSplitJoin((Splitter<?>) cur);
+				cur = getJoiner((Splitter<?>) cur);
 			} else if (cur instanceof Worker<?, ?>) {
 				depth++;
 				cur = Workers.getSuccessors(cur).get(0);
-			} else if (cur instanceof Joiner<?, ?>) {
+			} else if (cur instanceof Joiner<?>) {
 				cur = Workers.getSuccessors(cur).get(0);
 			} else {
 				throw new AssertionError("Unexpected worker found. Verify the algorithm");
@@ -75,17 +75,17 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 	 *            : {@link Splitter} of the {@link Splitjoin} which's depth is required by the caller.
 	 * @return Depth of the {@link Splitjoin}.
 	 */
-	protected int getDepthofSplitJoin(Splitter<?, ?> splitter) {
-		Joiner<?, ?> joiner = getJoiner(splitter);
+	protected int getDepthofSplitJoin(Splitter<?> splitter) {
+		Joiner<?> joiner = getJoiner(splitter);
 		int branchCount = Workers.getSuccessors(splitter).size();
 		int[] branchDepths = new int[branchCount]; // Java initializes the array values to 0 by default.
 		for (int i = 0; i < branchCount; i++) {
 			branchDepths[i]++; // This increment counts the splitter
 			Worker<?, ?> cur = Workers.getSuccessors(splitter).get(i);
 			while (!cur.equals(joiner)) {
-				if (cur instanceof Splitter<?, ?>) {
-					branchDepths[i] += getDepthofSplitJoin((Splitter<?, ?>) cur);
-					cur = Workers.getSuccessors(getJoiner((Splitter<?, ?>) cur)).get(0);
+				if (cur instanceof Splitter<?>) {
+					branchDepths[i] += getDepthofSplitJoin((Splitter<?>) cur);
+					cur = Workers.getSuccessors(getJoiner((Splitter<?>) cur)).get(0);
 				} else if (cur instanceof Filter<?, ?>) {
 					branchDepths[i]++;
 					cur = Workers.getSuccessors(cur).get(0);
@@ -105,19 +105,19 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 	 *            : {@link Splitter} that needs it's {@link Joiner}.
 	 * @return Corresponding {@link Joiner} of the passed {@link Splitter}.
 	 */
-	protected Joiner<?, ?> getJoiner(Splitter<?, ?> splitter) {
+	protected Joiner<?> getJoiner(Splitter<?> splitter) {
 		Worker<?, ?> cur = Workers.getSuccessors(splitter).get(0);
 		int innerSplitjoinCount = 0;
-		while (!(cur instanceof Joiner<?, ?>) || innerSplitjoinCount != 0) {
-			if (cur instanceof Splitter<?, ?>)
+		while (!(cur instanceof Joiner<?>) || innerSplitjoinCount != 0) {
+			if (cur instanceof Splitter<?>)
 				innerSplitjoinCount++;
-			if (cur instanceof Joiner<?, ?>)
+			if (cur instanceof Joiner<?>)
 				innerSplitjoinCount--;
 			assert innerSplitjoinCount >= 0 : "Joiner Count is more than splitter count. Check the algorithm";
 			cur = Workers.getSuccessors(cur).get(0);
 		}
-		assert cur instanceof Joiner<?, ?> : "Error in algorithm. Not returning a Joiner";
-		return (Joiner<?, ?>) cur;
+		assert cur instanceof Joiner<?> : "Error in algorithm. Not returning a Joiner";
+		return (Joiner<?>) cur;
 	}
 
 	/**
@@ -129,7 +129,7 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 	 * @throws IllegalArgumentException
 	 *             If nested splitjoin is passed.
 	 */
-	protected Set<Worker<?, ?>> getAllChildWorkers(Splitter<?, ?> splitter) {
+	protected Set<Worker<?, ?>> getAllChildWorkers(Splitter<?> splitter) {
 		Set<Worker<?, ?>> childWorkers = new HashSet<>();
 		Worker<?, ?> cur;
 		for (Worker<?, ?> childWorker : Workers.getSuccessors(splitter)) {
@@ -139,7 +139,7 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 				assert Workers.getSuccessors(cur).size() == 1 : "Illegal Filter encounted";
 				cur = Workers.getSuccessors(cur).get(0);
 			}
-			if (cur instanceof Splitter<?, ?>) {
+			if (cur instanceof Splitter<?>) {
 				throw new IllegalArgumentException(
 						"More complex splitjoiner found. Current Splitjoiner contains another splitjoin inside.");
 			}

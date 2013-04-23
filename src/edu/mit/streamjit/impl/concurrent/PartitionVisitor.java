@@ -110,7 +110,7 @@ public class PartitionVisitor extends StreamVisitor {
 	}
 
 	@Override
-	public void visitSplitter(Splitter<?, ?> splitter) {
+	public void visitSplitter(Splitter<?> splitter) {
 		visitWorker(splitter);
 	}
 
@@ -127,7 +127,7 @@ public class PartitionVisitor extends StreamVisitor {
 	}
 
 	@Override
-	public void visitJoiner(Joiner<?, ?> joiner) {
+	public void visitJoiner(Joiner<?> joiner) {
 		visitWorker(joiner);
 	}
 
