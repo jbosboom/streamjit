@@ -5,12 +5,12 @@ import edu.mit.streamjit.api.Identity;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Map;
+import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.util.CheckClassAdapter;
-import org.objectweb.asm.util.TraceClassVisitor;
 
 /**
  * Builds a .class file (as a byte[]) from a Klass.
@@ -55,9 +55,12 @@ public final class KlassUnresolver {
 			this.classNode.methods.add(MethodUnresolver.unresolve(m));
 
 		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-		CheckClassAdapter cca = new CheckClassAdapter(cw, true);
-		TraceClassVisitor tcv = new TraceClassVisitor(cca, new PrintWriter(System.out, true));
-		classNode.accept(tcv);
+		ClassVisitor cv = cw;
+		boolean assertionsEnabled = false;
+		assert assertionsEnabled = true; //intentional side effect
+		if (assertionsEnabled)
+			cv = new CheckClassAdapter(cv, true);
+		classNode.accept(cv);
 		return cw.toByteArray();
 	}
 
