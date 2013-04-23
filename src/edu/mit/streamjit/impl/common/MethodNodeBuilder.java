@@ -17,7 +17,7 @@ public final class MethodNodeBuilder {
 	public static MethodNode buildMethodNode(Class<?> klass, String methodName, String methodDescriptor) throws IOException, NoSuchMethodException {
 		ClassReader r = new ClassReader(klass.getName());
 		MethodNodeBuildingClassVisitor mnbcv = new MethodNodeBuildingClassVisitor(methodName, methodDescriptor);
-		r.accept(mnbcv, ClassReader.SKIP_DEBUG | ClassReader.EXPAND_FRAMES);
+		r.accept(mnbcv, ClassReader.EXPAND_FRAMES);
 		MethodNode methodNode = mnbcv.getMethodNode();
 		if (methodNode == null)
 			throw new NoSuchMethodException(klass.getName() + "#" + methodName + methodDescriptor);

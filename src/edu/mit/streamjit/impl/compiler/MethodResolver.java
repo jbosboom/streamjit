@@ -64,6 +64,7 @@ import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.LookupSwitchInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
@@ -122,6 +123,7 @@ public final class MethodResolver {
 
 	private void resolve() {
 		findBlockBoundaries();
+		nameArguments();
 
 		//Process blocks such that at least one predecessor has already been
 		//visited.  (We only process a block once; we add phi instructions when
@@ -152,6 +154,24 @@ public final class MethodResolver {
 
 		//Assert there are no statically dead blocks.
 		assert visited.size() == blocks.size();
+	}
+
+	private void nameArguments() {
+		//Labels before and after all real instructions.
+		List<LabelNode> beginLabels = new ArrayList<>(), endLabels = new ArrayList<>();
+		for (AbstractInsnNode n = methodNode.instructions.getFirst(); n != null && n.getOpcode() == -1; n = n.getNext())
+			if (n instanceof LabelNode)
+				beginLabels.add((LabelNode)n);
+		for (AbstractInsnNode n = methodNode.instructions.getLast(); n != null && n.getOpcode() == -1; n = n.getPrevious())
+			if (n instanceof LabelNode)
+				endLabels.add((LabelNode)n);
+
+		//Get the initial frame state, which has the arguments in the proper
+		//locals positions, and set names.
+		Value[] locals = blocks.get(0).entryState.locals;
+		for (LocalVariableNode lvn : methodNode.localVariables)
+			if (beginLabels.contains(lvn.start) && endLabels.contains(lvn.end) && (!method.isConstructor() || lvn.index != 0))
+				locals[lvn.index].setName(lvn.name);
 	}
 
 	private void findBlockBoundaries() {
