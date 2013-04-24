@@ -73,6 +73,7 @@ public final class MethodUnresolver {
 
 	private final Method method;
 	private final MethodNode methodNode;
+	private final Value uninitializedThis;
 	private final Map<Value, Integer> registers;
 	private final Map<BasicBlock, LabelNode> labels;
 	private final PrimitiveType booleanType, byteType, charType, shortType,
@@ -80,6 +81,7 @@ public final class MethodUnresolver {
 	private MethodUnresolver(Method m) {
 		this.method = m;
 		this.methodNode = new MethodNode(Opcodes.ASM4);
+		this.uninitializedThis = method.isConstructor() ? findUninitializedThis() : null;
 		this.registers = new IdentityHashMap<>();
 		this.labels = new IdentityHashMap<>();
 		TypeFactory tf = m.getParent().getParent().types();
@@ -117,9 +119,8 @@ public final class MethodUnresolver {
 		//instruction producing a non-void value and to the method arguments.
 		int regNum = 0;
 		if (method.isConstructor()) {
-			UninitializedValue ut = findUninitializedThis();
-			registers.put(ut, regNum);
-			regNum += ut.getType().getCategory();
+			registers.put(uninitializedThis, regNum);
+			regNum += uninitializedThis.getType().getCategory();
 		}
 		for (Argument a : method.arguments()) {
 			registers.put(a, regNum);
@@ -442,7 +443,13 @@ public final class MethodUnresolver {
 	private void emit(CallInst i, InsnList insns) {
 		Method m = i.getMethod();
 		if (m.isConstructor()) {
-			insns.add(new TypeInsnNode(Opcodes.NEW, internalName(m.getType().getReturnType().getKlass())));
+			//If we're calling super(), load uninitializedThis.
+			//TODO: this will get confused if we call a superclass constructor
+			//for any reason other than our own initialization!
+			if (method.isConstructor() && method.getParent().getSuperclass().equals(m.getParent()))
+				load(uninitializedThis, insns);
+			else
+				insns.add(new TypeInsnNode(Opcodes.NEW, internalName(m.getType().getReturnType().getKlass())));
 			insns.add(new InsnNode(Opcodes.DUP));
 		}
 		int opcode;
