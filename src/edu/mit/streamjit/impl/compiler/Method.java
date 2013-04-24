@@ -11,6 +11,7 @@ import com.google.common.collect.Sets;
 import com.google.common.primitives.Shorts;
 import edu.mit.streamjit.impl.compiler.insts.Instruction;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
+import edu.mit.streamjit.impl.compiler.types.VoidType;
 import edu.mit.streamjit.util.IntrusiveList;
 import java.io.PrintWriter;
 import java.util.List;
@@ -61,6 +62,20 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		this.modifiers = Sets.immutableEnumSet(Modifier.fromMethodBits(Shorts.checkedCast(ctor.getModifiers())));
 		//We're unresolved, so we don't have arguments or basic blocks.
 	}
+	public Method(String name, MethodType type, Set<Modifier> modifiers, Klass parent) {
+		super(type, name);
+		if (name.equals("<init>"))
+			checkArgument(type.getReturnType().equals(type.getTypeFactory().getType(parent)));
+		if (name.equals("<clinit>")) {
+			checkArgument(type.getReturnType() instanceof VoidType);
+			checkArgument(type.getParameterTypes().size() == 0);
+			checkArgument(modifiers.contains(Modifier.STATIC));
+		}
+		this.modifiers = modifiers;
+		this.arguments = buildArguments();
+		this.basicBlocks = new ParentedList<>(this, BasicBlock.class);
+		parent.methods().add(this);
+	}
 
 	public boolean isMutable() {
 		return getParent().isMutable();
@@ -87,13 +102,7 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		if (isResolved())
 			return;
 
-		ImmutableList<RegularType> paramTypes = getType().getParameterTypes();
-		ImmutableList.Builder<Argument> builder = ImmutableList.builder();
-		for (int i = 0; i < paramTypes.size(); ++i) {
-			String name = (i == 0 && hasReceiver()) ? "this" : "arg"+i;
-			builder.add(new Argument(this, paramTypes.get(i), name));
-		}
-		this.arguments = builder.build();
+		this.arguments = buildArguments();
 		this.basicBlocks = new ParentedList<>(this, BasicBlock.class);
 		MethodResolver.resolve(this);
 	}
@@ -192,5 +201,15 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 				writer.println();
 			}
 		}
+	}
+
+	private ImmutableList<Argument> buildArguments() {
+		ImmutableList<RegularType> paramTypes = getType().getParameterTypes();
+		ImmutableList.Builder<Argument> builder = ImmutableList.builder();
+		for (int i = 0; i < paramTypes.size(); ++i) {
+			String name = (i == 0 && hasReceiver()) ? "this" : "arg"+i;
+			builder.add(new Argument(this, paramTypes.get(i), name));
+		}
+		return builder.build();
 	}
 }
