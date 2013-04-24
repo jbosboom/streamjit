@@ -5,12 +5,17 @@ import com.google.common.collect.ImmutableSet;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Rate;
+import edu.mit.streamjit.api.RoundrobinJoiner;
+import edu.mit.streamjit.api.RoundrobinSplitter;
+import edu.mit.streamjit.api.Splitjoin;
+import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
+import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.compiler.insts.CallInst;
 import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
 import java.io.PrintWriter;
@@ -88,13 +93,59 @@ public final class Compiler {
 			checkArgument(!workers.contains(c.getRecipient()));
 		}
 
-		for (Worker<?, ?> w : workers)
-			workerData.put(w, new WorkerData(w));
 		this.packagePrefix = "compiler"+PACKAGE_NUMBER.getAndIncrement()+".";
 		this.blobKlass = new Klass(packagePrefix + "Blob",
 				module.getKlass(Object.class),
 				Collections.singletonList(module.getKlass(Blob.class)),
 				module);
+	}
+
+	public Blob compile() {
+		for (Worker<?, ?> w : workers)
+			buildWorkerData(w);
+		addBlobPlumbing();
+		return instantiateBlob();
+	}
+
+	private void buildWorkerData(Worker<?, ?> worker) {
+		WorkerData data = new WorkerData(worker);
+		workerData.put(worker, data);
+		int id = Workers.getIdentifier(worker);
+		Klass workerKlass = module.getKlass(worker.getClass());
+
+		//Build the new fields.
+		for (Field f : workerKlass.fields()) {
+			java.lang.reflect.Field rf = f.getBackingField();
+			Set<Modifier> modifiers = EnumSet.of(Modifier.PRIVATE, Modifier.STATIC);
+			//We can make the new field final if the original field is final or
+			//if the worker isn't stateful.
+			if (f.modifiers().contains(Modifier.FINAL) || !(worker instanceof StatefulFilter))
+				modifiers.add(Modifier.FINAL);
+
+			Field nf = new Field(f.getType().getFieldType(),
+					"w"+id+"$"+f.getName(),
+					modifiers,
+					blobKlass);
+			data.fields.put(f, nf);
+
+			try {
+				rf.setAccessible(true);
+				Object value = rf.get(worker);
+				data.fieldValues.put(f, value);
+			} catch (IllegalAccessException ex) {
+				//Either setAccessible will succeed or we'll throw a
+				//SecurityException, so we'll never get here.
+				throw new AssertionError("Can't happen!", ex);
+			}
+		}
+	}
+
+	/**
+	 * Adds required plumbing code to the blob class, such as the ctor and the
+	 * implementations of the Blob methods.
+	 */
+	private void addBlobPlumbing() {
+		//ctor
 		Method init = new Method("<init>",
 				module.types().getMethodType(module.types().getType(blobKlass)),
 				EnumSet.noneOf(Modifier.class),
@@ -104,10 +155,10 @@ public final class Compiler {
 		Method objCtor = module.getKlass(Object.class).getMethods("<init>").iterator().next();
 		b.instructions().add(new CallInst(objCtor));
 		b.instructions().add(new ReturnInst(module.types().getVoidType()));
-		init.dump(new PrintWriter(System.out, true));
+		//TODO: other Blob interface methods
 	}
 
-	public Blob compile() {
+	private Blob instantiateBlob() {
 		ModuleClassLoader mcl = new ModuleClassLoader(module);
 		try {
 			Class<?> blobClass = mcl.loadClass(blobKlass.getName());
@@ -145,14 +196,15 @@ public final class Compiler {
 	}
 
 	public static void main(String[] args) {
-		OneToOneElement<Integer, Integer> graph = new Identity<>();
+		OneToOneElement<Integer, Integer> graph = new Splitjoin<>(new RoundrobinSplitter<Integer>(), new RoundrobinJoiner<Integer>(), new Identity<Integer>(), new Identity<Integer>());
 		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		graph.visit(cwv);
-		Set<Worker<?, ?>> workers = Collections.<Worker<?, ?>>singleton(cwv.getSource());
+		Set<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
 		Configuration config = Configuration.builder().build();
 		int maxNumCores = 1;
 		Compiler compiler = new Compiler(workers, config, maxNumCores);
 		Blob blob = compiler.compile();
+		compiler.blobKlass.dump(new PrintWriter(System.out, true));
 		blob.getCoreCount();
 	}
 }
