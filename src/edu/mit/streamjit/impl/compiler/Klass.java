@@ -61,7 +61,6 @@ public final class Klass implements Accessible, Parented<Module> {
 		checkNotNull(name);
 		checkNotNull(module);
 		checkState(module.getKlass(name) == null, "klass named %s already in module");
-		module.klasses().add(this); //sets parent
 		this.name = name;
 		this.modifiers = EnumSet.noneOf(Modifier.class);
 		this.superclass = superclass;
@@ -69,6 +68,7 @@ public final class Klass implements Accessible, Parented<Module> {
 		this.fields = new ParentedList<>(this, Field.class);
 		this.methods = new ParentedList<>(this, Method.class);
 		this.backingClass = null;
+		module.klasses().add(this); //sets parent
 	}
 
 	/**
