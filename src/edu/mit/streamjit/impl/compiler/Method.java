@@ -185,11 +185,12 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		if (!isResolved()) {
 			writer.write(";");
 			writer.println();
+			writer.flush();
 			return;
 		}
+
 		writer.write(" {");
 		writer.println();
-
 		for (BasicBlock b : basicBlocks()) {
 			writer.write(b.getName());
 			writer.write(": ");
@@ -201,6 +202,9 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 				writer.println();
 			}
 		}
+		writer.write("}");
+		writer.println();
+		writer.flush();
 	}
 
 	private ImmutableList<Argument> buildArguments() {
