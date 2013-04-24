@@ -144,6 +144,14 @@ public final class TypeFactory implements Iterable<Type> {
 		return getMethodType(returnType, Arrays.asList(parameterTypes));
 	}
 
+	public MethodType getMethodType(Class<?> returnType, Class<?>... parameterTypes) {
+		ReturnType rt = getType(returnType);
+		ImmutableList.Builder<RegularType> pt = ImmutableList.builder();
+		for (Class<?> c : parameterTypes)
+			pt.add(getRegularType(c));
+		return getMethodType(rt, pt.build());
+	}
+
 	public MethodType getMethodType(java.lang.invoke.MethodType methodType) {
 		ReturnType returnType = getType(parent.getKlass(methodType.returnType()));
 		List<RegularType> parameterTypes = new ArrayList<>(methodType.parameterCount());
