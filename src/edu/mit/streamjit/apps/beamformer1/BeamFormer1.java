@@ -14,9 +14,11 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
  * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/beamformer/streamit/BeamFormer1.str for
- * original implementations. Each StreamIt's language consturcts (i.e., pipeline, filter and splitjoin) are rewritten as classes in
- * StreamJit. 
+ * original implementations. Each StreamIt's language constructs (i.e., pipeline, filter and splitjoin) are rewritten as classes in
+ * StreamJit.
+ *  
  * FIXME: All FileWriter<?> and FileReader<?> are replaced with ?Source and ?Printer respectively.
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since Mar 8, 2013
  */

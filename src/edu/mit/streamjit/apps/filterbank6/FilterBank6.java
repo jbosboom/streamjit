@@ -1,7 +1,3 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since Mar 14, 2013
- */
 package edu.mit.streamjit.apps.filterbank6;
 
 import edu.mit.streamjit.api.CompiledStream;
@@ -13,6 +9,13 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
+/**
+ * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/filterbank/streamit/FilterBank6.str for
+ * original implementations. Each StreamIt's language constructs (i.e., pipeline, filter and splitjoin) are rewritten as classes in
+ * StreamJit. 
+ * @author Sumanan sumanan@mit.edu
+ * @since Mar 14, 2013
+ */
 public class FilterBank6 {
 
 	public static void main(String[] args) throws InterruptedException {
@@ -24,10 +27,10 @@ public class FilterBank6 {
 		}
 		stream.drain();
 		stream.awaitDraining();
-
 	}
 
 	/**
+	 * FIXME: Actual pipeline is "void->void pipeline FilterBank6".
 	 * This is a generic filter bank that decomposes an incoming stream into M
 	 * frequency bands. It then performs some processing on them (the exact
 	 * processing is yet to be determined, and then reconstructs them.
@@ -62,7 +65,6 @@ public class FilterBank6 {
 			for (int i = 0; i < M; i++) {
 				add(new ProcessingPipeline(M, i));
 			}
-
 		}
 	}
 
@@ -103,6 +105,7 @@ public class FilterBank6 {
 		float w3 = (float) (Math.PI / 30);
 
 		public void work() {
+			//FIXME:
 			pop(); // As current implementation has no support to fire the
 			// streamgraph with void element, we offer the graph with
 			// random values and just pop out here.
@@ -376,5 +379,4 @@ public class FilterBank6 {
 			pop();
 		}
 	}
-
 }

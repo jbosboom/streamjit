@@ -20,6 +20,9 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
+/**
+ *This is just a nested, inner split join stream structure that is to verify the correctness of the StreamJit system. 
+ */
 public class NestedSplitJoin {
 
 	/**
@@ -27,10 +30,10 @@ public class NestedSplitJoin {
 	 * @throws InterruptedException 
 	 */
 	public static void main(String[] args) throws InterruptedException {
-		Pipeline core = new Pipeline<Integer, Void>(new nestedSplitJoinCore(), new IntPrinter());
-		//StreamCompiler sc = new DebugStreamCompiler();
-		StreamCompiler sc = new ConcurrentStreamCompiler(2);
-		CompiledStream<Integer, Integer> stream = sc.compile(core);
+		Pipeline<Integer, Void> core = new Pipeline<Integer, Void>(new nestedSplitJoinCore(), new IntPrinter());
+		StreamCompiler sc = new DebugStreamCompiler();
+		//StreamCompiler sc = new ConcurrentStreamCompiler(2);
+		CompiledStream<Integer, Void> stream = sc.compile(core);
 		Integer output;
 		for (int i = 0; i < 10000; i++) {
 			stream.offer(i);
@@ -45,7 +48,7 @@ public class NestedSplitJoin {
 		public nestedSplitJoinCore() {
 			super(new RoundrobinSplitter<Integer>(), new RoundrobinJoiner<Integer>());
 			add(new splitjoin1());
-			add(new Pipeline<>(new multiplier(1), new splitjoin1(), new multiplier(1)));
+			add(new Pipeline<Integer, Integer>(new multiplier(1), new splitjoin1(), new multiplier(1)));
 			add(new multiplier(1));
 			add(new splitjoin2());
 		}
@@ -90,7 +93,6 @@ public class NestedSplitJoin {
 
 		public IntPrinter() {
 			super(1, 0);
-			// TODO Auto-generated constructor stub
 		}
 
 		@Override
@@ -98,5 +100,4 @@ public class NestedSplitJoin {
 			System.out.println(pop());
 		}
 	}
-
 }

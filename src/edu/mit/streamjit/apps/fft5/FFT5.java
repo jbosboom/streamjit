@@ -1,7 +1,3 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since Mar 14, 2013
- */
 package edu.mit.streamjit.apps.fft5;
 
 import edu.mit.streamjit.api.CompiledStream;
@@ -11,6 +7,13 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
+/**
+ * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/fft/streamit/FFT5.str for
+ * original implementations. Each StreamIt's language constructs (i.e., pipeline, filter and splitjoin) are rewritten as classes in
+ * StreamJit. 
+ * @author Sumanan sumanan@mit.edu
+ * @since Mar 14, 2013
+ */
 public class FFT5 {
 
 	public static void main(String[] args) throws InterruptedException {
@@ -28,6 +31,10 @@ public class FFT5 {
 		stream.awaitDraining();
 	}
 
+	/**
+	 *This represents "void->void pipeline FFT5()". 
+	 *FIXME: actual pipeline is void->void. Need to support void input, filereading, and file writing. 
+	 */
 	private static class FFT5Kernel extends Pipeline<Float, Void> {
 		FFT5Kernel() {
 			int N = 256;
@@ -170,6 +177,7 @@ public class FFT5 {
 
 		public void work() {
 			int i;
+			//FIXME: Actual pop is 0. As StreamJit doesn't support void input, it receives input and just pops out it.
 			pop(); // As current implementation has no support to fire the
 			// streamgraph with void element, we offer the graph with
 			// random values and just pop out here.
