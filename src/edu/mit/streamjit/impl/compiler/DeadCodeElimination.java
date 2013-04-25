@@ -6,6 +6,7 @@ import com.google.common.collect.Iterables;
 import edu.mit.streamjit.impl.compiler.insts.Instruction;
 import edu.mit.streamjit.impl.compiler.insts.PhiInst;
 import edu.mit.streamjit.impl.compiler.insts.TerminatorInst;
+import edu.mit.streamjit.impl.compiler.types.VoidType;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -55,7 +56,7 @@ public final class DeadCodeElimination {
 		do {
 			makingProgress = false;
 			for (Instruction i : ImmutableList.copyOf(block.instructions()))
-				if (!(i instanceof TerminatorInst) && i.uses().isEmpty())
+				if (!(i.getType() instanceof VoidType) && i.uses().isEmpty())
 					changed |= makingProgress |= block.instructions().remove(i);
 		} while (makingProgress);
 		return changed;
