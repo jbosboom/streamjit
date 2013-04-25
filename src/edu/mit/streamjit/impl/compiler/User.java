@@ -96,6 +96,17 @@ public abstract class User extends Value {
 	}
 
 	/**
+	 * Sets all operands to null (but does not remove them in the sense of
+	 * removeOperand()).  Typically, this is called when a User is being
+	 * permanently removed from the IR structures, to remove it from other
+	 * Values' use lists and to permit garbage collection.
+	 */
+	public void dropAllOperands() {
+		for (int i = 0; i < getNumOperands(); ++i)
+			setOperand(i, null);
+	}
+
+	/**
 	 * Replaces all uses of the given value with the other given value.  Either
 	 * argument may be null.
 	 *
