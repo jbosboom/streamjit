@@ -234,7 +234,8 @@ public final class Compiler {
 				if (Iterables.contains(i.operands(), newWork.arguments().get(0)))
 					remapEliminiatingReceiver(i, data);
 
-		//TODO: run dead code elimination and verify the receiver arg is gone
+		//At this point, we've replaced all uses of the dummy receiver argument.
+		assert newWork.arguments().get(0).uses().isEmpty();
 	}
 
 	private MethodType makeWorkMethodType(Worker<?, ?> worker) {
@@ -327,7 +328,12 @@ public final class Compiler {
 				inst.replaceInstWithValue(module.constants().getSmallestIntConstant(getNumInputs(data.worker)));
 			} else
 				throw new AssertionError(inst);
-		}
+		} else if (inst instanceof LoadInst) {
+			LoadInst li = (LoadInst)inst;
+			LoadInst replacement = new LoadInst(data.fields.get(li.getField()));
+			li.replaceInstWithInst(replacement);
+		} else
+			throw new AssertionError("Couldn't eliminate reciever: "+inst);
 	}
 
 	private int getNumInputs(Worker<?, ?> w) {
