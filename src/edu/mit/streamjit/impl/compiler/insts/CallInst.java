@@ -29,6 +29,11 @@ public final class CallInst extends Instruction {
 		super(checkNotNull(m).getType().getReturnType(), 1+m.getType().getParameterTypes().size());
 		setOperand(0, m);
 	}
+	public CallInst(Method m, Value... arguments) {
+		this(m);
+		for (int i = 0; i < arguments.length; ++i)
+			setArgument(i, arguments[i]);
+	}
 	public Method getMethod() {
 		return (Method)getOperand(0);
 	}
