@@ -45,7 +45,7 @@ public final class PhiInst extends Instruction {
 	}
 
 	public Iterable<Value> incomingValues() {
-		return FluentIterable.from(operands()).filter(Value.class);
+		return FluentIterable.from(operands()).filter(Predicates.not(Predicates.instanceOf(BasicBlock.class)));
 	}
 
 	@Override
