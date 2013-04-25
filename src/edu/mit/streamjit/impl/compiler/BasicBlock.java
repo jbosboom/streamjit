@@ -31,6 +31,11 @@ public class BasicBlock extends Value implements Parented<Method> {
 		super(module.types().getBasicBlockType());
 	}
 
+	public BasicBlock(Module module, String name) {
+		this(module);
+		setName(name);
+	}
+
 	@Override
 	public BasicBlockType getType() {
 		return (BasicBlockType)super.getType();
