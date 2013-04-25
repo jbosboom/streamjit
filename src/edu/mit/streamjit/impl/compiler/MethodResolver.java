@@ -154,6 +154,8 @@ public final class MethodResolver {
 
 		//Assert there are no statically dead blocks.
 		assert visited.size() == blocks.size();
+
+		DeadCodeElimination.eliminateDeadCode(method);
 	}
 
 	private void nameArguments() {
