@@ -133,9 +133,9 @@ public abstract class User extends Value {
 	//Provided for subclasses that want a variable-size operand list.
 	protected void addOperand(int i, Value v) {
 		//Check before committing any changes, for debuggability.
-		checkOperand(i, v);
+		checkOperandInternal(i, v);
 		for (int j = i; j < uses.size(); ++j)
-			checkOperand(j+1, uses.get(j).getOperand());
+			checkOperandInternal(j+1, uses.get(j).getOperand());
 
 		Use use = new Use(this, i, null);
 		uses.add(i, use);
@@ -148,13 +148,19 @@ public abstract class User extends Value {
 	protected void removeOperand(int i) {
 		//Check before committing any changes, for debuggability.
 		for (int j = i; j < uses.size(); ++j)
-			checkOperand(j, uses.get(j+1).getOperand());
+			checkOperandInternal(j, uses.get(j+1).getOperand());
 
 		Use use = uses.get(i);
 		use.setOperand(null);
 		uses.remove(i);
 		for (; i < uses.size(); ++i)
 			uses.get(i).setOperandIndex(i);
+	}
+
+	final void checkOperandInternal(int i, Value v) {
+		//null is always a legal operand to allow dropping operands.
+		if (v != null)
+			checkOperand(i, v);
 	}
 
 	/**
