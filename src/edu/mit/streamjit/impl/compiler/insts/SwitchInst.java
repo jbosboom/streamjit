@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler.insts;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicates;
 import com.google.common.collect.FluentIterable;
@@ -57,6 +58,14 @@ public final class SwitchInst extends TerminatorInst {
 	@SuppressWarnings("unchecked")
 	public Iterable<Constant<Integer>> cases() {
 		return (Iterable<Constant<Integer>>)(Iterable)FluentIterable.from(operands()).filter(Constant.class);
+	}
+
+	@Override
+	public SwitchInst clone(Function<Value, Value> operandMap) {
+		SwitchInst i = new SwitchInst(operandMap.apply(getValue()), (BasicBlock)operandMap.apply(getDefault()));
+		for (Constant<Integer> c : cases())
+			i.put((Constant<Integer>)operandMap.apply(c), (BasicBlock)operandMap.apply(get(c)));
+		return i;
 	}
 
 	@Override

@@ -1,9 +1,11 @@
 package edu.mit.streamjit.impl.compiler.insts;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.ArrayType;
 import edu.mit.streamjit.impl.compiler.types.NullType;
+import java.util.Map;
 
 /**
  * Pushes the length of an array.
@@ -14,6 +16,11 @@ public final class ArrayLengthInst extends Instruction {
 	public ArrayLengthInst(Value array) {
 		super(array.getType().getTypeFactory().getType(int.class), 1);
 		setOperand(0, array);
+	}
+
+	@Override
+	public ArrayLengthInst clone(Function<Value, Value> operandMap) {
+		return new ArrayLengthInst(operandMap.apply(getOperand(0)));
 	}
 
 	@Override

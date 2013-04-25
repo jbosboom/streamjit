@@ -10,6 +10,7 @@ import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.PrimitiveType;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.impl.compiler.types.VoidType;
+import java.util.Map;
 
 /**
  * A method call.  All types of bytecoded calls (i.e., not invokedynamic) use
@@ -42,6 +43,14 @@ public final class CallInst extends Instruction {
 	}
 	public Iterable<Value> arguments() {
 		return Iterables.skip(operands(), 1);
+	}
+
+	@Override
+	public CallInst clone(Function<Value, Value> operandMap) {
+		CallInst ci = new CallInst((Method)operandMap.apply(getMethod()));
+		for (int i = 1; i < getNumOperands(); ++i)
+			ci.setOperand(i, operandMap.apply(getOperand(i)));
+		return ci;
 	}
 
 	@Override

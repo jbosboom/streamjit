@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler.insts;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.Value;
 
@@ -16,6 +17,11 @@ public final class ThrowInst extends TerminatorInst {
 	public ThrowInst(Value exception) {
 		super(exception.getType().getTypeFactory(), 1);
 		setOperand(0, exception);
+	}
+
+	@Override
+	public ThrowInst clone(Function<Value, Value> operandMap) {
+		return new ThrowInst(operandMap.apply(getOperand(0)));
 	}
 
 	@Override

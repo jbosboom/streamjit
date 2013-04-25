@@ -1,11 +1,14 @@
 package edu.mit.streamjit.impl.compiler.insts;
 
+import com.google.common.base.Function;
 import edu.mit.streamjit.impl.compiler.BasicBlock;
 import edu.mit.streamjit.impl.compiler.Parented;
 import edu.mit.streamjit.impl.compiler.ParentedList;
 import edu.mit.streamjit.impl.compiler.User;
+import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.Type;
 import edu.mit.streamjit.util.IntrusiveList;
+import java.util.Map;
 
 /**
  *
@@ -40,4 +43,12 @@ public abstract class Instruction extends User implements Parented<BasicBlock> {
 	public BasicBlock getParent() {
 		return parent;
 	}
+
+	/**
+	 * Clones this instruction, using the given function to map this
+	 * instruction's operands to new operands.
+	 * @param operandMap a function mapping values to values
+	 * @return a clone of this instruction
+	 */
+	public abstract Instruction clone(Function<Value, Value> operandMap);
 }

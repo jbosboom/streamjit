@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler.insts;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.Field;
 import edu.mit.streamjit.impl.compiler.Value;
@@ -42,6 +43,13 @@ public final class StoreInst extends Instruction {
 	}
 	public void setInstance(Value v) {
 		setOperand(2, v);
+	}
+
+	@Override
+	public StoreInst clone(Function<Value, Value> operandMap) {
+		if (getNumOperands() == 2)
+			return new StoreInst((Field)operandMap.apply(getField()), operandMap.apply(getData()));
+		return new StoreInst((Field)operandMap.apply(getField()), operandMap.apply(getData()), operandMap.apply(getInstance()));
 	}
 
 	@Override

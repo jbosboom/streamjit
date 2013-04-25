@@ -1,9 +1,11 @@
 package edu.mit.streamjit.impl.compiler.insts;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.PrimitiveType;
+import java.util.Map;
 
 /**
  * A binary mathematical operation.
@@ -50,6 +52,11 @@ public final class BinaryInst extends Instruction {
 
 	public Operation getOperation() {
 		return operation;
+	}
+
+	@Override
+	public BinaryInst clone(Function<Value, Value> operandMap) {
+		return new BinaryInst(operandMap.apply(getOperand(0)), operation, operandMap.apply(getOperand(1)));
 	}
 
 	private static PrimitiveType computeType(Value left, Operation operation, Value right) {

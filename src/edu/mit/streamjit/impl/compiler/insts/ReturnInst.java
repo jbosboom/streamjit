@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler.insts;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.ReturnType;
@@ -26,6 +27,13 @@ public final class ReturnInst extends TerminatorInst {
 
 	public ReturnType getReturnType() {
 		return returnType;
+	}
+
+	@Override
+	public ReturnInst clone(Function<Value, Value> operandMap) {
+		if (getNumOperands() == 1)
+			return new ReturnInst(getReturnType(), operandMap.apply(getOperand(0)));
+		return new ReturnInst(getReturnType());
 	}
 
 	@Override

@@ -1,11 +1,13 @@
 package edu.mit.streamjit.impl.compiler.insts;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.ArrayType;
 import edu.mit.streamjit.impl.compiler.types.NullType;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.impl.compiler.types.Type;
+import java.util.Map;
 
 /**
  * Stores a value in an array.
@@ -37,6 +39,11 @@ public final class ArrayStoreInst extends Instruction {
 	}
 	public void setData(Value v) {
 		setOperand(2, v);
+	}
+
+	@Override
+	public ArrayStoreInst clone(Function<Value, Value> operandMap) {
+		return new ArrayStoreInst(operandMap.apply(getArray()), operandMap.apply(getIndex()), operandMap.apply(getData()));
 	}
 
 	@Override

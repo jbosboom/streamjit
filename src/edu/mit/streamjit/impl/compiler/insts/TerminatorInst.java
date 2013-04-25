@@ -1,7 +1,9 @@
 package edu.mit.streamjit.impl.compiler.insts;
 
+import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import edu.mit.streamjit.impl.compiler.BasicBlock;
+import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.TypeFactory;
 import edu.mit.streamjit.impl.compiler.types.VoidType;
 
@@ -32,6 +34,9 @@ public abstract class TerminatorInst extends Instruction {
 	public VoidType getType() {
 		return (VoidType)super.getType();
 	}
+
+	@Override
+	public abstract TerminatorInst clone(Function<Value, Value> operandMap);
 
 	/**
 	 * Returns all this TerminatorInst's successors.  This is a filtered view of

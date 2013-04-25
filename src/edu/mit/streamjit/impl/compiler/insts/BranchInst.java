@@ -1,10 +1,12 @@
 package edu.mit.streamjit.impl.compiler.insts;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.BasicBlock;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.ReferenceType;
 import edu.mit.streamjit.impl.compiler.types.Type;
+import java.util.Map;
 
 /**
  * A conditional branch.  Compares two values against one another and branches
@@ -44,6 +46,12 @@ public final class BranchInst extends TerminatorInst {
 
 	public Sense getSense() {
 		return sense;
+	}
+
+	@Override
+	public BranchInst clone(Function<Value, Value> operandMap) {
+		return new BranchInst(operandMap.apply(getOperand(0)), sense, operandMap.apply(getOperand(1)),
+				(BasicBlock)operandMap.apply(getOperand(2)), (BasicBlock)operandMap.apply(getOperand(3)));
 	}
 
 	@Override

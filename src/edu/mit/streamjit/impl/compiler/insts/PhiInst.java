@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler.insts;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicates;
 import com.google.common.collect.FluentIterable;
@@ -45,6 +46,16 @@ public final class PhiInst extends Instruction {
 
 	public Iterable<Value> incomingValues() {
 		return FluentIterable.from(operands()).filter(Value.class);
+	}
+
+	@Override
+	public PhiInst clone(Function<Value, Value> operandMap) {
+		PhiInst i = new PhiInst(getType());
+		Iterator<BasicBlock> blocks = predecessors().iterator();
+		Iterator<Value> values = incomingValues().iterator();
+		while (blocks.hasNext())
+			i.put((BasicBlock)operandMap.apply(blocks.next()), operandMap.apply(values.next()));
+		return i;
 	}
 
 	@Override
