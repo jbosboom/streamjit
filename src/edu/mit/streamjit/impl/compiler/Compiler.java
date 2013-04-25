@@ -286,39 +286,18 @@ public final class Compiler {
 				item.setName("poppedItem");
 				BinaryInst popCountPlusOne = new BinaryInst(popCount, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
 				StoreInst updatePopCount = new StoreInst(data.popCount, popCountPlusOne);
-
-				List<Instruction> subList = block.instructions().subList(0, block.instructions().indexOf(inst));
-				subList.add(popCount);
-				subList.add(item);
-				subList.add(popCountPlusOne);
-				subList.add(updatePopCount);
-
-				inst.replaceAllUsesWith(item);
-				block.instructions().remove(inst);
+				inst.replaceInstWithInsts(item, popCount, item, popCountPlusOne, updatePopCount);
 			} else if ((method.equals(push1Filter) || method.equals(push1Joiner)) && data.worker != lastWorker) {
 				Value item = ci.getArgument(1);
 				LoadInst pushCount = new LoadInst(data.pushCount);
 				ArrayStoreInst store = new ArrayStoreInst(rwork.arguments().get(2), pushCount, item);
 				BinaryInst pushCountPlusOne = new BinaryInst(pushCount, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
 				StoreInst updatePushCount = new StoreInst(data.popCount, pushCountPlusOne);
-
-				List<Instruction> subList = block.instructions().subList(0, block.instructions().indexOf(inst));
-				subList.add(pushCount);
-				subList.add(store);
-				subList.add(pushCountPlusOne);
-				subList.add(updatePushCount);
-
-				inst.replaceAllUsesWith(item);
-				block.instructions().remove(inst);
+				inst.replaceInstWithInsts(store, pushCount, store, pushCountPlusOne, updatePushCount);
 			} else if ((method.equals(push1Filter) || method.equals(push1Joiner)) && data.worker == lastWorker) {
 				Value item = ci.getArgument(1);
 				CallInst pushOntoChannel = new CallInst(channelPush, rwork.arguments().get(2), item);
-
-				List<Instruction> subList = block.instructions().subList(0, block.instructions().indexOf(inst));
-				subList.add(pushOntoChannel);
-
-				inst.replaceAllUsesWith(item);
-				block.instructions().remove(inst);
+				inst.replaceInstWithInst(pushOntoChannel);
 			} else if (method.equals(pop2)) {
 				LoadInst popCountArray = new LoadInst(data.popCount);
 				ArrayLoadInst popCount = new ArrayLoadInst(popCountArray, ci.getArgument(1));
@@ -327,17 +306,7 @@ public final class Compiler {
 				item.setName("poppedItem");
 				BinaryInst popCountPlusOne = new BinaryInst(popCount, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
 				ArrayStoreInst updatePopCount = new ArrayStoreInst(popCountArray, ci.getArgument(1), popCountPlusOne);
-
-				List<Instruction> subList = block.instructions().subList(0, block.instructions().indexOf(inst));
-				subList.add(popCountArray);
-				subList.add(popCount);
-				subList.add(inputSelect);
-				subList.add(item);
-				subList.add(popCountPlusOne);
-				subList.add(updatePopCount);
-
-				inst.replaceAllUsesWith(item);
-				block.instructions().remove(inst);
+				inst.replaceInstWithInsts(item, popCountArray, popCount, inputSelect, item, popCountPlusOne, updatePopCount);
 			} else if (method.equals(push2) && data.worker != lastWorker) {
 				Value item = ci.getArgument(2);
 				LoadInst pushCountArray = new LoadInst(data.pushCount);
@@ -346,34 +315,16 @@ public final class Compiler {
 				ArrayStoreInst store = new ArrayStoreInst(outputSelect, pushCount, item);
 				BinaryInst pushCountPlusOne = new BinaryInst(pushCount, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
 				ArrayStoreInst updatePushCount = new ArrayStoreInst(pushCountArray, ci.getArgument(1), pushCountPlusOne);
-
-				List<Instruction> subList = block.instructions().subList(0, block.instructions().indexOf(inst));
-				subList.add(pushCountArray);
-				subList.add(pushCount);
-				subList.add(outputSelect);
-				subList.add(store);
-				subList.add(pushCountPlusOne);
-				subList.add(updatePushCount);
-
-				inst.replaceAllUsesWith(item);
-				block.instructions().remove(inst);
+				inst.replaceInstWithInsts(store, pushCountArray, pushCount, outputSelect, store, pushCountPlusOne, updatePushCount);
 			} else if (method.equals(push2) && data.worker == lastWorker) {
 				Value item = ci.getArgument(2);
 				ArrayLoadInst outputSelect = new ArrayLoadInst(rwork.arguments().get(2), ci.getArgument(1));
 				CallInst pushOntoChannel = new CallInst(channelPush, outputSelect, item);
-
-				List<Instruction> subList = block.instructions().subList(0, block.instructions().indexOf(inst));
-				subList.add(outputSelect);
-				subList.add(pushOntoChannel);
-
-				inst.replaceAllUsesWith(item);
-				block.instructions().remove(inst);
+				inst.replaceInstWithInsts(pushOntoChannel, outputSelect, pushOntoChannel);
 			} else if (method.equals(outputs)) {
-				inst.replaceAllUsesWith(module.constants().getSmallestIntConstant(getNumOutputs(data.worker)));
-				block.instructions().remove(inst);
+				inst.replaceInstWithValue(module.constants().getSmallestIntConstant(getNumOutputs(data.worker)));
 			} else if (method.equals(inputs)) {
-				inst.replaceAllUsesWith(module.constants().getSmallestIntConstant(getNumInputs(data.worker)));
-				block.instructions().remove(inst);
+				inst.replaceInstWithValue(module.constants().getSmallestIntConstant(getNumInputs(data.worker)));
 			} else
 				throw new AssertionError(inst);
 		}
