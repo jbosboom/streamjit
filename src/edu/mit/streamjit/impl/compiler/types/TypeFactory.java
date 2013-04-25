@@ -107,6 +107,14 @@ public final class TypeFactory implements Iterable<Type> {
 		return getArrayType(parent.getKlass(klass));
 	}
 
+	public ArrayType getArrayType(RegularType componentType, int dimensions) {
+		return getArrayType(parent.getArrayKlass(componentType.getKlass(), dimensions));
+	}
+
+	public ArrayType getArrayType(Class<?> componentType, int dimensions) {
+		return getArrayType(getRegularType(componentType), dimensions);
+	}
+
 	public WrapperType getWrapperType(Klass klass) {
 		return (WrapperType)getType(klass);
 	}
