@@ -56,8 +56,10 @@ public final class DeadCodeElimination {
 		do {
 			makingProgress = false;
 			for (Instruction i : ImmutableList.copyOf(block.instructions()))
-				if (!(i.getType() instanceof VoidType) && i.uses().isEmpty())
-					changed |= makingProgress |= block.instructions().remove(i);
+				if (!(i.getType() instanceof VoidType) && i.uses().isEmpty()) {
+					i.eraseFromParent();
+					changed = makingProgress = true;
+				}
 		} while (makingProgress);
 		return changed;
 	}
@@ -82,16 +84,14 @@ public final class DeadCodeElimination {
 				PhiInst pi = (PhiInst)i;
 
 				if (Iterables.size(pi.incomingValues()) == 1) {
-					pi.replaceAllUsesWith(Iterables.getOnlyElement(pi.incomingValues()));
-					block.instructions().remove(pi);
+					pi.replaceInstWithValue(Iterables.getOnlyElement(pi.incomingValues()));
 					makingProgress = true;
 					continue;
 				}
 
 				ImmutableSet<Value> phiSources = phiSources(pi);
 				if (phiSources.size() == 1) {
-					pi.replaceAllUsesWith(phiSources.iterator().next());
-					block.instructions().remove(pi);
+					pi.replaceInstWithValue(phiSources.iterator().next());
 					makingProgress = true;
 					continue;
 				}
