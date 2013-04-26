@@ -370,8 +370,10 @@ public final class Klass implements Accessible, Parented<Module> {
 			writer.println(f.toString());
 		writer.println();
 
-		for (Method m : methods)
+		for (Method m : methods) {
 			m.dump(writer);
+			writer.println();
+		}
 
 		writer.flush();
 	}
