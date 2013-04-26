@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.compiler;
 
+import static com.google.common.base.Preconditions.*;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import edu.mit.streamjit.impl.compiler.insts.Instruction;
 import edu.mit.streamjit.impl.compiler.insts.TerminatorInst;
@@ -75,5 +77,17 @@ public class BasicBlock extends Value implements Parented<Method> {
 	public Iterable<BasicBlock> successors() {
 		TerminatorInst terminator = getTerminator();
 		return terminator != null ? terminator.successors() : Collections.<BasicBlock>emptyList();
+	}
+
+	public BasicBlock removeFromParent() {
+		checkState(getParent() != null);
+		getParent().basicBlocks().remove(this);
+		return this;
+	}
+
+	public void eraseFromParent() {
+		removeFromParent();
+		for (Instruction i : ImmutableList.copyOf(instructions()))
+			i.eraseFromParent();
 	}
 }

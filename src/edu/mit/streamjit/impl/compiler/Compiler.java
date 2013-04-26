@@ -243,6 +243,7 @@ public final class Compiler {
 		vmap.put(newWork.arguments().get(2), trueWork.arguments().get(1));
 		Cloning.cloneMethod(newWork, trueWork, vmap);
 		data.workMethod = trueWork;
+		newWork.eraseFromParent();
 	}
 
 	private MethodType makeWorkMethodType(Worker<?, ?> worker) {

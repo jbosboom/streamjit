@@ -156,6 +156,18 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		return parent;
 	}
 
+	public Method removeFromParent() {
+		checkState(getParent() != null);
+		getParent().methods().remove(this);
+		return this;
+	}
+
+	public void eraseFromParent() {
+		removeFromParent();
+		for (BasicBlock b : ImmutableList.copyOf(basicBlocks))
+			b.eraseFromParent();
+	}
+
 	@Override
 	public String toString() {
 		return modifiers.toString() + " " + getName() + " " +getType();
