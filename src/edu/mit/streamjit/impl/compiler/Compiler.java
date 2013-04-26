@@ -236,6 +236,13 @@ public final class Compiler {
 
 		//At this point, we've replaced all uses of the dummy receiver argument.
 		assert newWork.arguments().get(0).uses().isEmpty();
+		Method trueWork = new Method("work"+id, workMethodType, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass);
+		vmap.clear();
+		vmap.put(newWork.arguments().get(0), null);
+		vmap.put(newWork.arguments().get(1), trueWork.arguments().get(0));
+		vmap.put(newWork.arguments().get(2), trueWork.arguments().get(1));
+		Cloning.cloneMethod(newWork, trueWork, vmap);
+		data.workMethod = trueWork;
 	}
 
 	private MethodType makeWorkMethodType(Worker<?, ?> worker) {
