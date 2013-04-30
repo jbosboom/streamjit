@@ -19,6 +19,7 @@ import java.util.Queue;
 import java.util.Set;
 import edu.mit.streamjit.impl.common.Workers.StreamPosition;
 import edu.mit.streamjit.util.ReflectionUtils;
+import edu.mit.streamjit.util.TopologicalSort;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -620,41 +621,12 @@ public final class MessageConstraint {
 	 * @return a topologically-ordered list of the given nodes
 	 */
 	private static List<Worker<?, ?>> topologicalSort(Set<Worker<?, ?>> nodes) {
-		//Build a "use count" for each node, counting the number of nodes that
-		//have it as a successor.
-		Map<Worker<?, ?>, Integer> useCount = new HashMap<>();
-		for (Worker<?, ?> n : nodes)
-			useCount.put(n, 0);
-		for (Worker<?, ?> n : nodes)
-			for (Worker<?, ?> next : Workers.getSuccessors(n)) {
-				Integer count = useCount.get(next);
-				if (count != null)
-					useCount.put(next, count+1);
+		return TopologicalSort.sort(nodes, new TopologicalSort.PartialOrder<Worker<?, ?>>() {
+			@Override
+			public boolean lessThan(Worker a, Worker b) {
+				return Workers.getAllSuccessors(a).contains(b);
 			}
-
-		List<Worker<?, ?>> result = new ArrayList<>();
-		Queue<Worker<?, ?>> unused = new ArrayDeque<>();
-		for (Map.Entry<Worker<?, ?>, Integer> e : useCount.entrySet())
-			if (e.getValue() == 0)
-				unused.add(e.getKey());
-		while (!unused.isEmpty()) {
-			Worker<?, ?> n = unused.remove();
-			result.add(n);
-			//Decrement the use counts of n's successors, adding them to unused
-			//if the use count becomes zero.
-			for (Worker<?, ?> next : Workers.getSuccessors(n)) {
-				Integer count = useCount.get(next);
-				if (count != null) {
-					count -= 1;
-					useCount.put(next, count);
-					if (count == 0)
-						unused.add(next);
-				}
-			}
-		}
-
-		assert result.size() == nodes.size();
-		return result;
+		});
 	}
 
 	/**
