@@ -9,7 +9,8 @@ import com.google.common.math.LongMath;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 10/1/2011
  */
-public final class Fraction implements Comparable<Fraction> {
+public final class Fraction extends Number implements Comparable<Fraction> {
+	private static final long serialVersionUID = 1L;
 	public static final Fraction ZERO = new Fraction(0);
 	public static final Fraction ONE = new Fraction(1);
 	private final long numerator, denominator;
@@ -68,6 +69,26 @@ public final class Fraction implements Comparable<Fraction> {
 
 	public Fraction recip() {
 		return new Fraction(denominator, numerator);
+	}
+
+	@Override
+	public int intValue() {
+		return (int)doubleValue();
+	}
+
+	@Override
+	public long longValue() {
+		return (long)doubleValue();
+	}
+
+	@Override
+	public float floatValue() {
+		return (float)doubleValue();
+	}
+
+	@Override
+	public double doubleValue() {
+		return ((double)num())/denom();
 	}
 
 	@Override
