@@ -1,6 +1,8 @@
 package edu.mit.streamjit.util;
 
-import com.google.common.math.LongMath;
+import static com.google.common.math.LongMath.gcd;
+import static com.google.common.math.LongMath.checkedAdd;
+import static com.google.common.math.LongMath.checkedMultiply;
 
 /**
  * Represents a Fraction.
@@ -24,13 +26,13 @@ public final class Fraction extends Number implements Comparable<Fraction> {
 		if (numerator == 0)
 			denominator = 1;
 		else {
-			long gcd = LongMath.gcd(Math.abs(numerator), Math.abs(denominator));
+			long gcd = gcd(Math.abs(numerator), Math.abs(denominator));
 			numerator /= gcd;
 			denominator /= gcd;
 
 			if (denominator < 0) {
-				numerator = -numerator;
-				denominator = -denominator;
+				numerator = checkedNegate(numerator);
+				denominator = checkedNegate(denominator);
 			}
 		}
 
@@ -48,7 +50,7 @@ public final class Fraction extends Number implements Comparable<Fraction> {
 
 	public Fraction add(Fraction other) {
 		//TODO: use LCM here to be more overflow-resistant
-		return new Fraction(num()*other.denom() + other.num()*denom(), denom()*other.denom());
+		return new Fraction(checkedAdd(checkedMultiply(num(), other.denom()), checkedMultiply(other.num(), denom())), checkedMultiply(denom(), other.denom()));
 	}
 
 	public Fraction sub(Fraction other) {
@@ -56,7 +58,7 @@ public final class Fraction extends Number implements Comparable<Fraction> {
 	}
 
 	public Fraction mul(Fraction other) {
-		return new Fraction(num()*other.num(), denom()*other.denom());
+		return new Fraction(checkedMultiply(num(), other.num()), checkedMultiply(denom(), other.denom()));
 	}
 
 	public Fraction div(Fraction other) {
@@ -64,7 +66,7 @@ public final class Fraction extends Number implements Comparable<Fraction> {
 	}
 
 	public Fraction neg() {
-		return new Fraction(-numerator, denominator);
+		return new Fraction(checkedNegate(numerator), denominator);
 	}
 
 	public Fraction recip() {
@@ -121,5 +123,11 @@ public final class Fraction extends Number implements Comparable<Fraction> {
 	@Override
 	public String toString() {
 		return num()+"/"+denom();
+	}
+
+	private static long checkedNegate(long x) {
+		if (x == Long.MIN_VALUE)
+			throw new ArithmeticException();
+		return -x;
 	}
 }
