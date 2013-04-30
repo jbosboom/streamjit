@@ -73,6 +73,19 @@ public final class Fraction extends Number implements Comparable<Fraction> {
 		return new Fraction(denominator, numerator);
 	}
 
+	/**
+	 * If this Fraction represents a mathematical integer, returns that integer
+	 * (the numerator).  Throws ArithmeticException otherwise.
+	 *
+	 * This might be considered a checked version of {@code #longValue()}.
+	 * @return this fraction's value if it's an integer
+	 */
+	public long asInteger() {
+		if (denom() != 1)
+			throw new ArithmeticException("Not an integer: "+toString());
+		return num();
+	}
+
 	@Override
 	public int intValue() {
 		return (int)doubleValue();
