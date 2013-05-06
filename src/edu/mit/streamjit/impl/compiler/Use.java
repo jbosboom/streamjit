@@ -42,7 +42,7 @@ public class Use {
 	}
 
 	public void setOperand(Value other) {
-		user.checkOperand(operandIndex, other);
+		user.checkOperandInternal(operandIndex, other);
 		if (Objects.equals(getOperand(), other))
 			return;
 		if (value != null)

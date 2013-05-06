@@ -16,7 +16,43 @@ import java.util.Objects;
  * @since 3/6/2013
  */
 public abstract class User extends Value {
+	/**
+	 * The operands of this User, stored in these "outgoing" Uses.  Not to be
+	 * confused with the "incoming" Uses stored in Value and returned by uses().
+	 */
 	private final List<Use> uses;
+	/**
+	 * Creates a User of the given type with an empty operand list.
+	 * @param type the type of this User
+	 */
+	public User(Type type) {
+		this(type, null);
+	}
+	/**
+	 * Creates a User of the given type with an operand list of the given size,
+	 * with all operands initialized to null.
+	 * @param type the type of this User
+	 * @param operands the number of operands of this User
+	 */
+	public User(Type type, int operands) {
+		this(type, operands, null);
+	}
+	/**
+	 * Creates a User of the given type with an empty operand list.
+	 * @param type the type of this User
+	 * @param name the name of this User (may be null)
+	 */
+	public User(Type type, String name) {
+		super(type, name);
+		uses = new ArrayList<>();
+	}
+	/**
+	 * Creates a User of the given type with an operand list of the given size,
+	 * with all operands initialized to null.
+	 * @param type the type of this User
+	 * @param operands the number of operands of this User
+	 * @param name the name of this User (may be null)
+	 */
 	public User(Type type, int operands, String name) {
 		super(type, name);
 		uses = new ArrayList<>(operands);
@@ -28,20 +64,25 @@ public abstract class User extends Value {
 		return uses.size();
 	}
 
-	public Iterator<Value> operandIterator() {
-		return new Iterator<Value>() {
-			private final Iterator<Use> iter = uses.iterator();
+	public Iterable<Value> operands() {
+		return new Iterable<Value>() {
 			@Override
-			public boolean hasNext() {
-				return iter.hasNext();
-			}
-			@Override
-			public Value next() {
-				return iter.next().getOperand();
-			}
-			@Override
-			public void remove() {
-				throw new UnsupportedOperationException();
+			public Iterator<Value> iterator() {
+				return new Iterator<Value>() {
+					private final Iterator<Use> iter = uses.iterator();
+					@Override
+					public boolean hasNext() {
+						return iter.hasNext();
+					}
+					@Override
+					public Value next() {
+						return iter.next().getOperand();
+					}
+					@Override
+					public void remove() {
+						throw new UnsupportedOperationException();
+					}
+				};
 			}
 		};
 	}
@@ -52,6 +93,17 @@ public abstract class User extends Value {
 
 	public void setOperand(int i, Value v) {
 		uses.get(i).setOperand(v);
+	}
+
+	/**
+	 * Sets all operands to null (but does not remove them in the sense of
+	 * removeOperand()).  Typically, this is called when a User is being
+	 * permanently removed from the IR structures, to remove it from other
+	 * Values' use lists and to permit garbage collection.
+	 */
+	public void dropAllOperands() {
+		for (int i = 0; i < getNumOperands(); ++i)
+			setOperand(i, null);
 	}
 
 	/**
@@ -81,13 +133,13 @@ public abstract class User extends Value {
 	//Provided for subclasses that want a variable-size operand list.
 	protected void addOperand(int i, Value v) {
 		//Check before committing any changes, for debuggability.
-		checkOperand(i, v);
-		for (int j = i; i < uses.size(); ++i)
-			checkOperand(j+1, uses.get(j).getOperand());
+		checkOperandInternal(i, v);
+		for (int j = i; j < uses.size(); ++j)
+			checkOperandInternal(j+1, uses.get(j).getOperand());
 
 		Use use = new Use(this, i, null);
 		uses.add(i, use);
-		for (int j = i+1; i < uses.size(); ++i)
+		for (int j = i+1; j < uses.size(); ++j)
 			uses.get(j).setOperandIndex(j);
 		use.setOperand(v);
 	}
@@ -95,14 +147,20 @@ public abstract class User extends Value {
 	//Provided for subclasses that want a variable-size operand list.
 	protected void removeOperand(int i) {
 		//Check before committing any changes, for debuggability.
-		for (int j = i; i < uses.size(); ++i)
-			checkOperand(j, uses.get(j+1).getOperand());
+		for (int j = i; j < uses.size(); ++j)
+			checkOperandInternal(j, uses.get(j+1).getOperand());
 
 		Use use = uses.get(i);
 		use.setOperand(null);
 		uses.remove(i);
 		for (; i < uses.size(); ++i)
 			uses.get(i).setOperandIndex(i);
+	}
+
+	final void checkOperandInternal(int i, Value v) {
+		//null is always a legal operand to allow dropping operands.
+		if (v != null)
+			checkOperand(i, v);
 	}
 
 	/**

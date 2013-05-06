@@ -92,19 +92,17 @@ public final class ReflectionUtils {
 	 */
 	public static boolean calledDirectlyFrom(Class<?> expectedCaller) {
 		StackTraceElement[] trace = Thread.currentThread().getStackTrace();
-		//We're trace[0], the caller is trace[1], and the caller's caller is trace[2].
-		Class<?> actualCaller;
-		try {
-			actualCaller = Class.forName(trace[2].getClassName());
-		} catch (ClassNotFoundException ex) {
-			throw new AssertionError("Unknown caller "+trace[2].getClassName(), ex);
-		}
-		if (actualCaller != expectedCaller)
+		//trace[0]: Thread.getStackTrace
+		//trace[1]: ReflectionUtils.calledDirectlyFrom
+		//trace[2]: caller
+		//trace[3]: caller's caller
+		StackTraceElement callerCaller = trace[3];
+		if (!callerCaller.getClassName().equals(expectedCaller.getName()))
 			//This exception carries a stack trace, so we don't need to store
 			//it in the message.
 			throw new AssertionError(String.format(
 					"Expected caller %s, but was %s",
-					expectedCaller, actualCaller));
+					expectedCaller, callerCaller));
 		return true;
 	}
 }

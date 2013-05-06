@@ -14,7 +14,7 @@ public final class WrapperType extends ReferenceType {
 	WrapperType(Klass klass) {
 		super(klass);
 		Class<?> backer = klass.getBackingClass();
-		checkArgument(backer != null && backer.isPrimitive() && !backer.equals(Void.class),
+		checkArgument(backer != null && Primitives.isWrapperType(backer) && !backer.equals(Void.class),
 				"not a wrapper type: %s", klass);
 	}
 

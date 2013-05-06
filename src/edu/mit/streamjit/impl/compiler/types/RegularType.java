@@ -14,4 +14,10 @@ public abstract class RegularType extends ReturnType {
 		super(klass);
 		checkArgument(!"void".equals(klass.getName()), "not a RegularType: %s", klass);
 	}
+
+	@Override
+	public int getCategory() {
+		//PrimitiveType overrides this for long and double.
+		return 1;
+	}
 }

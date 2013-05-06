@@ -19,9 +19,7 @@ import java.util.Queue;
 import java.util.Set;
 import edu.mit.streamjit.impl.common.Workers.StreamPosition;
 import edu.mit.streamjit.util.ReflectionUtils;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.MethodVisitor;
+import edu.mit.streamjit.util.TopologicalSort;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -221,16 +219,14 @@ public final class MessageConstraint {
 	 * @return
 	 */
 	private static ImmutableList<WorkerData> parseBytecodes(Class<?> klass) {
-		ClassReader r = null;
+		MethodNode mn;
 		try {
-			r = new ClassReader(klass.getName());
+			mn = MethodNodeBuilder.buildMethodNode(klass, "work", "()V");
 		} catch (IOException ex) {
 			throw new IllegalStreamGraphException("Couldn't get bytecode for "+klass.getName(), ex);
+		} catch (NoSuchMethodException ex) {
+			throw new AssertionError("Can't happen! Worker without work()? "+klass.getName(), ex);
 		}
-
-		WorkClassVisitor wcv = new WorkClassVisitor();
-		r.accept(wcv, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-		MethodNode mn = wcv.getWorkMethodNode();
 
 		ImmutableList.Builder<WorkerData> workerDatas = ImmutableList.builder();
 		for (AbstractInsnNode insn = mn.instructions.getFirst(); insn != null; insn = insn.getNext()) {
@@ -357,27 +353,6 @@ public final class MessageConstraint {
 		}
 
 		return latencyField != null ? new WorkerData(portalField, latencyField) : new WorkerData(portalField, constantLatency);
-	}
-
-	/**
-	 * Builds a MethodNode for the work() method.
-	 */
-	private static class WorkClassVisitor extends ClassVisitor {
-		private MethodNode mn;
-		WorkClassVisitor() {
-			super(Opcodes.ASM4);
-		}
-		@Override
-		public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-			if (name.equals("work") && desc.equals("()V")) {
-				mn = new MethodNode(Opcodes.ASM4, access, name, desc, signature, exceptions);
-				return mn;
-			}
-			return null;
-		}
-		public MethodNode getWorkMethodNode() {
-			return mn;
-		}
 	}
 	//</editor-fold>
 
@@ -646,41 +621,12 @@ public final class MessageConstraint {
 	 * @return a topologically-ordered list of the given nodes
 	 */
 	private static List<Worker<?, ?>> topologicalSort(Set<Worker<?, ?>> nodes) {
-		//Build a "use count" for each node, counting the number of nodes that
-		//have it as a successor.
-		Map<Worker<?, ?>, Integer> useCount = new HashMap<>();
-		for (Worker<?, ?> n : nodes)
-			useCount.put(n, 0);
-		for (Worker<?, ?> n : nodes)
-			for (Worker<?, ?> next : Workers.getSuccessors(n)) {
-				Integer count = useCount.get(next);
-				if (count != null)
-					useCount.put(next, count+1);
+		return TopologicalSort.sort(nodes, new TopologicalSort.PartialOrder<Worker<?, ?>>() {
+			@Override
+			public boolean lessThan(Worker a, Worker b) {
+				return Workers.getAllSuccessors(a).contains(b);
 			}
-
-		List<Worker<?, ?>> result = new ArrayList<>();
-		Queue<Worker<?, ?>> unused = new ArrayDeque<>();
-		for (Map.Entry<Worker<?, ?>, Integer> e : useCount.entrySet())
-			if (e.getValue() == 0)
-				unused.add(e.getKey());
-		while (!unused.isEmpty()) {
-			Worker<?, ?> n = unused.remove();
-			result.add(n);
-			//Decrement the use counts of n's successors, adding them to unused
-			//if the use count becomes zero.
-			for (Worker<?, ?> next : Workers.getSuccessors(n)) {
-				Integer count = useCount.get(next);
-				if (count != null) {
-					count -= 1;
-					useCount.put(next, count);
-					if (count == 0)
-						unused.add(next);
-				}
-			}
-		}
-
-		assert result.size() == nodes.size();
-		return result;
+		});
 	}
 
 	/**

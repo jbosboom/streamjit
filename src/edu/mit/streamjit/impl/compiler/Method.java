@@ -1,11 +1,19 @@
 package edu.mit.streamjit.impl.compiler;
 
+import com.google.common.base.Function;
+import com.google.common.base.Functions;
+import com.google.common.base.Joiner;
 import static com.google.common.base.Preconditions.*;
+import com.google.common.collect.FluentIterable;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Shorts;
+import edu.mit.streamjit.impl.compiler.insts.Instruction;
+import edu.mit.streamjit.impl.compiler.types.RegularType;
+import edu.mit.streamjit.impl.compiler.types.VoidType;
 import edu.mit.streamjit.util.IntrusiveList;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Set;
 
@@ -22,7 +30,7 @@ import java.util.Set;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/6/2013
  */
-public class Method extends Value implements ParentedList.Parented<Klass> {
+public class Method extends Value implements Accessible, Parented<Klass> {
 	@IntrusiveList.Next
 	private Method next;
 	@IntrusiveList.Previous
@@ -54,6 +62,20 @@ public class Method extends Value implements ParentedList.Parented<Klass> {
 		this.modifiers = Sets.immutableEnumSet(Modifier.fromMethodBits(Shorts.checkedCast(ctor.getModifiers())));
 		//We're unresolved, so we don't have arguments or basic blocks.
 	}
+	public Method(String name, MethodType type, Set<Modifier> modifiers, Klass parent) {
+		super(type, name);
+		if (name.equals("<init>"))
+			checkArgument(type.getReturnType().equals(type.getTypeFactory().getType(parent)));
+		if (name.equals("<clinit>")) {
+			checkArgument(type.getReturnType() instanceof VoidType);
+			checkArgument(type.getParameterTypes().size() == 0);
+			checkArgument(modifiers.contains(Modifier.STATIC));
+		}
+		this.modifiers = modifiers;
+		this.arguments = buildArguments();
+		this.basicBlocks = new ParentedList<>(this, BasicBlock.class);
+		parent.methods().add(this);
+	}
 
 	public boolean isMutable() {
 		return getParent().isMutable();
@@ -63,8 +85,26 @@ public class Method extends Value implements ParentedList.Parented<Klass> {
 		return basicBlocks != null;
 	}
 
+	/**
+	 * Returns true iff this method can be resolved.  This method is safe to
+	 * call at all times after this Method's construction is complete, even if
+	 * this method has already been resolved.
+	 * @return true iff this method can be resolved
+	 */
+	public boolean isResolvable() {
+		//Abstract methods don't have code; native methods have code, but not of
+		//a form we can parse.
+		return !modifiers().contains(Modifier.ABSTRACT) && !modifiers.contains(Modifier.NATIVE);
+	}
+
 	public void resolve() {
-		throw new UnsupportedOperationException("TODO");
+		checkState(isResolvable(), "cannot resolve %s", this);
+		if (isResolved())
+			return;
+
+		this.arguments = buildArguments();
+		this.basicBlocks = new ParentedList<>(this, BasicBlock.class);
+		MethodResolver.resolve(this);
 	}
 
 	@Override
@@ -86,6 +126,25 @@ public class Method extends Value implements ParentedList.Parented<Klass> {
 		return basicBlocks;
 	}
 
+	public boolean isConstructor() {
+		return getName().equals("<init>");
+	}
+
+	public boolean hasReceiver() {
+		return !(modifiers().contains(Modifier.STATIC) || isConstructor());
+	}
+
+	@Override
+	public Access getAccess() {
+		return Access.fromModifiers(modifiers());
+	}
+
+	@Override
+	public void setAccess(Access access) {
+		modifiers().removeAll(Access.allAccessModifiers());
+		modifiers().addAll(access.modifiers());
+	}
+
 	@Override
 	public void setName(String name) {
 		checkState(isMutable(), "can't change name of method on immutable class %s", getParent());
@@ -97,8 +156,76 @@ public class Method extends Value implements ParentedList.Parented<Klass> {
 		return parent;
 	}
 
+	public Method removeFromParent() {
+		checkState(getParent() != null);
+		getParent().methods().remove(this);
+		return this;
+	}
+
+	public void eraseFromParent() {
+		removeFromParent();
+		for (BasicBlock b : ImmutableList.copyOf(basicBlocks))
+			b.eraseFromParent();
+	}
+
 	@Override
 	public String toString() {
 		return modifiers.toString() + " " + getName() + " " +getType();
+	}
+
+	public void dump(PrintWriter writer) {
+		writer.write(Joiner.on(' ').join(modifiers()));
+		writer.write(" ");
+		writer.write(getType().getReturnType().toString());
+		writer.write(" ");
+		writer.write(getName());
+
+		writer.write("(");
+		String argString;
+		if (isResolved())
+			argString = Joiner.on(", ").join(FluentIterable.from(arguments()).transform(new Function<Argument, String>() {
+				@Override
+				public String apply(Argument input) {
+					return input.getType()+" "+input.getName();
+				}
+			}));
+		else
+			argString = Joiner.on(", ").join(FluentIterable.from(getType().getParameterTypes()).transform(Functions.toStringFunction()));
+		writer.write(argString);
+		writer.write(")");
+
+		if (!isResolved()) {
+			writer.write(";");
+			writer.println();
+			writer.flush();
+			return;
+		}
+
+		writer.write(" {");
+		writer.println();
+		for (BasicBlock b : basicBlocks()) {
+			writer.write(b.getName());
+			writer.write(": ");
+			writer.println();
+
+			for (Instruction i : b.instructions()) {
+				writer.write("\t");
+				writer.write(i.toString());
+				writer.println();
+			}
+		}
+		writer.write("}");
+		writer.println();
+		writer.flush();
+	}
+
+	private ImmutableList<Argument> buildArguments() {
+		ImmutableList<RegularType> paramTypes = getType().getParameterTypes();
+		ImmutableList.Builder<Argument> builder = ImmutableList.builder();
+		for (int i = 0; i < paramTypes.size(); ++i) {
+			String name = (i == 0 && hasReceiver()) ? "this" : "arg"+i;
+			builder.add(new Argument(this, paramTypes.get(i), name));
+		}
+		return builder.build();
 	}
 }

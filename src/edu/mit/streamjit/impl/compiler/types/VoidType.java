@@ -13,4 +13,14 @@ public final class VoidType extends ReturnType {
 		super(klass);
 		checkArgument(klass.getBackingClass().equals(void.class), "%s not VoidType", klass);
 	}
+
+	@Override
+	public String getDescriptor() {
+		return "V";
+	}
+
+	@Override
+	public int getCategory() {
+		throw new UnsupportedOperationException();
+	}
 }

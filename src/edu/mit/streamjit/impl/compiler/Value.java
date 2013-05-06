@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.types.Type;
 import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.ImmutableSet;
@@ -29,11 +30,11 @@ public abstract class Value {
 	 */
 	private ImmutableSet<Use> uses = ImmutableSet.of();
 	public Value(Type type) {
-		this.type = type;
+		this(type, null);
 	}
 	public Value(Type type, String name) {
-		this.type = type;
-		this.name = name;
+		this.type = checkNotNull(type);
+		this.name = name != null ? name : getDefaultName();
 	}
 
 	public Type getType() {
@@ -130,5 +131,14 @@ public abstract class Value {
 	public void replaceAllUsesWith(Value value) {
 		for (Use use : uses())
 			use.setOperand(value);
+	}
+
+	@Override
+	public String toString() {
+		return String.format("%s (%s)", getName(), getType());
+	}
+
+	private String getDefaultName() {
+		return String.format("%s@%h", getClass().getSimpleName(), hashCode());
 	}
 }

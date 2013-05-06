@@ -47,10 +47,15 @@ public final class TypeFactory implements Iterable<Type> {
 	private final Module parent;
 	private final Map<Klass, ReturnType> typeMap = new IdentityHashMap<>();
 	private final List<MethodType> methodTypes = new ArrayList<>();
-	private final Iterable<Type> iterable = Iterables.unmodifiableIterable(Iterables.<Type>concat(typeMap.values(), methodTypes));
+	private final List<StaticFieldType> staticFieldTypes = new ArrayList<>();
+	private final List<InstanceFieldType> instanceFieldTypes = new ArrayList<>();
+	private final BasicBlockType basicBlockType;
+	private final NullType nullType;
 	public TypeFactory(Module parent) {
 		assert ReflectionUtils.calledDirectlyFrom(Module.class);
 		this.parent = checkNotNull(parent);
+		this.basicBlockType = new BasicBlockType(parent);
+		this.nullType = new NullType(parent);
 	}
 
 	public ReturnType getType(Klass klass) {
@@ -62,6 +67,10 @@ public final class TypeFactory implements Iterable<Type> {
 		return t;
 	}
 
+	public ReturnType getType(Class<?> klass) {
+		return getType(parent.getKlass(klass));
+	}
+
 	public VoidType getVoidType() {
 		return (VoidType)getType(parent.getKlass(void.class));
 	}
@@ -70,24 +79,60 @@ public final class TypeFactory implements Iterable<Type> {
 		return (RegularType)getType(klass);
 	}
 
+	public RegularType getRegularType(Class<?> klass) {
+		return getRegularType(parent.getKlass(klass));
+	}
+
 	public PrimitiveType getPrimitiveType(Klass klass) {
 		return (PrimitiveType)getType(klass);
+	}
+
+	public PrimitiveType getPrimitiveType(Class<?> klass) {
+		return getPrimitiveType(parent.getKlass(klass));
 	}
 
 	public ReferenceType getReferenceType(Klass klass) {
 		return (ReferenceType)getType(klass);
 	}
 
+	public ReferenceType getReferenceType(Class<?> klass) {
+		return getReferenceType(parent.getKlass(klass));
+	}
+
 	public ArrayType getArrayType(Klass klass) {
 		return (ArrayType)getType(klass);
+	}
+
+	public ArrayType getArrayType(Class<?> klass) {
+		return getArrayType(parent.getKlass(klass));
+	}
+
+	public ArrayType getArrayType(RegularType componentType, int dimensions) {
+		return getArrayType(parent.getArrayKlass(componentType.getKlass(), dimensions));
+	}
+
+	public ArrayType getArrayType(Class<?> componentType, int dimensions) {
+		return getArrayType(getRegularType(componentType), dimensions);
 	}
 
 	public WrapperType getWrapperType(Klass klass) {
 		return (WrapperType)getType(klass);
 	}
 
+	public WrapperType getWrapperType(Class<?> klass) {
+		return getWrapperType(parent.getKlass(klass));
+	}
+
 	public <T extends ReturnType> T getType(Klass klass, Class<T> typeClass) {
 		return typeClass.cast(getType(klass));
+	}
+
+	public <T extends ReturnType> T getType(Class<?> klass, Class<T> typeClass) {
+		return getType(parent.getKlass(klass), typeClass);
+	}
+
+	public NullType getNullType() {
+		return nullType;
 	}
 
 	public MethodType getMethodType(ReturnType returnType, List<RegularType> parameterTypes) {
@@ -105,6 +150,14 @@ public final class TypeFactory implements Iterable<Type> {
 
 	public MethodType getMethodType(ReturnType returnType, RegularType... parameterTypes) {
 		return getMethodType(returnType, Arrays.asList(parameterTypes));
+	}
+
+	public MethodType getMethodType(Class<?> returnType, Class<?>... parameterTypes) {
+		ReturnType rt = getType(returnType);
+		ImmutableList.Builder<RegularType> pt = ImmutableList.builder();
+		for (Class<?> c : parameterTypes)
+			pt.add(getRegularType(c));
+		return getMethodType(rt, pt.build());
 	}
 
 	public MethodType getMethodType(java.lang.invoke.MethodType methodType) {
@@ -149,6 +202,36 @@ public final class TypeFactory implements Iterable<Type> {
 		return getMethodType(returnType, parameterTypes);
 	}
 
+	public StaticFieldType getFieldType(RegularType fieldType) {
+		for (StaticFieldType t : staticFieldTypes)
+			if (t.getFieldType().equals(fieldType))
+				return t;
+		StaticFieldType t = new StaticFieldType(fieldType);
+		staticFieldTypes.add(t);
+		return t;
+	}
+
+	public InstanceFieldType getFieldType(ReferenceType instanceType, RegularType fieldType) {
+		for (InstanceFieldType t : instanceFieldTypes)
+			if (t.getFieldType().equals(fieldType) && t.getInstanceType().equals(instanceType))
+				return t;
+		InstanceFieldType t = new InstanceFieldType(instanceType, fieldType);
+		instanceFieldTypes.add(t);
+		return t;
+	}
+
+	public FieldType getFieldType(java.lang.reflect.Field field) {
+		RegularType fieldType = getRegularType(field.getType());
+		if (java.lang.reflect.Modifier.isStatic(field.getModifiers()))
+			return getFieldType(fieldType);
+		else
+			return getFieldType(getReferenceType(field.getDeclaringClass()), fieldType);
+	}
+
+	public BasicBlockType getBasicBlockType() {
+		return basicBlockType;
+	}
+
 	/**
 	 * Returns all the types created by this TypeFactory.  There are no
 	 * guarantees on iteration order.  Calling methods on this TypeFactory while
@@ -159,8 +242,15 @@ public final class TypeFactory implements Iterable<Type> {
 	 * @return an iterator over Types created by this TypeFactory
 	 */
 	@Override
+	@SuppressWarnings("unchecked")
 	public Iterator<Type> iterator() {
-		return iterable.iterator();
+		return Iterables.unmodifiableIterable(Iterables.<Type>concat(
+				typeMap.values(),
+				methodTypes,
+				staticFieldTypes,
+				instanceFieldTypes,
+				ImmutableList.of(basicBlockType, nullType))
+				).iterator();
 	}
 
 	private ReturnType makeType(Klass klass) {

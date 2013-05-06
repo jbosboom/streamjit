@@ -25,4 +25,28 @@ public final class ArrayType extends ReferenceType {
 	public RegularType getElementType() {
 		return getTypeFactory().getRegularType(getKlass().getElementKlass());
 	}
+
+	@Override
+	public boolean isSubtypeOf(Type other) {
+		if (other instanceof ArrayType) {
+			RegularType ct = getComponentType();
+			RegularType oct = ((ArrayType)other).getComponentType();
+			if (ct instanceof PrimitiveType && oct instanceof PrimitiveType)
+				return ct.equals(oct);
+			else if (ct instanceof ReferenceType && oct instanceof ReferenceType)
+				return ct.isSubtypeOf(oct);
+			else
+				return false;
+		} else if (other instanceof ReferenceType) {
+			Klass rtk = ((ReferenceType)other).getKlass();
+			//Object, Cloneable or Serializable
+			return rtk.equals(getKlass().getSuperclass()) || getKlass().interfaces().contains(rtk);
+		} else
+			return false;
+	}
+
+	@Override
+	public String getDescriptor() {
+		return "["+getComponentType().getDescriptor();
+	}
 }

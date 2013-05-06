@@ -44,7 +44,8 @@ public class IOInfo {
 			checkArgument((preds.size() == ichans.size()) || (preds.isEmpty() && ichans.size() == 1));
 			if (preds.isEmpty()) {
 				checkArgument(!overallInput, "two overall inputs?!");
-				retval.add(new IOInfo(null, w, ichans.get(0), Blob.Token.createOverallInputToken(w), true));
+				Channel<?> chan = Iterables.get(ichans, 0, null);
+				retval.add(new IOInfo(null, w, chan, Blob.Token.createOverallInputToken(w), true));
 				overallInput = true;
 			}
 			for (int i = 0; i < preds.size(); ++i) {
@@ -61,7 +62,8 @@ public class IOInfo {
 			checkArgument((succs.size() == ochans.size()) || (succs.isEmpty() && ochans.size() == 1));
 			if (succs.isEmpty()) {
 				checkArgument(!overallOutput, "two overall outputs?!");
-				retval.add(new IOInfo(w, null, ochans.get(0), Blob.Token.createOverallOutputToken(w), false));
+				Channel<?> chan = Iterables.get(ochans, 0, null);
+				retval.add(new IOInfo(w, null, chan, Blob.Token.createOverallOutputToken(w), false));
 				overallOutput = true;
 			}
 			for (int i = 0; i < succs.size(); ++i) {

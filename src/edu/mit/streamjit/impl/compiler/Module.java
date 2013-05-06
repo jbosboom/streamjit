@@ -16,8 +16,9 @@ import java.util.Map;
  */
 public final class Module {
 	private final TypeFactory typeFactory = new TypeFactory(this);
-	private KlassList klasses = new KlassList(this);
-	private Map<String, Klass> klassesMap = new HashMap<>();
+	private final ConstantFactory constantFactory = new ConstantFactory(this);
+	private final KlassList klasses = new KlassList(this);
+	private final Map<String, Klass> klassesMap = new HashMap<>();
 	public Module() {
 	}
 
@@ -27,6 +28,10 @@ public final class Module {
 
 	public TypeFactory types() {
 		return typeFactory;
+	}
+
+	public ConstantFactory constants() {
+		return constantFactory;
 	}
 
 	/**
@@ -93,6 +98,13 @@ public final class Module {
 			//Klasses if they depended on the changed definitions.
 			checkArgument(t.isMutable(), "removing immutable Klass %s", t.getName());
 			super.elementRemoving(t);
+		}
+
+		@Override
+		protected void elementRemoved(Klass t) {
+			super.elementRemoved(t);
+			Klass removed = klassesMap.remove(t.getName());
+			assert t.equals(removed) : t +", "+removed;
 		}
 	}
 }
