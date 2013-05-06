@@ -12,15 +12,16 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 
 /**
- * Manufactures {@link ConcurrentBlob}.
+ * Manufactures {@link SingleThreadedBlob}. Manufactured blobs are meant to run on a single thread.
  * @author Sumanan sumanan@mit.edu
  * @since Apr 10, 2013
  */
-public class ConcurrentBlobFactory implements BlobFactory {
+public class SingleThreadedFactory implements BlobFactory {
 
 	@Override
+	//As {@link SingleThreadedBlob} is single threaded, maxNumCores that passed in makeBlob has no effect.
 	public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
-		return new ConcurrentBlob(workers, config, maxNumCores, Collections.<MessageConstraint> emptyList());
+		return new SingleThreadedBlob(workers, config, Collections.<MessageConstraint> emptyList());
 	}
 
 	@Override

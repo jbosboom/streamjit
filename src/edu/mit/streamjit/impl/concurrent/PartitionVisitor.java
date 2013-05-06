@@ -3,8 +3,6 @@ package edu.mit.streamjit.impl.concurrent;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.sun.corba.se.spi.orbutil.threadpool.Work;
-
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.OneToOneElement;
@@ -13,7 +11,6 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamVisitor;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.interp.Channel;

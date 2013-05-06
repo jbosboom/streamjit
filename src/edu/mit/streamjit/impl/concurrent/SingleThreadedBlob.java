@@ -10,19 +10,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-import sun.awt.windows.ThemeReader;
-import sun.org.mozilla.javascript.internal.ast.WhileLoop;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.sun.istack.internal.Nullable;
 
 import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
-import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
@@ -32,18 +28,17 @@ import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.Partitioner;
 
 /**
- * {@link ConcurrentBlob} interprets a section(partition) of a stream graph. For the moment, {@link ConcurrentBlob} is single threaded
- * and maxNumCores that is provided when making a {@link Blob} has no effect. As {@link ConcurrentBlob} is single threaded, few codes
- * are copied from {@link Interpreter} class. But in future, when we response to maxNumCores this will change.
+ * {@link SingleThreadedBlob} interprets a section(partition) of a stream graph. {@link SingleThreadedBlob} is single threaded
+ * and maxNumCores that is provided when making a {@link Blob} has no effect at all. As {@link SingleThreadedBlob} is single threaded, few codes
+ * are copied from {@link Interpreter} class. But in future, this will get changed.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Apr 10, 2013
  */
-public class ConcurrentBlob implements Blob {
+public class SingleThreadedBlob implements Blob {
 
 	ImmutableSet<Worker<?, ?>> workers, blobSinks;
 	Configuration config;
-	int maxNumCores;
 
 	/**
 	 * Set this flag to false to stop the normal stream execution and to trigger the draining.
@@ -69,13 +64,10 @@ public class ConcurrentBlob implements Blob {
 	 * @param workers
 	 *            : set of workers assigned to this blob.
 	 * @param config
-	 * @param maxNumCores
-	 *            : As {@link ConcurrentBlob} is single threaded for the moment, maxNumCores has no effect.
 	 */
-	public ConcurrentBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, Iterable<MessageConstraint> constraintsIter) {
+	public SingleThreadedBlob(Set<Worker<?, ?>> workers, Configuration config, Iterable<MessageConstraint> constraintsIter) {
 		this.workers = ImmutableSet.copyOf(workers);
 		this.config = config;
-		this.maxNumCores = maxNumCores;
 		blobSinks = findSinks(this.workers);
 
 		// TODO: Copied from Interpreter class. Verify the validity.
@@ -122,6 +114,8 @@ public class ConcurrentBlob implements Blob {
 
 	@Override
 	public Runnable getCoreCode(int core) {
+		if(core != 0)
+			throw new AssertionError("core number can only be 0 as SingleThreadedBlob is single threaded implementation. requested core no is " + core );
 		return new Runnable() {
 			@Override
 			public void run() {
@@ -265,7 +259,6 @@ public class ConcurrentBlob implements Blob {
 				}
 
 			Workers.doWork(current);
-			afterFire(current);
 			stack.pop(); // return from the recursion
 		}
 
@@ -290,14 +283,5 @@ public class ConcurrentBlob implements Blob {
 				return i;
 		}
 		return -1;
-	}
-
-	/**
-	 * Called after the given worker is fired. Provided for the debug interpreter to check rate declarations.
-	 * 
-	 * @param worker
-	 *            the worker that just fired
-	 */
-	protected void afterFire(Worker<?, ?> worker) {
 	}
 }

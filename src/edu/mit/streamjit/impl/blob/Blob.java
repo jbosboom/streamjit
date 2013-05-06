@@ -45,7 +45,7 @@ public interface Blob {
 	public int getCoreCount();
 
 	/**
-	 * Gets a Runnable that the given core can run to run this blob.
+	 * Gets a Runnable that the given core can run to run this blob. Cores index starts from 0.
 	 * @param core the core to get a Runnable for
 	 * @return a Runnable for part of this blob
 	 */

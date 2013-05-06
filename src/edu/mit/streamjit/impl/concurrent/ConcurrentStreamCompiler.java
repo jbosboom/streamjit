@@ -7,10 +7,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import sun.org.mozilla.javascript.internal.ast.ThrowStatement;
-
-import com.sun.corba.se.spi.orbutil.threadpool.Work;
-
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Portal;
@@ -25,9 +21,7 @@ import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
 import edu.mit.streamjit.impl.interp.ArrayChannel;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
-import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.impl.interp.SynchronizedChannel;
-import edu.mit.streamjit.impl.interp.Interpreter.InterpreterBlobFactory;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
 
@@ -80,7 +74,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		partitionVisitor.visitSource(source, false);
 		partitionVisitor.visitSink(sink, false);
 
-		BlobFactory blobFactory = new ConcurrentBlobFactory();
+		BlobFactory blobFactory = new SingleThreadedFactory();
 		List<Blob> blobList = new LinkedList<>();
 		for (Set<Worker<?, ?>> partition : partitionList) {
 			blobList.add(blobFactory.makeBlob(partition, null, 1));
@@ -115,7 +109,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 			this.blobList = blobList;
 			blobThreads = new ArrayList<>(this.blobList.size());
 			for (Blob b : blobList) {
-				blobThreads.add(new Thread(b.getCoreCode(0)));
+				blobThreads.add(new Thread(b.getCoreCode(1)));
 			}
 			start();
 		}
