@@ -24,8 +24,8 @@ public class ChannelVocoder7 {
 	
 	public static void main(String[] args) throws InterruptedException {
 		ChannelVocoder7Kernel kernel = new ChannelVocoder7Kernel();
-		StreamCompiler sc = new DebugStreamCompiler();
-		//StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		//StreamCompiler sc = new DebugStreamCompiler();
+		StreamCompiler sc = new ConcurrentStreamCompiler(4);
 		CompiledStream<Integer, Void> stream = sc.compile(kernel);
 		for (int i = 0; i < 10000; ++i) {
 			stream.offer(i);

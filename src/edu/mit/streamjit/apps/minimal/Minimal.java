@@ -10,6 +10,7 @@ import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.api.StreamPrinter;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
@@ -21,12 +22,13 @@ public class Minimal {
 	public static void main(String[] args) throws InterruptedException {
 
 		MinimalKernel kernel = new MinimalKernel();
+		//StreamCompiler sc = new DebugStreamCompiler();
 		StreamCompiler sc = new ConcurrentStreamCompiler(2);
 		CompiledStream<Integer, Void> stream = sc.compile(kernel);
 		Integer output;
 		for (int i = 0; i < 1000000; ++i) {
 			stream.offer(i);
-		//	System.out.println("Offered" + i);
+			// System.out.println("Offered" + i);
 			// while ((output = stream.poll()) != null)
 			// System.out.println(output);
 		}
@@ -39,7 +41,8 @@ public class Minimal {
 	private static class MinimalKernel extends Pipeline<Integer, Void> {
 
 		public MinimalKernel() {
-			super(new IntSource(1, 1, 0), new IntPrinter(1, 0, 0));
+			// super(new IntSource(1, 1, 0), new IntPrinter(1000, 0, 0));
+			super(new IntSource(1, 1, 0), new StreamPrinter<>());
 		}
 	}
 
@@ -47,7 +50,6 @@ public class Minimal {
 
 		public IntSource(int i, int j, int k) {
 			super(i, j, k);
-			// TODO Auto-generated constructor stub
 		}
 
 		@Override
@@ -60,13 +62,12 @@ public class Minimal {
 
 		public IntPrinter(int i, int j, int k) {
 			super(i, j, k);
-			// TODO Auto-generated constructor stub
 		}
 
 		@Override
 		public void work() {
-			System.out.println(pop());
-
+			for (int i = 0; i < this.getPopRates().get(0).avg(); i++)
+				System.out.println(pop());
 		}
 	}
 }

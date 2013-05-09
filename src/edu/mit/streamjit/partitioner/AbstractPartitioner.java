@@ -26,14 +26,6 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 	protected Worker<I, ?> source;
 	protected Worker<?, O> sink;
 
-	public Worker<I, ?> getSource() {
-		return source;
-	}
-
-	public Worker<?, O> getSink() {
-		return sink;
-	}
-
 	protected int graphWidth;
 	/**
 	 * The Deepest depth of the graph.
@@ -174,15 +166,9 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 		return true;
 	}
 
-	/**
-	 * Sets the predecessor-successor relationship in the stream graph. It never create a any channels. See the comment of
-	 * {@link ConnectWorkersVisitor} some additional details.
-	 */
-	protected void preProcessStreamGraph(OneToOneElement<I, O> streamGraph) {
-		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
-		streamGraph.visit(primitiveConnector);
-		source = (Worker<I, ?>) primitiveConnector.getSource();
-		sink = (Worker<?, O>) primitiveConnector.getSink();
+	protected void preProcessStreamGraph(OneToOneElement<I, O> streamGraph, Worker<I, ?> source, Worker<?, O> sink) {
+		this.source = source;
+		this.sink = sink;
 		graphDepth = getDepthofStreamGraph(source);
 	}
 

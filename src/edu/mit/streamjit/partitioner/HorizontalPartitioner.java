@@ -23,13 +23,14 @@ import edu.mit.streamjit.impl.common.Workers;
 public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 
 	/**
-	 * levelMap is a map that contains set of workers of each level in the stream graph. Key of levelMap is level. Level is start with
+	 * levelMap is a map that contains set of workers at each level in the stream graph. Key of levelMap is level. Level is start with
 	 * 1. not with 0.
 	 */
-	Map<Integer, Set<Worker<?, ?>>> levelMap;
+	private Map<Integer, Set<Worker<?, ?>>> levelMap;
 
-	public List<Set<Worker<?, ?>>> PatririonEqually(OneToOneElement<I, O> streamGraph, int noOfPartitions) {
-		preProcessStreamGraph(streamGraph);
+	public List<Set<Worker<?, ?>>> PatririonEqually(OneToOneElement<I, O> streamGraph, Worker<I, ?> source, Worker<?, O> sink,
+			int noOfPartitions) {
+		preProcessStreamGraph(streamGraph, source, sink);
 		assert graphDepth >= noOfPartitions : "Stream graph's depth is smaller than the number of partitions";
 		buildLevelMap(this.source);
 		int partitionSize = (int) Math.ceil((double) graphDepth / noOfPartitions);
@@ -56,7 +57,7 @@ public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 				startLevel);
 		assert endLevel <= graphDepth : String.format("endLevel = %d, graphDepth = %d, endLevel is greater than graphDepth", endLevel,
 				graphDepth);
-		
+
 		Set<Worker<?, ?>> workersSubset = new HashSet<>();
 
 		assert levelMap != null;

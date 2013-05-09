@@ -14,8 +14,10 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.BlobFactory;
+import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Portals;
+import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
 import edu.mit.streamjit.impl.interp.ArrayChannel;
@@ -44,10 +46,17 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 	@Override
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
+		
+		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
+		stream.visit(primitiveConnector);
+		Worker<I, ?> source = (Worker<I, ?>) primitiveConnector.getSource();
+		Worker<?, O> sink = (Worker<?, O>) primitiveConnector.getSink();
+		
+		VerifyStreamGraph verifier = new VerifyStreamGraph();
+		stream.visit(verifier);
+		
 		Partitioner<I, O> horzPartitioner = new HorizontalPartitioner<>();
-		List<Set<Worker<?, ?>>> partitionList = horzPartitioner.PatririonEqually(stream, this.noOfBlobs);
-		Worker<I, ?> source = horzPartitioner.getSource();
-		Worker<?, O> sink = horzPartitioner.getSink();
+		List<Set<Worker<?, ?>>> partitionList = horzPartitioner.PatririonEqually(stream, source, sink, this.noOfBlobs);
 
 		List<Blob> blobList = makeBlobs(partitionList, source, sink);
 		Channel<I> head = (Channel<I>) Workers.getInputChannels(source).get(0);
