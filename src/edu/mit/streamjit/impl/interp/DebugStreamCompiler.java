@@ -16,6 +16,7 @@ import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Portals;
+import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +46,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 			}
 		});
 		stream.visit(cpwv);
+		stream.visit(new VerifyStreamGraph());
 		Worker<I, ?> source = (Worker<I, ?>)cpwv.getSource();
 		Channel<I> head = (Channel<I>)Workers.getInputChannels(source).get(0);
 		Worker<?, O> sink = (Worker<?, O>)cpwv.getSink();

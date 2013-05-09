@@ -109,7 +109,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 			this.blobList = blobList;
 			blobThreads = new ArrayList<>(this.blobList.size());
 			for (Blob b : blobList) {
-				blobThreads.add(new Thread(b.getCoreCode(1)));
+				blobThreads.add(new Thread(b.getCoreCode(0)));
 			}
 			start();
 		}

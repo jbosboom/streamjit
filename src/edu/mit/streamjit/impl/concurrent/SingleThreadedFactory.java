@@ -1,8 +1,6 @@
 package edu.mit.streamjit.impl.concurrent;
 
 import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 
 import edu.mit.streamjit.api.Worker;
