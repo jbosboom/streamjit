@@ -28,10 +28,9 @@ public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 	 */
 	private Map<Integer, Set<Worker<?, ?>>> levelMap;
 
-	public List<Set<Worker<?, ?>>> PatririonEqually(OneToOneElement<I, O> streamGraph, Worker<I, ?> source, Worker<?, O> sink,
-			int noOfPartitions) {
-		preProcessStreamGraph(streamGraph, source, sink);
-		assert graphDepth >= noOfPartitions : "Stream graph's depth is smaller than the number of partitions";
+	public List<Set<Worker<?, ?>>> PatririonEquallyImplementation(OneToOneElement<I, O> streamGraph, Worker<I, ?> source,
+			Worker<?, O> sink, int noOfPartitions) {
+
 		buildLevelMap(this.source);
 		int partitionSize = (int) Math.ceil((double) graphDepth / noOfPartitions);
 		List<Set<Worker<?, ?>>> partitioinList = new ArrayList<>();
@@ -41,7 +40,6 @@ public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 			endLevel = graphDepth > (i + 1) * partitionSize ? (i + 1) * partitionSize : graphDepth;
 			partitioinList.add(getWorkers(i * partitionSize + 1, endLevel));
 		}
-		verifyPartition(partitioinList);
 		return partitioinList;
 	}
 
