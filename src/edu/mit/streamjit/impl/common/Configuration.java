@@ -32,6 +32,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
@@ -55,12 +56,14 @@ import javax.json.JsonValue;
 public final class Configuration {
 	private final ImmutableMap<String, Parameter> parameters;
 	private final ImmutableMap<String, Configuration> subconfigurations;
-	private Configuration(ImmutableMap<String, Parameter> parameters, ImmutableMap<String, Configuration> subconfigurations) {
+	private final ImmutableMap<String, Object> extraData;
+	private Configuration(ImmutableMap<String, Parameter> parameters, ImmutableMap<String, Configuration> subconfigurations, ImmutableMap<String, Object> extraData) {
 		//We're only called by the builder, so assert, not throw IAE.
 		assert parameters != null;
 		assert subconfigurations != null;
 		this.parameters = parameters;
 		this.subconfigurations = subconfigurations;
+		this.extraData = extraData;
 	}
 
 	/**
@@ -73,6 +76,7 @@ public final class Configuration {
 	public static final class Builder implements Cloneable {
 		private final Map<String, Parameter> parameters;
 		private final Map<String, Configuration> subconfigurations;
+		private final Map<String, Object> extraData;
 		/**
 		 * Constructs a new Builder.  Called only by Configuration.build().
 		 */
@@ -80,7 +84,7 @@ public final class Configuration {
 			//Type inference fail.
 			//These maps have their contents copied in the other constructor, so
 			//just use these singleton empty maps.
-			this(ImmutableMap.<String, Parameter>of(), ImmutableMap.<String, Configuration>of());
+			this(ImmutableMap.<String, Parameter>of(), ImmutableMap.<String, Configuration>of(), ImmutableMap.<String, Object>of());
 		}
 
 		/**
@@ -89,12 +93,13 @@ public final class Configuration {
 		 * @param parameters the parameters
 		 * @param subconfigurations the subconfigurations
 		 */
-		private Builder(Map<String, Parameter> parameters, Map<String, Configuration> subconfigurations) {
+		private Builder(Map<String, Parameter> parameters, Map<String, Configuration> subconfigurations, Map<String, Object> extraData) {
 			//Only called by our own code, so assert.
 			assert parameters != null;
 			assert subconfigurations != null;
 			this.parameters = new HashMap<>(parameters);
 			this.subconfigurations = new HashMap<>(subconfigurations);
+			this.extraData = new HashMap<>(extraData);
 		}
 
 		/**
@@ -155,6 +160,22 @@ public final class Configuration {
 		}
 
 		/**
+		 * Adds extra data to this builder, replacing any data with the same
+		 * name.
+		 * @param name the name of the extra data to put (cannot be null)
+		 * @param data the extra data (cannot be null)
+		 * @return this
+		 * @throws NullPointerException if name is null or the empty string, or
+		 * if data is null
+		 */
+		public Builder putExtraData(String name, Object data) {
+			checkNotNull(Strings.emptyToNull(name));
+			checkNotNull(data);
+			extraData.put(name, data);
+			return this;
+		}
+
+		/**
 		 * Builds a new Configuration from the parameters and subconfigurations
 		 * added to this builder.  This builder is still valid and may be used
 		 * to build more configurations (perhaps after adding or removing
@@ -163,7 +184,7 @@ public final class Configuration {
 		 * subconfigurations added to this builder
 		 */
 		public Configuration build() {
-			return new Configuration(ImmutableMap.copyOf(parameters), ImmutableMap.copyOf(subconfigurations));
+			return new Configuration(ImmutableMap.copyOf(parameters), ImmutableMap.copyOf(subconfigurations), ImmutableMap.copyOf(extraData));
 		}
 
 		/**
@@ -176,7 +197,7 @@ public final class Configuration {
 		@Override
 		public Builder clone() {
 			//We're final, so we don't need to use super.clone().
-			return new Builder(parameters, subconfigurations);
+			return new Builder(parameters, subconfigurations, extraData);
 		}
 	}
 
@@ -210,11 +231,17 @@ public final class Configuration {
 			JsonObject configObj = Jsonifiers.checkClassEqual(value, Configuration.class);
 			JsonObject parametersObj = checkNotNull(configObj.getJsonObject("params"));
 			JsonObject subconfigurationsObj = checkNotNull(configObj.getJsonObject("subconfigs"));
+			JsonObject extraDataObj = checkNotNull(configObj.getJsonObject("extraData"));
 			Builder builder = builder();
 			for (Map.Entry<String, JsonValue> param : parametersObj.entrySet())
 				builder.addParameter(Jsonifiers.fromJson(param.getValue(), Parameter.class));
 			for (Map.Entry<String, JsonValue> subconfiguration : subconfigurationsObj.entrySet())
 				builder.addSubconfiguration(subconfiguration.getKey(), Jsonifiers.fromJson(subconfiguration.getValue(), Configuration.class));
+			for (Map.Entry<String, JsonValue> data : extraDataObj.entrySet()) {
+				JsonArray arr = (JsonArray)data.getValue();
+				Class<?> c = Jsonifiers.fromJson(arr.get(0), Class.class);
+				builder.putExtraData(data.getKey(), Jsonifiers.fromJson(arr.get(1), c));
+			}
 			return builder.build();
 		}
 
@@ -226,10 +253,18 @@ public final class Configuration {
 			JsonObjectBuilder subconfigsBuilder = Json.createObjectBuilder();
 			for (Map.Entry<String, Configuration> subconfig : t.subconfigurations.entrySet())
 				subconfigsBuilder.add(subconfig.getKey(), Jsonifiers.toJson(subconfig.getValue()));
+			JsonObjectBuilder extraDataBuilder = Json.createObjectBuilder();
+			for (Map.Entry<String, Object> data : t.extraData.entrySet()) {
+				JsonArrayBuilder da = Json.createArrayBuilder();
+				da.add(Jsonifiers.toJson(data.getValue().getClass()));
+				da.add(Jsonifiers.toJson(data.getValue()));
+				extraDataBuilder.add(data.getKey(), da);
+			}
 			return Json.createObjectBuilder()
 					.add("class", Jsonifiers.toJson(Configuration.class))
 					.add("params", paramsBuilder)
 					.add("subconfigs", subconfigsBuilder)
+					.add("extraData", extraDataBuilder)
 					//Python-side support
 					.add("__module__", "configuration")
 					.add("__class__", Configuration.class.getSimpleName())
@@ -314,6 +349,25 @@ public final class Configuration {
 	 */
 	public Configuration getSubconfiguration(String name) {
 		return subconfigurations.get(checkNotNull(Strings.emptyToNull(name)));
+	}
+
+	/**
+	 * Returns an immutable mapping of extra data names to the extra data of
+	 * this configuration.
+	 * @return an immutable mapping of the extra data of this configuration
+	 */
+	public ImmutableMap<String, Object> getExtraDataMap() {
+		return extraData;
+	}
+
+	/**
+	 * Gets the extra data with the given name, or null if this configuration
+	 * doesn't contain extra data with that name
+	 * @param name the name of the extra data
+	 * @return the extra data, or null
+	 */
+	public Object getExtraData(String name) {
+		return extraData.get(checkNotNull(Strings.emptyToNull(name)));
 	}
 
 	/**
@@ -1023,6 +1077,10 @@ public final class Configuration {
 		partParam.addBlob(0, 1, factory, Collections.<Worker<?, ?>>singleton(first));
 		partParam.addBlob(1, 1, factory, Collections.<Worker<?, ?>>singleton(second));
 		builder.addParameter(partParam.build());
+
+		builder.putExtraData("one", 1);
+		builder.putExtraData("two", 2);
+		builder.putExtraData("topLevelClassName", first.getClass().getName());
 
 		Configuration cfg1 = builder.build();
 		String json = Jsonifiers.toJson(cfg1).toString();
