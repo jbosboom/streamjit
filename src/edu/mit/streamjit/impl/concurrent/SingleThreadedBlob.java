@@ -38,7 +38,6 @@ import edu.mit.streamjit.partitioner.Partitioner;
 public class SingleThreadedBlob implements Blob {
 
 	ImmutableSet<Worker<?, ?>> workers, blobSinks;
-	Configuration config;
 
 	/**
 	 * Set this flag to false to stop the normal stream execution and to trigger the draining.
@@ -65,9 +64,8 @@ public class SingleThreadedBlob implements Blob {
 	 *            : set of workers assigned to this blob.
 	 * @param config
 	 */
-	public SingleThreadedBlob(Set<Worker<?, ?>> workers, Configuration config, Iterable<MessageConstraint> constraintsIter) {
+	public SingleThreadedBlob(Iterable<Worker<?, ?>> workers, Iterable<MessageConstraint> constraintsIter) {
 		this.workers = ImmutableSet.copyOf(workers);
-		this.config = config;
 		blobSinks = findSinks(this.workers);
 
 		// TODO: Copied from Interpreter class. Verify the validity.
@@ -86,7 +84,7 @@ public class SingleThreadedBlob implements Blob {
 
 		ImmutableMap.Builder<Token, Channel<?>> inputChannelsBuilder = ImmutableMap.builder();
 		ImmutableMap.Builder<Token, Channel<?>> outputChannelsBuilder = ImmutableMap.builder();
-		for (IOInfo info : IOInfo.create(workers))
+		for (IOInfo info : IOInfo.create(this.workers))
 			(info.isInput() ? inputChannelsBuilder : outputChannelsBuilder).put(info.token(), info.channel());
 		this.inputChannels = inputChannelsBuilder.build();
 		this.outputChannels = outputChannelsBuilder.build();
