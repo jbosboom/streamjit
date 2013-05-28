@@ -6,12 +6,12 @@ import java.util.Set;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
-import edu.mit.streamjit.impl.concurrent.PartitionVisitor;
+import edu.mit.streamjit.impl.concurrent.BlobVisitor;
 
 /**
  * {@link Partitioner} is to partitions a stream graph (i.e. {@link OneToOneElement}) to multiple non overlapped chunks.
  * 
- * Note: In prior to get service from {@link PartitionVisitor}, all workers in the stream graph should be connected by setting all
+ * Note: In prior to get service from {@link BlobVisitor}, all workers in the stream graph should be connected by setting all
  * predecessors, successors. Consider using {@link ConnectWorkersVisitor} to set all predecessors, successors, relationships before
  * start partitioning
  * 

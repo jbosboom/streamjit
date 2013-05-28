@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
@@ -28,9 +27,9 @@ import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.Partitioner;
 
 /**
- * {@link SingleThreadedBlob} interprets a section(partition) of a stream graph. {@link SingleThreadedBlob} is single threaded
- * and maxNumCores that is provided when making a {@link Blob} has no effect at all. As {@link SingleThreadedBlob} is single threaded, few codes
- * are copied from {@link Interpreter} class. But in future, this will get changed.
+ * {@link SingleThreadedBlob} interprets a section(partition) of a stream graph. {@link SingleThreadedBlob} is single threaded and
+ * maxNumCores that is provided when making a {@link Blob} has no effect at all. As {@link SingleThreadedBlob} is single threaded, few
+ * codes are copied from {@link Interpreter} class. But in future, this will get changed.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Apr 10, 2013
@@ -66,6 +65,10 @@ public class SingleThreadedBlob implements Blob {
 	 */
 	public SingleThreadedBlob(Iterable<Worker<?, ?>> workers, Iterable<MessageConstraint> constraintsIter) {
 		this.workers = ImmutableSet.copyOf(workers);
+
+		BlobVisitor blobVisitor = new BlobVisitor();
+		blobVisitor.visitBlob(this.workers);
+
 		blobSinks = findSinks(this.workers);
 
 		// TODO: Copied from Interpreter class. Verify the validity.
@@ -112,8 +115,9 @@ public class SingleThreadedBlob implements Blob {
 
 	@Override
 	public Runnable getCoreCode(int core) {
-		if(core != 0)
-			throw new AssertionError("core number can only be 0 as SingleThreadedBlob is single threaded implementation. requested core no is " + core );
+		if (core != 0)
+			throw new AssertionError(
+					"core number can only be 0 as SingleThreadedBlob is single threaded implementation. requested core no is " + core);
 		return new Runnable() {
 			@Override
 			public void run() {

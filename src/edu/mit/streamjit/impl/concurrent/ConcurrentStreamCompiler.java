@@ -41,28 +41,36 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 	 *            a stream graph up to noOfBlobs many blobs and executes each blob on each thread.
 	 */
 	public ConcurrentStreamCompiler(int noOfBlobs) {
-		if(noOfBlobs < 1)
+		if (noOfBlobs < 1)
 			throw new IllegalArgumentException("noOfBlobs should be 1 or greater");
 		this.noOfBlobs = noOfBlobs;
 	}
 
 	@Override
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
-		
+
 		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
 		stream.visit(primitiveConnector);
 		Worker<I, ?> source = (Worker<I, ?>) primitiveConnector.getSource();
 		Worker<?, O> sink = (Worker<?, O>) primitiveConnector.getSink();
-		
+
 		VerifyStreamGraph verifier = new VerifyStreamGraph();
 		stream.visit(verifier);
-		
+
+		Channel<I> head = new SynchronizedChannel<>(new ArrayChannel<I>());
+		Channel<O> tail = new SynchronizedChannel<>(new ArrayChannel<O>());
+
+		Workers.getInputChannels(source).add(head);
+		Workers.getOutputChannels(sink).add(tail);
+
 		Partitioner<I, O> horzPartitioner = new HorizontalPartitioner<>();
 		List<Set<Worker<?, ?>>> partitionList = horzPartitioner.PatririonEqually(stream, source, sink, this.noOfBlobs);
 
-		List<Blob> blobList = makeBlobs(partitionList, source, sink);
-		Channel<I> head = (Channel<I>) Workers.getInputChannels(source).get(0);
-		Channel<O> tail = (Channel<O>) Workers.getOutputChannels(sink).get(0);
+		BlobFactory blobFactory = new SingleThreadedBlobFactory();
+		List<Blob> blobList = new LinkedList<>();
+		for (Set<Worker<?, ?>> partition : partitionList) {
+			blobList.add(blobFactory.makeBlob(partition, null, 1));
+		}
 
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this context.
 		List<MessageConstraint> constraints = MessageConstraint.findConstraints(source);
@@ -73,42 +81,6 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 			Portals.setConstraints(portal, constraints);
 
 		return new ConcurrentCompiledStream<>(head, tail, blobList);
-	}
-
-	private <I, O> List<Blob> makeBlobs(List<Set<Worker<?, ?>>> partitionList, Worker<I, ?> source, Worker<?, O> sink) {
-		PartitionVisitor partitionVisitor = new PartitionVisitor(new IntraBlobChannelFactory(), new InterBlobChannelFactory());
-
-		for (Set<Worker<?, ?>> partition : partitionList) {
-			partitionVisitor.visitPartition(partition);
-		}
-
-		partitionVisitor.visitSource(source, false);
-		partitionVisitor.visitSink(sink, false);
-
-		BlobFactory blobFactory = new SingleThreadedFactory();
-		List<Blob> blobList = new LinkedList<>();
-		for (Set<Worker<?, ?>> partition : partitionList) {
-			blobList.add(blobFactory.makeBlob(partition, null, 1));
-		}
-
-		return blobList;
-	}
-
-	private class IntraBlobChannelFactory implements ChannelFactory {
-
-		@Override
-		public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
-			return new ArrayChannel<E>();
-			// return new SynchronizedChannel<>(new ArrayChannel<E>());
-		}
-	}
-
-	private class InterBlobChannelFactory implements ChannelFactory {
-
-		@Override
-		public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
-			return new SynchronizedChannel<>(new ArrayChannel<E>());
-		}
 	}
 
 	private static class ConcurrentCompiledStream<I, O> extends AbstractCompiledStream<I, O> {

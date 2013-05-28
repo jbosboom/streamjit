@@ -14,12 +14,12 @@ import edu.mit.streamjit.impl.common.MessageConstraint;
  * @author Sumanan sumanan@mit.edu
  * @since Apr 10, 2013
  */
-public class SingleThreadedFactory implements BlobFactory {
+public class SingleThreadedBlobFactory implements BlobFactory {
 
 	@Override
 	//As {@link SingleThreadedBlob} is single threaded, maxNumCores that passed in makeBlob has no effect.
 	public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
-		return new SingleThreadedBlob(workers, config, Collections.<MessageConstraint> emptyList());
+		return new SingleThreadedBlob(workers, Collections.<MessageConstraint> emptyList());
 	}
 
 	@Override
