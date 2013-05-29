@@ -1,7 +1,3 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since May 14, 2013
- */
 package edu.mit.streamjit.impl.distributed.runtime.master;
 
 import java.io.IOException;
@@ -14,11 +10,22 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.mit.streamjit.impl.distributed.runtime.common.TCPSocket;
 
+/**
+ * {@link ListenerSocket} listens for new TCP connections. It can run on separate thread and keep on listening until the stop condition
+ * is full filled. {@link ListenerSocket} can be used in two different ways.
+ * 1) Caller can ask {@link ListenerSocket} to listen until it calls to stop 2) Caller can mention expected number of sockets that
+ * should be accepted. In this case, listener theread will stop listening once it has accepted the expected count.
+ * 
+ * @author Sumanan sumanan@mit.edu
+ * @since May 14, 2013
+ */
 public class ListenerSocket extends Thread {
 
 	private ServerSocket server;
 
 	private AtomicBoolean keepOnListen;
+
+	private int expectedConnections;
 
 	private ConcurrentLinkedQueue<TCPSocket> acceptedSockets;
 
@@ -30,14 +37,22 @@ public class ListenerSocket extends Thread {
 	public List<TCPSocket> getAcceptedSockets() {
 		List<TCPSocket> acceptedSocketslist = new LinkedList<>();
 		while (!acceptedSockets.isEmpty()) {
-			acceptedSocketslist.add(acceptedSockets.poll());		// removes from the acceptedSockets and add it to the acceptedSocketslist.
+			acceptedSocketslist.add(acceptedSockets.poll()); // removes from the acceptedSockets and add it to the acceptedSocketslist.
 		}
 		return acceptedSocketslist;
 	}
 
-	public ListenerSocket(int portNo) throws IOException {
+	/**
+	 * @param portNo
+	 * @param expectedConnections
+	 *            : ListenerSocket will try to accept at most this no of sockets. Once this limit is reached, {@link ListenerSocket}
+	 *            thread will die it self.
+	 * @throws IOException
+	 */
+	public ListenerSocket(int portNo, int expectedConnections) throws IOException {
 		try {
 			server = new ServerSocket(portNo);
+			this.expectedConnections = expectedConnections;
 		} catch (IOException e) {
 			System.out.println("Could not listen on port " + portNo);
 			throw e;
@@ -47,17 +62,29 @@ public class ListenerSocket extends Thread {
 		keepOnListen.set(true);
 	}
 
+	/**
+	 * {@link ListenerSocket} will accept as much sockets as it can until stopListening() is called.
+	 * 
+	 * @param portNo
+	 * @throws IOException
+	 */
+	public ListenerSocket(int portNo) throws IOException {
+		this(portNo, Integer.MAX_VALUE);
+	}
+
 	public void run() {
-		while (keepOnListen.get()) {
+		int connectionCount = 0;
+		while (keepOnListen.get() && connectionCount < this.expectedConnections) {
 			try {
 				TCPSocket slvSckt = acceptConnection();
 				acceptedSockets.add(slvSckt);
+				connectionCount++;
 			} catch (IOException e) {
 				// TODO What to do if IO exception occurred?
 				// 1. Abort the listening?
 				// 2. Close the socket and recreate new one?
 				// 3. Wait for some time and then keep on listen on the same socket.
-				// Currently does 3.
+				// Currently case 3 is done.
 				e.printStackTrace();
 				try {
 					Thread.sleep(2000);

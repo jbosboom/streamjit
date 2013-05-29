@@ -14,7 +14,6 @@ import edu.mit.streamjit.impl.distributed.runtime.api.Request;
 import edu.mit.streamjit.impl.distributed.runtime.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.runtime.common.TCPSocket;
 
-
 public class TCPCommunicationManager implements CommunicationManager {
 
 	private Map<Integer, TCPSocket> socketMap;
@@ -48,7 +47,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 
 	@Override
 	public boolean connectMachines(int noOfmachines) throws IOException {
-		ListenerSocket listnerSckt = new ListenerSocket(this.listenPort);
+		ListenerSocket listnerSckt = new ListenerSocket(this.listenPort, noOfmachines);
 		listnerSckt.start();
 		socketMap.clear();
 		int machineID = 0;
@@ -78,7 +77,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 
 	@Override
 	public boolean connectMachines(long timeOut) throws IOException {
-
+		// TODO: Implement a timer and call the listnerSckt.stopListening();
 		return false;
 	}
 
