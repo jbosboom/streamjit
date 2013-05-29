@@ -9,9 +9,9 @@ import edu.mit.streamjit.impl.distributed.runtime.api.RequestProcessor;
 
 public class SlaveRequestProcessor implements RequestProcessor{
 	
-	MasterConnection masterConnection;
+	SlaveConnection masterConnection;
 	
-	SlaveRequestProcessor(MasterConnection masterConnection)
+	SlaveRequestProcessor(SlaveConnection masterConnection)
 	{
 		this.masterConnection = masterConnection;
 	}

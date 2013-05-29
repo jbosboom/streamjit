@@ -19,7 +19,7 @@ import edu.mit.streamjit.impl.distributed.runtime.master.Master;
  */
 public class Slave {
 
-	MasterConnection masterConnection;
+	SlaveConnection masterConnection;
 	private int machineID; // TODO: consider move or remove this from Slave class. If so, this class will be more handy.
 	MessageVisitor mv;
 
@@ -35,7 +35,7 @@ public class Slave {
 	 * port number that can be found {@link GlobalConstants}.
 	 */
 	public Slave(String ipAddress, int portNo) {
-		masterConnection = new masterSocket(ipAddress, portNo);
+		masterConnection = new SlaveTCPConnection(ipAddress, portNo);
 		this.mv = new SlaveMessageVisitor(new SlaveAppStatusProcessor(), new SlaveCommandProcessor(this), new SlaveErrorProcessor(),
 				new SlaveRequestProcessor(masterConnection), new SlaveJsonStringProcessor(this));
 		this.run = true;

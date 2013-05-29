@@ -11,14 +11,14 @@ import java.net.UnknownHostException;
 import edu.mit.streamjit.impl.distributed.runtime.common.Ipv4Validator;
 import edu.mit.streamjit.impl.distributed.runtime.common.TCPSocket;
 
-public class masterSocket implements MasterConnection {
+public class SlaveTCPConnection implements SlaveConnection {
 
-	String serverAddress;
-	int portNo;
+	private String serverAddress;
+	private int portNo;
 
-	TCPSocket socket;
+	private TCPSocket socket;
 
-	masterSocket(String serverAddress, int portNo) {
+	SlaveTCPConnection(String serverAddress, int portNo) {
 		Ipv4Validator validator = Ipv4Validator.getInstance();
 
 		if (validator.isValid(serverAddress))

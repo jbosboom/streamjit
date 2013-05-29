@@ -1,14 +1,16 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since May 14, 2013
- */
 package edu.mit.streamjit.impl.distributed.runtime.slave;
 
 import java.io.IOException;
 
-public interface MasterConnection {
+/**
+ * Slave side communication interface.
+ * 
+ * @author Sumanan sumanan@mit.edu
+ * @since May 14, 2013
+ */
+public interface SlaveConnection {
 
-	public <T> T readObject( Class<T> Klass) throws IOException, ClassNotFoundException;
+	public <T> T readObject(Class<T> Klass) throws IOException, ClassNotFoundException;
 
 	public boolean writeObject(Object obj) throws IOException;
 

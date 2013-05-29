@@ -41,33 +41,7 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 
 	@Override
 	public void makeConnection() throws IOException {
-		if(isServer)
-		{
-			ListenerSocket listnerSckt = new ListenerSocket(this.portNo);
-			listnerSckt.start();
-			while (true) {
-				List<TCPSocket> acceptedSocketList = listnerSckt.getAcceptedSockets();
-				for (TCPSocket s : acceptedSocketList) {
-					socketMap.put(machineID++, s);
-
-					if (!(socketMap.size() < noOfmachines))
-						break;
-				}
-
-				if (!(socketMap.size() < noOfmachines))
-					break;
-
-				// Rather than continuously polling the listenersocket, lets wait some time before the next poll.
-				try {
-					Thread.sleep(1000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-
-			listnerSckt.stopListening();
-			return true;
-		}
+		
 	}
 
 	@Override
