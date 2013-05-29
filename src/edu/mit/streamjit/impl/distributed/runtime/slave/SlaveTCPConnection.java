@@ -34,10 +34,8 @@ public class SlaveTCPConnection implements SlaveConnection {
 
 	@Override
 	public <T> T readObject(Class<T> Klass) throws IOException, ClassNotFoundException {
-		T tObj;
 		try {
-			tObj = (T) socket.receiveObject(Klass);
-			return tObj;
+			return socket.receiveObject();
 		} catch (IOException | ClassNotFoundException e) {
 			throw e;
 		}

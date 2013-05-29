@@ -30,11 +30,11 @@ public class TCPCommunicationManager implements CommunicationManager {
 	}
 
 	@Override
-	public <T> T readObject(int machineID, Class<T> klass) throws IOException, ClassNotFoundException {
+	public <T> T readObject(int machineID) throws IOException, ClassNotFoundException {
 		if (!socketMap.containsKey(machineID))
 			throw new IllegalArgumentException("Invalid machineID. No machine is connected with machineID " + machineID);
 
-		return socketMap.get(machineID).receiveObject(klass);
+		return socketMap.get(machineID).receiveObject();
 	}
 
 	@Override
@@ -140,7 +140,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 
 		for (TCPSocket socket : socketMap.values()) {
 			try {
-				socket.receiveObject(Request.maxCores.getClass());
+				socket.receiveObject();
 			} catch (IOException | ClassNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

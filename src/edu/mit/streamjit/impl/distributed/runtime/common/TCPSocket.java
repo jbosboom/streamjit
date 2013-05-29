@@ -76,7 +76,37 @@ public class TCPSocket {
 	 		}
 	 </code>
 	 */
-	public <T> T receiveObject(Class<T> Klass) throws IOException, ClassNotFoundException{
+	/*public <T> T receiveObject(Class<T> Klass) throws IOException, ClassNotFoundException{
+		T cb = null;
+		Class<T> Klass1 = (Class<T>) cb.getClass();
+		if (isStillconnected()) {
+			Object o = null;
+
+			try {
+				o = oiStream.readObject();
+				// System.out.println("DEBUG: tostring = " + o.toString());
+				// System.out.println("DEBUG: getClass = " + o.getClass());
+				cb = (T)o;
+			} catch (ClassCastException e) {
+				// If unknown object then ignore it.
+				System.out.println(o.toString());
+			} catch (ClassNotFoundException ex) {
+				// If unknown object then ignore it.
+				// System.out.println(o.toString());
+				throw ex;
+			} catch (IOException e) {
+				//e.printStackTrace();
+				isconnected = false;
+				throw e;
+			}
+		} else {
+			System.out.println("socket closed");
+			System.exit(0);
+		}
+		return cb; // TODO Need to handle this.
+	}*/
+	
+	public <T> T receiveObject() throws IOException, ClassNotFoundException{
 		T cb = null;
 		if (isStillconnected()) {
 			Object o = null;
@@ -85,7 +115,7 @@ public class TCPSocket {
 				o = oiStream.readObject();
 				// System.out.println("DEBUG: tostring = " + o.toString());
 				// System.out.println("DEBUG: getClass = " + o.getClass());
-				cb = Klass.cast(o);
+				cb = (T)o;
 			} catch (ClassCastException e) {
 				// If unknown object then ignore it.
 				System.out.println(o.toString());

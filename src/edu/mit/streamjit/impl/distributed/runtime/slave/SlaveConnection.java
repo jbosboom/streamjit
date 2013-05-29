@@ -10,7 +10,7 @@ import java.io.IOException;
  */
 public interface SlaveConnection {
 
-	public <T> T readObject(Class<T> Klass) throws IOException, ClassNotFoundException;
+	public <T> T readObject() throws IOException, ClassNotFoundException;
 
 	public boolean writeObject(Object obj) throws IOException;
 

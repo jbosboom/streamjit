@@ -13,7 +13,7 @@ import java.util.Map;
  */
 public interface CommunicationManager {
 
-	public <T> T readObject(int machineID, Class<T> klass) throws IOException, ClassNotFoundException;
+	public <T> T readObject(int machineID) throws IOException, ClassNotFoundException;
 
 	public boolean writeObject(int machineID, Object obj) throws IOException;
 
