@@ -1,59 +1,71 @@
 package edu.mit.streamjit.impl.distributed.runtime.slave;
 
 import java.io.IOException;
-import java.util.List;
 
 import edu.mit.streamjit.impl.distributed.runtime.api.BoundaryInputChannel;
-import edu.mit.streamjit.impl.distributed.runtime.common.TCPSocket;
-import edu.mit.streamjit.impl.distributed.runtime.master.ListenerSocket;
 import edu.mit.streamjit.impl.interp.Channel;
 
 /**
- * TCPInputChannel acts as client when making TCP connection. 
+ * TCPInputChannel acts as client when making TCP connection.
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since May 29, 2013
  */
 public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
-	
-	Channel<E> channel;
-	
-	TCPSocket socket;
 
-	int portNo;
-	String IpAddress;
-	
-	TCPInputChannel( Channel<E> channel, int portNo)
-	{
+	Channel<E> channel;
+
+	SlaveConnection inputConnection;
+
+	TCPInputChannel(Channel<E> channel, String IpAddress, int portNo) {
 		this.channel = channel;
-		this.portNo = portNo;
+
+		this.inputConnection = new SlaveTCPConnection(IpAddress, portNo);
 	}
 
 	@Override
 	public void closeConnection() throws IOException {
-		socket.closeConnection();
+		inputConnection.closeConnection();
 	}
 
 	@Override
 	public boolean isStillConnected() {
-		// TODO Auto-generated method stub
-		return false;
+		return inputConnection.isStillConnected();
 	}
 
 	@Override
 	public void makeConnection() throws IOException {
-		
+
+		inputConnection.makeConnection();
 	}
 
 	@Override
 	public Runnable getRunnable() {
-		// TODO Auto-generated method stub
-		return null;
+		return new Runnable() {
+			@Override
+			public void run() {
+				receiveData();
+			}
+		};
+	}
+
+	private void receiveData() {
+		while (true) {
+			try {
+				E element = inputConnection.readObject();
+				// TODO: need to confirm the channel have enough capacity to accept elements.
+				// Consider adding channel.getMaxSize() function. Already Channel.getSize is available.
+				this.channel.push(element);
+			} catch (ClassNotFoundException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	@Override
 	public int getOtherMachineID() {
-		// TODO Auto-generated method stub
 		return 0;
 	}
-
 }
