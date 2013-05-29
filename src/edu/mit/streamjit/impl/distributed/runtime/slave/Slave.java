@@ -61,7 +61,7 @@ public class Slave {
 
 		while (run) {
 			try {
-				MessageElement me = masterConnection.readObject(MessageElement.class);
+				MessageElement me = masterConnection.readObject();
 				me.accept(mv);
 			} catch (ClassNotFoundException | IOException e) {
 				e.printStackTrace();
