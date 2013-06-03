@@ -14,13 +14,18 @@ import edu.mit.streamjit.impl.interp.Channel;
  */
 public interface BoundaryChannel<E> {
 
-	public void closeConnection() throws IOException;
+	void closeConnection() throws IOException;
 
-	public boolean isStillConnected();
+	boolean isStillConnected();
 
-	public void makeConnection() throws IOException;
+	void makeConnection() throws IOException;
 
-	public Runnable getRunnable();
-	
-	public int getOtherMachineID();
+	Runnable getRunnable();
+
+	int getOtherMachineID();
+
+	/**
+	 * Stop the actions. If it is {@link BoundaryOutputChannel} then stop sending, if {@link BoundaryInputChannel} then stop receiving.
+	 */
+	void stop();
 }

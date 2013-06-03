@@ -5,7 +5,6 @@
 package edu.mit.streamjit.impl.distributed.runtime.slave;
 
 import java.io.IOException;
-import java.util.List;
 
 import edu.mit.streamjit.impl.distributed.runtime.api.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.runtime.common.TCPSocket;
@@ -16,12 +15,15 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 
 	int portNo;
 
+	private volatile boolean stopFlag;
+
 	TCPSocket socket;
 	Channel<E> channel;
 
 	public TCPOutputChannel(Channel<E> channel, int portNo) {
 		this.channel = channel;
 		this.portNo = portNo;
+		this.stopFlag = false;
 	}
 
 	@Override
@@ -47,19 +49,32 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 		return new Runnable() {
 			@Override
 			public void run() {
-				sendData();
+				if (!socket.isStillconnected()) {
+					try {
+						makeConnection();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+				while (!stopFlag)
+					sendData();
+
+				try {
+					closeConnection();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 		};
 	}
 
-	private void sendData() {
-		while (true) {
-			if (!this.channel.isEmpty()) {
-				try {
-					socket.sendObject(channel.pop());
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+	public void sendData() {
+		while (!this.channel.isEmpty()) {
+			try {
+				socket.sendObject(channel.pop());
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
 	}
@@ -67,5 +82,10 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 	@Override
 	public int getOtherMachineID() {
 		return 0;
+	}
+
+	@Override
+	public void stop() {
+		this.stopFlag = true;
 	}
 }

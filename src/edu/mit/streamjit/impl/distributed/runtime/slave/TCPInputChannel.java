@@ -17,9 +17,11 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 
 	SlaveConnection inputConnection;
 
+	private volatile boolean stopFlag;
+
 	TCPInputChannel(Channel<E> channel, String IpAddress, int portNo) {
 		this.channel = channel;
-
+		this.stopFlag = false;
 		this.inputConnection = new SlaveTCPConnection(IpAddress, portNo);
 	}
 
@@ -44,13 +46,27 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 		return new Runnable() {
 			@Override
 			public void run() {
+				if (!inputConnection.isStillConnected()) {
+					try {
+						makeConnection();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
 				receiveData();
+				try {
+					closeConnection();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 		};
 	}
 
-	private void receiveData() {
-		while (true) {
+	public void receiveData() {
+		while (!stopFlag) {
 			try {
 				E element = inputConnection.readObject();
 				// TODO: need to confirm the channel have enough capacity to accept elements.
@@ -67,5 +83,10 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 	@Override
 	public int getOtherMachineID() {
 		return 0;
+	}
+
+	@Override
+	public void stop() {
+		this.stopFlag = true;
 	}
 }

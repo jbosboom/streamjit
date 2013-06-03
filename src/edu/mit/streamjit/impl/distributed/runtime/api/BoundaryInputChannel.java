@@ -6,4 +6,5 @@ package edu.mit.streamjit.impl.distributed.runtime.api;
 
 public interface BoundaryInputChannel<E> extends BoundaryChannel<E> {
 
+	void receiveData(); 
 }
