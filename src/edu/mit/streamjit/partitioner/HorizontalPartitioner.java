@@ -23,32 +23,33 @@ import edu.mit.streamjit.impl.common.Workers;
 public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 
 	/**
-	 * levelMap is a map that contains set of workers at each level in the stream graph. Key of levelMap is level. Level is start with
-	 * 1. not with 0.
+	 * levelMap is a map that contains set of workers at each level in the stream graph. Key of levelMap is level. level starts from 0,
+	 * (computer scientest's convention).
 	 */
 	private Map<Integer, Set<Worker<?, ?>>> levelMap;
 
 	public List<Set<Worker<?, ?>>> PatririonEquallyImplementation(OneToOneElement<I, O> streamGraph, Worker<I, ?> source,
 			Worker<?, O> sink, int noOfPartitions) {
 
-		buildLevelMap(this.source);
+		buildLevelMap(source);
 		int partitionSize = (int) Math.ceil((double) graphDepth / noOfPartitions);
 		List<Set<Worker<?, ?>>> partitioinList = new ArrayList<>();
 
 		int endLevel;
 		for (int i = 0; i < noOfPartitions; i++) {
 			endLevel = graphDepth > (i + 1) * partitionSize ? (i + 1) * partitionSize : graphDepth;
-			partitioinList.add(getWorkers(i * partitionSize + 1, endLevel));
+			partitioinList.add(getWorkers(i * partitionSize, endLevel));
 		}
 		return partitioinList;
 	}
 
 	/**
-	 * Treat the streamgraph as a top to bottom hierarchy and returns workers at the given level range.
+	 * Treat the streamgraph as a top to bottom hierarchy and returns workers at the given level range. return all workers those falls
+	 * in "startLevel<= level < endLevel" range.
 	 * 
 	 * @param startLevel
 	 * @param endLevel
-	 * @return set of workers from the startLevel upto EndLevel.
+	 * @return set of workers those falls in "startLevel<= level < endLevel" range.
 	 */
 	private Set<Worker<?, ?>> getWorkers(int startLevel, int endLevel) {
 		assert endLevel >= startLevel : String.format("endLevel = %d, startLevel = %d, endLevel is lesser than startLevel", endLevel,
@@ -61,7 +62,7 @@ public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 		assert levelMap != null;
 		assert levelMap.size() == graphDepth : "Missmatch in levelMap size";
 
-		for (int i = startLevel; i <= endLevel; i++) {
+		for (int i = startLevel; i < endLevel; i++) {
 			workersSubset.addAll(levelMap.get(i));
 		}
 		return workersSubset;
@@ -76,34 +77,35 @@ public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 	private void buildLevelMap(Worker<?, ?> source) {
 		if (levelMap == null) {
 			levelMap = new HashMap<Integer, Set<Worker<?, ?>>>();
-			for (int i = 1; i <= graphDepth; i++) {
+			for (int i = 0; i < graphDepth; i++) {
 				levelMap.put(i, new HashSet<Worker<?, ?>>());
 			}
 		}
 		Worker<?, ?> cur = source;
 		int level = 0;
-		while (!cur.equals(sink)) {
+		while (true) {
 			if (cur instanceof Filter<?, ?>) {
-				level++;
 				levelMap.get(level).add(cur);
-				cur = Workers.getSuccessors(cur).get(0);
-
+				level++;
 			} else if (cur instanceof Splitter<?>) {
-				buildlevelMapSplitJoin((Splitter<?>) cur, level + 1, this.levelMap);
+				buildlevelMapSplitJoin((Splitter<?>) cur, level, this.levelMap);
 				level += getDepthofSplitJoin((Splitter<?>) cur);
-				Joiner<?> joiner = getJoiner((Splitter<?>) cur);
-				cur = Workers.getSuccessors(joiner).isEmpty() ? joiner : Workers.getSuccessors(joiner).get(0);
+				cur = getJoiner((Splitter<?>) cur);
 			} else {
 				throw new AssertionError("Either Filter or Splitter needs to come here in the while loop");
 			}
+
+			if (Workers.getSuccessors(cur).isEmpty())
+				break;
+			else
+				cur = Workers.getSuccessors(cur).get(0);
 		}
 		assert level == graphDepth : "Error in algorithm";
-		levelMap.get(level).add(sink);
 	}
 
 	/**
 	 * This builds the level map for a splitjoin entity. This recursive function handles nested splitjoins as well. So just passing top
-	 * level splitjoin is far enough to build the level map. The function buildLevelMap can get assist from this function when building
+	 * level splitjoin is far enough to build the level map. The function buildLevelMap may get help from this function when building
 	 * the level map.
 	 * 
 	 * @param splitter

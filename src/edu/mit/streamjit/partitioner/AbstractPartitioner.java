@@ -60,18 +60,21 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 		int depth = 0; // source is at depth 1
 		Worker<?, ?> cur = source;
 
-		while (!Workers.getSuccessors(cur).isEmpty()) {
+		while (true) {
 			if (cur instanceof Splitter<?>) {
 				depth += getDepthofSplitJoin((Splitter<?>) cur);
 				cur = getJoiner((Splitter<?>) cur);
 			} else if (cur instanceof Worker<?, ?>) {
 				depth++;
-				cur = Workers.getSuccessors(cur).get(0);
-			} else if (cur instanceof Joiner<?>) {
-				cur = Workers.getSuccessors(cur).get(0);
 			} else {
 				throw new AssertionError("Unexpected worker found. Verify the algorithm");
 			}
+
+			if (Workers.getSuccessors(cur).isEmpty())
+				break;
+			else
+				cur = Workers.getSuccessors(cur).get(0);
+
 		}
 		return depth;
 	}
