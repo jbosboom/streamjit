@@ -4,7 +4,9 @@
  */
 package edu.mit.streamjit.impl.distributed.runtime.api;
 
-public interface MessageElement {
+import java.io.Serializable;
+
+public interface MessageElement extends Serializable {
 
 	public void accept(MessageVisitor visitor);
 
