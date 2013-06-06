@@ -22,6 +22,17 @@ public enum Request implements MessageElement {
 		public void process(RequestProcessor reqProcessor) {
 			reqProcessor.processMaxCores();
 		}
+	},
+	machineID {
+		@Override
+		public void process(RequestProcessor reqProcessor) {
+			reqProcessor.processMachineID();
+		}
+	}, NodeInfo {
+		@Override
+		public void process(RequestProcessor reqProcessor) {
+			reqProcessor.processNodeInfo();
+		}
 	};
 
 	@Override

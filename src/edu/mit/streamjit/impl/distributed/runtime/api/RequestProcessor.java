@@ -9,6 +9,10 @@ public interface RequestProcessor {
 	public void processAPPStatus();
 
 	public void processSysInfo();
-	
+
 	public void processMaxCores();
+
+	public void processMachineID();
+	
+	public void processNodeInfo();
 }
