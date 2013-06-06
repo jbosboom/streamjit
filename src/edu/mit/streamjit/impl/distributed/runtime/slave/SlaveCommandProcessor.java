@@ -16,21 +16,23 @@ public class SlaveCommandProcessor implements CommandProcessor {
 	@Override
 	public void processSTART() {
 		System.out.println("StraemJit app started...");
+		slave.getBlobsManager().start();
 	}
 
 	@Override
 	public void processSTOP() {
 		System.out.println("StraemJit app stopped...");
+		slave.getBlobsManager().stop();
 	}
 
 	@Override
 	public void processSUSPEND() {
-
+		slave.getBlobsManager().suspend();
 	}
 
 	@Override
 	public void processRESUME() {
-
+		slave.getBlobsManager().resume();
 	}
 
 	@Override
