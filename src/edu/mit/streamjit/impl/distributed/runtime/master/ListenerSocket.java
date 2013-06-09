@@ -13,8 +13,8 @@ import edu.mit.streamjit.impl.distributed.runtime.common.TCPSocket;
 /**
  * {@link ListenerSocket} listens for new TCP connections. It can run on separate thread and keep on listening until the stop condition
  * is full filled. {@link ListenerSocket} can be used in two different ways.
- * 1) Caller can ask {@link ListenerSocket} to listen until it calls to stop 2) Caller can mention expected number of sockets that
- * should be accepted. In this case, listener theread will stop listening once it has accepted the expected count.
+ * 1) Caller can ask {@link ListenerSocket} to listen until it asks to stop 2) Caller can mention expected number of sockets that
+ * should be accepted. In this case, listener thread will stop listening once it has accepted the expected count.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 14, 2013
@@ -59,6 +59,7 @@ public class ListenerSocket extends Thread {
 		}
 
 		acceptedSockets = new ConcurrentLinkedQueue<>();
+		this.keepOnListen = new AtomicBoolean();
 		keepOnListen.set(true);
 	}
 
