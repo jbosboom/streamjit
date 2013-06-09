@@ -50,13 +50,14 @@ public class SlaveTCPConnection implements SlaveConnection {
 
 	@Override
 	public boolean closeConnection() throws IOException {
-		socket.closeConnection();
+		if (socket != null)
+			socket.closeConnection();
 		return true;
 	}
 
 	@Override
 	public boolean isStillConnected() {
-		return socket.isStillconnected();
+		return (socket == null) ? false : socket.isStillconnected();
 	}
 
 	@Override
@@ -67,6 +68,7 @@ public class SlaveTCPConnection implements SlaveConnection {
 			try {
 				Socket socket = new Socket(this.serverAddress, this.portNo);
 				this.socket = new TCPSocket(socket);
+				System.out.println("Connection with master established");
 				return true;
 			} catch (UnknownHostException uhe) {
 				System.out.println("Unknown Server Address");

@@ -33,7 +33,7 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 
 	@Override
 	public boolean isStillConnected() {
-		return socket.isStillconnected();
+		return (socket == null) ? false : socket.isStillconnected();
 	}
 
 	@Override
@@ -49,7 +49,7 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 		return new Runnable() {
 			@Override
 			public void run() {
-				if (!socket.isStillconnected()) {
+				if (socket == null || !socket.isStillconnected()) {
 					try {
 						makeConnection();
 					} catch (IOException e) {

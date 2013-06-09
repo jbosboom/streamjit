@@ -46,11 +46,11 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 		return new Runnable() {
 			@Override
 			public void run() {
-				if (!inputConnection.isStillConnected()) {
+				if (inputConnection == null || !inputConnection.isStillConnected()) {
 					try {
 						makeConnection();
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
+						stopFlag = true;
 						e.printStackTrace();
 					}
 				}
