@@ -18,8 +18,8 @@ import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 
 /**
- * {@link BlobVisitor} visits through a set of workers of a {@link Blob} and connects them by {@link Channel}s. {@link Channel} manufactured
- * by {@link ConcurrentChannelFactory} is used to make connection.
+ * {@link BlobVisitor} visits through a set of workers of a {@link Blob} and connects them by {@link Channel}s. {@link Channel}
+ * manufactured by {@link ConcurrentChannelFactory} is used to make connection.
  * 
  * Note: In prior to get service from {@link BlobVisitor}, all workers in the stream graph should be connected by setting all
  * predecessors, successors. Consider using {@link ConnectWorkersVisitor} to set all predecessors, successors, relationships before
@@ -102,24 +102,53 @@ public class BlobVisitor extends StreamVisitor {
 	}
 
 	/**
-	 * TODO: successor should be Worker<E, ?>. It shows bug in Eclipse. Check it with Netbeans. Now raw type is used.
+	 * Set input and output channels to the worker. If any channels has already been set, then skip it.
+	 * 
+	 * @param worker
+	 *            : whose input and output channels to be set.
 	 */
-	private <E> void visitWorker(Worker<?, E> worker) {
+	private <I, O> void visitWorker(Worker<I, O> worker) {
 		if (!partitionWorkers.contains(worker))
 			return;
 
-		for (Worker successor : Workers.getSuccessors(worker)) {
+		// Set the input channels. If a channel has already been set, skip.
+		for (Worker<?, ? extends I> predecessor : Workers.getPredecessors(worker)) {
+
+			int srcIdx = Workers.getSuccessors(predecessor).indexOf(worker);
+			int dstIdx = Workers.getPredecessors(worker).indexOf(predecessor);
+
+			if (Workers.getInputChannels(worker).get(dstIdx) == null) {
+				assert Workers.getOutputChannels(predecessor).get(srcIdx) == null : "Fetal Error: Output channel has already been set.";
+
+				// TODO: Here I am casting to raw type due to the interface channelfactory doesn't provide bounded types. Need to
+				// tackle this.
+				Channel<I> chnl = this.channelFactory.makeChannel(worker, (Worker) predecessor);
+				System.out.println("predecessor relationship...");
+
+				Workers.getOutputChannels(predecessor).set(srcIdx, chnl);
+				Workers.getInputChannels(worker).set(dstIdx, chnl);
+			} else
+				assert Workers.getOutputChannels(predecessor).get(srcIdx) != null : "Fetal Error: Output channel is empty.";
+		}
+
+		// Set the output channels. If a channel has already been set, skip.
+		for (Worker<? super O, ?> successor : Workers.getSuccessors(worker)) {
 
 			int srcIdx = Workers.getSuccessors(worker).indexOf(successor);
 			int dstIdx = Workers.getPredecessors(successor).indexOf(worker);
 
-			assert Workers.getOutputChannels(worker).get(srcIdx) == null : "Fetal Error: Output channel is already set.";
-			assert Workers.getInputChannels(successor).get(dstIdx) == null : "Fetal Error: Output channel is already set.";
+			if (Workers.getOutputChannels(worker).get(srcIdx) == null) {
+				assert Workers.getInputChannels(successor).get(dstIdx) == null : "Fetal Error: Output channel is already set.";
 
-			Channel<E> chnl = this.channelFactory.makeChannel(worker, successor);
+				// TODO: Here I am casting to raw type due to the interface channelfactory doesn't provide bounded types. Need to
+				// tackle this.
+				Channel<O> chnl = this.channelFactory.makeChannel((Worker) worker, successor);
+				System.out.println("successor relationship...");
 
-			Workers.getOutputChannels(worker).set(srcIdx, chnl);
-			Workers.getInputChannels(successor).set(dstIdx, chnl);
+				Workers.getOutputChannels(worker).set(srcIdx, chnl);
+				Workers.getInputChannels(successor).set(dstIdx, chnl);
+			} else
+				assert Workers.getInputChannels(successor).get(dstIdx) != null : "Fetal Error: Output channel is empty.";
 		}
 	}
 }
