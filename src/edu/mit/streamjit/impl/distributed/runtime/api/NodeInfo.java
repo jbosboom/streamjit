@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.runtime.api;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  * {@link NodeInfo} is to store and pass the information about the nodes such as machines, servers, or mobile phones that are used to
@@ -13,6 +14,32 @@ import java.net.InetAddress;
 public class NodeInfo implements MessageElement {
 
 	private static final long serialVersionUID = -2627560179074739731L;
+
+	/**
+	 * As this code snippet become repeated in many places ( master side and slave side) , static methods is introduced to ease the
+	 * job. No more do nodes need to calculate everything them self. instead, nodes can get their {@link NodeInfo} through this static
+	 * method.
+	 * 
+	 * @return
+	 */
+	public static NodeInfo getMyinfo() {
+		InetAddress localMachine;
+		String hostName;
+		int availableCores = Runtime.getRuntime().availableProcessors();
+		// TODO: Need to verify the ramSize.
+		long ramSize = Runtime.getRuntime().maxMemory();
+		try {
+			localMachine = InetAddress.getLocalHost();
+			hostName = localMachine.getHostName();
+			NodeInfo myInfo = new NodeInfo(hostName, localMachine, availableCores, ramSize);
+			return myInfo;
+		} catch (UnknownHostException e) { // This exception is very unlikely to be caught as we will have already established the
+											// Connection.
+			e.printStackTrace();
+		}
+		// FIXME: Is this accepted programming practice?
+		return null;
+	}
 
 	/**
 	 * Human convenient hostName of the computing node. e.g, ClusterNode7, SamsungS2, testPC, etc. For easy logging and error printing.

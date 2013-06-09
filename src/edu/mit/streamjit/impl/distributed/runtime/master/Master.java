@@ -1,116 +1,182 @@
+package edu.mit.streamjit.impl.distributed.runtime.master;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import edu.mit.streamjit.api.Identity;
+import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Pipeline;
+import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.impl.blob.Blob;
+import edu.mit.streamjit.impl.blob.BlobFactory;
+import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
+import edu.mit.streamjit.impl.common.MessageConstraint;
+import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
+import edu.mit.streamjit.impl.distributed.runtime.api.BlobsManager;
+import edu.mit.streamjit.impl.distributed.runtime.api.JsonString;
+import edu.mit.streamjit.impl.distributed.runtime.api.NodeInfo;
+import edu.mit.streamjit.impl.distributed.runtime.api.Request;
+import edu.mit.streamjit.impl.distributed.runtime.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.runtime.slave.BlobsManagerImpl;
+import edu.mit.streamjit.impl.distributed.runtime.slave.DistributedBlob;
+import edu.mit.streamjit.impl.interp.Interpreter;
+
 /**
  * @author Sumanan sumanan@mit.edu
  * @since May 10, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.master;
-
-import java.io.IOException;
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
-
-import edu.mit.streamjit.api.CompiledStream;
-import edu.mit.streamjit.api.OneToOneElement;
-import edu.mit.streamjit.api.StreamCompiler;
-import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.apps.minimal.Minimal.MinimalKernel;
-import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
-import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
-
 public class Master {
 
-	OneToOneElement<?, ?> topOneToOneElement;
-	int noOfSlaves;
+	private CommunicationManager comManager;
 
-	Master(String jarFilePath, String outterClass, String topLevelClass, int noOfSlaves) {
+	BlobsManager blobsManager;
 
-		if (noOfSlaves < 0)
-			throw new IllegalArgumentException("noOfSlaves can not be negative");
+	private List<Integer> slaveIDs;
 
-		Worker<?, ?> topWorker = getToplevelWorker(jarFilePath, outterClass, topLevelClass);
+	Map<Integer, NodeInfo> nodeInfoMap;
 
-		if (!(topWorker instanceof OneToOneElement<?, ?>))
-			throw new IllegalArgumentException("topLevelClass is not OneToOneElement<?,?>. Please pass an OneToOneElement<?,?>");
-
-		this.topOneToOneElement = (OneToOneElement<?, ?>) topWorker;
-		this.noOfSlaves = noOfSlaves;
+	public Master() {
+		this.comManager = new TCPCommunicationManager();
 	}
 
-	public void run() throws InterruptedException {
-		
-		StreamCompiler sc = new DistributedStreamCompiler(2);
-		CompiledStream<?, ?> stream = sc.compile(this.topOneToOneElement);
-		Integer output;
-		for (int i = 0; i < 1000000; ++i) {
-			stream.offer();
-		}
-		stream.drain();
-		System.out.println("Drain called");
-		stream.awaitDraining();		
-	}
-
-	private Worker<?, ?> getToplevelWorker(String jarFilePath, String outterClass, String topStreamClass) {
-		File jarFile = new java.io.File(jarFilePath);
-		if (!jarFile.exists()) {
-			System.out.println("Jar file not found....");
-			System.exit(0);
-		}
-
-		URL url;
+	public void connect(int noOfslaves) {
+		// TODO: Need to handle this exception well.
 		try {
-			url = jarFile.toURI().toURL();
-			URL[] urls = new URL[] { url };
-
-			ClassLoader loader = new URLClassLoader(urls);
-			Class<?> clazz1 = loader.loadClass(outterClass);
-			Class<?> innterClass = getInngerClass(clazz1, topStreamClass);
-			System.out.println(innterClass.getSimpleName());
-
-			return (Worker<?, ?>) innterClass.newInstance();
-
-		} catch (MalformedURLException e) {
+			comManager.connectMachines(noOfslaves); // Because the noOfnodes includes the master node also
+		} catch (IOException e) {
+			System.out.println("Connection Error...");
 			e.printStackTrace();
-			System.out.println("Couldn't find the toplevel worker...Exiting");
-			System.exit(0);
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.out.println("Couldn't find the toplevel worker...Exiting");
 			System.exit(0);
 		}
-		return null;
+		setMachineIds();
+		getNodeInfo();
 	}
 
-	private static Class<?> getInngerClass(Class<?> OutterClass, String InnterClassName) throws ClassNotFoundException {
-		Class<?>[] kl = OutterClass.getClasses();
-		for (Class<?> k : kl) {
-			if (InnterClassName.equals(k.getSimpleName())) {
-				return k;
+	private void setMachineIds() {
+		this.slaveIDs = comManager.getConnectedMachineIDs();
+		for (int key : this.slaveIDs) {
+			try {
+				comManager.writeObject(key, Request.machineID);
+				comManager.writeObject(key, new Integer(key));
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
-		throw new ClassNotFoundException(String.format("Innter class %s is not found in the outter class %s", InnterClassName,
-				OutterClass.getName()));
+	}
+
+	private void getNodeInfo() {
+		nodeInfoMap = new HashMap<>();
+		nodeInfoMap.put(0, NodeInfo.getMyinfo()); // available cores at master. master's machineID is 0
+
+		sendToAll(Request.NodeInfo);
+
+		for (int key : this.slaveIDs) {
+			try {
+				NodeInfo nodeinfo = comManager.readObject(key);
+				nodeInfoMap.put(key, nodeinfo);
+			} catch (IOException | ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 
 	/**
-	 * @param args
+	 * Blocking call.
+	 * 
+	 * @return : Map, key is machineID and value is coreCount.
 	 */
-	public static void main(String[] args) {
+	public Map<Integer, Integer> getCoreCount() {
+		Map<Integer, Integer> coreCounts = new HashMap<>();
+		coreCounts.put(0, Runtime.getRuntime().availableProcessors()); // available cores at master. master's machineID is 0
 
-		if (args.length < 4) {
-			System.out.println(args.length);
-			System.out.println("Not enough parameters passed. Please provide thr following parameters.");
-			System.out.println("1: StreamJit application's jar file path");
-			System.out.println("2: StreamJit application top level class name");
-			System.out.println("3: StreamJit application Outter level class name");
-			System.out.println("3: No of slaves");
+		sendToAll(Request.maxCores);
+
+		for (int key : this.slaveIDs) {
+			try {
+				Integer count = comManager.readObject(key);
+				coreCounts.put(key, count);
+			} catch (IOException | ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return coreCounts;
+	}
+
+	public void setPartition(Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap, String outerClass, String toplevelclass,
+			List<MessageConstraint> constraints) {
+		String jarFilePath = this.getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
+
+		Configuration confg = makeConfiguration(partitionsMachineMap, jarFilePath, outerClass, toplevelclass);
+		JsonString json = new JsonString(confg.toJson());
+		sendToAll(json);
+
+		createMasterBlobs(partitionsMachineMap.get(0));
+	}
+
+	private Configuration makeConfiguration(Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap, String jarFilePath,
+			String outterClass, String topLevelClass) {
+
+		Configuration.Builder builder = Configuration.builder();
+
+		Identity<Integer> first = new Identity<>(), second = new Identity<>();
+		Pipeline<Integer, Integer> pipeline = new Pipeline<>(first, second);
+		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
+		pipeline.visit(cwv);
+
+		List<Integer> coresPerMachine = new ArrayList<>();
+		for (List<Set<Worker<?, ?>>> blobList : partitionsMachineMap.values()) {
+			coresPerMachine.add(blobList.size());
 		}
 
-		String jarFilePath = args[0];
-		String topLevelClass = args[1];
-		String outterClass = args[2];
-		int noOfSlaves = new Integer(args[3]);
+		PartitionParameter.Builder partParam = PartitionParameter.builder("partition", coresPerMachine);
 
-		new Master(jarFilePath, outterClass, topLevelClass, noOfSlaves);
+		// TODO: need to add correct blob factory.
+		BlobFactory factory = new Interpreter.InterpreterBlobFactory();
+		partParam.addBlobFactory(factory);
+
+		for (Integer machineID : partitionsMachineMap.keySet()) {
+			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap.get(machineID);
+			for (Set<Worker<?, ?>> blobWorkers : blobList) {
+				// TODO: One core per blob. Need to change this.
+				partParam.addBlob(machineID, 1, factory, blobWorkers);
+			}
+		}
+
+		builder.addParameter(partParam.build());
+
+		builder.putExtraData(GlobalConstants.JARFILE_PATH, jarFilePath);
+		builder.putExtraData(GlobalConstants.OUTTER_CLASS_NAME, outterClass);
+		builder.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME, topLevelClass);
+		builder.putExtraData(GlobalConstants.NODE_INFO_MAP, nodeInfoMap);
+
+		return builder.build();
+	}
+
+	private void sendToAll(Object object) {
+		for (int key : this.slaveIDs) {
+			try {
+				comManager.writeObject(key, object);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private void createMasterBlobs(List<Set<Worker<?, ?>>> blobWorkersList) {
+		Blob b = new DistributedBlob(blobWorkersList, Collections.<MessageConstraint> emptyList());
+		Set<Blob> blobSet = new HashSet<>();
+		blobSet.add(b);
+		blobsManager = new BlobsManagerImpl(blobSet);
+		blobsManager.start();
 	}
 }
