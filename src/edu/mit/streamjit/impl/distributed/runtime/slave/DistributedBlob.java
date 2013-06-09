@@ -43,8 +43,9 @@ public class DistributedBlob implements Blob {
 	 *            level {@link Iterable}s will be passed to {@link SingleThreadedBlob} and will be running in a single thread.
 	 * @param constraintsIter
 	 */
-	public DistributedBlob(Iterable<Iterable<Worker<?, ?>>> workersIter, Iterable<MessageConstraint> constraintsIter) {
+	public DistributedBlob(List<Set<Worker<?, ?>>> workersIter, Iterable<MessageConstraint> constraintsIter) {
 		threadBlobs = new ArrayList<>();
+
 		for (Iterable<Worker<?, ?>> coreWorkers : workersIter) {
 			threadBlobs.add(new SingleThreadedBlob(coreWorkers, constraintsIter));
 		}

@@ -55,20 +55,9 @@ public class SlaveRequestProcessor implements RequestProcessor {
 
 	@Override
 	public void processNodeInfo() {
-
-		InetAddress localMachine;
-		String hostName;
-		int availableCores = Runtime.getRuntime().availableProcessors();
-		// TODO: Need to verify the ramSize.
-		long ramSize = Runtime.getRuntime().maxMemory();
+		NodeInfo myInfo = NodeInfo.getMyinfo();
 		try {
-			localMachine = InetAddress.getLocalHost();
-			hostName = localMachine.getHostName();
-			NodeInfo myInfo = new NodeInfo(hostName, localMachine, availableCores, ramSize);
 			slave.masterConnection.writeObject(myInfo);
-		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

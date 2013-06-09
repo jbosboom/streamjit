@@ -1,26 +1,41 @@
 package edu.mit.streamjit.impl.distributed.runtime.slave;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+
 import static com.google.common.base.Preconditions.*;
 
+import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
+import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecifier;
 import edu.mit.streamjit.impl.concurrent.SingleThreadedBlob;
+import edu.mit.streamjit.impl.distributed.runtime.api.BlobsManager;
+import edu.mit.streamjit.impl.distributed.runtime.api.Error;
 import edu.mit.streamjit.impl.distributed.runtime.api.JsonStringProcessor;
 import edu.mit.streamjit.impl.distributed.runtime.common.GlobalConstants;
+import edu.mit.streamjit.impl.interp.ArrayChannel;
+import edu.mit.streamjit.impl.interp.Channel;
+import edu.mit.streamjit.impl.interp.SynchronizedChannel;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
@@ -38,51 +53,77 @@ public class SlaveJsonStringProcessor implements JsonStringProcessor {
 	@Override
 	public void process(String json) {
 		ImmutableSet<Blob> blobSet = getBlobs(json);
-		// TODO: Need to call the blob runner.
+		if (blobSet != null)
+			slave.setBlobsManager(new BlobsManagerImpl(blobSet));
+		else
+			System.out.println("Couldn't get the blobset....");
 	}
 
 	private ImmutableSet<Blob> getBlobs(String json) {
 		Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
 
-		IntParameter intparam = cfg.getParameter("machineID", IntParameter.class);
-		if (intparam == null)
-			throw new IllegalArgumentException("machineID is not available in the received configuraion");
-
 		PartitionParameter partParam = cfg.getParameter("partition", PartitionParameter.class);
 		if (partParam == null)
 			throw new IllegalArgumentException("Partition parameter is not available in the received configuraion");
 
-		String outterClass = (String) cfg.getExtraData(GlobalConstants.outterClassName);
-		String topLevelWorkerName = (String) cfg.getExtraData(GlobalConstants.topLevelWorkerName);
-		String jarFilePath = (String) cfg.getExtraData(GlobalConstants.jarFilePath);
+		String outterClass = (String) cfg.getExtraData(GlobalConstants.OUTTER_CLASS_NAME);
+		String topLevelWorkerName = (String) cfg.getExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME);
+		String jarFilePath = (String) cfg.getExtraData(GlobalConstants.JARFILE_PATH);
 
-		Worker<?, ?> topLevelWorker = getToplevelWorker(jarFilePath, outterClass, topLevelWorkerName);
+		OneToOneElement<?, ?> streamGraph = getStreamGraph(jarFilePath, outterClass, topLevelWorkerName);
+		if (streamGraph != null) {
+			ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
+			streamGraph.visit(primitiveConnector);
+			Worker<?, ?> source = (Worker<?, ?>) primitiveConnector.getSource();
+			Worker<?, ?> sink = (Worker<?, ?>) primitiveConnector.getSink();
 
-		slave.setMachineID(intparam.getValue());
-		List<BlobSpecifier> blobList = partParam.getBlobsOnMachine(slave.getMachineID());
+			// TODO: Need to ensure the type arguments of this channels.
+			Channel head = new SynchronizedChannel<>(new ArrayChannel<>());
+			Channel tail = new SynchronizedChannel<>(new ArrayChannel<>());
 
-		ImmutableSet.Builder<Blob> blobSet = ImmutableSet.builder();
+			Workers.getInputChannels(source).add(head);
+			Workers.getOutputChannels(sink).add(tail);
 
-		for (BlobSpecifier bs : blobList) {
-			Set<Integer> workIdentifiers = bs.getWorkerIdentifiers();
-			System.out.println(workIdentifiers.toString());
-			ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(topLevelWorker);
-			Blob b = new SingleThreadedBlob(workerset, Collections.<MessageConstraint> emptyList());
-			blobSet.add(b);
-		}
+			List<BlobSpecifier> blobList = partParam.getBlobsOnMachine(slave.getMachineID());
 
-		return blobSet.build();
+			ImmutableSet.Builder<Blob> blobSet = ImmutableSet.builder();
+
+			for (BlobSpecifier bs : blobList) {
+				Set<Integer> workIdentifiers = bs.getWorkerIdentifiers();
+				System.out.println(workIdentifiers.toString());
+				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
+				// TODO: Need to partitions the workerset to threads. Lets do the equal partitioning.
+				Blob b = new DistributedBlob(partitionEqually(workerset, 1), Collections.<MessageConstraint> emptyList());
+				
+				blobSet.add(b);
+			}
+			return blobSet.build();
+		} else
+			return null;
 	}
 
-	private Worker<?, ?> getToplevelWorker(String jarFilePath, String outterClass, String topStreamClass) {
+	/**
+	 * @param jarFilePath
+	 * @param outterClassName
+	 *            : Some of the benchmarks are written inside the ............TODO: Add a descriptive comment about the purpose of the
+	 *            outterclass at all places.
+	 * @param topStreamClassName
+	 * @return
+	 */
+	private OneToOneElement<?, ?> getStreamGraph(String jarFilePath, String outterClassName, String topStreamClassName) {
 
 		checkNotNull(jarFilePath);
-		checkNotNull(topStreamClass);
+		checkNotNull(topStreamClassName);
 
 		File jarFile = new java.io.File(jarFilePath);
 		if (!jarFile.exists()) {
 			System.out.println("Jar file not found....");
-			System.exit(0);
+			try {
+				slave.masterConnection.writeObject(Error.FILE_NOT_FOUND);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			return null;
 		}
 
 		URL url;
@@ -91,19 +132,40 @@ public class SlaveJsonStringProcessor implements JsonStringProcessor {
 			URL[] urls = new URL[] { url };
 
 			ClassLoader loader = new URLClassLoader(urls);
-			Class<?> clazz1 = loader.loadClass(outterClass);
-			Class<?> innterClass = getInngerClass(clazz1, topStreamClass);
-			System.out.println(innterClass.getSimpleName());
-			return (Worker<?, ?>) innterClass.newInstance();
+			Class<?> topStreamClass;
+			if (!Strings.isNullOrEmpty(outterClassName)) {
+				Class<?> clazz1 = loader.loadClass(outterClassName);
+				topStreamClass = getInngerClass(clazz1, topStreamClassName);
+			} else {
+				topStreamClass = loader.loadClass(topStreamClassName);
+			}
+			System.out.println(topStreamClass.getSimpleName());
+			return (OneToOneElement<?, ?>) topStreamClass.newInstance();
 
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
 			System.out.println("Couldn't find the toplevel worker...Exiting");
-			System.exit(0);
+
+			// TODO: Try catch inside a catch block. Good practice???
+			try {
+				slave.masterConnection.writeObject(Error.WORKER_NOT_FOUND);
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			// System.exit(0);
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.out.println("Couldn't find the toplevel worker...Exiting");
-			System.exit(0);
+
+			// TODO: Try catch inside a catch block. Good practice???
+			try {
+				slave.masterConnection.writeObject(Error.WORKER_NOT_FOUND);
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			// System.exit(0);
 		}
 		return null;
 	}
@@ -119,4 +181,25 @@ public class SlaveJsonStringProcessor implements JsonStringProcessor {
 				OutterClass.getName()));
 	}
 
+	/**
+	 * Just does the round robin assignment. TODO: Need to optimally assign the workers to the threads.
+	 * 
+	 * @param workerSet
+	 * @param noOfPartitions
+	 * @return
+	 */
+	private List<Set<Worker<?, ?>>> partitionEqually(Set<Worker<?, ?>> workerSet, int noOfPartitions) {
+		List<Set<Worker<?, ?>>> partList = new ArrayList<Set<Worker<?, ?>>>(noOfPartitions);
+		for (int i = 0; i < noOfPartitions; i++) {
+			partList.add(new HashSet<Worker<?, ?>>());
+		}
+
+		int j = 0;
+		for (Worker<?, ?> w : workerSet) {
+			partList.get(j++).add(w);
+			if (j == partList.size())
+				j = 0;
+		}
+		return partList;
+	}
 }

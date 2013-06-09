@@ -6,6 +6,7 @@ package edu.mit.streamjit.impl.distributed.runtime.slave;
 
 import java.io.IOException;
 
+import edu.mit.streamjit.impl.distributed.runtime.api.BlobsManager;
 import edu.mit.streamjit.impl.distributed.runtime.api.Command;
 import edu.mit.streamjit.impl.distributed.runtime.api.MessageElement;
 import edu.mit.streamjit.impl.distributed.runtime.api.MessageVisitor;
@@ -23,6 +24,8 @@ public class Slave {
 	private int machineID; // TODO: consider move or remove this from Slave class. If so, this class will be more handy.
 	MessageVisitor mv;
 
+	BlobsManager blobsManager;
+
 	private boolean run; // As we assume that all master communication and the MessageElement processing is managed by single thread,
 							// no need to make this variable thread safe.
 
@@ -37,7 +40,7 @@ public class Slave {
 	public Slave(String ipAddress, int portNo) {
 		masterConnection = new SlaveTCPConnection(ipAddress, portNo);
 		this.mv = new SlaveMessageVisitor(new SlaveAppStatusProcessor(), new SlaveCommandProcessor(this), new SlaveErrorProcessor(),
-				new SlaveRequestProcessor(masterConnection), new SlaveJsonStringProcessor(this));
+				new SlaveRequestProcessor(this), new SlaveJsonStringProcessor(this));
 		this.run = true;
 	}
 
@@ -76,6 +79,7 @@ public class Slave {
 
 	public void setMachineID(int machineID) {
 		this.machineID = machineID;
+		System.out.println("I have got my machine ID: " + this.machineID);
 	}
 
 	// Release all file pointers, opened sockets, etc.
@@ -86,7 +90,6 @@ public class Slave {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
 	}
 
 	/**
@@ -97,13 +100,15 @@ public class Slave {
 		String ipAddress;
 
 		if (args.length < requiredArgCount) {
-			System.out.println(args.length);
-			System.out.println("Not enough parameters passed. Please provide thr following parameters.");
-			System.out.println("0: Master's IP address");
-			System.exit(0);
+			/*
+			 * System.out.println(args.length);
+			 * System.out.println("Not enough parameters passed. Please provide thr following parameters.");
+			 * System.out.println("0: Master's IP address"); System.exit(0);
+			 */
 		}
 
-		ipAddress = args[0];
+		// ipAddress = args[0];
+		ipAddress = "127.0.0.1";
 		if (!Ipv4Validator.getInstance().isValid(ipAddress)) {
 			System.out.println("Invalid IP address...");
 			System.out.println("Please verify the first argument.");
@@ -124,5 +129,20 @@ public class Slave {
 			}
 		} else
 			new Slave(ipAddress).run();
+	}
+
+	/**
+	 * @return the blobsManager
+	 */
+	public BlobsManager getBlobsManager() {
+		return blobsManager;
+	}
+
+	/**
+	 * @param blobsManager
+	 *            the blobsManager to set
+	 */
+	public void setBlobsManager(BlobsManager blobsManager) {
+		this.blobsManager = blobsManager;
 	}
 }
