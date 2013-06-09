@@ -16,7 +16,7 @@ import edu.mit.streamjit.impl.distributed.runtime.common.TCPSocket;
 
 public class TCPCommunicationManager implements CommunicationManager {
 
-	private Map<Integer, TCPSocket> socketMap;
+	private Map<Integer, TCPSocket> socketMap; // (machineID, TCPSocket)
 	private int listenPort;
 
 	public TCPCommunicationManager(int listenPort) {
@@ -37,25 +37,24 @@ public class TCPCommunicationManager implements CommunicationManager {
 	}
 
 	@Override
-	public boolean writeObject(int machineID, Object obj) throws IOException {
+	public void writeObject(int machineID, Object obj) throws IOException {
 		if (!socketMap.containsKey(machineID))
 			throw new IllegalArgumentException("Invalid machineID. No machine is connected with machineID " + machineID);
 
 		socketMap.get(machineID).sendObject(obj);
-		return true;
 	}
 
 	@Override
-	public boolean connectMachines(int noOfmachines) throws IOException {
+	public void connectMachines(int noOfmachines) throws IOException {
 		ListenerSocket listnerSckt = new ListenerSocket(this.listenPort, noOfmachines);
 		listnerSckt.start();
 		socketMap.clear();
-		int machineID = 0;
+		int machineID = 1; // master gets machineID 0.
 		while (true) {
 			List<TCPSocket> acceptedSocketList = listnerSckt.getAcceptedSockets();
 			for (TCPSocket s : acceptedSocketList) {
 				socketMap.put(machineID++, s);
-
+				System.out.println("Slave connected: " + s.toString());
 				if (!(socketMap.size() < noOfmachines))
 					break;
 			}
@@ -66,37 +65,32 @@ public class TCPCommunicationManager implements CommunicationManager {
 			// Rather than continuously polling the listenersocket, lets wait some time before the next poll.
 			try {
 				Thread.sleep(1000);
+				System.out.println("Waiting for required slaves to be connected. Listener is still listening...");
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
-
 		listnerSckt.stopListening();
-		return true;
 	}
 
 	@Override
-	public boolean connectMachines(long timeOut) throws IOException {
+	public void connectMachines(long timeOut) throws IOException {
 		// TODO: Implement a timer and call the listnerSckt.stopListening();
-		return false;
 	}
 
 	@Override
-	public boolean closeAllConnections() throws IOException {
-
+	public void closeAllConnections() throws IOException {
 		for (TCPSocket s : socketMap.values()) {
 			s.closeConnection();
 		}
-		return true;
 	}
 
 	@Override
-	public boolean closeConnection(int machineID) throws IOException {
+	public void closeConnection(int machineID) throws IOException {
 		if (!socketMap.containsKey(machineID))
 			throw new IllegalArgumentException("Invalid machineID. No machine is connected with machineID " + machineID);
 
 		socketMap.get(machineID).closeConnection();
-		return true;
 	}
 
 	@Override
@@ -107,9 +101,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 
 			return ss.isStillconnected();
 		}
-
 		return false;
-
 	}
 
 	@Override
@@ -117,34 +109,12 @@ public class TCPCommunicationManager implements CommunicationManager {
 
 		List<Integer> connectedMachineIDs = new LinkedList<>();
 
-		for (int i = 0; i < socketMap.size(); i++) {
+		for (int key : socketMap.keySet()) {
 
-			if (socketMap.get(i).isStillconnected()) {
-				connectedMachineIDs.add(i);
+			if (socketMap.get(key).isStillconnected()) {
+				connectedMachineIDs.add(key);
 			}
 		}
 		return connectedMachineIDs;
-	}
-
-	@Override
-	public Map<Integer, Integer> getCoreCount() {
-		for (TCPSocket socket : socketMap.values()) {
-			try {
-				socket.sendObject(Request.maxCores);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-
-		for (TCPSocket socket : socketMap.values()) {
-			try {
-				socket.receiveObject();
-			} catch (IOException | ClassNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		return null;
 	}
 }
