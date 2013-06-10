@@ -1,10 +1,13 @@
 package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Table;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Joiner;
@@ -40,6 +43,7 @@ import edu.mit.streamjit.impl.interp.EmptyChannel;
 import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.IdentityHashMap;
@@ -63,7 +67,13 @@ public final class Compiler {
 	private final int maxNumCores;
 	private final ImmutableSet<IOInfo> ioinfo;
 	private final Worker<?, ?> firstWorker, lastWorker;
-	private final Map<Worker<?, ?>, WorkerData> workerData;
+	/**
+	 * Maps a worker to the StreamNode that contains it.  Updated by
+	 * StreamNode's constructors.  (It would be static in
+	 * StreamNode if statics of inner classes were supported and worked as
+	 * though there was one instance per parent instance.)
+	 */
+	private final Map<Worker<?, ?>, StreamNode> streamNodes = new IdentityHashMap<>();
 	private final String packagePrefix;
 	private final Module module = new Module();
 	private final Klass blobKlass;
@@ -72,7 +82,6 @@ public final class Compiler {
 		this.config = config;
 		this.maxNumCores = maxNumCores;
 		this.ioinfo = IOInfo.create(workers);
-		this.workerData = new IdentityHashMap<>(workers.size());
 
 		//We can only have one first and last worker, though they can have
 		//multiple inputs/outputs.
@@ -121,45 +130,29 @@ public final class Compiler {
 
 	public Blob compile() {
 		for (Worker<?, ?> w : workers)
-			buildWorkerData(w);
+			new StreamNode(w); //adds itself to streamNodes map
+		fuse();
+		//Compute per-node steady state execution counts.
+		for (StreamNode n : streamNodes.values())
+			n.internalSchedule();
+		externalSchedule();
+		//TODO
+		//TODO: initial buffer reqs and init schedule
+		//TODO: fission
+		//TODO: generate work methods
+		//TODO: generate core code
 		addBlobPlumbing();
 		blobKlass.dump(new PrintWriter(System.out, true));
 		return instantiateBlob();
 	}
 
-	private void buildWorkerData(Worker<?, ?> worker) {
-		WorkerData data = new WorkerData(worker);
-		workerData.put(worker, data);
-		int id = Workers.getIdentifier(worker);
-		Klass workerKlass = module.getKlass(worker.getClass());
-
-		//Build the new fields.
-		for (Field f : workerKlass.fields()) {
-			java.lang.reflect.Field rf = f.getBackingField();
-			Set<Modifier> modifiers = EnumSet.of(Modifier.PRIVATE, Modifier.STATIC);
-			//We can make the new field final if the original field is final or
-			//if the worker isn't stateful.
-			if (f.modifiers().contains(Modifier.FINAL) || !(worker instanceof StatefulFilter))
-				modifiers.add(Modifier.FINAL);
-
-			Field nf = new Field(f.getType().getFieldType(),
-					"w"+id+"$"+f.getName(),
-					modifiers,
-					blobKlass);
-			data.fields.put(f, nf);
-
-			try {
-				rf.setAccessible(true);
-				Object value = rf.get(worker);
-				data.fieldValues.put(f, value);
-			} catch (IllegalAccessException ex) {
-				//Either setAccessible will succeed or we'll throw a
-				//SecurityException, so we'll never get here.
-				throw new AssertionError("Can't happen!", ex);
-			}
-		}
-
-		makeWorkMethod(worker);
+	/**
+	 * Fuses StreamNodes as directed by the configuration.
+	 */
+	private void fuse() {
+		//TODO: some kind of worklist algorithm that fuses until no more fusion
+		//possible, to handle state, peeking, or attempts to fuse with more than
+		//one predecessor.
 	}
 
 	/**
@@ -405,6 +398,149 @@ public final class Compiler {
 		private Field popCount, pushCount;
 		private WorkerData(Worker<?, ?> worker) {
 			this.worker = worker;
+		}
+	}
+
+	private void externalSchedule() {
+		ImmutableSet<StreamNode> nodes = ImmutableSet.copyOf(streamNodes.values());
+		ImmutableList.Builder<Scheduler.Channel<StreamNode>> channels = ImmutableList.<Scheduler.Channel<StreamNode>>builder();
+		for (StreamNode a : nodes)
+			for (StreamNode b : nodes)
+				channels.addAll(a.findChannels(b));
+		ImmutableMap<StreamNode, Integer> schedule = Scheduler.schedule(channels.build());
+		System.out.println(schedule);
+	}
+
+	private final class StreamNode {
+		private final int id;
+		private final ImmutableSet<Worker<?, ?>> workers;
+		private final ImmutableSet<IOInfo> ioinfo;
+		/**
+		 * The number of individual worker executions per steady-state execution
+		 * of the StreamNode.
+		 */
+		private ImmutableMap<Worker<?, ?>, Integer> execsPerNodeExec;
+		/**
+		 * This node's work method.  May be null if the method hasn't been
+		 * created yet.  TODO: if we put multiplicities inside work methods,
+		 * we'll need one per core.  Alternately we could put them outside and
+		 * inline/specialize as a postprocessing step.
+		 */
+		private Method workMethod;
+		/**
+		 * Maps each worker's fields to the corresponding fields in the blob
+		 * class.
+		 */
+		private final Table<Worker<?, ?>, Field, Field> fields = HashBasedTable.create();
+		/**
+		 * Maps each worker's fields to the actual values of those fields.
+		 */
+		private final Table<Worker<?, ?>, Field, Object> fieldValues = HashBasedTable.create();
+
+		private StreamNode(Worker<?, ?> worker) {
+			this.id = Workers.getIdentifier(worker);
+			this.workers = (ImmutableSet<Worker<?, ?>>)ImmutableSet.of(worker);
+			this.ioinfo = IOInfo.create(workers);
+			buildWorkerData(worker);
+
+			assert !streamNodes.containsKey(worker);
+			streamNodes.put(worker, this);
+		}
+
+		/**
+		 * Fuses two StreamNodes.  They should not yet have been scheduled or
+		 * had work functions constructed.
+		 */
+		private StreamNode(StreamNode a, StreamNode b) {
+			this.id = Math.min(a.id, b.id);
+			this.workers = ImmutableSet.<Worker<?, ?>>builder().addAll(a.workers).addAll(b.workers).build();
+			this.ioinfo = IOInfo.create(workers);
+			this.fields.putAll(a.fields);
+			this.fields.putAll(b.fields);
+			this.fieldValues.putAll(a.fieldValues);
+			this.fieldValues.putAll(b.fieldValues);
+
+			for (Worker<?, ?> w : a.workers)
+				streamNodes.put(w, this);
+			for (Worker<?, ?> w : b.workers)
+				streamNodes.put(w, this);
+		}
+
+		/**
+		 * Compute the steady-state multiplicities of each worker in this node
+		 * for each execution of the node.
+		 */
+		public void internalSchedule() {
+			if (workers.size() == 1) {
+				this.execsPerNodeExec = ImmutableMap.<Worker<?, ?>, Integer>builder().put(workers.iterator().next(), 1).build();
+				return;
+			}
+
+			//Find all the channels within this StreamNode.
+			List<Scheduler.Channel<Worker<?, ?>>> channels = new ArrayList<>();
+			for (Worker<?, ?> w : workers) {
+				@SuppressWarnings("unchecked")
+				List<Worker<?, ?>> succs = (List<Worker<?, ?>>)Workers.getSuccessors(w);
+				for (int i = 0; i < succs.size(); ++i) {
+					Worker<?, ?> s = succs.get(i);
+					if (workers.contains(s)) {
+						int j = Workers.getPredecessors(s).indexOf(w);
+						assert j != -1;
+						channels.add(new Scheduler.Channel<>(w, s, w.getPushRates().get(i).max(), s.getPopRates().get(j).max()));
+					}
+				}
+			}
+			this.execsPerNodeExec = Scheduler.schedule(channels);
+		}
+
+		/**
+		 * Returns a list of scheduler channels from this node to the given
+		 * node, with rates corrected for the internal schedule for each node.
+		 */
+		public List<Scheduler.Channel<StreamNode>> findChannels(StreamNode other) {
+			ImmutableList.Builder<Scheduler.Channel<StreamNode>> retval = ImmutableList.<Scheduler.Channel<StreamNode>>builder();
+			for (IOInfo info : ioinfo) {
+				if (info.isOutput() && other.workers.contains(info.downstream())) {
+					int i = Workers.getSuccessors(info.upstream()).indexOf(info.downstream());
+					assert i != -1;
+					int j = Workers.getPredecessors(info.downstream()).indexOf(info.upstream());
+					assert j != -1;
+					retval.add(new Scheduler.Channel<>(this, other,
+							info.upstream().getPushRates().get(i).max() * execsPerNodeExec.get(info.upstream()),
+							info.downstream().getPopRates().get(j).max() * other.execsPerNodeExec.get(info.downstream())));
+				}
+			}
+			return retval.build();
+		}
+
+		private void buildWorkerData(Worker<?, ?> worker) {
+			Klass workerKlass = module.getKlass(worker.getClass());
+
+			//Build the new fields.
+			for (Field f : workerKlass.fields()) {
+				java.lang.reflect.Field rf = f.getBackingField();
+				Set<Modifier> modifiers = EnumSet.of(Modifier.PRIVATE, Modifier.STATIC);
+				//We can make the new field final if the original field is final or
+				//if the worker isn't stateful.
+				if (f.modifiers().contains(Modifier.FINAL) || !(worker instanceof StatefulFilter))
+					modifiers.add(Modifier.FINAL);
+
+				Field nf = new Field(f.getType().getFieldType(),
+						"w" + id + "$" + f.getName(),
+						modifiers,
+						blobKlass);
+				fields.put(worker, f, nf);
+
+				try {
+					rf.setAccessible(true);
+					Object value = rf.get(worker);
+					fieldValues.put(worker, f, value);
+				} catch (IllegalAccessException ex) {
+					//Either setAccessible will succeed or we'll throw a
+					//SecurityException, so we'll never get here.
+					throw new AssertionError("Can't happen!", ex);
+				}
+			}
 		}
 	}
 
