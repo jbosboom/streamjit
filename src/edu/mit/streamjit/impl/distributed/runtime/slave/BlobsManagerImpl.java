@@ -5,22 +5,26 @@
 package edu.mit.streamjit.impl.distributed.runtime.slave;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.impl.blob.Blob;
+import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.runtime.api.BlobExecuter;
 import edu.mit.streamjit.impl.distributed.runtime.api.BlobsManager;
+import edu.mit.streamjit.impl.distributed.runtime.api.NodeInfo;
 
 public class BlobsManagerImpl implements BlobsManager {
 
 	Set<BlobExecuter> blobExecuters;
 
-	public BlobsManagerImpl(Set<Blob> blobSet) {
+	public BlobsManagerImpl(Set<Blob> blobSet, Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap, Map<Token, Integer> portIdMap,
+			Map<Integer, NodeInfo> nodeInfoMap) {
 		blobExecuters = new HashSet<>();
 		for (Blob b : blobSet)
-			blobExecuters.add(new BlobExecuterImpl(b));
+			blobExecuters.add(new BlobExecuterImpl(b, tokenMachineMap, portIdMap, nodeInfoMap));
 	}
 
 	@Override

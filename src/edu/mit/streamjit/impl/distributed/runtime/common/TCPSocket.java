@@ -30,7 +30,7 @@ public class TCPSocket {
 			if (ooStream != null) {
 				try {
 					ooStream.writeObject(obj);
-					System.out.println("Object send...");
+					// System.out.println("Object send...");
 				} catch (IOException ix) {
 					// Following doesn't change when other side of the socket is closed.....
 					/*
@@ -119,7 +119,7 @@ public class TCPSocket {
 				o = oiStream.readObject();
 				// System.out.println("DEBUG: tostring = " + o.toString());
 				// System.out.println("DEBUG: getClass = " + o.getClass());
-				System.out.println("Object read...");
+				// System.out.println("Object read...");
 				cb = (T) o;
 			} catch (ClassCastException e) {
 				// If unknown object then ignore it.

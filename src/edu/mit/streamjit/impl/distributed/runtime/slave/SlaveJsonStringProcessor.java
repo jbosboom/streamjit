@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.distributed.runtime.slave;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -8,30 +10,26 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-
-import static com.google.common.base.Preconditions.*;
 
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
+import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
+import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecifier;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.common.Configuration.IntParameter;
-import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
-import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecifier;
-import edu.mit.streamjit.impl.concurrent.SingleThreadedBlob;
-import edu.mit.streamjit.impl.distributed.runtime.api.BlobsManager;
 import edu.mit.streamjit.impl.distributed.runtime.api.Error;
 import edu.mit.streamjit.impl.distributed.runtime.api.JsonStringProcessor;
+import edu.mit.streamjit.impl.distributed.runtime.api.NodeInfo;
 import edu.mit.streamjit.impl.distributed.runtime.common.GlobalConstants;
 import edu.mit.streamjit.impl.interp.ArrayChannel;
 import edu.mit.streamjit.impl.interp.Channel;
@@ -52,17 +50,24 @@ public class SlaveJsonStringProcessor implements JsonStringProcessor {
 
 	@Override
 	public void process(String json) {
-		ImmutableSet<Blob> blobSet = getBlobs(json);
-		if (blobSet != null)
-			slave.setBlobsManager(new BlobsManagerImpl(blobSet));
-		else
+
+		Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
+		ImmutableSet<Blob> blobSet = getBlobs(cfg);
+		if (blobSet != null) {
+			Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = (Map<Token, Map.Entry<Integer, Integer>>) cfg
+					.getExtraData(GlobalConstants.TOKEN_MACHINE_MAP);
+			Map<Token, Integer> portIdMap = (Map<Token, Integer>) cfg.getExtraData(GlobalConstants.PORTID_MAP);
+
+			Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) cfg.getExtraData(GlobalConstants.NODE_INFO_MAP);
+
+			slave.setBlobsManager(new BlobsManagerImpl(blobSet, tokenMachineMap, portIdMap, nodeInfoMap));
+		} else
 			System.out.println("Couldn't get the blobset....");
 	}
 
-	private ImmutableSet<Blob> getBlobs(String json) {
-		Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
+	private ImmutableSet<Blob> getBlobs(Configuration cfg) {
 
-		PartitionParameter partParam = cfg.getParameter("partition", PartitionParameter.class);
+		PartitionParameter partParam = cfg.getParameter(GlobalConstants.PARTITION, PartitionParameter.class);
 		if (partParam == null)
 			throw new IllegalArgumentException("Partition parameter is not available in the received configuraion");
 
@@ -70,7 +75,7 @@ public class SlaveJsonStringProcessor implements JsonStringProcessor {
 		String topLevelWorkerName = (String) cfg.getExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME);
 		String jarFilePath = (String) cfg.getExtraData(GlobalConstants.JARFILE_PATH);
 
-		OneToOneElement<?, ?> streamGraph = getStreamGraph(jarFilePath, outterClass, topLevelWorkerName);
+		OneToOneElement<?, ?> streamGraph = getStreamGraph(jarFilePath, topLevelWorkerName);
 		if (streamGraph != null) {
 			ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
 			streamGraph.visit(primitiveConnector);
@@ -94,7 +99,7 @@ public class SlaveJsonStringProcessor implements JsonStringProcessor {
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
 				// TODO: Need to partitions the workerset to threads. Lets do the equal partitioning.
 				Blob b = new DistributedBlob(partitionEqually(workerset, 1), Collections.<MessageConstraint> emptyList());
-				
+
 				blobSet.add(b);
 			}
 			return blobSet.build();
@@ -110,10 +115,22 @@ public class SlaveJsonStringProcessor implements JsonStringProcessor {
 	 * @param topStreamClassName
 	 * @return
 	 */
-	private OneToOneElement<?, ?> getStreamGraph(String jarFilePath, String outterClassName, String topStreamClassName) {
+	private OneToOneElement<?, ?> getStreamGraph(String jarFilePath, String topStreamClassName) {
 
 		checkNotNull(jarFilePath);
 		checkNotNull(topStreamClassName);
+
+		// In some benchmarks, top level stream class is written as an static inner class. So in that case, we have to find the outer
+		// class first.
+		String outterClassName = null;
+
+		// Java's Class.getName() returns "OutterClass$InnerClass" format. So if $ exists in the topStreamClassName, actual top level
+		// stream class is written as a inner class.
+		if (topStreamClassName.contains("$")) {
+			int pos = topStreamClassName.indexOf("$");
+			outterClassName = (String) topStreamClassName.subSequence(0, pos);
+			topStreamClassName = topStreamClassName.substring(pos + 1);
+		}
 
 		File jarFile = new java.io.File(jarFilePath);
 		if (!jarFile.exists()) {

@@ -113,7 +113,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 
-		master.setPartition(partitionsMachineMap, "", stream.getClass().getName(), constraints);
+		master.setPartition(partitionsMachineMap, "", stream.getClass().getName(), constraints, source, sink);
 
 		return new DistributedCompiledStream<>(head, tail, master);
 	}
