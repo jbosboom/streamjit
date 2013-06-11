@@ -144,7 +144,8 @@ public final class Compiler {
 			n.internalSchedule();
 		externalSchedule();
 		allocateCores();
-		//TODO: initial buffer reqs and init schedule
+		generateBuffers();
+		//TODO: compute init counts based on initial buffer sizes (Scheduler)
 		//TODO: generate work methods
 		//TODO: generate core code
 		addBlobPlumbing();
@@ -172,6 +173,10 @@ public final class Compiler {
 		//For now, just put everything on core 0.
 		for (StreamNode n : ImmutableSet.copyOf(streamNodes.values()))
 			n.cores.add(0);
+	}
+
+	private void generateBuffers() {
+		//TODO
 	}
 
 	/**
@@ -561,6 +566,44 @@ public final class Compiler {
 					throw new AssertionError("Can't happen!", ex);
 				}
 			}
+		}
+	}
+
+	private final class BufferData {
+		/**
+		 * The field (for intracore buffers) or two fields (for intercore
+		 * buffers) pointing to the buffers.  If there are two fields, the first
+		 * is the reader's buffer (which gets filled with initial buffering) and
+		 * the second is the writer's buffer (which is empty).
+		 */
+		public final ImmutableList<Field> fields;
+		/**
+		 * The buffer capacity.
+		 */
+		public final int capacity;
+		/**
+		 * The buffer initial size.  This is generally less than the capacity
+		 * for intracore buffers introduced by peeking.  Intercore buffers
+		 * always get filled to capacity.
+		 */
+		public final int initialSize;
+		private BufferData(Worker<?, ?> upstream, Worker<?, ?> downstream) {
+			RegularType objArrayTy = blobKlass.getParent().types().getRegularType(Object[].class);
+			String fieldName = "buf"+Workers.getIdentifier(upstream)+"_"+Workers.getIdentifier(downstream);
+			final StreamNode downstreamNode = streamNodes.get(downstream);
+			boolean intracore = streamNodes.get(upstream).equals(downstreamNode);
+			if (intracore)
+				fields = ImmutableList.of(new Field(objArrayTy, fieldName, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass));
+			else
+				fields = ImmutableList.of(new Field(objArrayTy, fieldName+"a", EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass),
+						new Field(objArrayTy, fieldName+"b", EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass));
+
+			int chanIdx = Workers.getPredecessors(downstream).indexOf(upstream);
+			assert chanIdx != -1;
+			int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
+			int excessPeeks = Math.max(peek - pop, 0);
+			this.capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.get(downstreamNode) * multiplier * pop + excessPeeks;
+			this.initialSize = intracore ? excessPeeks : capacity;
 		}
 	}
 
