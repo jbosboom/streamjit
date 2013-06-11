@@ -19,7 +19,7 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 
 	private volatile boolean stopFlag;
 
-	TCPInputChannel(Channel<E> channel, String IpAddress, int portNo) {
+	public TCPInputChannel(Channel<E> channel, String IpAddress, int portNo) {
 		this.channel = channel;
 		this.stopFlag = false;
 		this.inputConnection = new SlaveTCPConnection(IpAddress, portNo);

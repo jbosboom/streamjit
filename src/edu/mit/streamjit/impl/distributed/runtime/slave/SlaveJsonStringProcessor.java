@@ -97,7 +97,7 @@ public class SlaveJsonStringProcessor implements JsonStringProcessor {
 				System.out.println(workIdentifiers.toString());
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
 				// TODO: Need to partitions the workerset to threads. Lets do the equal partitioning.
-				Blob b = new DistributedBlob(partitionEqually(workerset, 1), Collections.<MessageConstraint> emptyList());
+				Blob b = new DistributedBlob(partitionEqually(workerset, 1), Collections.<MessageConstraint> emptyList(), false);
 
 				blobSet.add(b);
 			}

@@ -156,6 +156,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		public DistributedCompiledStream(Channel<? super I> head, Channel<? extends O> tail, Master master) {
 			super(head, tail);
 			this.master = master;
+			this.master.start();
 		}
 
 		@Override

@@ -6,27 +6,25 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.ImmutableSet;
-
+import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Identity;
-import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
-import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
-import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecifier;
 import edu.mit.streamjit.impl.distributed.runtime.api.BlobsManager;
+import edu.mit.streamjit.impl.distributed.runtime.api.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.runtime.api.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.runtime.api.Command;
 import edu.mit.streamjit.impl.distributed.runtime.api.JsonString;
 import edu.mit.streamjit.impl.distributed.runtime.api.NodeInfo;
@@ -34,6 +32,8 @@ import edu.mit.streamjit.impl.distributed.runtime.api.Request;
 import edu.mit.streamjit.impl.distributed.runtime.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.runtime.slave.BlobsManagerImpl;
 import edu.mit.streamjit.impl.distributed.runtime.slave.DistributedBlob;
+import edu.mit.streamjit.impl.distributed.runtime.slave.TCPInputChannel;
+import edu.mit.streamjit.impl.distributed.runtime.slave.TCPOutputChannel;
 import edu.mit.streamjit.impl.interp.Interpreter;
 
 /**
@@ -49,6 +49,19 @@ public class Master {
 	private List<Integer> slaveIDs;
 
 	Map<Integer, NodeInfo> nodeInfoMap;
+
+	/**
+	 * A {@link BoundaryOutputChannel} for the head of the stream graph. If source {@link Worker} happened to fall outside the
+	 * {@link Master}, we need to push the {@link CompiledStream}.offer() data to the source.
+	 */
+	BoundaryOutputChannel<?> headChannel;
+
+	/**
+	 * A {@link BoundaryInputChannel} for the tail of the whole stream graph. If the sink {@link Worker} happened to fall outside the
+	 * {@link Master}, we need to pull the sink's output in to the {@link Master} in order to make {@link CompiledStream}.pull() to
+	 * work.
+	 */
+	BoundaryInputChannel<?> tailChannel;
 
 	public Master() {
 		this.comManager = new TCPCommunicationManager();
@@ -96,6 +109,17 @@ public class Master {
 		}
 	}
 
+	public void start() {
+		if (headChannel != null)
+			new Thread(headChannel.getRunnable()).start();
+
+		if (tailChannel != null)
+			new Thread(tailChannel.getRunnable()).start();
+
+		blobsManager.start();
+		sendToAll(Command.START);
+	}
+
 	/**
 	 * Blocking call.
 	 * 
@@ -119,6 +143,7 @@ public class Master {
 		return coreCounts;
 	}
 
+	@SuppressWarnings("unchecked")
 	public void setPartition(Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap, String toplevelclass,
 			List<MessageConstraint> constraints, Worker<?, ?> source, Worker<?, ?> sink) {
 		String jarFilePath = this.getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
@@ -130,15 +155,29 @@ public class Master {
 		// TODO: Change this later.
 		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = (Map<Token, Map.Entry<Integer, Integer>>) cfg
 				.getExtraData(GlobalConstants.TOKEN_MACHINE_MAP);
+
 		Map<Token, Integer> portIdMap = (Map<Token, Integer>) cfg.getExtraData(GlobalConstants.PORTID_MAP);
 
 		Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) cfg.getExtraData(GlobalConstants.NODE_INFO_MAP);
 		createMasterBlobs(partitionsMachineMap.get(0), tokenMachineMap, portIdMap, nodeInfoMap);
-		sendToAll(Command.START);
+
+		if (getAssignedMachine(source, partitionsMachineMap) != 0) {
+			Token t = Token.createOverallInputToken(source);
+			headChannel = new TCPOutputChannel<>(Workers.getInputChannels(source).get(0), portIdMap.get(t));
+		}
+
+		if (getAssignedMachine(sink, partitionsMachineMap) != 0) {
+			Token t = Token.createOverallOutputToken(sink);
+
+			int machineID = tokenMachineMap.get(t).getKey();
+			NodeInfo nodeInfo = nodeInfoMap.get(machineID);
+			String ipAddress = nodeInfo.getIpAddress().getHostAddress();
+			tailChannel = new TCPInputChannel<>(Workers.getOutputChannels(sink).get(0), ipAddress, portIdMap.get(t));
+		}
 	}
 
 	private Configuration makeConfiguration(Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap, String jarFilePath,
-		String topLevelClass, Worker<?, ?> source, Worker<?, ?> sink) {
+			String topLevelClass, Worker<?, ?> source, Worker<?, ?> sink) {
 
 		Configuration.Builder builder = Configuration.builder();
 
@@ -269,10 +308,9 @@ public class Master {
 
 	private void createMasterBlobs(List<Set<Worker<?, ?>>> blobWorkersList, Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap,
 			Map<Token, Integer> portIdMap, Map<Integer, NodeInfo> nodeInfoMap) {
-		Blob b = new DistributedBlob(blobWorkersList, Collections.<MessageConstraint> emptyList());
+		Blob b = new DistributedBlob(blobWorkersList, Collections.<MessageConstraint> emptyList(), true);
 		Set<Blob> blobSet = new HashSet<>();
 		blobSet.add(b);
 		blobsManager = new BlobsManagerImpl(blobSet, tokenMachineMap, portIdMap, nodeInfoMap);
-		blobsManager.start();
 	}
 }
