@@ -77,6 +77,11 @@ public final class Compiler {
 	private final String packagePrefix;
 	private final Module module = new Module();
 	private final Klass blobKlass;
+	/**
+	 * The steady-state execution multiplier (the number of executions to run
+	 * per synchronization).
+	 */
+	private final int multiplier;
 	public Compiler(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
 		this.workers = workers;
 		this.config = config;
@@ -126,6 +131,7 @@ public final class Compiler {
 				module.getKlass(Object.class),
 				Collections.singletonList(module.getKlass(Blob.class)),
 				module);
+		this.multiplier = config.getParameter("multiplier", Configuration.IntParameter.class).getValue();
 	}
 
 	public Blob compile() {
@@ -568,7 +574,7 @@ public final class Compiler {
 		});
 		graph.visit(cwv);
 		Set<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
-		Configuration config = Configuration.builder().build();
+		Configuration config = new CompilerBlobFactory().getDefaultConfiguration(workers);
 		int maxNumCores = 1;
 		Compiler compiler = new Compiler(workers, config, maxNumCores);
 		Blob blob = compiler.compile();
