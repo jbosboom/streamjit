@@ -103,8 +103,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		List<Set<Worker<?, ?>>> partitionList = horzPartitioner.PatririonEqually(stream, source, sink, totalCores);
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = mapPartitionstoMachines(partitionList, coreCounts);
 
-		
-
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this context.
 		List<MessageConstraint> constraints = MessageConstraint.findConstraints(source);
 		Set<Portal<?>> portals = new HashSet<>();
@@ -113,7 +111,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 
-		master.setPartition(partitionsMachineMap, "", stream.getClass().getName(), constraints, source, sink);
+		master.setPartition(partitionsMachineMap, stream.getClass().getName(), constraints, source, sink);
 
 		return new DistributedCompiledStream<>(head, tail, master);
 	}

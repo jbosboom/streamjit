@@ -71,7 +71,6 @@ public class SlaveJsonStringProcessor implements JsonStringProcessor {
 		if (partParam == null)
 			throw new IllegalArgumentException("Partition parameter is not available in the received configuraion");
 
-		String outterClass = (String) cfg.getExtraData(GlobalConstants.OUTTER_CLASS_NAME);
 		String topLevelWorkerName = (String) cfg.getExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME);
 		String jarFilePath = (String) cfg.getExtraData(GlobalConstants.JARFILE_PATH);
 
@@ -116,21 +115,8 @@ public class SlaveJsonStringProcessor implements JsonStringProcessor {
 	 * @return
 	 */
 	private OneToOneElement<?, ?> getStreamGraph(String jarFilePath, String topStreamClassName) {
-
 		checkNotNull(jarFilePath);
 		checkNotNull(topStreamClassName);
-
-		// In some benchmarks, top level stream class is written as an static inner class. So in that case, we have to find the outer
-		// class first.
-		String outterClassName = null;
-
-		// Java's Class.getName() returns "OutterClass$InnerClass" format. So if $ exists in the topStreamClassName, actual top level
-		// stream class is written as a inner class.
-		if (topStreamClassName.contains("$")) {
-			int pos = topStreamClassName.indexOf("$");
-			outterClassName = (String) topStreamClassName.subSequence(0, pos);
-			topStreamClassName = topStreamClassName.substring(pos + 1);
-		}
 
 		File jarFile = new java.io.File(jarFilePath);
 		if (!jarFile.exists()) {
@@ -141,6 +127,16 @@ public class SlaveJsonStringProcessor implements JsonStringProcessor {
 				e.printStackTrace();
 			}
 			return null;
+		}
+
+		// In some benchmarks, top level stream class is written as an static inner class. So in that case, we have to find the outer
+		// class first. Java's Class.getName() returns "OutterClass$InnerClass" format. So if $ exists in the method argument
+		// topStreamClassName then the actual top level stream class is lies inside another class.
+		String outterClassName = null;
+		if (topStreamClassName.contains("$")) {
+			int pos = topStreamClassName.indexOf("$");
+			outterClassName = (String) topStreamClassName.subSequence(0, pos);
+			topStreamClassName = topStreamClassName.substring(pos + 1);
 		}
 
 		URL url;

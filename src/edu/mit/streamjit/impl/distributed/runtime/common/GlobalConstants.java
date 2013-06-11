@@ -15,7 +15,6 @@ public final class GlobalConstants {
 
 	public static final int PORTNO = 39810;
 
-	public static final String OUTTER_CLASS_NAME = "OUTTER_CLASS_NAME";
 	public static final String TOPLEVEL_WORKER_NAME = "TOPLEVEL_WORKER_NAME";
 	public static final String JARFILE_PATH = "JARFILE_PATH";
 	public static final String NODE_INFO_MAP = "nodeInfoMap";

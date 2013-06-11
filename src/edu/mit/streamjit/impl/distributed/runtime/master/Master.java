@@ -119,11 +119,11 @@ public class Master {
 		return coreCounts;
 	}
 
-	public void setPartition(Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap, String outerClass, String toplevelclass,
+	public void setPartition(Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap, String toplevelclass,
 			List<MessageConstraint> constraints, Worker<?, ?> source, Worker<?, ?> sink) {
 		String jarFilePath = this.getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
 
-		Configuration cfg = makeConfiguration(partitionsMachineMap, jarFilePath, outerClass, toplevelclass, source, sink);
+		Configuration cfg = makeConfiguration(partitionsMachineMap, jarFilePath, toplevelclass, source, sink);
 		JsonString json = new JsonString(cfg.toJson());
 		sendToAll(json);
 
@@ -138,7 +138,7 @@ public class Master {
 	}
 
 	private Configuration makeConfiguration(Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap, String jarFilePath,
-			String outterClass, String topLevelClass, Worker<?, ?> source, Worker<?, ?> sink) {
+		String topLevelClass, Worker<?, ?> source, Worker<?, ?> sink) {
 
 		Configuration.Builder builder = Configuration.builder();
 
@@ -174,7 +174,6 @@ public class Master {
 		buildTokenMap(partitionsMachineMap, tokenMachineMap, portIdMap, source, sink);
 
 		builder.putExtraData(GlobalConstants.JARFILE_PATH, jarFilePath);
-		builder.putExtraData(GlobalConstants.OUTTER_CLASS_NAME, outterClass);
 		builder.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME, topLevelClass);
 		builder.putExtraData(GlobalConstants.NODE_INFO_MAP, nodeInfoMap);
 		builder.putExtraData(GlobalConstants.TOKEN_MACHINE_MAP, tokenMachineMap);
