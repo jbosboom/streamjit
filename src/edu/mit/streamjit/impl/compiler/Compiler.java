@@ -136,7 +136,7 @@ public final class Compiler {
 		for (StreamNode n : streamNodes.values())
 			n.internalSchedule();
 		externalSchedule();
-		//TODO
+		allocateCores();
 		//TODO: initial buffer reqs and init schedule
 		//TODO: fission
 		//TODO: generate work methods
@@ -153,6 +153,19 @@ public final class Compiler {
 		//TODO: some kind of worklist algorithm that fuses until no more fusion
 		//possible, to handle state, peeking, or attempts to fuse with more than
 		//one predecessor.
+	}
+
+	/**
+	 * Allocates StreamNodes to cores as directed by the configuration, possibly
+	 * fissing them (if assigning one node to multiple cores).
+	 * TODO: do we want to permit unequal fiss allocations (e.g., 6 SSEs here,
+	 * 3 SSEs there)?
+	 */
+	private void allocateCores() {
+		//TODO
+		//For now, just put everything on core 0.
+		for (StreamNode n : ImmutableSet.copyOf(streamNodes.values()))
+			n.cores.add(0);
 	}
 
 	/**
@@ -436,6 +449,7 @@ public final class Compiler {
 		 * Maps each worker's fields to the actual values of those fields.
 		 */
 		private final Table<Worker<?, ?>, Field, Object> fieldValues = HashBasedTable.create();
+		private final List<Integer> cores = new ArrayList<>();
 
 		private StreamNode(Worker<?, ?> worker) {
 			this.id = Workers.getIdentifier(worker);
