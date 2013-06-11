@@ -74,6 +74,7 @@ public final class Compiler {
 	 * though there was one instance per parent instance.)
 	 */
 	private final Map<Worker<?, ?>, StreamNode> streamNodes = new IdentityHashMap<>();
+	private ImmutableMap<StreamNode, Integer> schedule;
 	private final String packagePrefix;
 	private final Module module = new Module();
 	private final Klass blobKlass;
@@ -144,7 +145,6 @@ public final class Compiler {
 		externalSchedule();
 		allocateCores();
 		//TODO: initial buffer reqs and init schedule
-		//TODO: fission
 		//TODO: generate work methods
 		//TODO: generate core code
 		addBlobPlumbing();
@@ -426,7 +426,7 @@ public final class Compiler {
 		for (StreamNode a : nodes)
 			for (StreamNode b : nodes)
 				channels.addAll(a.findChannels(b));
-		ImmutableMap<StreamNode, Integer> schedule = Scheduler.schedule(channels.build());
+		schedule = Scheduler.schedule(channels.build());
 		System.out.println(schedule);
 	}
 
