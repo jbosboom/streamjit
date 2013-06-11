@@ -84,7 +84,7 @@ public class VerifyStreamGraph extends StreamVisitor {
 		else
 			visitedWorkers.add(splitter);
 
-		Map.Entry<Splitter<?>, Integer> pair = new AbstractMap.SimpleEntry(splitter, 0);
+		Map.Entry<Splitter<?>, Integer> pair = new AbstractMap.SimpleEntry<Splitter<?>, Integer>(splitter, 0);
 		unfinishedSpliterStack.push(pair);
 	}
 
