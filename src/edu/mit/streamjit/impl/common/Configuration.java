@@ -1029,6 +1029,23 @@ public final class Configuration {
 			return blobFactoryUniverse;
 		}
 
+		/**
+		 * @param worker
+		 * @return the machineID where on which the passed worker is assigned.
+		 */
+		public int getAssignedMachine(Worker<?, ?> worker) {
+			int id = Workers.getIdentifier(worker);
+			int machineID;
+			for (machineID = 0; machineID < blobs.size(); machineID++) {
+				for (BlobSpecifier bs : blobs.get(machineID)) {
+					if (bs.getWorkerIdentifiers().contains(id))
+						return machineID;
+				}
+			}
+
+			throw new IllegalArgumentException(String.format("%s is not assigned to anyof the machines", worker));
+		}
+		
 		@Override
 		public boolean equals(Object obj) {
 			if (obj == null)
