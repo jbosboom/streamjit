@@ -8,6 +8,7 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
@@ -19,7 +20,8 @@ public class FMRadio {
 	public static void main(String[] args) throws InterruptedException {
 		FMRadioCore core = new FMRadioCore();
 		//StreamCompiler sc = new DebugStreamCompiler();
-		StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		//StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		StreamCompiler sc = new DistributedStreamCompiler(4);
 		CompiledStream<Float, Float> stream = sc.compile(core);
 		Float output;
 		for (int i = 0; i < 10000; ++i) {
@@ -169,7 +171,7 @@ public class FMRadio {
 		}
 	}
 
-	private static class FMRadioCore extends Pipeline<Float, Float> {
+	public static class FMRadioCore extends Pipeline<Float, Float> {
 		private static final float samplingRate = 250000000; // 250 MHz sampling rate is sensible
 		private static final float cutoffFrequency = 108000000; //guess... doesn't FM freq max at 108 Mhz?
 		private static final int numberOfTaps = 64;
@@ -198,7 +200,7 @@ public class FMRadio {
 			}
 		}
 
-		FMRadioCore() {
+		public FMRadioCore() {
 			super(new LowPassFilter(samplingRate, cutoffFrequency, numberOfTaps, 4),
 					new FMDemodulator(samplingRate, maxAmplitude, bandwidth),
 					new Equalizer(samplingRate, eqBands, eqCutoff, eqGain, numberOfTaps));
