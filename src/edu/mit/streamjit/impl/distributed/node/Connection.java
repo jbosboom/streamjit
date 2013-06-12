@@ -12,9 +12,20 @@ public interface Connection {
 
 	public <T> T readObject() throws IOException, ClassNotFoundException;
 
-	public boolean writeObject(Object obj) throws IOException;
+	/**
+	 * Write a object to the connection. </p>throws exception if failed. So no return value needed.
+	 * 
+	 * @throws IOException
+	 */
+	public void writeObject(Object obj) throws IOException;
 
-	public boolean closeConnection() throws IOException;
+	/**
+	 * Close the connection. This function is responsible for all kind of resource cleanup. </p>throws exception if failed. So no
+	 * return value needed.
+	 * 
+	 * @throws IOException
+	 */
+	public void closeConnection() throws IOException;
 
 	public boolean isStillConnected();
 }
