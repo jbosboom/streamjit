@@ -20,7 +20,7 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 
 	private int portNo;
 
-	private Connection inputConnection;
+	private Connection tcpConnection;
 
 	private volatile boolean stopFlag;
 
@@ -33,12 +33,12 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 
 	@Override
 	public void closeConnection() throws IOException {
-		inputConnection.closeConnection();
+		tcpConnection.closeConnection();
 	}
 
 	@Override
 	public boolean isStillConnected() {
-		return inputConnection.isStillConnected();
+		return tcpConnection.isStillConnected();
 	}
 
 	@Override
@@ -46,10 +46,10 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 		return new Runnable() {
 			@Override
 			public void run() {
-				if (inputConnection == null || !inputConnection.isStillConnected()) {
+				if (tcpConnection == null || !tcpConnection.isStillConnected()) {
 					try {
 						ConnectionFactory cf = new ConnectionFactory();
-						cf.getConnection(ipAddress, portNo);
+						tcpConnection = cf.getConnection(ipAddress, portNo);
 					} catch (IOException e) {
 						stopFlag = true;
 						e.printStackTrace();
@@ -69,7 +69,7 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 	public void receiveData() {
 		while (!stopFlag) {
 			try {
-				E element = inputConnection.readObject();
+				E element = tcpConnection.readObject();
 				// TODO: need to confirm the channel have enough capacity to accept elements.
 				// Consider adding channel.getMaxSize() function. Already Channel.getSize is available.
 				this.channel.push(element);
