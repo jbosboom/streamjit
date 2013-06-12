@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Table;
 import edu.mit.streamjit.api.Filter;
@@ -83,6 +84,7 @@ public final class Compiler {
 	 * per synchronization).
 	 */
 	private final int multiplier;
+	private ImmutableTable<Worker<?, ?>, Worker<?, ?>, BufferData> buffers;
 	public Compiler(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
 		this.workers = workers;
 		this.config = config;
@@ -144,7 +146,7 @@ public final class Compiler {
 			n.internalSchedule();
 		externalSchedule();
 		allocateCores();
-		generateBuffers();
+		declareBuffers();
 		//TODO: compute init counts based on initial buffer sizes (Scheduler)
 		//TODO: generate work methods
 		//TODO: generate core code
@@ -170,13 +172,25 @@ public final class Compiler {
 	 */
 	private void allocateCores() {
 		//TODO
+		//Note that any node containing a splitter or joiner can only go on one
+		//core (as it has to synchronize for its inputs and outputs).
 		//For now, just put everything on core 0.
 		for (StreamNode n : ImmutableSet.copyOf(streamNodes.values()))
 			n.cores.add(0);
 	}
 
-	private void generateBuffers() {
-		//TODO
+	/**
+	 * Computes buffer capacity and initial sizes, declaring (but not
+	 * arranging for initialization of) the blob class fields pointing to the
+	 * buffers.
+	 */
+	private void declareBuffers() {
+		ImmutableTable.Builder<Worker<?, ?>, Worker<?, ?>, BufferData> builder = ImmutableTable.<Worker<?, ?>, Worker<?, ?>, BufferData>builder();
+		for (Worker<?, ?> u : workers)
+			for (Worker<?, ?> d : Workers.getSuccessors(u))
+				if (workers.contains(d))
+					builder.put(u, d, new BufferData(u, d));
+		buffers = builder.build();
 	}
 
 	/**
