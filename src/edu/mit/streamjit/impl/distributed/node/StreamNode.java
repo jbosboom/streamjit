@@ -26,7 +26,8 @@ public class StreamNode {
 
 	BlobsManager blobsManager;
 
-	private boolean run; // As we assume that all controller communication and the MessageElement processing is managed by single thread,
+	private boolean run; // As we assume that all controller communication and the MessageElement processing is managed by single
+							// thread,
 							// no need to make this variable thread safe.
 
 	public void exit() {
@@ -38,7 +39,7 @@ public class StreamNode {
 	 * StreamJit's port number that can be found {@link GlobalConstants}.
 	 */
 	public StreamNode(String ipAddress, int portNo) {
-		controllerConnection = new NodeTCPConnection(ipAddress, portNo);
+		controllerConnection = new TCPNodeConnection(ipAddress, portNo);
 		this.mv = new NodeMessageVisitor(new AppStatusProcessorImpl(), new CommandProcessorImpl(this), new ErrorProcessorImpl(),
 				new RequestProcessorImpl(this), new JsonStringProcessorImpl(this));
 		this.run = true;
@@ -93,6 +94,21 @@ public class StreamNode {
 	}
 
 	/**
+	 * @return the blobsManager
+	 */
+	public BlobsManager getBlobsManager() {
+		return blobsManager;
+	}
+
+	/**
+	 * @param blobsManager
+	 *            the blobsManager to set
+	 */
+	public void setBlobsManager(BlobsManager blobsManager) {
+		this.blobsManager = blobsManager;
+	}
+
+	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
@@ -129,20 +145,5 @@ public class StreamNode {
 			}
 		} else
 			new StreamNode(ipAddress).run();
-	}
-
-	/**
-	 * @return the blobsManager
-	 */
-	public BlobsManager getBlobsManager() {
-		return blobsManager;
-	}
-
-	/**
-	 * @param blobsManager
-	 *            the blobsManager to set
-	 */
-	public void setBlobsManager(BlobsManager blobsManager) {
-		this.blobsManager = blobsManager;
 	}
 }

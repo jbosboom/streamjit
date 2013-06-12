@@ -22,7 +22,7 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 	public TCPInputChannel(Channel<E> channel, String IpAddress, int portNo) {
 		this.channel = channel;
 		this.stopFlag = false;
-		this.inputConnection = new NodeTCPConnection(IpAddress, portNo);
+		this.inputConnection = new TCPNodeConnection(IpAddress, portNo);
 	}
 
 	@Override

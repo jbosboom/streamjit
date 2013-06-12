@@ -11,14 +11,14 @@ import java.net.UnknownHostException;
 import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
 import edu.mit.streamjit.impl.distributed.common.TCPSocket;
 
-public class NodeTCPConnection implements NodeConnection {
+public class TCPNodeConnection implements NodeConnection {
 
 	private String serverAddress;
 	private int portNo;
 
 	private TCPSocket socket;
 
-	NodeTCPConnection(String serverAddress, int portNo) {
+	TCPNodeConnection(String serverAddress, int portNo) {
 		Ipv4Validator validator = Ipv4Validator.getInstance();
 
 		if (validator.isValid(serverAddress))
