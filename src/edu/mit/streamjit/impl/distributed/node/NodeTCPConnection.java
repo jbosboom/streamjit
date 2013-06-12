@@ -68,7 +68,7 @@ public class NodeTCPConnection implements NodeConnection {
 			try {
 				Socket socket = new Socket(this.serverAddress, this.portNo);
 				this.socket = new TCPSocket(socket);
-				System.out.println("Connection with master established");
+				System.out.println("Connection with controller established");
 				return true;
 			} catch (UnknownHostException uhe) {
 				System.out.println("Unknown Server Address");
