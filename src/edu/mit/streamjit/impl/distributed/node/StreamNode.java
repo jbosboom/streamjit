@@ -20,7 +20,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  */
 public class StreamNode {
 
-	NodeConnection controllerConnection;
+	Connection controllerConnection;
 	private int machineID; // TODO: consider move or remove this from StreamNode class. If so, this class will be more handy.
 	MessageVisitor mv;
 

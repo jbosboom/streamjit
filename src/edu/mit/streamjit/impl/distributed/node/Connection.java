@@ -8,7 +8,7 @@ import java.io.IOException;
  * @author Sumanan sumanan@mit.edu
  * @since May 14, 2013
  */
-public interface NodeConnection {
+public interface Connection {
 
 	public <T> T readObject() throws IOException, ClassNotFoundException;
 
@@ -17,6 +17,4 @@ public interface NodeConnection {
 	public boolean closeConnection() throws IOException;
 
 	public boolean isStillConnected();
-
-	public boolean makeConnection() throws IOException;
 }

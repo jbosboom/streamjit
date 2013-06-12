@@ -15,7 +15,7 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 
 	Channel<E> channel;
 
-	NodeConnection inputConnection;
+	Connection inputConnection;
 
 	private volatile boolean stopFlag;
 
