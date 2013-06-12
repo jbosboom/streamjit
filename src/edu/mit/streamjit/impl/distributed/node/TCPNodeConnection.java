@@ -9,14 +9,14 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
-import edu.mit.streamjit.impl.distributed.common.TCPSocket;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection;
 
 public class TCPNodeConnection implements Connection {
 
 	private String serverAddress;
 	private int portNo;
 
-	private TCPSocket socket;
+	private TCPConnection socket;
 
 	public TCPNodeConnection(String serverAddress, int portNo) {
 		Ipv4Validator validator = Ipv4Validator.getInstance();
@@ -67,7 +67,7 @@ public class TCPNodeConnection implements Connection {
 		for (int i = 0; i < maxTryAttempts; i++) {
 			try {
 				Socket socket = new Socket(this.serverAddress, this.portNo);
-				this.socket = new TCPSocket(socket);
+				this.socket = new TCPConnection(socket);
 				System.out.println("Connection with controller established");
 				return true;
 			} catch (UnknownHostException uhe) {

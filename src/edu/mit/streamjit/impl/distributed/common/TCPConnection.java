@@ -3,14 +3,14 @@ package edu.mit.streamjit.impl.distributed.common;
 import java.io.*;
 import java.net.*;
 
-public class TCPSocket {
+public class TCPConnection {
 
 	private ObjectOutput ooStream = null;
 	private ObjectInput oiStream = null;
 	private Socket socket = null;
 	private boolean isconnected = false;
 
-	public TCPSocket(Socket socket) {
+	public TCPConnection(Socket socket) {
 		try {
 			this.socket = socket;
 			ooStream = new ObjectOutputStream(this.socket.getOutputStream());

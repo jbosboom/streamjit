@@ -7,7 +7,7 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.io.IOException;
 
 import edu.mit.streamjit.impl.distributed.api.BoundaryOutputChannel;
-import edu.mit.streamjit.impl.distributed.common.TCPSocket;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection;
 import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
 import edu.mit.streamjit.impl.interp.Channel;
 
@@ -17,7 +17,7 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 
 	private volatile boolean stopFlag;
 
-	TCPSocket socket;
+	TCPConnection socket;
 	Channel<E> channel;
 
 	public TCPOutputChannel(Channel<E> channel, int portNo) {

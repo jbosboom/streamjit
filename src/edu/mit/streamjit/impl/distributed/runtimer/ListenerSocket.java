@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import edu.mit.streamjit.impl.distributed.common.TCPSocket;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection;
 
 /**
  * {@link ListenerSocket} listens for new TCP connections. It can run on separate thread and keep on listening until the stop condition
@@ -30,15 +30,15 @@ public class ListenerSocket extends Thread {
 
 	private int expectedConnections;
 
-	private ConcurrentLinkedQueue<TCPSocket> acceptedSockets;
+	private ConcurrentLinkedQueue<TCPConnection> acceptedSockets;
 
 	public void stopListening() {
 		keepOnListen.set(false);
 	}
 
 	// Only returns the sockets those are accepted since this last function call.
-	public List<TCPSocket> getAcceptedSockets() {
-		List<TCPSocket> acceptedSocketslist = new LinkedList<>();
+	public List<TCPConnection> getAcceptedSockets() {
+		List<TCPConnection> acceptedSocketslist = new LinkedList<>();
 		while (!acceptedSockets.isEmpty()) {
 			acceptedSocketslist.add(acceptedSockets.poll()); // removes from the acceptedSockets and add it to the acceptedSocketslist.
 		}
@@ -80,7 +80,7 @@ public class ListenerSocket extends Thread {
 		int connectionCount = 0;
 		while (keepOnListen.get() && connectionCount < this.expectedConnections) {
 			try {
-				TCPSocket slvSckt = acceptConnection();
+				TCPConnection slvSckt = acceptConnection();
 				acceptedSockets.add(slvSckt);
 				connectionCount++;
 			} catch (IOException e) {
@@ -100,7 +100,7 @@ public class ListenerSocket extends Thread {
 		}
 	}
 
-	private TCPSocket acceptConnection() throws IOException {
+	private TCPConnection acceptConnection() throws IOException {
 		Socket socket;
 		try {
 			socket = server.accept();
@@ -108,7 +108,7 @@ public class ListenerSocket extends Thread {
 			e.printStackTrace();
 			throw e;
 		}
-		TCPSocket slvSckt = new TCPSocket(socket);
+		TCPConnection slvSckt = new TCPConnection(socket);
 		return slvSckt;
 	}
 }

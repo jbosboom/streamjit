@@ -12,15 +12,15 @@ import java.util.Map;
 
 import edu.mit.streamjit.impl.distributed.api.Request;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.TCPSocket;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection;
 
 public class TCPCommunicationManager implements CommunicationManager {
 
-	private Map<Integer, TCPSocket> socketMap; // (machineID, TCPSocket)
+	private Map<Integer, TCPConnection> socketMap; // (machineID, TCPConnection)
 	private int listenPort;
 
 	public TCPCommunicationManager(int listenPort) {
-		socketMap = new HashMap<Integer, TCPSocket>();
+		socketMap = new HashMap<Integer, TCPConnection>();
 		this.listenPort = listenPort;
 	}
 
@@ -51,8 +51,8 @@ public class TCPCommunicationManager implements CommunicationManager {
 		socketMap.clear();
 		int machineID = 1; // controller gets machineID 0.
 		while (true) {
-			List<TCPSocket> acceptedSocketList = listnerSckt.getAcceptedSockets();
-			for (TCPSocket s : acceptedSocketList) {
+			List<TCPConnection> acceptedSocketList = listnerSckt.getAcceptedSockets();
+			for (TCPConnection s : acceptedSocketList) {
 				socketMap.put(machineID++, s);
 				System.out.println("StreamNode connected: " + s.toString());
 				if (!(socketMap.size() < noOfmachines))
@@ -80,7 +80,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 
 	@Override
 	public void closeAllConnections() throws IOException {
-		for (TCPSocket s : socketMap.values()) {
+		for (TCPConnection s : socketMap.values()) {
 			s.closeConnection();
 		}
 	}
@@ -97,7 +97,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 	public boolean isConnected(int machineID) {
 
 		if (socketMap.containsKey(machineID)) {
-			TCPSocket ss = socketMap.get(machineID);
+			TCPConnection ss = socketMap.get(machineID);
 
 			return ss.isStillconnected();
 		}
