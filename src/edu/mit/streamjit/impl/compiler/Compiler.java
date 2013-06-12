@@ -41,6 +41,7 @@ import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.EmptyChannel;
+import edu.mit.streamjit.util.Pair;
 import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -76,6 +77,7 @@ public final class Compiler {
 	 */
 	private final Map<Worker<?, ?>, StreamNode> streamNodes = new IdentityHashMap<>();
 	private ImmutableMap<StreamNode, Integer> schedule;
+	private ImmutableMap<Worker<?, ?>, Integer> initSchedule;
 	private final String packagePrefix;
 	private final Module module = new Module();
 	private final Klass blobKlass;
@@ -147,7 +149,7 @@ public final class Compiler {
 		externalSchedule();
 		allocateCores();
 		declareBuffers();
-		//TODO: compute init counts based on initial buffer sizes (Scheduler)
+		computeInitSchedule();
 		//TODO: generate work methods
 		//TODO: generate core code
 		addBlobPlumbing();
@@ -186,11 +188,34 @@ public final class Compiler {
 	 */
 	private void declareBuffers() {
 		ImmutableTable.Builder<Worker<?, ?>, Worker<?, ?>, BufferData> builder = ImmutableTable.<Worker<?, ?>, Worker<?, ?>, BufferData>builder();
+		for (Pair<Worker<?, ?>, Worker<?, ?>> p : allWorkerPairsInBlob())
+			builder.put(p.first, p.second, new BufferData(p.first, p.second));
+		buffers = builder.build();
+	}
+
+	/**
+	 * Computes the initialization schedule using the scheduler.
+	 */
+	private void computeInitSchedule() {
+		ImmutableList.Builder<Scheduler.Channel<Worker<?, ?>>> builder = ImmutableList.<Scheduler.Channel<Worker<?, ?>>>builder();
+		for (Pair<Worker<?, ?>, Worker<?, ?>> p : allWorkerPairsInBlob()) {
+			int i = Workers.getSuccessors(p.first).indexOf(p.second);
+			int j = Workers.getPredecessors(p.second).indexOf(p.first);
+			int pushRate = p.first.getPushRates().get(i).max();
+			int popRate = p.second.getPopRates().get(i).max();
+			builder.add(new Scheduler.Channel<>(p.first, p.second, pushRate, popRate, buffers.get(p.first, p.second).initialSize));
+		}
+		initSchedule = Scheduler.schedule(builder.build());
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private ImmutableList<Pair<Worker<?, ?>, Worker<?, ?>>> allWorkerPairsInBlob() {
+		ImmutableList.Builder<Pair<Worker<?, ?>, Worker<?, ?>>> builder = ImmutableList.<Pair<Worker<?, ?>, Worker<?, ?>>>builder();
 		for (Worker<?, ?> u : workers)
 			for (Worker<?, ?> d : Workers.getSuccessors(u))
 				if (workers.contains(d))
-					builder.put(u, d, new BufferData(u, d));
-		buffers = builder.build();
+					builder.add(new Pair(u, d));
+		return builder.build();
 	}
 
 	/**
