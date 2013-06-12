@@ -605,7 +605,8 @@ public final class Compiler {
 			RegularType objArrayTy = blobKlass.getParent().types().getRegularType(Object[].class);
 			String fieldName = "buf"+Workers.getIdentifier(upstream)+"_"+Workers.getIdentifier(downstream);
 			final StreamNode downstreamNode = streamNodes.get(downstream);
-			boolean intracore = streamNodes.get(upstream).equals(downstreamNode);
+			//Do we need to synchronize to pass data between these two nodes?
+			boolean intracore = streamNodes.get(upstream).cores.equals(downstreamNode.cores);
 			if (intracore)
 				fields = ImmutableList.of(new Field(objArrayTy, fieldName, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass));
 			else
