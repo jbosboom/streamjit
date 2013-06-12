@@ -32,7 +32,7 @@ public interface CommunicationManager {
 	public boolean isConnected(int machineID);
 
 	/**
-	 * MachineID 0 is reserved for master node.
+	 * MachineID 0 is reserved for controller node.
 	 */
 	public List<Integer> getConnectedMachineIDs();
 

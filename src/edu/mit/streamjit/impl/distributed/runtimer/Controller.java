@@ -46,7 +46,7 @@ public class Controller {
 
 	BlobsManager blobsManager;
 
-	private List<Integer> slaveIDs;
+	private List<Integer> nodeIDs;
 
 	Map<Integer, NodeInfo> nodeInfoMap;
 
@@ -58,8 +58,8 @@ public class Controller {
 
 	/**
 	 * A {@link BoundaryInputChannel} for the tail of the whole stream graph. If the sink {@link Worker} happened to fall outside the
-	 * {@link Controller}, we need to pull the sink's output in to the {@link Controller} in order to make {@link CompiledStream}.pull() to
-	 * work.
+	 * {@link Controller}, we need to pull the sink's output in to the {@link Controller} in order to make {@link CompiledStream}
+	 * .pull() to work.
 	 */
 	BoundaryInputChannel<?> tailChannel;
 
@@ -67,10 +67,10 @@ public class Controller {
 		this.comManager = new TCPCommunicationManager();
 	}
 
-	public void connect(int noOfslaves) {
+	public void connect(int noOfnodes) {
 		// TODO: Need to handle this exception well.
 		try {
-			comManager.connectMachines(noOfslaves); // Because the noOfnodes includes the master node also
+			comManager.connectMachines(noOfnodes); // Because the noOfnodes includes the controller node also
 		} catch (IOException e) {
 			System.out.println("Connection Error...");
 			e.printStackTrace();
@@ -81,8 +81,8 @@ public class Controller {
 	}
 
 	private void setMachineIds() {
-		this.slaveIDs = comManager.getConnectedMachineIDs();
-		for (int key : this.slaveIDs) {
+		this.nodeIDs = comManager.getConnectedMachineIDs();
+		for (int key : this.nodeIDs) {
 			try {
 				comManager.writeObject(key, Request.machineID);
 				comManager.writeObject(key, new Integer(key));
@@ -94,11 +94,11 @@ public class Controller {
 
 	private void getNodeInfo() {
 		nodeInfoMap = new HashMap<>();
-		nodeInfoMap.put(0, NodeInfo.getMyinfo()); // available cores at master. master's machineID is 0
+		nodeInfoMap.put(0, NodeInfo.getMyinfo()); // available cores at controller. controller's machineID is 0
 
 		sendToAll(Request.NodeInfo);
 
-		for (int key : this.slaveIDs) {
+		for (int key : this.nodeIDs) {
 			try {
 				NodeInfo nodeinfo = comManager.readObject(key);
 				nodeInfoMap.put(key, nodeinfo);
@@ -127,11 +127,11 @@ public class Controller {
 	 */
 	public Map<Integer, Integer> getCoreCount() {
 		Map<Integer, Integer> coreCounts = new HashMap<>();
-		coreCounts.put(0, Runtime.getRuntime().availableProcessors()); // available cores at master. master's machineID is 0
+		coreCounts.put(0, Runtime.getRuntime().availableProcessors()); // available cores at controller. controller's machineID is 0
 
 		sendToAll(Request.maxCores);
 
-		for (int key : this.slaveIDs) {
+		for (int key : this.nodeIDs) {
 			try {
 				Integer count = comManager.readObject(key);
 				coreCounts.put(key, count);
@@ -159,7 +159,7 @@ public class Controller {
 		Map<Token, Integer> portIdMap = (Map<Token, Integer>) cfg.getExtraData(GlobalConstants.PORTID_MAP);
 
 		Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) cfg.getExtraData(GlobalConstants.NODE_INFO_MAP);
-		createMasterBlobs(partitionsMachineMap.get(0), tokenMachineMap, portIdMap, nodeInfoMap);
+		createLocalBlobs(partitionsMachineMap.get(0), tokenMachineMap, portIdMap, nodeInfoMap);
 
 		if (getAssignedMachine(source, partitionsMachineMap) != 0) {
 			Token t = Token.createOverallInputToken(source);
@@ -297,7 +297,7 @@ public class Controller {
 	// }
 
 	private void sendToAll(Object object) {
-		for (int key : this.slaveIDs) {
+		for (int key : this.nodeIDs) {
 			try {
 				comManager.writeObject(key, object);
 			} catch (IOException e) {
@@ -306,7 +306,7 @@ public class Controller {
 		}
 	}
 
-	private void createMasterBlobs(List<Set<Worker<?, ?>>> blobWorkersList, Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap,
+	private void createLocalBlobs(List<Set<Worker<?, ?>>> blobWorkersList, Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap,
 			Map<Token, Integer> portIdMap, Map<Integer, NodeInfo> nodeInfoMap) {
 		Blob b = new DistributedBlob(blobWorkersList, Collections.<MessageConstraint> emptyList(), true);
 		Set<Blob> blobSet = new HashSet<>();

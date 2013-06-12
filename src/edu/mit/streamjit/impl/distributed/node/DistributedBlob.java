@@ -43,7 +43,7 @@ public class DistributedBlob implements Blob {
 	 *            level {@link Iterable}s will be passed to {@link SingleThreadedBlob} and will be running in a single thread.
 	 * @param constraintsIter
 	 */
-	public DistributedBlob(List<Set<Worker<?, ?>>> workersIter, Iterable<MessageConstraint> constraintsIter, boolean isMaster) {
+	public DistributedBlob(List<Set<Worker<?, ?>>> workersIter, Iterable<MessageConstraint> constraintsIter, boolean isControllerNode) {
 		threadBlobs = new ArrayList<>();
 
 		for (Iterable<Worker<?, ?>> coreWorkers : workersIter) {
@@ -53,9 +53,9 @@ public class DistributedBlob implements Blob {
 		ImmutableMap.Builder<Token, Channel<?>> inputChannelsBuilder = ImmutableMap.builder();
 		ImmutableMap.Builder<Token, Channel<?>> outputChannelsBuilder = ImmutableMap.builder();
 		for (IOInfo info : IOInfo.create(getWorkers())) {
-			if (info.isInput() && info.upstream() == null && isMaster)
+			if (info.isInput() && info.upstream() == null && isControllerNode)
 				continue;
-			if (info.isOutput() && info.downstream() == null && isMaster)
+			if (info.isOutput() && info.downstream() == null && isControllerNode)
 				continue;
 			(info.isInput() ? inputChannelsBuilder : outputChannelsBuilder).put(info.token(), info.channel());
 		}

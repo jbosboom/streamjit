@@ -3,10 +3,12 @@ package edu.mit.streamjit.impl.distributed.api;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
+
 /**
  * {@link NodeInfo} is to store and pass the information about the nodes such as machines, servers, or mobile phones that are used to
- * execute the stream application. This informations may be needed by the slaves in order to establish connections with other dependent
- * computing nodes to successfully execute a stream application.
+ * execute the stream application. This informations may be needed by the {@link StreamNode}s in order to establish connections with
+ * other dependent computing nodes to successfully execute a stream application.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 7, 2013
@@ -16,11 +18,9 @@ public class NodeInfo implements MessageElement {
 	private static final long serialVersionUID = -2627560179074739731L;
 
 	/**
-	 * As this code snippet become repeated in many places ( master side and slave side) , static methods is introduced to ease the
-	 * job. No more do nodes need to calculate everything them self. instead, nodes can get their {@link NodeInfo} through this static
-	 * method.
+	 * Creates a {@link NodeInfo} and returns. This is added to ease the {@link NodeInfo} construction.
 	 * 
-	 * @return
+	 * @return {@link NodeInfo} of the current computing node.
 	 */
 	public static NodeInfo getMyinfo() {
 		InetAddress localMachine;

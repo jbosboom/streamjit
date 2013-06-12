@@ -7,37 +7,37 @@ package edu.mit.streamjit.impl.distributed.node;
 import edu.mit.streamjit.impl.distributed.api.CommandProcessor;
 
 public class CommandProcessorImpl implements CommandProcessor {
-	StreamNode slave;
+	StreamNode streamNode;
 
-	public CommandProcessorImpl(StreamNode slave) {
-		this.slave = slave;
+	public CommandProcessorImpl(StreamNode streamNode) {
+		this.streamNode = streamNode;
 	}
 
 	@Override
 	public void processSTART() {
 		System.out.println("StraemJit app started...");
-		slave.getBlobsManager().start();
+		streamNode.getBlobsManager().start();
 	}
 
 	@Override
 	public void processSTOP() {
 		System.out.println("StraemJit app stopped...");
-		slave.getBlobsManager().stop();
+		streamNode.getBlobsManager().stop();
 	}
 
 	@Override
 	public void processSUSPEND() {
-		slave.getBlobsManager().suspend();
+		streamNode.getBlobsManager().suspend();
 	}
 
 	@Override
 	public void processRESUME() {
-		slave.getBlobsManager().resume();
+		streamNode.getBlobsManager().resume();
 	}
 
 	@Override
 	public void processEXIT() {
 		System.out.println("StreamNode is Exiting...");
-		slave.exit();
+		streamNode.exit();
 	}
 }

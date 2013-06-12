@@ -1,41 +1,36 @@
 package edu.mit.streamjit.impl.distributed;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import edu.mit.streamjit.api.*;
-import edu.mit.streamjit.impl.blob.*;
-import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.api.CompiledStream;
+import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Portal;
+import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.common.Configuration.*;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager;
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
-import edu.mit.streamjit.impl.distributed.runtimer.TCPCommunicationManager;
-import edu.mit.streamjit.partitioner.*;
-import edu.mit.streamjit.util.json.Jsonifiers;
 import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
 import edu.mit.streamjit.impl.interp.ArrayChannel;
 import edu.mit.streamjit.impl.interp.Channel;
-import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.impl.interp.SynchronizedChannel;
+import edu.mit.streamjit.partitioner.HorizontalPartitioner;
+import edu.mit.streamjit.partitioner.Partitioner;
 
 /**
  * TODO: Now it executes all blobs in a single thread. Need to implement Distributed concurrent blobs soon. TODO:
- * {@link DistributedStreamCompiler} must work with 0 slaves as well. In that case, it should behave like a
+ * {@link DistributedStreamCompiler} must work with 1 {@link StreamNode} as well. In that case, it should behave like a
  * {@link ConcurrentStreamCompiler}.
  * 
  * @author Sumanan sumanan@mit.edu
@@ -44,14 +39,14 @@ import edu.mit.streamjit.impl.interp.SynchronizedChannel;
 public class DistributedStreamCompiler implements StreamCompiler {
 
 	/**
-	 * Total number of nodes including master node.
+	 * Total number of nodes including controller node.
 	 */
 	int noOfnodes;
 
 	/**
 	 * @param noOfnodes
-	 *            : Total number of nodes the stream application intended to run - including master node. If it is 1 then it means the
-	 *            whole stream application is supposed to run on master.
+	 *            : Total number of nodes the stream application intended to run - including controller node. If it is 1 then it means the
+	 *            whole stream application is supposed to run on controller.
 	 */
 	public DistributedStreamCompiler(int noOfnodes) {
 		if (noOfnodes < 1)
@@ -60,7 +55,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	}
 
 	/**
-	 * Run the whole application on the master node.
+	 * Run the whole application on the controller node.
 	 */
 	public DistributedStreamCompiler() {
 		this(1);
@@ -83,10 +78,10 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		VerifyStreamGraph verifier = new VerifyStreamGraph();
 		stream.visit(verifier);
 
-		Controller master = new Controller();
-		master.connect(noOfnodes - 1);
+		Controller controller = new Controller();
+		controller.connect(noOfnodes - 1);
 
-		Map<Integer, Integer> coreCounts = master.getCoreCount();
+		Map<Integer, Integer> coreCounts = controller.getCoreCount();
 
 		// As we are just running small benchmark applications, lets utilize just a single core per node. TODO: When running big
 		// real world applications utilize all available cores. For that simply comment the following lines.
@@ -111,9 +106,9 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 
-		master.setPartition(partitionsMachineMap, stream.getClass().getName(), constraints, source, sink);
+		controller.setPartition(partitionsMachineMap, stream.getClass().getName(), constraints, source, sink);
 
-		return new DistributedCompiledStream<>(head, tail, master);
+		return new DistributedCompiledStream<>(head, tail, controller);
 	}
 
 	// TODO: Need to do precise mapping. For the moment just mapping in order.
@@ -151,12 +146,12 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 	private static class DistributedCompiledStream<I, O> extends AbstractCompiledStream<I, O> {
 
-		Controller master;
+		Controller controller;
 
-		public DistributedCompiledStream(Channel<? super I> head, Channel<? extends O> tail, Controller master) {
+		public DistributedCompiledStream(Channel<? super I> head, Channel<? extends O> tail, Controller controller) {
 			super(head, tail);
-			this.master = master;
-			this.master.start();
+			this.controller = controller;
+			this.controller.start();
 		}
 
 		@Override

@@ -42,10 +42,10 @@ import edu.mit.streamjit.util.json.Jsonifiers;
  */
 public class JsonStringProcessorImpl implements JsonStringProcessor {
 
-	StreamNode slave;
+	StreamNode streamNode;
 
-	public JsonStringProcessorImpl(StreamNode slave) {
-		this.slave = slave;
+	public JsonStringProcessorImpl(StreamNode streamNode) {
+		this.streamNode = streamNode;
 	}
 
 	@Override
@@ -60,7 +60,7 @@ public class JsonStringProcessorImpl implements JsonStringProcessor {
 
 			Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) cfg.getExtraData(GlobalConstants.NODE_INFO_MAP);
 
-			slave.setBlobsManager(new BlobsManagerImpl(blobSet, tokenMachineMap, portIdMap, nodeInfoMap));
+			streamNode.setBlobsManager(new BlobsManagerImpl(blobSet, tokenMachineMap, portIdMap, nodeInfoMap));
 		} else
 			System.out.println("Couldn't get the blobset....");
 	}
@@ -88,7 +88,7 @@ public class JsonStringProcessorImpl implements JsonStringProcessor {
 			Workers.getInputChannels(source).add(head);
 			Workers.getOutputChannels(sink).add(tail);
 
-			List<BlobSpecifier> blobList = partParam.getBlobsOnMachine(slave.getMachineID());
+			List<BlobSpecifier> blobList = partParam.getBlobsOnMachine(streamNode.getMachineID());
 
 			ImmutableSet.Builder<Blob> blobSet = ImmutableSet.builder();
 
@@ -122,7 +122,7 @@ public class JsonStringProcessorImpl implements JsonStringProcessor {
 		if (!jarFile.exists()) {
 			System.out.println("Jar file not found....");
 			try {
-				slave.masterConnection.writeObject(Error.FILE_NOT_FOUND);
+				streamNode.controllerConnection.writeObject(Error.FILE_NOT_FOUND);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -161,7 +161,7 @@ public class JsonStringProcessorImpl implements JsonStringProcessor {
 
 			// TODO: Try catch inside a catch block. Good practice???
 			try {
-				slave.masterConnection.writeObject(Error.WORKER_NOT_FOUND);
+				streamNode.controllerConnection.writeObject(Error.WORKER_NOT_FOUND);
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -173,7 +173,7 @@ public class JsonStringProcessorImpl implements JsonStringProcessor {
 
 			// TODO: Try catch inside a catch block. Good practice???
 			try {
-				slave.masterConnection.writeObject(Error.WORKER_NOT_FOUND);
+				streamNode.controllerConnection.writeObject(Error.WORKER_NOT_FOUND);
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();

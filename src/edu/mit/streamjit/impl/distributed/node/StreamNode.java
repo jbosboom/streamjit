@@ -15,18 +15,18 @@ import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
- * This class is driving class at slave side. Once it is started, it will keep on listening and processing the commands from the
- * {@link Controller}. {@link Controller} can issue the {@link Command} EXIT to stop the slave.
+ * This class is driving class at streamNode side. Once it is started, it will keep on listening and processing the commands from the
+ * {@link Controller}. {@link Controller} can issue the {@link Command} EXIT to stop the streamNode.
  */
 public class StreamNode {
 
-	NodeConnection masterConnection;
+	NodeConnection controllerConnection;
 	private int machineID; // TODO: consider move or remove this from StreamNode class. If so, this class will be more handy.
 	MessageVisitor mv;
 
 	BlobsManager blobsManager;
 
-	private boolean run; // As we assume that all master communication and the MessageElement processing is managed by single thread,
+	private boolean run; // As we assume that all controller communication and the MessageElement processing is managed by single thread,
 							// no need to make this variable thread safe.
 
 	public void exit() {
@@ -34,19 +34,19 @@ public class StreamNode {
 	}
 
 	/**
-	 * Only IP address is required. PortNo is optional. If it is not provided, {@link StreamNode} will try to start with default StreamJit's
-	 * port number that can be found {@link GlobalConstants}.
+	 * Only IP address is required. PortNo is optional. If it is not provided, {@link StreamNode} will try to start with default
+	 * StreamJit's port number that can be found {@link GlobalConstants}.
 	 */
 	public StreamNode(String ipAddress, int portNo) {
-		masterConnection = new NodeTCPConnection(ipAddress, portNo);
+		controllerConnection = new NodeTCPConnection(ipAddress, portNo);
 		this.mv = new NodeMessageVisitor(new AppStatusProcessorImpl(), new CommandProcessorImpl(this), new ErrorProcessorImpl(),
 				new RequestProcessorImpl(this), new JsonStringProcessorImpl(this));
 		this.run = true;
 	}
 
 	/**
-	 * Only IP address is required. PortNo is optional. If it is not provided, {@link StreamNode} will try to start with default StreamJit's
-	 * port number that can be found {@link GlobalConstants}.
+	 * Only IP address is required. PortNo is optional. If it is not provided, {@link StreamNode} will try to start with default
+	 * StreamJit's port number that can be found {@link GlobalConstants}.
 	 */
 	public StreamNode(String ipAddress) {
 		this(ipAddress, GlobalConstants.PORTNO);
@@ -55,7 +55,7 @@ public class StreamNode {
 	public void run() {
 
 		try {
-			masterConnection.makeConnection();
+			controllerConnection.makeConnection();
 		} catch (IOException e1) {
 			System.out.println("Couldn't extablish the connection with Controller node. I am terminating...");
 			e1.printStackTrace();
@@ -64,7 +64,7 @@ public class StreamNode {
 
 		while (run) {
 			try {
-				MessageElement me = masterConnection.readObject();
+				MessageElement me = controllerConnection.readObject();
 				me.accept(mv);
 			} catch (ClassNotFoundException | IOException e) {
 				e.printStackTrace();
@@ -85,7 +85,7 @@ public class StreamNode {
 	// Release all file pointers, opened sockets, etc.
 	private void releaseResources() {
 		try {
-			this.masterConnection.closeConnection();
+			this.controllerConnection.closeConnection();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

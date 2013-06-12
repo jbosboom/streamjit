@@ -49,7 +49,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 		ListenerSocket listnerSckt = new ListenerSocket(this.listenPort, noOfmachines);
 		listnerSckt.start();
 		socketMap.clear();
-		int machineID = 1; // master gets machineID 0.
+		int machineID = 1; // controller gets machineID 0.
 		while (true) {
 			List<TCPSocket> acceptedSocketList = listnerSckt.getAcceptedSockets();
 			for (TCPSocket s : acceptedSocketList) {
@@ -65,7 +65,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 			// Rather than continuously polling the listenersocket, lets wait some time before the next poll.
 			try {
 				Thread.sleep(1000);
-				System.out.println("Waiting for required slaves to be connected. Listener is still listening...");
+				System.out.println("Waiting for required nodes to be connected. Listener is still listening...");
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}

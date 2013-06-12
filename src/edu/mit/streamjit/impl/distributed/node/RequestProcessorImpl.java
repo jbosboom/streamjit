@@ -13,10 +13,10 @@ import edu.mit.streamjit.impl.distributed.api.RequestProcessor;
 
 public class RequestProcessorImpl implements RequestProcessor {
 
-	StreamNode slave;
+	StreamNode streamNode;
 
-	RequestProcessorImpl(StreamNode slave) {
-		this.slave = slave;
+	RequestProcessorImpl(StreamNode streamNode) {
+		this.streamNode = streamNode;
 	}
 
 	@Override
@@ -32,7 +32,7 @@ public class RequestProcessorImpl implements RequestProcessor {
 	@Override
 	public void processMaxCores() {
 		try {
-			slave.masterConnection.writeObject(new Integer(Runtime.getRuntime().availableProcessors()));
+			streamNode.controllerConnection.writeObject(new Integer(Runtime.getRuntime().availableProcessors()));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -42,8 +42,8 @@ public class RequestProcessorImpl implements RequestProcessor {
 	@Override
 	public void processMachineID() {
 		try {
-			Integer id = slave.masterConnection.readObject();
-			slave.setMachineID(id);
+			Integer id = streamNode.controllerConnection.readObject();
+			streamNode.setMachineID(id);
 		} catch (ClassNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -57,7 +57,7 @@ public class RequestProcessorImpl implements RequestProcessor {
 	public void processNodeInfo() {
 		NodeInfo myInfo = NodeInfo.getMyinfo();
 		try {
-			slave.masterConnection.writeObject(myInfo);
+			streamNode.controllerConnection.writeObject(myInfo);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
