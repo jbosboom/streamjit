@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.distributed.runtime.common;
+package edu.mit.streamjit.impl.distributed.common;
 
 import java.io.*;
 import java.net.*;

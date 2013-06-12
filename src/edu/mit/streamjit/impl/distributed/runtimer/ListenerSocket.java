@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.distributed.runtime.master;
+package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import edu.mit.streamjit.impl.distributed.runtime.common.TCPSocket;
+import edu.mit.streamjit.impl.distributed.common.TCPSocket;
 
 /**
  * {@link ListenerSocket} listens for new TCP connections. It can run on separate thread and keep on listening until the stop condition

@@ -2,7 +2,7 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 17, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.api;
+package edu.mit.streamjit.impl.distributed.api;
 
 public enum AppStatus implements MessageElement {
 	RUNNING {

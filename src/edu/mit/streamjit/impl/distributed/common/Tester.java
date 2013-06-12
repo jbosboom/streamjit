@@ -2,12 +2,12 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 20, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.common;
+package edu.mit.streamjit.impl.distributed.common;
 
-import edu.mit.streamjit.impl.distributed.runtime.api.AppStatus;
-import edu.mit.streamjit.impl.distributed.runtime.api.Command;
-import edu.mit.streamjit.impl.distributed.runtime.api.MessageElement;
-import edu.mit.streamjit.impl.distributed.runtime.api.MessageVisitor;
+import edu.mit.streamjit.impl.distributed.api.AppStatus;
+import edu.mit.streamjit.impl.distributed.api.Command;
+import edu.mit.streamjit.impl.distributed.api.MessageElement;
+import edu.mit.streamjit.impl.distributed.api.MessageVisitor;
 
 public class Tester {
 

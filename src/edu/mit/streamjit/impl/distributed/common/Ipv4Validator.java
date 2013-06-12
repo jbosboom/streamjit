@@ -2,7 +2,7 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 15, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.common;
+package edu.mit.streamjit.impl.distributed.common;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

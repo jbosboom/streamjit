@@ -21,10 +21,10 @@ import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.common.Configuration.*;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
-import edu.mit.streamjit.impl.distributed.runtime.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.runtime.master.CommunicationManager;
-import edu.mit.streamjit.impl.distributed.runtime.master.Master;
-import edu.mit.streamjit.impl.distributed.runtime.master.TCPCommunicationManager;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager;
+import edu.mit.streamjit.impl.distributed.runtimer.Controller;
+import edu.mit.streamjit.impl.distributed.runtimer.TCPCommunicationManager;
 import edu.mit.streamjit.partitioner.*;
 import edu.mit.streamjit.util.json.Jsonifiers;
 import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
@@ -83,7 +83,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		VerifyStreamGraph verifier = new VerifyStreamGraph();
 		stream.visit(verifier);
 
-		Master master = new Master();
+		Controller master = new Controller();
 		master.connect(noOfnodes - 1);
 
 		Map<Integer, Integer> coreCounts = master.getCoreCount();
@@ -151,9 +151,9 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 	private static class DistributedCompiledStream<I, O> extends AbstractCompiledStream<I, O> {
 
-		Master master;
+		Controller master;
 
-		public DistributedCompiledStream(Channel<? super I> head, Channel<? extends O> tail, Master master) {
+		public DistributedCompiledStream(Channel<? super I> head, Channel<? extends O> tail, Controller master) {
 			super(head, tail);
 			this.master = master;
 			this.master.start();

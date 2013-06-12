@@ -2,7 +2,7 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 17, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.api;
+package edu.mit.streamjit.impl.distributed.api;
 
 public enum Command implements MessageElement {
 	/**
@@ -15,7 +15,7 @@ public enum Command implements MessageElement {
 		}
 	},
 	/**
-	 * Stop the StreamJit Application. Not the Slave.
+	 * Stop the StreamJit Application. Not the StreamNode.
 	 */
 	STOP {
 		@Override
@@ -36,7 +36,7 @@ public enum Command implements MessageElement {
 		}
 	},
 	/**
-	 * This command is to ask Slave to exit.
+	 * This command is to ask StreamNode to exit.
 	 */
 	EXIT {
 		@Override

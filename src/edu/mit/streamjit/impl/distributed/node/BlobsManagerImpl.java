@@ -2,7 +2,7 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -12,9 +12,9 @@ import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.distributed.runtime.api.BlobExecuter;
-import edu.mit.streamjit.impl.distributed.runtime.api.BlobsManager;
-import edu.mit.streamjit.impl.distributed.runtime.api.NodeInfo;
+import edu.mit.streamjit.impl.distributed.api.BlobExecuter;
+import edu.mit.streamjit.impl.distributed.api.BlobsManager;
+import edu.mit.streamjit.impl.distributed.api.NodeInfo;
 
 public class BlobsManagerImpl implements BlobsManager {
 

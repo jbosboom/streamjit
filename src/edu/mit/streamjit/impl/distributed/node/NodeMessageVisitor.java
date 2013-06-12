@@ -2,22 +2,22 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 20, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
-import edu.mit.streamjit.impl.distributed.runtime.api.AppStatus;
-import edu.mit.streamjit.impl.distributed.runtime.api.AppStatusProcessor;
-import edu.mit.streamjit.impl.distributed.runtime.api.Command;
-import edu.mit.streamjit.impl.distributed.runtime.api.CommandProcessor;
-import edu.mit.streamjit.impl.distributed.runtime.api.Error;
-import edu.mit.streamjit.impl.distributed.runtime.api.ErrorProcessor;
-import edu.mit.streamjit.impl.distributed.runtime.api.JsonString;
-import edu.mit.streamjit.impl.distributed.runtime.api.JsonStringProcessor;
-import edu.mit.streamjit.impl.distributed.runtime.api.MessageVisitor;
-import edu.mit.streamjit.impl.distributed.runtime.api.Request;
-import edu.mit.streamjit.impl.distributed.runtime.api.RequestProcessor;
-import edu.mit.streamjit.impl.distributed.runtime.api.SystemInfo;
+import edu.mit.streamjit.impl.distributed.api.AppStatus;
+import edu.mit.streamjit.impl.distributed.api.AppStatusProcessor;
+import edu.mit.streamjit.impl.distributed.api.Command;
+import edu.mit.streamjit.impl.distributed.api.CommandProcessor;
+import edu.mit.streamjit.impl.distributed.api.Error;
+import edu.mit.streamjit.impl.distributed.api.ErrorProcessor;
+import edu.mit.streamjit.impl.distributed.api.JsonString;
+import edu.mit.streamjit.impl.distributed.api.JsonStringProcessor;
+import edu.mit.streamjit.impl.distributed.api.MessageVisitor;
+import edu.mit.streamjit.impl.distributed.api.Request;
+import edu.mit.streamjit.impl.distributed.api.RequestProcessor;
+import edu.mit.streamjit.impl.distributed.api.SystemInfo;
 
-public class SlaveMessageVisitor implements MessageVisitor {
+public class NodeMessageVisitor implements MessageVisitor {
 
 	private AppStatusProcessor asp;
 	private CommandProcessor cp;
@@ -25,7 +25,7 @@ public class SlaveMessageVisitor implements MessageVisitor {
 	private RequestProcessor rp;
 	private JsonStringProcessor jp;
 
-	public SlaveMessageVisitor(AppStatusProcessor asp, CommandProcessor cp, ErrorProcessor ep, RequestProcessor rp, JsonStringProcessor jp) {
+	public NodeMessageVisitor(AppStatusProcessor asp, CommandProcessor cp, ErrorProcessor ep, RequestProcessor rp, JsonStringProcessor jp) {
 		this.asp = asp;
 		this.cp = cp;
 		this.ep = ep;

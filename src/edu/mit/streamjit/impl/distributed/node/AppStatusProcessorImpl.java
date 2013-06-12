@@ -2,11 +2,11 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
-import edu.mit.streamjit.impl.distributed.runtime.api.AppStatusProcessor;
+import edu.mit.streamjit.impl.distributed.api.AppStatusProcessor;
 
-public class SlaveAppStatusProcessor implements AppStatusProcessor {
+public class AppStatusProcessorImpl implements AppStatusProcessor {
 
 	@Override
 	public void processRUNNING() {

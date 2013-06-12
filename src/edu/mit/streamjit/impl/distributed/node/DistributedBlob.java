@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
 import java.util.ArrayList;
 import java.util.HashSet;

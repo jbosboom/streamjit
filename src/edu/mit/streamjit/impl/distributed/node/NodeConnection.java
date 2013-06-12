@@ -1,14 +1,14 @@
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
 
 /**
- * Slave side communication interface.
+ * StreamNode side communication interface.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 14, 2013
  */
-public interface SlaveConnection {
+public interface NodeConnection {
 
 	public <T> T readObject() throws IOException, ClassNotFoundException;
 

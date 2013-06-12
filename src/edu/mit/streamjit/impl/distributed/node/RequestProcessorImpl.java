@@ -2,20 +2,20 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-import edu.mit.streamjit.impl.distributed.runtime.api.NodeInfo;
-import edu.mit.streamjit.impl.distributed.runtime.api.RequestProcessor;
+import edu.mit.streamjit.impl.distributed.api.NodeInfo;
+import edu.mit.streamjit.impl.distributed.api.RequestProcessor;
 
-public class SlaveRequestProcessor implements RequestProcessor {
+public class RequestProcessorImpl implements RequestProcessor {
 
-	Slave slave;
+	StreamNode slave;
 
-	SlaveRequestProcessor(Slave slave) {
+	RequestProcessorImpl(StreamNode slave) {
 		this.slave = slave;
 	}
 

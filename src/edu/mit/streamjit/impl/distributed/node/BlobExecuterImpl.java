@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,11 +6,11 @@ import java.util.Map;
 
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.distributed.runtime.api.BlobExecuter;
-import edu.mit.streamjit.impl.distributed.runtime.api.BoundaryChannel;
-import edu.mit.streamjit.impl.distributed.runtime.api.BoundaryInputChannel;
-import edu.mit.streamjit.impl.distributed.runtime.api.BoundaryOutputChannel;
-import edu.mit.streamjit.impl.distributed.runtime.api.NodeInfo;
+import edu.mit.streamjit.impl.distributed.api.BlobExecuter;
+import edu.mit.streamjit.impl.distributed.api.BoundaryChannel;
+import edu.mit.streamjit.impl.distributed.api.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.api.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.api.NodeInfo;
 import edu.mit.streamjit.impl.interp.Channel;
 
 /**

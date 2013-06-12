@@ -1,8 +1,8 @@
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
 
-import edu.mit.streamjit.impl.distributed.runtime.api.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.api.BoundaryInputChannel;
 import edu.mit.streamjit.impl.interp.Channel;
 
 /**
@@ -15,14 +15,14 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 
 	Channel<E> channel;
 
-	SlaveConnection inputConnection;
+	NodeConnection inputConnection;
 
 	private volatile boolean stopFlag;
 
 	public TCPInputChannel(Channel<E> channel, String IpAddress, int portNo) {
 		this.channel = channel;
 		this.stopFlag = false;
-		this.inputConnection = new SlaveTCPConnection(IpAddress, portNo);
+		this.inputConnection = new NodeTCPConnection(IpAddress, portNo);
 	}
 
 	@Override

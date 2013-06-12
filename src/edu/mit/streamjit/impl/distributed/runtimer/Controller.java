@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.distributed.runtime.master;
+package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
 import java.util.AbstractMap;
@@ -22,25 +22,25 @@ import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.distributed.runtime.api.BlobsManager;
-import edu.mit.streamjit.impl.distributed.runtime.api.BoundaryInputChannel;
-import edu.mit.streamjit.impl.distributed.runtime.api.BoundaryOutputChannel;
-import edu.mit.streamjit.impl.distributed.runtime.api.Command;
-import edu.mit.streamjit.impl.distributed.runtime.api.JsonString;
-import edu.mit.streamjit.impl.distributed.runtime.api.NodeInfo;
-import edu.mit.streamjit.impl.distributed.runtime.api.Request;
-import edu.mit.streamjit.impl.distributed.runtime.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.runtime.slave.BlobsManagerImpl;
-import edu.mit.streamjit.impl.distributed.runtime.slave.DistributedBlob;
-import edu.mit.streamjit.impl.distributed.runtime.slave.TCPInputChannel;
-import edu.mit.streamjit.impl.distributed.runtime.slave.TCPOutputChannel;
+import edu.mit.streamjit.impl.distributed.api.BlobsManager;
+import edu.mit.streamjit.impl.distributed.api.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.api.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.api.Command;
+import edu.mit.streamjit.impl.distributed.api.JsonString;
+import edu.mit.streamjit.impl.distributed.api.NodeInfo;
+import edu.mit.streamjit.impl.distributed.api.Request;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.node.BlobsManagerImpl;
+import edu.mit.streamjit.impl.distributed.node.DistributedBlob;
+import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
+import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 import edu.mit.streamjit.impl.interp.Interpreter;
 
 /**
  * @author Sumanan sumanan@mit.edu
  * @since May 10, 2013
  */
-public class Master {
+public class Controller {
 
 	private CommunicationManager comManager;
 
@@ -52,18 +52,18 @@ public class Master {
 
 	/**
 	 * A {@link BoundaryOutputChannel} for the head of the stream graph. If source {@link Worker} happened to fall outside the
-	 * {@link Master}, we need to push the {@link CompiledStream}.offer() data to the source.
+	 * {@link Controller}, we need to push the {@link CompiledStream}.offer() data to the source.
 	 */
 	BoundaryOutputChannel<?> headChannel;
 
 	/**
 	 * A {@link BoundaryInputChannel} for the tail of the whole stream graph. If the sink {@link Worker} happened to fall outside the
-	 * {@link Master}, we need to pull the sink's output in to the {@link Master} in order to make {@link CompiledStream}.pull() to
+	 * {@link Controller}, we need to pull the sink's output in to the {@link Controller} in order to make {@link CompiledStream}.pull() to
 	 * work.
 	 */
 	BoundaryInputChannel<?> tailChannel;
 
-	public Master() {
+	public Controller() {
 		this.comManager = new TCPCommunicationManager();
 	}
 

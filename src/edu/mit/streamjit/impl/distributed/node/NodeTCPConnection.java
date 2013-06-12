@@ -2,23 +2,23 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 14, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
-import edu.mit.streamjit.impl.distributed.runtime.common.Ipv4Validator;
-import edu.mit.streamjit.impl.distributed.runtime.common.TCPSocket;
+import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
+import edu.mit.streamjit.impl.distributed.common.TCPSocket;
 
-public class SlaveTCPConnection implements SlaveConnection {
+public class NodeTCPConnection implements NodeConnection {
 
 	private String serverAddress;
 	private int portNo;
 
 	private TCPSocket socket;
 
-	SlaveTCPConnection(String serverAddress, int portNo) {
+	NodeTCPConnection(String serverAddress, int portNo) {
 		Ipv4Validator validator = Ipv4Validator.getInstance();
 
 		if (validator.isValid(serverAddress))

@@ -2,7 +2,7 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.common;
+package edu.mit.streamjit.impl.distributed.common;
 
 /**
  * This class is to keep track of all application level constants. So we can avoid magical arbitrary values in other classes.

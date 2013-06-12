@@ -2,7 +2,7 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 13, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.master;
+package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -10,9 +10,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import edu.mit.streamjit.impl.distributed.runtime.api.Request;
-import edu.mit.streamjit.impl.distributed.runtime.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.runtime.common.TCPSocket;
+import edu.mit.streamjit.impl.distributed.api.Request;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.TCPSocket;
 
 public class TCPCommunicationManager implements CommunicationManager {
 
@@ -54,7 +54,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 			List<TCPSocket> acceptedSocketList = listnerSckt.getAcceptedSockets();
 			for (TCPSocket s : acceptedSocketList) {
 				socketMap.put(machineID++, s);
-				System.out.println("Slave connected: " + s.toString());
+				System.out.println("StreamNode connected: " + s.toString());
 				if (!(socketMap.size() < noOfmachines))
 					break;
 			}

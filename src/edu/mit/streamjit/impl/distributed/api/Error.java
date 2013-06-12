@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.distributed.runtime.api;
+package edu.mit.streamjit.impl.distributed.api;
 
 /**
  * To avoid unnecessary communication overhead and keep the communication between the StreamJit nodes optimal, don't implement

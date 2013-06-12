@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -27,10 +27,10 @@ import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecif
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.distributed.runtime.api.Error;
-import edu.mit.streamjit.impl.distributed.runtime.api.JsonStringProcessor;
-import edu.mit.streamjit.impl.distributed.runtime.api.NodeInfo;
-import edu.mit.streamjit.impl.distributed.runtime.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.api.Error;
+import edu.mit.streamjit.impl.distributed.api.JsonStringProcessor;
+import edu.mit.streamjit.impl.distributed.api.NodeInfo;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.interp.ArrayChannel;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.SynchronizedChannel;
@@ -40,11 +40,11 @@ import edu.mit.streamjit.util.json.Jsonifiers;
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class SlaveJsonStringProcessor implements JsonStringProcessor {
+public class JsonStringProcessorImpl implements JsonStringProcessor {
 
-	Slave slave;
+	StreamNode slave;
 
-	public SlaveJsonStringProcessor(Slave slave) {
+	public JsonStringProcessorImpl(StreamNode slave) {
 		this.slave = slave;
 	}
 

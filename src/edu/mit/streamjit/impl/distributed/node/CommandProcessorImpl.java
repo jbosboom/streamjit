@@ -2,14 +2,14 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
-import edu.mit.streamjit.impl.distributed.runtime.api.CommandProcessor;
+import edu.mit.streamjit.impl.distributed.api.CommandProcessor;
 
-public class SlaveCommandProcessor implements CommandProcessor {
-	Slave slave;
+public class CommandProcessorImpl implements CommandProcessor {
+	StreamNode slave;
 
-	public SlaveCommandProcessor(Slave slave) {
+	public CommandProcessorImpl(StreamNode slave) {
 		this.slave = slave;
 	}
 
@@ -37,7 +37,7 @@ public class SlaveCommandProcessor implements CommandProcessor {
 
 	@Override
 	public void processEXIT() {
-		System.out.println("Slave is Exiting...");
+		System.out.println("StreamNode is Exiting...");
 		slave.exit();
 	}
 }

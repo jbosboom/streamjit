@@ -2,26 +2,26 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 10, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
 
-import edu.mit.streamjit.impl.distributed.runtime.api.BlobsManager;
-import edu.mit.streamjit.impl.distributed.runtime.api.Command;
-import edu.mit.streamjit.impl.distributed.runtime.api.MessageElement;
-import edu.mit.streamjit.impl.distributed.runtime.api.MessageVisitor;
-import edu.mit.streamjit.impl.distributed.runtime.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.runtime.common.Ipv4Validator;
-import edu.mit.streamjit.impl.distributed.runtime.master.Master;
+import edu.mit.streamjit.impl.distributed.api.BlobsManager;
+import edu.mit.streamjit.impl.distributed.api.Command;
+import edu.mit.streamjit.impl.distributed.api.MessageElement;
+import edu.mit.streamjit.impl.distributed.api.MessageVisitor;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
+import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
  * This class is driving class at slave side. Once it is started, it will keep on listening and processing the commands from the
- * {@link Master}. {@link Master} can issue the {@link Command} EXIT to stop the slave.
+ * {@link Controller}. {@link Controller} can issue the {@link Command} EXIT to stop the slave.
  */
-public class Slave {
+public class StreamNode {
 
-	SlaveConnection masterConnection;
-	private int machineID; // TODO: consider move or remove this from Slave class. If so, this class will be more handy.
+	NodeConnection masterConnection;
+	private int machineID; // TODO: consider move or remove this from StreamNode class. If so, this class will be more handy.
 	MessageVisitor mv;
 
 	BlobsManager blobsManager;
@@ -34,21 +34,21 @@ public class Slave {
 	}
 
 	/**
-	 * Only IP address is required. PortNo is optional. If it is not provided, {@link Slave} will try to start with default StreamJit's
+	 * Only IP address is required. PortNo is optional. If it is not provided, {@link StreamNode} will try to start with default StreamJit's
 	 * port number that can be found {@link GlobalConstants}.
 	 */
-	public Slave(String ipAddress, int portNo) {
-		masterConnection = new SlaveTCPConnection(ipAddress, portNo);
-		this.mv = new SlaveMessageVisitor(new SlaveAppStatusProcessor(), new SlaveCommandProcessor(this), new SlaveErrorProcessor(),
-				new SlaveRequestProcessor(this), new SlaveJsonStringProcessor(this));
+	public StreamNode(String ipAddress, int portNo) {
+		masterConnection = new NodeTCPConnection(ipAddress, portNo);
+		this.mv = new NodeMessageVisitor(new AppStatusProcessorImpl(), new CommandProcessorImpl(this), new ErrorProcessorImpl(),
+				new RequestProcessorImpl(this), new JsonStringProcessorImpl(this));
 		this.run = true;
 	}
 
 	/**
-	 * Only IP address is required. PortNo is optional. If it is not provided, {@link Slave} will try to start with default StreamJit's
+	 * Only IP address is required. PortNo is optional. If it is not provided, {@link StreamNode} will try to start with default StreamJit's
 	 * port number that can be found {@link GlobalConstants}.
 	 */
-	public Slave(String ipAddress) {
+	public StreamNode(String ipAddress) {
 		this(ipAddress, GlobalConstants.PORTNO);
 	}
 
@@ -57,7 +57,7 @@ public class Slave {
 		try {
 			masterConnection.makeConnection();
 		} catch (IOException e1) {
-			System.out.println("Couldn't extablish the connection with Master node. I am terminating...");
+			System.out.println("Couldn't extablish the connection with Controller node. I am terminating...");
 			e1.printStackTrace();
 			System.exit(0);
 		}
@@ -103,7 +103,7 @@ public class Slave {
 			/*
 			 * System.out.println(args.length);
 			 * System.out.println("Not enough parameters passed. Please provide thr following parameters.");
-			 * System.out.println("0: Master's IP address"); System.exit(0);
+			 * System.out.println("0: Controller's IP address"); System.exit(0);
 			 */
 		}
 
@@ -120,7 +120,7 @@ public class Slave {
 			int portNo;
 			try {
 				portNo = Integer.parseInt(args[1]);
-				new Slave(ipAddress, portNo).run();
+				new StreamNode(ipAddress, portNo).run();
 
 			} catch (NumberFormatException ex) {
 				System.out.println("Invalid port No...");
@@ -128,7 +128,7 @@ public class Slave {
 				System.exit(0);
 			}
 		} else
-			new Slave(ipAddress).run();
+			new StreamNode(ipAddress).run();
 	}
 
 	/**

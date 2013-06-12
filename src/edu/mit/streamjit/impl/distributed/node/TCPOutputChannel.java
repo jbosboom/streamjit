@@ -2,13 +2,13 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 29, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.slave;
+package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
 
-import edu.mit.streamjit.impl.distributed.runtime.api.BoundaryOutputChannel;
-import edu.mit.streamjit.impl.distributed.runtime.common.TCPSocket;
-import edu.mit.streamjit.impl.distributed.runtime.master.ListenerSocket;
+import edu.mit.streamjit.impl.distributed.api.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.TCPSocket;
+import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
 import edu.mit.streamjit.impl.interp.Channel;
 
 public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {

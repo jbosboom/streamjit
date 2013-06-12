@@ -2,9 +2,9 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 20, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.common;
+package edu.mit.streamjit.impl.distributed.common;
 
-import edu.mit.streamjit.impl.distributed.runtime.api.AppStatusProcessor;
+import edu.mit.streamjit.impl.distributed.api.AppStatusProcessor;
 
 public class StreamjitAppStsProcessor implements AppStatusProcessor {
 

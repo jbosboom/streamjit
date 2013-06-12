@@ -2,13 +2,13 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 13, 2013
  */
-package edu.mit.streamjit.impl.distributed.runtime.master;
+package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import edu.mit.streamjit.impl.distributed.runtime.api.NodeInfo;
+import edu.mit.streamjit.impl.distributed.api.NodeInfo;
 
 /**
  * assigns machine id and keeps the set of connections.
