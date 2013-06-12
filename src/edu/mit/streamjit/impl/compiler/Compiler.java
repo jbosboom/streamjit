@@ -189,7 +189,12 @@ public final class Compiler {
 	private void declareBuffers() {
 		ImmutableTable.Builder<Worker<?, ?>, Worker<?, ?>, BufferData> builder = ImmutableTable.<Worker<?, ?>, Worker<?, ?>, BufferData>builder();
 		for (Pair<Worker<?, ?>, Worker<?, ?>> p : allWorkerPairsInBlob())
-			builder.put(p.first, p.second, new BufferData(p.first, p.second));
+			//Only declare buffers for worker pairs not in the same node.  If
+			//a node needs internal buffering, it handles that itself.  (This
+			//implies that peeking filters cannot be fused upwards, but that's
+			//a bad idea anyway.)
+			if (!streamNodes.get(p.first).equals(streamNodes.get(p.second)))
+				builder.put(p.first, p.second, new BufferData(p.first, p.second));
 		buffers = builder.build();
 	}
 
