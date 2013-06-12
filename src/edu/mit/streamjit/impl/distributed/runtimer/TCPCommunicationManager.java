@@ -33,7 +33,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 		if (!socketMap.containsKey(machineID))
 			throw new IllegalArgumentException("Invalid machineID. No machine is connected with machineID " + machineID);
 
-		return socketMap.get(machineID).receiveObject();
+		return socketMap.get(machineID).readObject();
 	}
 
 	@Override
@@ -41,7 +41,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 		if (!socketMap.containsKey(machineID))
 			throw new IllegalArgumentException("Invalid machineID. No machine is connected with machineID " + machineID);
 
-		socketMap.get(machineID).sendObject(obj);
+		socketMap.get(machineID).writeObject(obj);
 	}
 
 	@Override
@@ -99,7 +99,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 		if (socketMap.containsKey(machineID)) {
 			TCPConnection ss = socketMap.get(machineID);
 
-			return ss.isStillconnected();
+			return ss.isStillConnected();
 		}
 		return false;
 	}
@@ -111,7 +111,7 @@ public class TCPCommunicationManager implements CommunicationManager {
 
 		for (int key : socketMap.keySet()) {
 
-			if (socketMap.get(key).isStillconnected()) {
+			if (socketMap.get(key).isStillConnected()) {
 				connectedMachineIDs.add(key);
 			}
 		}

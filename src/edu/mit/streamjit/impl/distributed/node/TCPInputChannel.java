@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.io.IOException;
 
 import edu.mit.streamjit.impl.distributed.api.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.interp.Channel;
 
 /**
@@ -13,16 +14,21 @@ import edu.mit.streamjit.impl.interp.Channel;
  */
 public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 
-	Channel<E> channel;
+	private Channel<E> channel;
 
-	Connection inputConnection;
+	private String ipAddress;
+
+	private int portNo;
+
+	private Connection inputConnection;
 
 	private volatile boolean stopFlag;
 
-	public TCPInputChannel(Channel<E> channel, String IpAddress, int portNo) {
+	public TCPInputChannel(Channel<E> channel, String ipAddress, int portNo) {
 		this.channel = channel;
+		this.ipAddress = ipAddress;
+		this.portNo = portNo;
 		this.stopFlag = false;
-		this.inputConnection = new TCPNodeConnection(IpAddress, portNo);
 	}
 
 	@Override
@@ -36,19 +42,14 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 	}
 
 	@Override
-	public void makeConnection() throws IOException {
-
-		inputConnection.makeConnection();
-	}
-
-	@Override
 	public Runnable getRunnable() {
 		return new Runnable() {
 			@Override
 			public void run() {
 				if (inputConnection == null || !inputConnection.isStillConnected()) {
 					try {
-						makeConnection();
+						ConnectionFactory cf = new ConnectionFactory();
+						cf.getConnection(ipAddress, portNo);
 					} catch (IOException e) {
 						stopFlag = true;
 						e.printStackTrace();

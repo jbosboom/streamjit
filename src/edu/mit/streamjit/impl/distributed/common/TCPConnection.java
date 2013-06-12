@@ -3,7 +3,9 @@ package edu.mit.streamjit.impl.distributed.common;
 import java.io.*;
 import java.net.*;
 
-public class TCPConnection {
+import edu.mit.streamjit.impl.distributed.node.Connection;
+
+public class TCPConnection implements Connection {
 
 	private ObjectOutput ooStream = null;
 	private ObjectInput oiStream = null;
@@ -25,8 +27,9 @@ public class TCPConnection {
 		}
 	}
 
-	public void sendObject(Object obj) throws IOException {
-		if (isStillconnected()) {
+	@Override
+	public void writeObject(Object obj) throws IOException {
+		if (isStillConnected()) {
 			if (ooStream != null) {
 				try {
 					ooStream.writeObject(obj);
@@ -65,54 +68,16 @@ public class TCPConnection {
 		}
 	}
 
-	public final boolean isStillconnected() {
+	@Override
+	public final boolean isStillConnected() {
 		// return (this.socket.isConnected() && !this.socket.isClosed());
 		return isconnected;
 	}
 
-	/**
-	 * Unfortunately we need to pass the Class<T> klass as the argument here to successfully cast the object to required return type.
-	 * The following code doesn't work.... <code>
-	 	public <T> T receiveObject() {
-	 		Object o;
-	 		...
-	  		return (T)o;
-	 		}
-	 </code>
-	 */
-	// public <T> T receiveObject(Class<T> Klass) throws IOException, ClassNotFoundException{
-	// T cb = null;
-	// Class<T> Klass1 = (Class<T>) cb.getClass();
-	// if (isStillconnected()) {
-	// Object o = null;
-	//
-	// try {
-	// o = oiStream.readObject();
-	// // System.out.println("DEBUG: tostring = " + o.toString());
-	// // System.out.println("DEBUG: getClass = " + o.getClass());
-	// cb = (T)o;
-	// } catch (ClassCastException e) {
-	// // If unknown object then ignore it.
-	// System.out.println(o.toString());
-	// } catch (ClassNotFoundException ex) {
-	// // If unknown object then ignore it.
-	// // System.out.println(o.toString());
-	// throw ex;
-	// } catch (IOException e) {
-	// //e.printStackTrace();
-	// isconnected = false;
-	// throw e;
-	// }
-	// } else {
-	// System.out.println("socket closed");
-	// System.exit(0);
-	// }
-	// return cb; // TODO Need to handle this.
-	// }
-
-	public <T> T receiveObject() throws IOException, ClassNotFoundException {
+	@Override
+	public <T> T readObject() throws IOException, ClassNotFoundException {
 		T cb = null;
-		if (isStillconnected()) {
+		if (isStillConnected()) {
 			Object o = null;
 
 			try {

@@ -10,6 +10,7 @@ import edu.mit.streamjit.impl.distributed.api.BlobsManager;
 import edu.mit.streamjit.impl.distributed.api.Command;
 import edu.mit.streamjit.impl.distributed.api.MessageElement;
 import edu.mit.streamjit.impl.distributed.api.MessageVisitor;
+import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
@@ -38,40 +39,31 @@ public class StreamNode {
 	 * Only IP address is required. PortNo is optional. If it is not provided, {@link StreamNode} will try to start with default
 	 * StreamJit's port number that can be found {@link GlobalConstants}.
 	 */
-	public StreamNode(String ipAddress, int portNo) {
-		controllerConnection = new TCPNodeConnection(ipAddress, portNo);
+	public StreamNode(Connection connection) {
+		this.controllerConnection = connection;
 		this.mv = new NodeMessageVisitor(new AppStatusProcessorImpl(), new CommandProcessorImpl(this), new ErrorProcessorImpl(),
 				new RequestProcessorImpl(this), new JsonStringProcessorImpl(this));
 		this.run = true;
 	}
 
-	/**
-	 * Only IP address is required. PortNo is optional. If it is not provided, {@link StreamNode} will try to start with default
-	 * StreamJit's port number that can be found {@link GlobalConstants}.
-	 */
-	public StreamNode(String ipAddress) {
-		this(ipAddress, GlobalConstants.PORTNO);
-	}
-
 	public void run() {
-
-		try {
-			controllerConnection.makeConnection();
-		} catch (IOException e1) {
-			System.out.println("Couldn't extablish the connection with Controller node. I am terminating...");
-			e1.printStackTrace();
-			System.exit(0);
-		}
-
 		while (run) {
 			try {
 				MessageElement me = controllerConnection.readObject();
 				me.accept(mv);
 			} catch (ClassNotFoundException | IOException e) {
 				e.printStackTrace();
+				// TODO: Need to decide what to do when exception occurred.
+				run = false;
 			}
 		}
-		releaseResources();
+
+		try {
+			this.controllerConnection.closeConnection();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	public int getMachineID() {
@@ -81,16 +73,6 @@ public class StreamNode {
 	public void setMachineID(int machineID) {
 		this.machineID = machineID;
 		System.out.println("I have got my machine ID: " + this.machineID);
-	}
-
-	// Release all file pointers, opened sockets, etc.
-	private void releaseResources() {
-		try {
-			this.controllerConnection.closeConnection();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 
 	/**
@@ -132,18 +114,27 @@ public class StreamNode {
 			System.exit(0);
 		}
 
+		int portNo = 0;
 		if (args.length > 1) {
-			int portNo;
 			try {
 				portNo = Integer.parseInt(args[1]);
-				new StreamNode(ipAddress, portNo).run();
-
 			} catch (NumberFormatException ex) {
 				System.out.println("Invalid port No...");
 				System.out.println("Please verify the second argument.");
 				System.exit(0);
 			}
-		} else
-			new StreamNode(ipAddress).run();
+		} else {
+			portNo = GlobalConstants.PORTNO;
+		}
+
+		ConnectionFactory cf = new ConnectionFactory();
+		Connection tcpConnection;
+		try {
+			tcpConnection = cf.getConnection(ipAddress, portNo);
+			new StreamNode(tcpConnection).run();
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.out.println("Creating connection with the controller failed.");
+		}
 	}
 }

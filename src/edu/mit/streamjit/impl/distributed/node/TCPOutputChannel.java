@@ -17,8 +17,9 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 
 	private volatile boolean stopFlag;
 
-	TCPConnection socket;
-	Channel<E> channel;
+	private Connection tcpConnection;
+	
+	private Channel<E> channel;
 
 	public TCPOutputChannel(Channel<E> channel, int portNo) {
 		this.channel = channel;
@@ -28,20 +29,19 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 
 	@Override
 	public void closeConnection() throws IOException {
-		socket.closeConnection();
+		tcpConnection.closeConnection();
 	}
 
 	@Override
 	public boolean isStillConnected() {
-		return (socket == null) ? false : socket.isStillconnected();
+		return (tcpConnection == null) ? false : tcpConnection.isStillConnected();
 	}
 
-	@Override
-	public void makeConnection() throws IOException {
+	private void makeConnection() throws IOException {
 		ListenerSocket listnerSckt = new ListenerSocket(this.portNo, 1);
 		// As we need only one connection, lets run the accepting process in this caller thread rather that spawning a new thread.
 		listnerSckt.run();
-		this.socket = listnerSckt.getAcceptedSockets().get(0);
+		this.tcpConnection = listnerSckt.getAcceptedSockets().get(0);
 	}
 
 	@Override
@@ -49,7 +49,7 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 		return new Runnable() {
 			@Override
 			public void run() {
-				if (socket == null || !socket.isStillconnected()) {
+				if (tcpConnection == null || !tcpConnection.isStillConnected()) {
 					try {
 						makeConnection();
 					} catch (IOException e) {
@@ -72,7 +72,7 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 	public void sendData() {
 		while (!this.channel.isEmpty()) {
 			try {
-				socket.sendObject(channel.pop());
+				tcpConnection.writeObject(channel.pop());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}

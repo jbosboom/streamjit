@@ -18,8 +18,6 @@ public interface BoundaryChannel<E> {
 
 	boolean isStillConnected();
 
-	void makeConnection() throws IOException;
-
 	Runnable getRunnable();
 
 	int getOtherMachineID();
