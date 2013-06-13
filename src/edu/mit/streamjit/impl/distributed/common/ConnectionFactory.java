@@ -6,16 +6,12 @@ import java.net.Socket;
 import edu.mit.streamjit.impl.distributed.node.Connection;
 
 /**
- * Returns {@link Connection}s
+ * Returns {@link Connection}s. Ask this {@link ConnectionFactory} for a new connection.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Jun 12, 2013
  */
 public class ConnectionFactory {
-	
-	public Connection getConnection(Socket socket) {
-		return new TCPConnection(socket);
-	}
 
 	public Connection getConnection(String serverAddress, int portNo) throws IOException {
 		Ipv4Validator validator = Ipv4Validator.getInstance();
@@ -47,4 +43,11 @@ public class ConnectionFactory {
 		}
 		throw new IOException("Connection creation failed.");
 	}
+
+	public Connection getConnection(Socket socket) throws IOException {
+		if (socket == null)
+			throw new IOException("Null Socket.");
+		return new TCPConnection(socket);
+	}
+
 }
