@@ -72,6 +72,7 @@ public class StreamNode extends Thread {
 	public void setMachineID(int machineID) {
 		this.machineID = machineID;
 		System.out.println("I have got my machine ID: " + this.machineID);
+		Thread.currentThread().setName(this.tostString());
 	}
 
 	/**
@@ -87,6 +88,10 @@ public class StreamNode extends Thread {
 	 */
 	public void setBlobsManager(BlobsManager blobsManager) {
 		this.blobsManager = blobsManager;
+	}
+
+	public String tostString() {
+		return "StreamNode-" + machineID;
 	}
 
 	/**
