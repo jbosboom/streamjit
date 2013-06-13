@@ -1,7 +1,3 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since May 10, 2013
- */
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
@@ -18,8 +14,11 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 /**
  * This class is driving class at streamNode side. Once it is started, it will keep on listening and processing the commands from the
  * {@link Controller}. {@link Controller} can issue the {@link Command} EXIT to stop the streamNode.
+ * 
+ * @author Sumanan sumanan@mit.edu
+ * @since May 10, 2013
  */
-public class StreamNode {
+public class StreamNode extends Thread {
 
 	Connection controllerConnection;
 	private int machineID; // TODO: consider move or remove this from StreamNode class. If so, this class will be more handy.
