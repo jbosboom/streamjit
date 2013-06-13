@@ -18,11 +18,11 @@ import edu.mit.streamjit.impl.distributed.node.StreamNode;
  */
 public class CommunicationManagerImpl implements CommunicationManager {
 
-	private Map<Integer, TCPConnection> socketMap; // (machineID, TCPConnection)
+	private Map<Integer, Connection> connectionMap; // (machineID, TCPConnection)
 	private int listenPort;
 
 	public CommunicationManagerImpl(int listenPort) {
-		socketMap = new HashMap<Integer, TCPConnection>();
+		connectionMap = new HashMap<Integer, Connection>();
 		this.listenPort = listenPort;
 	}
 
@@ -32,18 +32,18 @@ public class CommunicationManagerImpl implements CommunicationManager {
 
 	@Override
 	public <T> T readObject(int machineID) throws IOException, ClassNotFoundException {
-		if (!socketMap.containsKey(machineID))
+		if (!connectionMap.containsKey(machineID))
 			throw new IllegalArgumentException("Invalid machineID. No machine is connected with machineID " + machineID);
 
-		return socketMap.get(machineID).readObject();
+		return connectionMap.get(machineID).readObject();
 	}
 
 	@Override
 	public void writeObject(int machineID, Object obj) throws IOException {
-		if (!socketMap.containsKey(machineID))
+		if (!connectionMap.containsKey(machineID))
 			throw new IllegalArgumentException("Invalid machineID. No machine is connected with machineID " + machineID);
 
-		socketMap.get(machineID).writeObject(obj);
+		connectionMap.get(machineID).writeObject(obj);
 	}
 
 	@Override
@@ -54,7 +54,7 @@ public class CommunicationManagerImpl implements CommunicationManager {
 			totalTcpConnections += commTypes.get(CommunicationType.TCP);
 
 		// TODO: Change this later.
-		// For the moment lets communicate through TCP port with all StreamNodes ( including local streamNodes) .
+		// For the moment lets communicate through TCP port with all StreamNodes ( including local StreamNodes) .
 		if (commTypes.containsKey(CommunicationType.LOCAL)) {
 			localConnections = commTypes.get(CommunicationType.LOCAL);
 			totalTcpConnections += localConnections;
@@ -63,18 +63,18 @@ public class CommunicationManagerImpl implements CommunicationManager {
 		ListenerSocket listnerSckt = new ListenerSocket(this.listenPort, totalTcpConnections);
 		listnerSckt.start();
 		createTcpLocalStreamNodes(localConnections);
-		socketMap.clear();
+		connectionMap.clear();
 		int machineID = 0;
 		while (true) {
 			List<TCPConnection> acceptedSocketList = listnerSckt.getAcceptedSockets();
 			for (TCPConnection s : acceptedSocketList) {
-				socketMap.put(machineID++, s);
+				connectionMap.put(machineID++, s);
 				System.out.println("StreamNode connected: " + s.toString());
-				if (!(socketMap.size() < totalTcpConnections))
+				if (!(connectionMap.size() < totalTcpConnections))
 					break;
 			}
 
-			if (!(socketMap.size() < totalTcpConnections))
+			if (!(connectionMap.size() < totalTcpConnections))
 				break;
 
 			// Rather than continuously polling the listenersocket, lets wait some time before the next poll.
@@ -108,25 +108,24 @@ public class CommunicationManagerImpl implements CommunicationManager {
 
 	@Override
 	public void closeAllConnections() throws IOException {
-		for (TCPConnection s : socketMap.values()) {
+		for (Connection s : connectionMap.values()) {
 			s.closeConnection();
 		}
 	}
 
 	@Override
 	public void closeConnection(int machineID) throws IOException {
-		if (!socketMap.containsKey(machineID))
+		if (!connectionMap.containsKey(machineID))
 			throw new IllegalArgumentException("Invalid machineID. No machine is connected with machineID " + machineID);
 
-		socketMap.get(machineID).closeConnection();
+		connectionMap.get(machineID).closeConnection();
 	}
 
 	@Override
 	public boolean isConnected(int machineID) {
 
-		if (socketMap.containsKey(machineID)) {
-			TCPConnection ss = socketMap.get(machineID);
-
+		if (connectionMap.containsKey(machineID)) {
+			Connection ss = connectionMap.get(machineID);
 			return ss.isStillConnected();
 		}
 		return false;
@@ -137,9 +136,9 @@ public class CommunicationManagerImpl implements CommunicationManager {
 
 		List<Integer> connectedMachineIDs = new LinkedList<>();
 
-		for (int key : socketMap.keySet()) {
+		for (int key : connectionMap.keySet()) {
 
-			if (socketMap.get(key).isStillConnected()) {
+			if (connectionMap.get(key).isStillConnected()) {
 				connectedMachineIDs.add(key);
 			}
 		}
