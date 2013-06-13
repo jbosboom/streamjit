@@ -144,7 +144,7 @@ public final class Compiler {
 			new StreamNode(w); //adds itself to streamNodes map
 		fuse();
 		//Compute per-node steady state execution counts.
-		for (StreamNode n : streamNodes.values())
+		for (StreamNode n : ImmutableSet.copyOf(streamNodes.values()))
 			n.internalSchedule();
 		externalSchedule();
 		allocateCores();
