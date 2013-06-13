@@ -107,10 +107,11 @@ public class Controller {
 		if (headChannel != null)
 			new Thread(headChannel.getRunnable()).start();
 
+		sendToAll(Command.START);
+
 		if (tailChannel != null)
 			new Thread(tailChannel.getRunnable()).start();
 
-		sendToAll(Command.START);
 	}
 
 	/**
