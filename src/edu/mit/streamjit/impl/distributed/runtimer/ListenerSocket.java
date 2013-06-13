@@ -8,8 +8,6 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import edu.mit.streamjit.impl.distributed.common.TCPConnection;
-
 /**
  * {@link ListenerSocket} listens for new TCP connections. It can run on separate thread and keep on listening until the stop condition
  * is full filled.</p> {@link ListenerSocket} can be used in two different ways.
@@ -30,15 +28,15 @@ public class ListenerSocket extends Thread {
 
 	private int expectedConnections;
 
-	private ConcurrentLinkedQueue<TCPConnection> acceptedSockets;
+	private ConcurrentLinkedQueue<Socket> acceptedSockets;
 
 	public void stopListening() {
 		keepOnListen.set(false);
 	}
 
 	// Only returns the sockets those are accepted since this last function call.
-	public List<TCPConnection> getAcceptedSockets() {
-		List<TCPConnection> acceptedSocketslist = new LinkedList<>();
+	public List<Socket> getAcceptedSockets() {
+		List<Socket> acceptedSocketslist = new LinkedList<>();
 		while (!acceptedSockets.isEmpty()) {
 			acceptedSocketslist.add(acceptedSockets.poll()); // removes from the acceptedSockets and add it to the acceptedSocketslist.
 		}
@@ -46,10 +44,10 @@ public class ListenerSocket extends Thread {
 	}
 
 	/**
-	 * @param portNo
+	 * @param portNo Listening port number.
 	 * @param expectedConnections
-	 *            : ListenerSocket will try to accept at most this no of sockets. Once this limit is reached, {@link ListenerSocket}
-	 *            thread will die it self.
+	 *            : ListenerSocket will try to accept at most this amount sockets. Once this limit is reached, {@link ListenerSocket}
+	 *            thread will die itself.
 	 * @throws IOException
 	 */
 	public ListenerSocket(int portNo, int expectedConnections) throws IOException {
@@ -80,8 +78,8 @@ public class ListenerSocket extends Thread {
 		int connectionCount = 0;
 		while (keepOnListen.get() && connectionCount < this.expectedConnections) {
 			try {
-				TCPConnection slvSckt = acceptConnection();
-				acceptedSockets.add(slvSckt);
+				Socket socket = acceptConnection();
+				acceptedSockets.add(socket);
 				connectionCount++;
 			} catch (IOException e) {
 				// TODO What to do if IO exception occurred?
@@ -100,7 +98,7 @@ public class ListenerSocket extends Thread {
 		}
 	}
 
-	private TCPConnection acceptConnection() throws IOException {
+	private Socket acceptConnection() throws IOException {
 		Socket socket;
 		try {
 			socket = server.accept();
@@ -108,7 +106,6 @@ public class ListenerSocket extends Thread {
 			e.printStackTrace();
 			throw e;
 		}
-		TCPConnection slvSckt = new TCPConnection(socket);
-		return slvSckt;
+		return socket;
 	}
 }

@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
+import java.net.Socket;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -54,7 +55,7 @@ public class CommunicationManagerImpl implements CommunicationManager {
 			totalTcpConnections += commTypes.get(CommunicationType.TCP);
 
 		// TODO: Change this later.
-		// For the moment lets communicate through TCP port with all StreamNodes ( including local StreamNodes) .
+		// For the moment lets communicate with all StreamNodes through TCP port ( including local StreamNodes) .
 		if (commTypes.containsKey(CommunicationType.LOCAL)) {
 			localConnections = commTypes.get(CommunicationType.LOCAL);
 			totalTcpConnections += localConnections;
@@ -66,9 +67,9 @@ public class CommunicationManagerImpl implements CommunicationManager {
 		connectionMap.clear();
 		int machineID = 0;
 		while (true) {
-			List<TCPConnection> acceptedSocketList = listnerSckt.getAcceptedSockets();
-			for (TCPConnection s : acceptedSocketList) {
-				connectionMap.put(machineID++, s);
+			List<Socket> acceptedSocketList = listnerSckt.getAcceptedSockets();
+			for (Socket s : acceptedSocketList) {
+				connectionMap.put(machineID++, new TCPConnection(s));
 				System.out.println("StreamNode connected: " + s.toString());
 				if (!(connectionMap.size() < totalTcpConnections))
 					break;

@@ -5,6 +5,7 @@
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
+import java.net.Socket;
 
 import edu.mit.streamjit.impl.distributed.api.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection;
@@ -18,7 +19,7 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 	private volatile boolean stopFlag;
 
 	private Connection tcpConnection;
-	
+
 	private Channel<E> channel;
 
 	public TCPOutputChannel(Channel<E> channel, int portNo) {
@@ -41,7 +42,8 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 		ListenerSocket listnerSckt = new ListenerSocket(this.portNo, 1);
 		// As we need only one connection, lets run the accepting process in this caller thread rather that spawning a new thread.
 		listnerSckt.run();
-		this.tcpConnection = listnerSckt.getAcceptedSockets().get(0);
+		Socket socket = listnerSckt.getAcceptedSockets().get(0);
+		this.tcpConnection = new TCPConnection(socket);
 	}
 
 	@Override
