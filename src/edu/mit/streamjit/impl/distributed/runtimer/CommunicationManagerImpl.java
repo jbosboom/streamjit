@@ -16,17 +16,17 @@ import edu.mit.streamjit.impl.distributed.node.StreamNode;
  * @author Sumanan sumanan@mit.edu
  * @since May 13, 2013
  */
-public class TCPCommunicationManager implements CommunicationManager {
+public class CommunicationManagerImpl implements CommunicationManager {
 
 	private Map<Integer, TCPConnection> socketMap; // (machineID, TCPConnection)
 	private int listenPort;
 
-	public TCPCommunicationManager(int listenPort) {
+	public CommunicationManagerImpl(int listenPort) {
 		socketMap = new HashMap<Integer, TCPConnection>();
 		this.listenPort = listenPort;
 	}
 
-	public TCPCommunicationManager() {
+	public CommunicationManagerImpl() {
 		this(GlobalConstants.PORTNO);
 	}
 

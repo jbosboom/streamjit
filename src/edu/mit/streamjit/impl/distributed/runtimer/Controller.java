@@ -65,7 +65,7 @@ public class Controller {
 	BoundaryInputChannel<?> tailChannel;
 
 	public Controller() {
-		this.comManager = new TCPCommunicationManager();
+		this.comManager = new CommunicationManagerImpl();
 	}
 
 	public void connect(Map<CommunicationType, Integer> comTypeCount) {
