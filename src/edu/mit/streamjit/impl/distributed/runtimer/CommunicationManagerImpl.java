@@ -49,18 +49,20 @@ public class CommunicationManagerImpl implements CommunicationManager {
 	@Override
 	public void connectMachines(Map<CommunicationType, Integer> commTypes) throws IOException {
 		int totalTcpConnections = 0;
-		int localTcpConnections = 0;
+		int localConnections = 0;
 		if (commTypes.containsKey(CommunicationType.TCP))
 			totalTcpConnections += commTypes.get(CommunicationType.TCP);
 
-		if (commTypes.containsKey(CommunicationType.TCPLOCAL)) {
-			localTcpConnections = commTypes.get(CommunicationType.TCPLOCAL);
-			totalTcpConnections += localTcpConnections;
+		// TODO: Change this later.
+		// For the moment lets communicate through TCP port with all StreamNodes ( including local streamNodes) .
+		if (commTypes.containsKey(CommunicationType.LOCAL)) {
+			localConnections = commTypes.get(CommunicationType.LOCAL);
+			totalTcpConnections += localConnections;
 		}
 
 		ListenerSocket listnerSckt = new ListenerSocket(this.listenPort, totalTcpConnections);
 		listnerSckt.start();
-		createTcpLocalStreamNodes(localTcpConnections);
+		createTcpLocalStreamNodes(localConnections);
 		socketMap.clear();
 		int machineID = 0;
 		while (true) {
