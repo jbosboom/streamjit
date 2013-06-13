@@ -17,7 +17,7 @@ import edu.mit.streamjit.impl.distributed.node.Connection;
 public interface CommunicationManager {
 
 	public enum CommunicationType {
-		TCP, TCPLOCAL, UDP, UDPLOCAL, BUFFER;
+		TCP, LOCAL, UDP, BUFFER;
 	}
 
 	public <T> T readObject(int machineID) throws IOException, ClassNotFoundException;
