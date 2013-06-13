@@ -22,11 +22,14 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  */
 public class StreamNode extends Thread {
 
+	/**
+	 * Lets keep the package public (default) for the moment.
+	 */
 	Connection controllerConnection;
 	private int machineID; // TODO: consider move or remove this from StreamNode class. If so, this class will be more handy.
-	MessageVisitor mv;
+	private MessageVisitor mv;
 
-	BlobsManager blobsManager;
+	private BlobsManager blobsManager;
 
 	private boolean run; // As we assume that all controller communication and the MessageElement processing is managed by single
 							// thread,
