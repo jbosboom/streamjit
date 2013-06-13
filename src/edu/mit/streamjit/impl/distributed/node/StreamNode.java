@@ -12,7 +12,9 @@ import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
- * This class is driving class at streamNode side. Once it is started, it will keep on listening and processing the commands from the
+ * In StreamJit's jargon "Stream node" means a computing node that runs part or full a streamJit application. </p> Here, the class
+ * {@link StreamNode} is a StreamJit's run timer for each distributed node. So there can be only one {@link StreamNode} instance per
+ * computing node. Once it got connected with the {@link Controller}, it will keep on listening and processing the commands from the
  * {@link Controller}. {@link Controller} can issue the {@link Command} EXIT to stop the streamNode.
  * 
  * @author Sumanan sumanan@mit.edu
