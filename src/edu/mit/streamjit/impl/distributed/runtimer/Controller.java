@@ -3,7 +3,6 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -14,7 +13,6 @@ import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration;
@@ -22,7 +20,6 @@ import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.distributed.api.BlobsManager;
 import edu.mit.streamjit.impl.distributed.api.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.api.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.api.Command;
@@ -30,8 +27,6 @@ import edu.mit.streamjit.impl.distributed.api.JsonString;
 import edu.mit.streamjit.impl.distributed.api.NodeInfo;
 import edu.mit.streamjit.impl.distributed.api.Request;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.node.BlobsManagerImpl;
-import edu.mit.streamjit.impl.distributed.node.DistributedBlob;
 import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
 import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
@@ -44,8 +39,6 @@ import edu.mit.streamjit.impl.interp.Interpreter;
 public class Controller {
 
 	private CommunicationManager comManager;
-
-	BlobsManager blobsManager;
 
 	private List<Integer> nodeIDs;
 
@@ -71,7 +64,7 @@ public class Controller {
 	public void connect(Map<CommunicationType, Integer> comTypeCount) {
 		// TODO: Need to handle this exception well.
 		try {
-			comManager.connectMachines(comTypeCount); // Because the noOfnodes includes the controller node also
+			comManager.connectMachines(comTypeCount);
 		} catch (IOException e) {
 			System.out.println("Connection Error...");
 			e.printStackTrace();
@@ -117,7 +110,6 @@ public class Controller {
 		if (tailChannel != null)
 			new Thread(tailChannel.getRunnable()).start();
 
-		blobsManager.start();
 		sendToAll(Command.START);
 	}
 
@@ -160,7 +152,6 @@ public class Controller {
 		Map<Token, Integer> portIdMap = (Map<Token, Integer>) cfg.getExtraData(GlobalConstants.PORTID_MAP);
 
 		Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) cfg.getExtraData(GlobalConstants.NODE_INFO_MAP);
-		createLocalBlobs(partitionsMachineMap.get(0), tokenMachineMap, portIdMap, nodeInfoMap);
 
 		if (getAssignedMachine(source, partitionsMachineMap) != 0) {
 			Token t = Token.createOverallInputToken(source);
@@ -279,24 +270,6 @@ public class Controller {
 		throw new IllegalArgumentException(String.format("%s is not assigned to anyof the machines", worker));
 	}
 
-	// private void buildTokenMachineMap(ImmutableSet<Worker<?, ?>> workerset, PartitionParameter partParam) {
-	// for (Worker<?, ?> w : workerset) {
-	// for (Worker<?, ?> pred : Workers.getPredecessors(w)) {
-	// if (workerset.contains(pred))
-	// continue;
-	// int neighbour = partParam.getAssignedMachine(pred);
-	// this.tokenMachineMap.put(new Token(pred, w), neighbour);
-	// }
-	//
-	// for (Worker<?, ?> succ : Workers.getSuccessors(w)) {
-	// if (workerset.contains(succ))
-	// continue;
-	// int neighbour = partParam.getAssignedMachine(succ);
-	// this.tokenMachineMap.put(new Token(w, succ), neighbour);
-	// }
-	// }
-	// }
-
 	private void sendToAll(Object object) {
 		for (int key : this.nodeIDs) {
 			try {
@@ -305,13 +278,5 @@ public class Controller {
 				e.printStackTrace();
 			}
 		}
-	}
-
-	private void createLocalBlobs(List<Set<Worker<?, ?>>> blobWorkersList, Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap,
-			Map<Token, Integer> portIdMap, Map<Integer, NodeInfo> nodeInfoMap) {
-		Blob b = new DistributedBlob(blobWorkersList, Collections.<MessageConstraint> emptyList(), true);
-		Set<Blob> blobSet = new HashSet<>();
-		blobSet.add(b);
-		blobsManager = new BlobsManagerImpl(blobSet, tokenMachineMap, portIdMap, nodeInfoMap);
 	}
 }
