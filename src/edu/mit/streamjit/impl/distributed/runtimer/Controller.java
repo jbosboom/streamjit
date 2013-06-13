@@ -34,6 +34,7 @@ import edu.mit.streamjit.impl.distributed.node.BlobsManagerImpl;
 import edu.mit.streamjit.impl.distributed.node.DistributedBlob;
 import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
 import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
+import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.interp.Interpreter;
 
 /**
@@ -67,10 +68,10 @@ public class Controller {
 		this.comManager = new TCPCommunicationManager();
 	}
 
-	public void connect(int noOfnodes) {
+	public void connect(Map<CommunicationType, Integer> comTypeCount) {
 		// TODO: Need to handle this exception well.
 		try {
-			comManager.connectMachines(noOfnodes); // Because the noOfnodes includes the controller node also
+			comManager.connectMachines(comTypeCount); // Because the noOfnodes includes the controller node also
 		} catch (IOException e) {
 			System.out.println("Connection Error...");
 			e.printStackTrace();

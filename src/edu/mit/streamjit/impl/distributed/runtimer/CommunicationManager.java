@@ -16,12 +16,16 @@ import edu.mit.streamjit.impl.distributed.node.Connection;
  */
 public interface CommunicationManager {
 
+	public enum CommunicationType {
+		TCP, TCPLOCAL, UDP, UDPLOCAL, BUFFER;
+	}
+
 	public <T> T readObject(int machineID) throws IOException, ClassNotFoundException;
 
 	public void writeObject(int machineID, Object obj) throws IOException;
 
 	// blocking call
-	public void connectMachines(int noOfmachines) throws IOException;
+	public void connectMachines(Map<CommunicationType, Integer> comTypeCount) throws IOException;
 
 	// non blocking call
 	public void connectMachines(long timeOut) throws IOException;

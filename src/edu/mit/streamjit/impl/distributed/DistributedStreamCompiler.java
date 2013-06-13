@@ -20,6 +20,7 @@ import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
+import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
 import edu.mit.streamjit.impl.interp.ArrayChannel;
@@ -45,8 +46,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 	/**
 	 * @param noOfnodes
-	 *            : Total number of nodes the stream application intended to run - including controller node. If it is 1 then it means the
-	 *            whole stream application is supposed to run on controller.
+	 *            : Total number of nodes the stream application intended to run - including controller node. If it is 1 then it means
+	 *            the whole stream application is supposed to run on controller.
 	 */
 	public DistributedStreamCompiler(int noOfnodes) {
 		if (noOfnodes < 1)
@@ -78,8 +79,11 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		VerifyStreamGraph verifier = new VerifyStreamGraph();
 		stream.visit(verifier);
 
+		Map<CommunicationType, Integer> conTypeCount = new HashMap<>();
+		conTypeCount.put(CommunicationType.TCPLOCAL, 2);
+		conTypeCount.put(CommunicationType.TCP, this.noOfnodes - 2);
 		Controller controller = new Controller();
-		controller.connect(noOfnodes - 1);
+		controller.connect(conTypeCount);
 
 		Map<Integer, Integer> coreCounts = controller.getCoreCount();
 

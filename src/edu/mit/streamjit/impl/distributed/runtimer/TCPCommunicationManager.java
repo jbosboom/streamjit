@@ -1,7 +1,3 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since May 13, 2013
- */
 package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
@@ -10,10 +6,16 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import edu.mit.streamjit.impl.distributed.api.Request;
+import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection;
+import edu.mit.streamjit.impl.distributed.node.Connection;
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
+/**
+ * @author Sumanan sumanan@mit.edu
+ * @since May 13, 2013
+ */
 public class TCPCommunicationManager implements CommunicationManager {
 
 	private Map<Integer, TCPConnection> socketMap; // (machineID, TCPConnection)
@@ -45,21 +47,32 @@ public class TCPCommunicationManager implements CommunicationManager {
 	}
 
 	@Override
-	public void connectMachines(int noOfmachines) throws IOException {
-		ListenerSocket listnerSckt = new ListenerSocket(this.listenPort, noOfmachines);
+	public void connectMachines(Map<CommunicationType, Integer> commTypes) throws IOException {
+		int totalTcpConnections = 0;
+		int localTcpConnections = 0;
+		if (commTypes.containsKey(CommunicationType.TCP))
+			totalTcpConnections += commTypes.get(CommunicationType.TCP);
+
+		if (commTypes.containsKey(CommunicationType.TCPLOCAL)) {
+			localTcpConnections = commTypes.get(CommunicationType.TCPLOCAL);
+			totalTcpConnections += localTcpConnections;
+		}
+
+		ListenerSocket listnerSckt = new ListenerSocket(this.listenPort, totalTcpConnections);
 		listnerSckt.start();
+		createTcpLocalStreamNodes(localTcpConnections);
 		socketMap.clear();
-		int machineID = 1; // controller gets machineID 0.
+		int machineID = 0;
 		while (true) {
 			List<TCPConnection> acceptedSocketList = listnerSckt.getAcceptedSockets();
 			for (TCPConnection s : acceptedSocketList) {
 				socketMap.put(machineID++, s);
 				System.out.println("StreamNode connected: " + s.toString());
-				if (!(socketMap.size() < noOfmachines))
+				if (!(socketMap.size() < totalTcpConnections))
 					break;
 			}
 
-			if (!(socketMap.size() < noOfmachines))
+			if (!(socketMap.size() < totalTcpConnections))
 				break;
 
 			// Rather than continuously polling the listenersocket, lets wait some time before the next poll.
@@ -71,6 +84,19 @@ public class TCPCommunicationManager implements CommunicationManager {
 			}
 		}
 		listnerSckt.stopListening();
+	}
+
+	private void createTcpLocalStreamNodes(int count) {
+		ConnectionFactory cf = new ConnectionFactory();
+		for (int i = 0; i < count; i++) {
+			try {
+				Connection connection = cf.getConnection("127.0.0.1", this.listenPort);
+				new StreamNode(connection).start();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 
 	@Override
