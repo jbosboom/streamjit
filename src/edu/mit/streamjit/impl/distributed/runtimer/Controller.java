@@ -174,11 +174,6 @@ public class Controller {
 
 		Configuration.Builder builder = Configuration.builder();
 
-		Identity<Integer> first = new Identity<>(), second = new Identity<>();
-		Pipeline<Integer, Integer> pipeline = new Pipeline<>(first, second);
-		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
-		pipeline.visit(cwv);
-
 		List<Integer> coresPerMachine = new ArrayList<>();
 		for (List<Set<Worker<?, ?>>> blobList : partitionsMachineMap.values()) {
 			coresPerMachine.add(blobList.size());
@@ -224,7 +219,7 @@ public class Controller {
 		assert tokenMachineMap != null : "tokenMachineMap is null";
 		assert portIdMap != null : "portIdMap is null";
 
-		int startPortNo = 24896;
+		int startPortNo = 24896; // Just a random magic number.
 		for (Integer machineID : partitionsMachineMap.keySet()) {
 			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap.get(machineID);
 			Set<Worker<?, ?>> allWorkers = new HashSet<>(); // Contains all workers those are assigned to the current machineID
