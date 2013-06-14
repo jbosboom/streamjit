@@ -475,9 +475,16 @@ public final class MethodUnresolver {
 		else
 			opcode = Opcodes.INVOKEVIRTUAL;
 
+		String owner = internalName(m.getParent());
+		//hack to make cloning arrays work
+		if (opcode == Opcodes.INVOKESPECIAL && m.getName().equals("clone") && i.getArgument(0).getType() instanceof ArrayType) {
+			opcode = Opcodes.INVOKEVIRTUAL;
+			owner = internalName(((ArrayType)i.getArgument(0).getType()).getKlass());
+		}
+
 		for (Value v : i.arguments())
 			load(v, insns);
-		insns.add(new MethodInsnNode(opcode, internalName(m.getParent()), m.getName(), methodDescriptor(m)));
+		insns.add(new MethodInsnNode(opcode, owner, m.getName(), methodDescriptor(m)));
 
 		if (!(m.getType().getReturnType() instanceof VoidType))
 			store(i, insns);
@@ -647,7 +654,7 @@ public final class MethodUnresolver {
 
 		assert registers.containsKey(v) : v;
 		int reg = registers.get(v);
-		Type t = v.getType();
+		Type t = v instanceof LocalVariable ? ((LocalVariable)v).getType().getFieldType() : v.getType();
 		if (t instanceof ReferenceType || t instanceof NullType)
 			insns.add(new VarInsnNode(Opcodes.ALOAD, reg));
 		else if (t.equals(longType))
@@ -665,7 +672,7 @@ public final class MethodUnresolver {
 	private void store(Value v, InsnList insns) {
 		assert registers.containsKey(v) : v;
 		int reg = registers.get(v);
-		Type t = v.getType();
+		Type t = v instanceof LocalVariable ? ((LocalVariable)v).getType().getFieldType() : v.getType();
 		if (t instanceof ReferenceType || t instanceof NullType)
 			insns.add(new VarInsnNode(Opcodes.ASTORE, reg));
 		else if (t.equals(longType))
