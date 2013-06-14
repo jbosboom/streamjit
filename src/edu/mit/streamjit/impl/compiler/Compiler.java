@@ -207,7 +207,7 @@ public final class Compiler {
 			int i = Workers.getSuccessors(p.first).indexOf(p.second);
 			int j = Workers.getPredecessors(p.second).indexOf(p.first);
 			int pushRate = p.first.getPushRates().get(i).max();
-			int popRate = p.second.getPopRates().get(i).max();
+			int popRate = p.second.getPopRates().get(j).max();
 			builder.add(new Scheduler.Channel<>(p.first, p.second, pushRate, popRate, buffers.get(p.first, p.second).initialSize));
 		}
 		initSchedule = Scheduler.schedule(builder.build());
