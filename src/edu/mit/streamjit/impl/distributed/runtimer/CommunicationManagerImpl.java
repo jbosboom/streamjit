@@ -64,11 +64,12 @@ public class CommunicationManagerImpl implements CommunicationManager {
 		if (commTypes.containsKey(CommunicationType.LOCAL))
 			createTcpLocalStreamNode();
 		connectionMap.clear();
-		int machineID = 0;
+		int nodeID = 0; // nodeID 0 goes to the controller instance. Even though controller doesn't executes any workers, it handles
+						// head and tail channels.
 		while (true) {
 			List<Socket> acceptedSocketList = listnerSckt.getAcceptedSockets();
 			for (Socket s : acceptedSocketList) {
-				connectionMap.put(machineID++, new TCPConnection(s));
+				connectionMap.put(nodeID++, new TCPConnection(s));
 				System.out.println("StreamNode connected: " + s.toString());
 				if (!(connectionMap.size() < totalTcpConnections))
 					break;

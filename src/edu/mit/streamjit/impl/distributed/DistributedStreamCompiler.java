@@ -81,7 +81,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		Map<CommunicationType, Integer> conTypeCount = new HashMap<>();
 		conTypeCount.put(CommunicationType.LOCAL, 1);
-		conTypeCount.put(CommunicationType.TCP, this.noOfnodes - 2);
+		conTypeCount.put(CommunicationType.TCP, this.noOfnodes - 1);
 		Controller controller = new Controller();
 		controller.connect(conTypeCount);
 

@@ -44,6 +44,8 @@ public class Controller {
 
 	Map<Integer, NodeInfo> nodeInfoMap;
 
+	private int controllerNodeID;
+
 	/**
 	 * A {@link BoundaryOutputChannel} for the head of the stream graph. If source {@link Worker} happened to fall outside the
 	 * {@link Controller}, we need to push the {@link CompiledStream}.offer() data to the source.
@@ -88,8 +90,6 @@ public class Controller {
 
 	private void getNodeInfo() {
 		nodeInfoMap = new HashMap<>();
-		nodeInfoMap.put(0, NodeInfo.getMyinfo()); // available cores at controller. controller's machineID is 0
-
 		sendToAll(Request.NodeInfo);
 
 		for (int key : this.nodeIDs) {
@@ -101,17 +101,20 @@ public class Controller {
 				e.printStackTrace();
 			}
 		}
+		// TODO: This is temprory fix. change it later. Always reserve nodeID 0 for the controller. just assigning the maximum number
+		// for controller.
+		this.controllerNodeID = nodeIDs.size();
+		nodeInfoMap.put(controllerNodeID, NodeInfo.getMyinfo());
 	}
 
 	public void start() {
 		if (headChannel != null)
-			new Thread(headChannel.getRunnable()).start();
+			new Thread(headChannel.getRunnable(), "headChannel").start();
 
 		sendToAll(Command.START);
 
 		if (tailChannel != null)
-			new Thread(tailChannel.getRunnable()).start();
-
+			new Thread(tailChannel.getRunnable(), "tailChannel").start();
 	}
 
 	/**
@@ -121,8 +124,6 @@ public class Controller {
 	 */
 	public Map<Integer, Integer> getCoreCount() {
 		Map<Integer, Integer> coreCounts = new HashMap<>();
-		coreCounts.put(0, Runtime.getRuntime().availableProcessors()); // available cores at controller. controller's machineID is 0
-
 		sendToAll(Request.maxCores);
 
 		for (int key : this.nodeIDs) {
@@ -154,16 +155,16 @@ public class Controller {
 
 		Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) cfg.getExtraData(GlobalConstants.NODE_INFO_MAP);
 
-		if (getAssignedMachine(source, partitionsMachineMap) != 0) {
+		if (getAssignedMachine(source, partitionsMachineMap) != controllerNodeID) {
 			Token t = Token.createOverallInputToken(source);
 			headChannel = new TCPOutputChannel<>(Workers.getInputChannels(source).get(0), portIdMap.get(t));
 		}
 
-		if (getAssignedMachine(sink, partitionsMachineMap) != 0) {
+		if (getAssignedMachine(sink, partitionsMachineMap) != controllerNodeID) {
 			Token t = Token.createOverallOutputToken(sink);
 
-			int machineID = tokenMachineMap.get(t).getKey();
-			NodeInfo nodeInfo = nodeInfoMap.get(machineID);
+			int nodeID = tokenMachineMap.get(t).getKey();
+			NodeInfo nodeInfo = nodeInfoMap.get(nodeID);
 			String ipAddress = nodeInfo.getIpAddress().getHostAddress();
 			tailChannel = new TCPInputChannel<>(Workers.getOutputChannels(sink).get(0), ipAddress, portIdMap.get(t));
 		}
@@ -242,12 +243,12 @@ public class Controller {
 
 		Token headToken = Token.createOverallInputToken(source);
 		int dstMachineID = getAssignedMachine(source, partitionsMachineMap);
-		tokenMachineMap.put(headToken, new AbstractMap.SimpleEntry<>(0, dstMachineID));
+		tokenMachineMap.put(headToken, new AbstractMap.SimpleEntry<>(controllerNodeID, dstMachineID));
 		portIdMap.put(headToken, startPortNo++);
 
 		Token tailToken = Token.createOverallOutputToken(sink);
 		int srcMahineID = getAssignedMachine(sink, partitionsMachineMap);
-		tokenMachineMap.put(tailToken, new AbstractMap.SimpleEntry<>(srcMahineID, 0));
+		tokenMachineMap.put(tailToken, new AbstractMap.SimpleEntry<>(srcMahineID, controllerNodeID));
 		portIdMap.put(tailToken, startPortNo++);
 	}
 

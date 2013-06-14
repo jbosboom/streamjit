@@ -27,7 +27,7 @@ public class StreamNode extends Thread {
 	 * Lets keep the package public (default) for the moment.
 	 */
 	Connection controllerConnection;
-	private int myNodeID; // TODO: consider move or remove this from StreamNode class. If so, this class will be more handy.
+	private int myNodeID = -1; // TODO: consider move or remove this from StreamNode class. If so, this class will be more handy.
 	private MessageVisitor mv;
 
 	private BlobsManager blobsManager;
@@ -55,6 +55,7 @@ public class StreamNode extends Thread {
 	 * {@link StreamNode} is Singleton pattern in order to ensure one instance per JVM..
 	 */
 	private StreamNode(Connection connection) {
+		super("Stream Node");
 		this.controllerConnection = connection;
 		this.mv = new NodeMessageVisitor(new AppStatusProcessorImpl(), new CommandProcessorImpl(this), new ErrorProcessorImpl(),
 				new RequestProcessorImpl(this), new JsonStringProcessorImpl(this));
