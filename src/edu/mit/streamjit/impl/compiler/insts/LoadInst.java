@@ -5,6 +5,7 @@ import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.Field;
 import edu.mit.streamjit.impl.compiler.LocalVariable;
 import edu.mit.streamjit.impl.compiler.Value;
+import edu.mit.streamjit.impl.compiler.types.FieldType;
 import edu.mit.streamjit.impl.compiler.types.InstanceFieldType;
 
 /**
@@ -55,8 +56,9 @@ public final class LoadInst extends Instruction {
 	protected void checkOperand(int i, Value v) {
 		checkElementIndex(i, 2);
 		if (i == 0) {
-			checkArgument(v instanceof Field);
-			checkArgument(((Field)v).getType().getFieldType().isSubtypeOf(getType()));
+			checkArgument(v.getType() instanceof FieldType);
+			FieldType ft = (FieldType)v.getType();
+			checkArgument(ft.getFieldType().isSubtypeOf(getType()));
 		} else if (i == 1) {
 			Field f = (Field)getLocation();
 			if (f != null) {
