@@ -128,6 +128,13 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		return arguments;
 	}
 
+	public Argument getArgument(String name) {
+		for (Argument a : arguments())
+			if (a.getName().equals(name))
+				return a;
+		return null;
+	}
+
 	public List<BasicBlock> basicBlocks() {
 		checkState(isResolved(), "not resolved: %s", this);
 		return basicBlocks;
