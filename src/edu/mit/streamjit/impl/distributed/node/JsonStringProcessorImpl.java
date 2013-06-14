@@ -88,7 +88,7 @@ public class JsonStringProcessorImpl implements JsonStringProcessor {
 			Workers.getInputChannels(source).add(head);
 			Workers.getOutputChannels(sink).add(tail);
 
-			List<BlobSpecifier> blobList = partParam.getBlobsOnMachine(streamNode.getMachineID());
+			List<BlobSpecifier> blobList = partParam.getBlobsOnMachine(streamNode.getNodeID());
 
 			ImmutableSet.Builder<Blob> blobSet = ImmutableSet.builder();
 

@@ -25,6 +25,13 @@ public interface CommunicationManager {
 	public void writeObject(int machineID, Object obj) throws IOException;
 
 	// blocking call
+	/**
+	 * Makes all connections based on the argument comTypeCount. But only one local connection can be created. So the value for the key
+	 * {@link CommunicationType}.LOCAL in the argument comTypeCount has no effect.
+	 * 
+	 * @param comTypeCount
+	 * @throws IOException
+	 */
 	public void connectMachines(Map<CommunicationType, Integer> comTypeCount) throws IOException;
 
 	// non blocking call

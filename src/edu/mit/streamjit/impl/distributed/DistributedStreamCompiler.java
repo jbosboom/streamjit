@@ -80,7 +80,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		stream.visit(verifier);
 
 		Map<CommunicationType, Integer> conTypeCount = new HashMap<>();
-		conTypeCount.put(CommunicationType.LOCAL, 2);
+		conTypeCount.put(CommunicationType.LOCAL, 1);
 		conTypeCount.put(CommunicationType.TCP, this.noOfnodes - 2);
 		Controller controller = new Controller();
 		controller.connect(conTypeCount);

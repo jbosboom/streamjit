@@ -50,20 +50,19 @@ public class CommunicationManagerImpl implements CommunicationManager {
 	@Override
 	public void connectMachines(Map<CommunicationType, Integer> commTypes) throws IOException {
 		int totalTcpConnections = 0;
-		int localConnections = 0;
 		if (commTypes.containsKey(CommunicationType.TCP))
 			totalTcpConnections += commTypes.get(CommunicationType.TCP);
 
 		// TODO: Change this later.
-		// For the moment lets communicate with all StreamNodes through TCP port ( including local StreamNodes) .
+		// For the moment lets communicate with the StreamNode through TCP port.
 		if (commTypes.containsKey(CommunicationType.LOCAL)) {
-			localConnections = commTypes.get(CommunicationType.LOCAL);
-			totalTcpConnections += localConnections;
+			totalTcpConnections += 1;
 		}
 
 		ListenerSocket listnerSckt = new ListenerSocket(this.listenPort, totalTcpConnections);
 		listnerSckt.start();
-		createTcpLocalStreamNodes(localConnections);
+		if (commTypes.containsKey(CommunicationType.LOCAL))
+			createTcpLocalStreamNode();
 		connectionMap.clear();
 		int machineID = 0;
 		while (true) {
@@ -89,16 +88,17 @@ public class CommunicationManagerImpl implements CommunicationManager {
 		listnerSckt.stopListening();
 	}
 
-	private void createTcpLocalStreamNodes(int count) {
+	/**
+	 * Creates JVM local {@link StreamNode}. Only one JVM local {@link StreamNode} can exist.
+	 */
+	private void createTcpLocalStreamNode() {
 		ConnectionFactory cf = new ConnectionFactory();
-		for (int i = 0; i < count; i++) {
-			try {
-				Connection connection = cf.getConnection("127.0.0.1", this.listenPort);
-				new StreamNode(connection).start();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+		try {
+			Connection connection = cf.getConnection("127.0.0.1", this.listenPort);
+			StreamNode.getInstance(connection).start();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 

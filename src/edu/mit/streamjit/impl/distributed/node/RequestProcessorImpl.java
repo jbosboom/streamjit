@@ -43,7 +43,7 @@ public class RequestProcessorImpl implements RequestProcessor {
 	public void processMachineID() {
 		try {
 			Integer id = streamNode.controllerConnection.readObject();
-			streamNode.setMachineID(id);
+			streamNode.setNodeID(id);
 		} catch (ClassNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

@@ -13,9 +13,10 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
  * In StreamJit's jargon "Stream node" means a computing node that runs part or full a streamJit application. </p> Here, the class
- * {@link StreamNode} is a StreamJit's run timer for each distributed node. So there can be only one {@link StreamNode} instance per
- * computing node. Once it got connected with the {@link Controller}, it will keep on listening and processing the commands from the
- * {@link Controller}. {@link Controller} can issue the {@link Command} EXIT to stop the streamNode.
+ * {@link StreamNode} is a StreamJit's run timer for each distributed node. So {@link StreamNode} is singleton pattern as there can be
+ * only one {@link StreamNode} instance per computing node. Once it got connected with the {@link Controller}, it will keep on
+ * listening and processing the commands from the {@link Controller}. {@link Controller} can issue the {@link Command} EXIT to stop the
+ * streamNode.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 10, 2013
@@ -26,7 +27,7 @@ public class StreamNode extends Thread {
 	 * Lets keep the package public (default) for the moment.
 	 */
 	Connection controllerConnection;
-	private int machineID; // TODO: consider move or remove this from StreamNode class. If so, this class will be more handy.
+	private int myNodeID; // TODO: consider move or remove this from StreamNode class. If so, this class will be more handy.
 	private MessageVisitor mv;
 
 	private BlobsManager blobsManager;
@@ -35,15 +36,25 @@ public class StreamNode extends Thread {
 							// thread,
 							// no need to make this variable thread safe.
 
-	public void exit() {
-		this.run = false;
+	private static StreamNode myinstance;
+
+	/**
+	 * Thread safe way of Singleton pattern.
+	 */
+	public static StreamNode getInstance(Connection connection) {
+		if (myinstance == null) {
+			synchronized (StreamNode.class) {
+				if (myinstance == null)
+					myinstance = new StreamNode(connection);
+			}
+		}
+		return myinstance;
 	}
 
 	/**
-	 * Only IP address is required. PortNo is optional. If it is not provided, {@link StreamNode} will try to start with default
-	 * StreamJit's port number that can be found {@link GlobalConstants}.
+	 * {@link StreamNode} is Singleton pattern in order to ensure one instance per JVM..
 	 */
-	public StreamNode(Connection connection) {
+	private StreamNode(Connection connection) {
 		this.controllerConnection = connection;
 		this.mv = new NodeMessageVisitor(new AppStatusProcessorImpl(), new CommandProcessorImpl(this), new ErrorProcessorImpl(),
 				new RequestProcessorImpl(this), new JsonStringProcessorImpl(this));
@@ -70,13 +81,13 @@ public class StreamNode extends Thread {
 		}
 	}
 
-	public int getMachineID() {
-		return machineID;
+	public int getNodeID() {
+		return myNodeID;
 	}
 
-	public void setMachineID(int machineID) {
-		this.machineID = machineID;
-		System.out.println("I have got my machine ID: " + this.machineID);
+	public void setNodeID(int nodeID) {
+		this.myNodeID = nodeID;
+		System.out.println("I have got my node ID: " + this.myNodeID);
 		Thread.currentThread().setName(this.tostString());
 	}
 
@@ -95,8 +106,12 @@ public class StreamNode extends Thread {
 		this.blobsManager = blobsManager;
 	}
 
+	public void exit() {
+		this.run = false;
+	}
+
 	public String tostString() {
-		return "StreamNode-" + machineID;
+		return "StreamNode-" + myNodeID;
 	}
 
 	/**
