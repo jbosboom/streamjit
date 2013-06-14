@@ -92,14 +92,18 @@ public class CommunicationManagerImpl implements CommunicationManager {
 	 * Creates JVM local {@link StreamNode}. Only one JVM local {@link StreamNode} can exist.
 	 */
 	private void createTcpLocalStreamNode() {
-		ConnectionFactory cf = new ConnectionFactory();
-		try {
-			Connection connection = cf.getConnection("127.0.0.1", this.listenPort);
-			StreamNode.getInstance(connection).start();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		new Thread() {
+			public void run() {
+				try {
+					ConnectionFactory cf = new ConnectionFactory();
+					Connection connection = cf.getConnection("127.0.0.1", listenPort);
+					StreamNode.getInstance(connection).start();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}.start();
 	}
 
 	@Override
