@@ -44,13 +44,15 @@ public class ListenerSocket extends Thread {
 	}
 
 	/**
-	 * @param portNo Listening port number.
+	 * @param portNo
+	 *            Listening port number.
 	 * @param expectedConnections
 	 *            : ListenerSocket will try to accept at most this amount sockets. Once this limit is reached, {@link ListenerSocket}
 	 *            thread will die itself.
 	 * @throws IOException
 	 */
 	public ListenerSocket(int portNo, int expectedConnections) throws IOException {
+		super("Listener Socket");
 		try {
 			server = new ServerSocket(portNo);
 			this.expectedConnections = expectedConnections;
