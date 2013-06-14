@@ -138,6 +138,13 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		return localVariables;
 	}
 
+	public LocalVariable getLocalVariable(String name) {
+		for (LocalVariable v : localVariables())
+			if (v.getName().equals(name))
+				return v;
+		return null;
+	}
+
 	public boolean isConstructor() {
 		return getName().equals("<init>");
 	}
