@@ -30,6 +30,7 @@ import edu.mit.streamjit.impl.compiler.insts.ArrayLoadInst;
 import edu.mit.streamjit.impl.compiler.insts.ArrayStoreInst;
 import edu.mit.streamjit.impl.compiler.insts.BinaryInst;
 import edu.mit.streamjit.impl.compiler.insts.CallInst;
+import edu.mit.streamjit.impl.compiler.insts.CastInst;
 import edu.mit.streamjit.impl.compiler.insts.Instruction;
 import edu.mit.streamjit.impl.compiler.insts.JumpInst;
 import edu.mit.streamjit.impl.compiler.insts.LoadInst;
@@ -86,6 +87,11 @@ public final class Compiler {
 	 * per synchronization).
 	 */
 	private final int multiplier;
+	/**
+	 * The work method type, which is void(Object[][], int[], int[], Object[][],
+	 * int[], int[]). (There is no receiver argument.)
+	 */
+	private final MethodType workMethodType;
 	private ImmutableTable<Worker<?, ?>, Worker<?, ?>, BufferData> buffers;
 	public Compiler(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
 		this.workers = workers;
@@ -137,6 +143,7 @@ public final class Compiler {
 				Collections.singletonList(module.getKlass(Blob.class)),
 				module);
 		this.multiplier = config.getParameter("multiplier", Configuration.IntParameter.class).getValue();
+		this.workMethodType = module.types().getMethodType(void.class, Object[][].class, int[].class, int[].class, Object[][].class, int[].class, int[].class);
 	}
 
 	public Blob compile() {
@@ -150,7 +157,12 @@ public final class Compiler {
 		allocateCores();
 		declareBuffers();
 		computeInitSchedule();
-		//TODO: generate work methods
+		//We generate a work method for each worker (which may result in
+		//duplicates, but is required in general to handle worker fields), then
+		//generate core code that stitches them together and does any
+		//required data movement.
+		for (Worker<?, ?> w : streamNodes.keySet())
+			makeWorkMethod(w);
 		//TODO: generate core code
 		addBlobPlumbing();
 		blobKlass.dump(new PrintWriter(System.out, true));
@@ -234,7 +246,7 @@ public final class Compiler {
 	 * @param worker
 	 */
 	private void makeWorkMethod(Worker<?, ?> worker) {
-		WorkerData data = workerData.get(worker);
+		StreamNode node = streamNodes.get(worker);
 		int id = Workers.getIdentifier(worker);
 		int numInputs = getNumInputs(worker);
 		int numOutputs = getNumOutputs(worker);
@@ -242,49 +254,43 @@ public final class Compiler {
 		Method oldWork = workerKlass.getMethod("work", module.types().getMethodType(void.class, worker.getClass()));
 		oldWork.resolve();
 
-		MethodType workMethodType = makeWorkMethodType(worker);
+		//Add a dummy receiver argument so we can clone the user's work method.
 		MethodType rworkMethodType = workMethodType.prependArgument(module.types().getRegularType(workerKlass));
 		Method newWork = new Method("rwork"+id, rworkMethodType, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass);
 		newWork.arguments().get(0).setName("dummyReceiver");
+		newWork.arguments().get(1).setName("ichannels");
+		newWork.arguments().get(2).setName("ioffsets");
+		newWork.arguments().get(3).setName("iincrements");
+		newWork.arguments().get(4).setName("ochannels");
+		newWork.arguments().get(5).setName("ooffsets");
+		newWork.arguments().get(6).setName("oincrements");
 
 		Map<Value, Value> vmap = new IdentityHashMap<>();
 		vmap.put(oldWork.arguments().get(0), newWork.arguments().get(0));
 		Cloning.cloneMethod(oldWork, newWork, vmap);
 
-		data.popCount = new Field(module.types().getRegularType(numInputs > 1 ? int[].class : int.class),
-				"w"+id+"$popCount",
-				EnumSet.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.SYNTHETIC),
-				blobKlass);
-		data.pushCount = new Field(module.types().getRegularType(numOutputs > 1 ? int[].class : int.class),
-				"w"+id+"$pushCount",
-				EnumSet.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.SYNTHETIC),
-				blobKlass);
-
 		BasicBlock entryBlock = new BasicBlock(module, "entry");
 		newWork.basicBlocks().add(0, entryBlock);
 
-		Value popCountInitValue;
-		if (numInputs > 1) {
-			NewArrayInst newArrayInst = new NewArrayInst(module.types().getArrayType(int[].class), module.constants().getConstant(numInputs));
-			newArrayInst.setName("popCountArray");
-			entryBlock.instructions().add(newArrayInst);
-			popCountInitValue = newArrayInst;
-		} else
-			popCountInitValue = module.constants().getConstant(0);
-		StoreInst popCountInit = new StoreInst(data.popCount, popCountInitValue);
-		popCountInit.setName("popCountInit");
+		//We make copies of the offset arrays.  (int[].clone() returns Object,
+		//so we have to cast.)
+		Method clone = Iterables.getOnlyElement(module.getKlass(Object.class).getMethods("clone"));
+		CallInst ioffsetCloneCall = new CallInst(clone, newWork.arguments().get(2));
+		entryBlock.instructions().add(ioffsetCloneCall);
+		CastInst ioffsetCast = new CastInst(module.types().getArrayType(int[].class), ioffsetCloneCall);
+		entryBlock.instructions().add(ioffsetCast);
+		LocalVariable ioffsetCopy = new LocalVariable((RegularType)ioffsetCast.getType(), "ioffsetCopy", newWork);
+		StoreInst popCountInit = new StoreInst(ioffsetCopy, ioffsetCast);
+		popCountInit.setName("ioffsetInit");
 		entryBlock.instructions().add(popCountInit);
 
-		Value pushCountInitValue;
-		if (numOutputs > 1) {
-			NewArrayInst newArrayInst = new NewArrayInst(module.types().getArrayType(int[].class), module.constants().getConstant(numOutputs));
-			newArrayInst.setName("pushCountArray");
-			entryBlock.instructions().add(newArrayInst);
-			pushCountInitValue = newArrayInst;
-		} else
-			pushCountInitValue = module.constants().getConstant(0);
-		StoreInst pushCountInit = new StoreInst(data.pushCount, pushCountInitValue);
-		pushCountInit.setName("pushCountInit");
+		CallInst ooffsetCloneCall = new CallInst(clone, newWork.arguments().get(5));
+		entryBlock.instructions().add(ooffsetCloneCall);
+		CastInst ooffsetCast = new CastInst(module.types().getArrayType(int[].class), ooffsetCloneCall);
+		entryBlock.instructions().add(ooffsetCast);
+		LocalVariable ooffsetCopy = new LocalVariable((RegularType)ooffsetCast.getType(), "ooffsetCopy", newWork);
+		StoreInst pushCountInit = new StoreInst(ooffsetCopy, ooffsetCast);
+		pushCountInit.setName("ooffsetInit");
 		entryBlock.instructions().add(pushCountInit);
 
 		entryBlock.instructions().add(new JumpInst(newWork.basicBlocks().get(1)));
@@ -293,35 +299,21 @@ public final class Compiler {
 		for (BasicBlock b : newWork.basicBlocks())
 			for (Instruction i : ImmutableList.copyOf(b.instructions()))
 				if (Iterables.contains(i.operands(), newWork.arguments().get(0)))
-					remapEliminiatingReceiver(i, data);
+					remapEliminiatingReceiver(i, worker);
 
 		//At this point, we've replaced all uses of the dummy receiver argument.
 		assert newWork.arguments().get(0).uses().isEmpty();
 		Method trueWork = new Method("work"+id, workMethodType, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass);
 		vmap.clear();
 		vmap.put(newWork.arguments().get(0), null);
-		vmap.put(newWork.arguments().get(1), trueWork.arguments().get(0));
-		vmap.put(newWork.arguments().get(2), trueWork.arguments().get(1));
+		for (int i = 1; i < newWork.arguments().size(); ++i)
+			vmap.put(newWork.arguments().get(i), trueWork.arguments().get(i-1));
 		Cloning.cloneMethod(newWork, trueWork, vmap);
-		data.workMethod = trueWork;
+		node.workMethod = trueWork;
 		newWork.eraseFromParent();
 	}
 
-	private MethodType makeWorkMethodType(Worker<?, ?> worker) {
-		RegularType inputParam = module.types().getArrayType(
-				Object.class,
-				worker instanceof Joiner ? 2 : 1);
-		RegularType outputParam;
-		if (worker == lastWorker)
-			outputParam = worker instanceof Splitter ?
-					module.types().getArrayType(Channel.class, 1) :
-					module.types().getRegularType(Channel.class);
-		else
-			outputParam = module.types().getArrayType(Object.class,	worker instanceof Splitter ? 2 : 1);
-		return module.types().getMethodType(module.types().getVoidType(), inputParam, outputParam);
-	}
-
-	private void remapEliminiatingReceiver(Instruction inst, WorkerData data) {
+	private void remapEliminiatingReceiver(Instruction inst, Worker<?, ?> worker) {
 		BasicBlock block = inst.getParent();
 		Method rwork = inst.getParent().getParent();
 		if (inst instanceof CallInst) {
@@ -350,56 +342,44 @@ public final class Compiler {
 			Method channelPush = module.getKlass(Channel.class).getMethod("push", module.types().getMethodType(void.class, Channel.class, Object.class));
 			assert channelPush != null;
 
-			if (method.equals(pop1Filter) || method.equals(pop1Splitter)) {
-				LoadInst popCount = new LoadInst(data.popCount);
-				ArrayLoadInst item = new ArrayLoadInst(rwork.arguments().get(1), popCount);
+			if (method.equals(pop1Filter) || method.equals(pop1Splitter) || method.equals(pop2)) {
+				Value channelNumber = method.equals(pop2) ? ci.getArgument(1) : module.constants().getSmallestIntConstant(0);
+				Argument ichannels = rwork.getArgument("ichannels");
+				ArrayLoadInst channel = new ArrayLoadInst(ichannels, channelNumber);
+				LoadInst ioffsets = new LoadInst(rwork.getLocalVariable("ioffsetCopy"));
+				ArrayLoadInst offset = new ArrayLoadInst(ioffsets, channelNumber);
+				ArrayLoadInst item = new ArrayLoadInst(channel, offset);
 				item.setName("poppedItem");
-				BinaryInst popCountPlusOne = new BinaryInst(popCount, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
-				StoreInst updatePopCount = new StoreInst(data.popCount, popCountPlusOne);
-				inst.replaceInstWithInsts(item, popCount, item, popCountPlusOne, updatePopCount);
-			} else if ((method.equals(push1Filter) || method.equals(push1Joiner)) && data.worker != lastWorker) {
-				Value item = ci.getArgument(1);
-				LoadInst pushCount = new LoadInst(data.pushCount);
-				ArrayStoreInst store = new ArrayStoreInst(rwork.arguments().get(2), pushCount, item);
-				BinaryInst pushCountPlusOne = new BinaryInst(pushCount, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
-				StoreInst updatePushCount = new StoreInst(data.popCount, pushCountPlusOne);
-				inst.replaceInstWithInsts(store, pushCount, store, pushCountPlusOne, updatePushCount);
-			} else if ((method.equals(push1Filter) || method.equals(push1Joiner)) && data.worker == lastWorker) {
-				Value item = ci.getArgument(1);
-				CallInst pushOntoChannel = new CallInst(channelPush, rwork.arguments().get(2), item);
-				inst.replaceInstWithInst(pushOntoChannel);
-			} else if (method.equals(pop2)) {
-				LoadInst popCountArray = new LoadInst(data.popCount);
-				ArrayLoadInst popCount = new ArrayLoadInst(popCountArray, ci.getArgument(1));
-				ArrayLoadInst inputSelect = new ArrayLoadInst(rwork.arguments().get(1), ci.getArgument(1));
-				ArrayLoadInst item = new ArrayLoadInst(inputSelect, popCount);
-				item.setName("poppedItem");
-				BinaryInst popCountPlusOne = new BinaryInst(popCount, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
-				ArrayStoreInst updatePopCount = new ArrayStoreInst(popCountArray, ci.getArgument(1), popCountPlusOne);
-				inst.replaceInstWithInsts(item, popCountArray, popCount, inputSelect, item, popCountPlusOne, updatePopCount);
-			} else if (method.equals(push2) && data.worker != lastWorker) {
-				Value item = ci.getArgument(2);
-				LoadInst pushCountArray = new LoadInst(data.pushCount);
-				ArrayLoadInst pushCount = new ArrayLoadInst(pushCountArray, ci.getArgument(1));
-				ArrayLoadInst outputSelect = new ArrayLoadInst(rwork.arguments().get(2), ci.getArgument(1));
-				ArrayStoreInst store = new ArrayStoreInst(outputSelect, pushCount, item);
-				BinaryInst pushCountPlusOne = new BinaryInst(pushCount, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
-				ArrayStoreInst updatePushCount = new ArrayStoreInst(pushCountArray, ci.getArgument(1), pushCountPlusOne);
-				inst.replaceInstWithInsts(store, pushCountArray, pushCount, outputSelect, store, pushCountPlusOne, updatePushCount);
-			} else if (method.equals(push2) && data.worker == lastWorker) {
-				Value item = ci.getArgument(2);
-				ArrayLoadInst outputSelect = new ArrayLoadInst(rwork.arguments().get(2), ci.getArgument(1));
-				CallInst pushOntoChannel = new CallInst(channelPush, outputSelect, item);
-				inst.replaceInstWithInsts(pushOntoChannel, outputSelect, pushOntoChannel);
+
+				Argument iincrements = rwork.getArgument("iincrements");
+				ArrayLoadInst increment = new ArrayLoadInst(iincrements, channelNumber);
+				BinaryInst newOffset = new BinaryInst(offset, BinaryInst.Operation.ADD, increment);
+				ArrayStoreInst storeNewOffset = new ArrayStoreInst(ioffsets, channelNumber, newOffset);
+				inst.replaceInstWithInsts(item, channel, ioffsets, offset, item, increment, newOffset, storeNewOffset);
+			} else if ((method.equals(push1Filter) || method.equals(push1Joiner)) || method.equals(push2)) {
+				Value channelNumber = method.equals(push2) ? ci.getArgument(1) : module.constants().getSmallestIntConstant(0);
+				Value item = method.equals(push2) ? ci.getArgument(2) : ci.getArgument(1);
+				Argument ochannels = rwork.getArgument("ochannels");
+				ArrayLoadInst channel = new ArrayLoadInst(ochannels, channelNumber);
+				LoadInst ooffsets = new LoadInst(rwork.getLocalVariable("ooffsetCopy"));
+				ArrayLoadInst offset = new ArrayLoadInst(ooffsets, channelNumber);
+				ArrayStoreInst store = new ArrayStoreInst(channel, offset, item);
+
+				Argument oincrements = rwork.getArgument("oincrements");
+				ArrayLoadInst increment = new ArrayLoadInst(oincrements, channelNumber);
+				BinaryInst newOffset = new BinaryInst(offset, BinaryInst.Operation.ADD, increment);
+				ArrayStoreInst storeNewOffset = new ArrayStoreInst(ooffsets, channelNumber, newOffset);
+				inst.replaceInstWithInsts(store, channel, ooffsets, offset, store, increment, newOffset, storeNewOffset);
 			} else if (method.equals(outputs)) {
-				inst.replaceInstWithValue(module.constants().getSmallestIntConstant(getNumOutputs(data.worker)));
+				inst.replaceInstWithValue(module.constants().getSmallestIntConstant(getNumOutputs(worker)));
 			} else if (method.equals(inputs)) {
-				inst.replaceInstWithValue(module.constants().getSmallestIntConstant(getNumInputs(data.worker)));
+				inst.replaceInstWithValue(module.constants().getSmallestIntConstant(getNumInputs(worker)));
 			} else
 				throw new AssertionError(inst);
 		} else if (inst instanceof LoadInst) {
 			LoadInst li = (LoadInst)inst;
-			LoadInst replacement = new LoadInst(data.fields.get(li.getField()));
+			assert li.getLocation() instanceof Field;
+			LoadInst replacement = new LoadInst(streamNodes.get(worker).fields.get(worker, (Field)li.getLocation()));
 			li.replaceInstWithInst(replacement);
 		} else
 			throw new AssertionError("Couldn't eliminate reciever: "+inst);
