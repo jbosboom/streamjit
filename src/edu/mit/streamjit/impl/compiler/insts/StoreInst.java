@@ -68,7 +68,7 @@ public final class StoreInst extends Instruction {
 	protected void checkOperand(int i, Value v) {
 		checkElementIndex(i, 3);
 		if (i == 0) {
-			checkArgument(v instanceof Field);
+			checkArgument(v.getType() instanceof FieldType);
 		} else if (i == 1) {
 			RegularType type = ((FieldType)getLocation().getType()).getFieldType();
 			checkArgument(v.getType().isSubtypeOf(type));
