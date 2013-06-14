@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.compiler.insts;
 import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.Field;
+import edu.mit.streamjit.impl.compiler.LocalVariable;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.InstanceFieldType;
 
@@ -20,11 +21,15 @@ public final class LoadInst extends Instruction {
 		this(f);
 		setOperand(1, v);
 	}
-
-	public Field getField() {
-		return (Field)getOperand(0);
+	public LoadInst(LocalVariable v) {
+		super(checkNotNull(v).getType().getFieldType(), 1);
+		setOperand(0, v);
 	}
-	public void setField(Field f) {
+
+	public Value getLocation() {
+		return getOperand(0);
+	}
+	public void setLocation(Value f) {
 		setOperand(0, f);
 	}
 	public Value getInstance() {
@@ -36,10 +41,14 @@ public final class LoadInst extends Instruction {
 
 	@Override
 	public Instruction clone(Function<Value, Value> operandMap) {
+		Value newLocation = operandMap.apply(getLocation());
 		if (getNumOperands() == 1)
-			return new LoadInst((Field)operandMap.apply(getField()));
+			if (newLocation instanceof Field)
+				return new LoadInst((Field)newLocation);
+			else
+				return new LoadInst((LocalVariable)newLocation);
 		else
-			return new LoadInst((Field)operandMap.apply(getField()), operandMap.apply(getInstance()));
+			return new LoadInst((Field)newLocation, operandMap.apply(getInstance()));
 	}
 
 	@Override
@@ -49,7 +58,7 @@ public final class LoadInst extends Instruction {
 			checkArgument(v instanceof Field);
 			checkArgument(((Field)v).getType().getFieldType().isSubtypeOf(getType()));
 		} else if (i == 1) {
-			Field f = getField();
+			Field f = (Field)getLocation();
 			if (f != null) {
 				checkState(f.getType() instanceof InstanceFieldType);
 				checkArgument(v.getType().isSubtypeOf(((InstanceFieldType)f.getType()).getInstanceType()));
@@ -60,14 +69,21 @@ public final class LoadInst extends Instruction {
 
 	@Override
 	public String toString() {
-		if (getField().isStatic())
-			return String.format("%s (%s) = getstatic %s#%s",
-					getName(), getType(),
-					getField().getParent().getName(), getField().getName());
-		else
-			return String.format("%s (%s) = getfield %s#%s from %s",
-					getName(), getType(),
-					getField().getParent().getName(), getField().getName(),
-					getOperand(1).getName());
+		if (getLocation() instanceof LocalVariable) {
+			return String.format("%s (%s) = load %s",
+						getName(), getType(),
+						getLocation().getName());
+		} else {
+			Field f = (Field)getLocation();
+			if (f.isStatic())
+				return String.format("%s (%s) = getstatic %s#%s",
+						getName(), getType(),
+						f.getParent().getName(), f.getName());
+			else
+				return String.format("%s (%s) = getfield %s#%s from %s",
+						getName(), getType(),
+						f.getParent().getName(), f.getName(),
+						getOperand(1).getName());
+		}
 	}
 }

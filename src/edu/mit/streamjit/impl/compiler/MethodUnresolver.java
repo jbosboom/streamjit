@@ -116,7 +116,8 @@ public final class MethodUnresolver {
 
 	private void allocateRegisters() {
 		//We allocate one or two registers (depending on type category) to each
-		//instruction producing a non-void value and to the method arguments.
+		//instruction producing a non-void value, the method arguments, and the
+		//local variables.
 		int regNum = 0;
 		if (method.isConstructor()) {
 			registers.put(uninitializedThis, regNum);
@@ -126,6 +127,11 @@ public final class MethodUnresolver {
 			registers.put(a, regNum);
 			regNum += a.getType().getCategory();
 		}
+		if (method.isMutable())
+			for (LocalVariable v : method.localVariables()) {
+				registers.put(v, regNum);
+				regNum += v.getType().getFieldType().getCategory();
+			}
 		for (BasicBlock b : method.basicBlocks())
 			for (Instruction i : b.instructions())
 				if (!(i.getType() instanceof VoidType)) {
@@ -144,14 +150,18 @@ public final class MethodUnresolver {
 		methodNode.instructions.insert(first);
 		methodNode.instructions.add(last);
 		methodNode.localVariables = new ArrayList<>(registers.size());
-		for (Map.Entry<Value, Integer> r : registers.entrySet())
+		for (Map.Entry<Value, Integer> r : registers.entrySet()) {
+			RegularType type = r.getKey() instanceof LocalVariable ?
+					((LocalVariable)r.getKey()).getType().getFieldType() :
+					(RegularType)r.getKey().getType();
 			methodNode.localVariables.add(new LocalVariableNode(
 					r.getKey().getName(),
-					((RegularType)r.getKey().getType()).getDescriptor(),
+					type.getDescriptor(),
 					null,
 					first,
 					last,
 					r.getValue()));
+		}
 	}
 
 	private InsnList emit(BasicBlock block) {
@@ -493,15 +503,21 @@ public final class MethodUnresolver {
 		insns.add(new JumpInsnNode(Opcodes.GOTO, labels.get((BasicBlock)i.getOperand(0))));
 	}
 	private void emit(LoadInst i, InsnList insns) {
-		Field f = i.getField();
-		if (!f.isStatic())
-			load(i.getInstance(), insns);
-		insns.add(new FieldInsnNode(
-				f.isStatic() ? Opcodes.GETSTATIC : Opcodes.GETFIELD,
-				internalName(f.getParent()),
-				f.getName(),
-				f.getType().getFieldType().getDescriptor()));
-		store(i, insns);
+		Value location = i.getLocation();
+		if (location instanceof LocalVariable) {
+			load(location, insns);
+			store(i, insns);
+		} else {
+			Field f = (Field)location;
+			if (!f.isStatic())
+				load(i.getInstance(), insns);
+			insns.add(new FieldInsnNode(
+					f.isStatic() ? Opcodes.GETSTATIC : Opcodes.GETFIELD,
+					internalName(f.getParent()),
+					f.getName(),
+					f.getType().getFieldType().getDescriptor()));
+			store(i, insns);
+		}
 	}
 	private void emit(NewArrayInst i, InsnList insns) {
 		ArrayType t = i.getType();
@@ -556,15 +572,21 @@ public final class MethodUnresolver {
 		}
 	}
 	private void emit(StoreInst i, InsnList insns) {
-		Field f = i.getField();
-		if (!f.isStatic())
-			load(i.getInstance(), insns);
-		load(i.getData(), insns);
-		insns.add(new FieldInsnNode(
-				f.isStatic() ? Opcodes.PUTSTATIC : Opcodes.PUTFIELD,
-				internalName(f.getParent()),
-				f.getName(),
-				f.getType().getFieldType().getDescriptor()));
+		Value location = i.getLocation();
+		if (location instanceof LocalVariable) {
+			load(i.getData(), insns);
+			store(location, insns);
+		} else {
+			Field f = (Field)location;
+			if (!f.isStatic())
+				load(i.getInstance(), insns);
+			load(i.getData(), insns);
+			insns.add(new FieldInsnNode(
+					f.isStatic() ? Opcodes.PUTSTATIC : Opcodes.PUTFIELD,
+					internalName(f.getParent()),
+					f.getName(),
+					f.getType().getFieldType().getDescriptor()));
+		}
 	}
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	private void emit(SwitchInst i, InsnList insns) {
