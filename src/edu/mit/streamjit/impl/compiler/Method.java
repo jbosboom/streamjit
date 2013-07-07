@@ -236,7 +236,8 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 				writer.write(";");
 				writer.println();
 			}
-			writer.println();
+			if (!localVariables.isEmpty())
+				writer.println();
 		}
 		for (BasicBlock b : basicBlocks()) {
 			writer.write(b.getName());
