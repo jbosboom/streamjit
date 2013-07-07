@@ -6,6 +6,7 @@ import com.google.common.collect.Iterables;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.interp.Channel;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -110,4 +111,18 @@ public class IOInfo {
 				downstream(),
 				channel());
 	}
+
+	/**
+	 * Orders IOInfo by the natural ordering of the contained Token.  This
+	 * Comparator is inconsistent with equals.
+	 *
+	 * IOInfo doesn't implement Comparable directly because its natural ordering
+	 * would be inconsistent with equals.
+	 */
+	public static final Comparator<IOInfo> TOKEN_SORT = new Comparator<IOInfo>() {
+		@Override
+		public int compare(IOInfo o1, IOInfo o2) {
+			return o1.token().compareTo(o2.token());
+		}
+	};
 }
