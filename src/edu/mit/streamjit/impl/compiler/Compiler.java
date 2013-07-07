@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Table;
@@ -21,6 +22,7 @@ import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
+import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.IOInfo;
@@ -37,19 +39,23 @@ import edu.mit.streamjit.impl.compiler.insts.LoadInst;
 import edu.mit.streamjit.impl.compiler.insts.NewArrayInst;
 import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
 import edu.mit.streamjit.impl.compiler.insts.StoreInst;
+import edu.mit.streamjit.impl.compiler.types.FieldType;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.EmptyChannel;
 import edu.mit.streamjit.util.Pair;
+import edu.mit.streamjit.util.TopologicalSort;
 import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -77,6 +83,7 @@ public final class Compiler {
 	 * though there was one instance per parent instance.)
 	 */
 	private final Map<Worker<?, ?>, StreamNode> streamNodes = new IdentityHashMap<>();
+	private final Map<Worker<?, ?>, Method> workerWorkMethods = new IdentityHashMap<>();
 	private ImmutableMap<StreamNode, Integer> schedule;
 	private ImmutableMap<Worker<?, ?>, Integer> initSchedule;
 	private final String packagePrefix;
@@ -92,7 +99,7 @@ public final class Compiler {
 	 * int[], int[]). (There is no receiver argument.)
 	 */
 	private final MethodType workMethodType;
-	private ImmutableTable<Worker<?, ?>, Worker<?, ?>, BufferData> buffers;
+	private ImmutableMap<Token, BufferData> buffers;
 	public Compiler(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
 		this.workers = workers;
 		this.config = config;
@@ -163,7 +170,9 @@ public final class Compiler {
 		//required data movement.
 		for (Worker<?, ?> w : streamNodes.keySet())
 			makeWorkMethod(w);
-		//TODO: generate core code
+		for (StreamNode n : ImmutableSet.copyOf(streamNodes.values()))
+			n.makeWorkMethod();
+		generateCoreCode();
 		addBlobPlumbing();
 		blobKlass.dump(new PrintWriter(System.out, true));
 		return instantiateBlob();
@@ -199,14 +208,19 @@ public final class Compiler {
 	 * buffers.
 	 */
 	private void declareBuffers() {
-		ImmutableTable.Builder<Worker<?, ?>, Worker<?, ?>, BufferData> builder = ImmutableTable.<Worker<?, ?>, Worker<?, ?>, BufferData>builder();
+		ImmutableMap.Builder<Token, BufferData> builder = ImmutableMap.<Token, BufferData>builder();
 		for (Pair<Worker<?, ?>, Worker<?, ?>> p : allWorkerPairsInBlob())
 			//Only declare buffers for worker pairs not in the same node.  If
 			//a node needs internal buffering, it handles that itself.  (This
 			//implies that peeking filters cannot be fused upwards, but that's
 			//a bad idea anyway.)
 			if (!streamNodes.get(p.first).equals(streamNodes.get(p.second)))
-				builder.put(p.first, p.second, new BufferData(p.first, p.second));
+				builder.put(new Token(p.first, p.second), new BufferData(p.first, p.second));
+		//Make buffers for the inputs and outputs of this blob (which may or
+		//may not be overall inputs of the stream graph).
+		for (IOInfo info : ioinfo)
+			if (firstWorker.equals(info.downstream()) || lastWorker.equals(info.upstream()))
+				builder.put(info.token(), new BufferData(info.upstream(), info.downstream()));
 		buffers = builder.build();
 	}
 
@@ -220,7 +234,7 @@ public final class Compiler {
 			int j = Workers.getPredecessors(p.second).indexOf(p.first);
 			int pushRate = p.first.getPushRates().get(i).max();
 			int popRate = p.second.getPopRates().get(j).max();
-			builder.add(new Scheduler.Channel<>(p.first, p.second, pushRate, popRate, buffers.get(p.first, p.second).initialSize));
+			builder.add(new Scheduler.Channel<>(p.first, p.second, pushRate, popRate, buffers.get(new Token(p.first, p.second)).initialSize));
 		}
 		initSchedule = Scheduler.schedule(builder.build());
 	}
@@ -309,7 +323,7 @@ public final class Compiler {
 		for (int i = 1; i < newWork.arguments().size(); ++i)
 			vmap.put(newWork.arguments().get(i), trueWork.arguments().get(i-1));
 		Cloning.cloneMethod(newWork, trueWork, vmap);
-		node.workMethod = trueWork;
+		workerWorkMethods.put(worker, trueWork);
 		newWork.eraseFromParent();
 	}
 
@@ -393,6 +407,10 @@ public final class Compiler {
 		return Workers.getOutputChannels(w).size();
 	}
 
+	private void generateCoreCode() {
+
+	}
+
 	/**
 	 * Adds required plumbing code to the blob class, such as the ctor and the
 	 * implementations of the Blob methods.
@@ -462,7 +480,8 @@ public final class Compiler {
 	private final class StreamNode {
 		private final int id;
 		private final ImmutableSet<Worker<?, ?>> workers;
-		private final ImmutableSet<IOInfo> ioinfo;
+		private final ImmutableSortedSet<IOInfo> ioinfo;
+		private ImmutableMap<Worker<?, ?>, ImmutableSortedSet<IOInfo>> inputIOs, outputIOs;
 		/**
 		 * The number of individual worker executions per steady-state execution
 		 * of the StreamNode.
@@ -489,7 +508,7 @@ public final class Compiler {
 		private StreamNode(Worker<?, ?> worker) {
 			this.id = Workers.getIdentifier(worker);
 			this.workers = (ImmutableSet<Worker<?, ?>>)ImmutableSet.of(worker);
-			this.ioinfo = IOInfo.create(workers);
+			this.ioinfo = ImmutableSortedSet.copyOf(IOInfo.TOKEN_SORT, IOInfo.create(workers));
 			buildWorkerData(worker);
 
 			assert !streamNodes.containsKey(worker);
@@ -503,7 +522,7 @@ public final class Compiler {
 		private StreamNode(StreamNode a, StreamNode b) {
 			this.id = Math.min(a.id, b.id);
 			this.workers = ImmutableSet.<Worker<?, ?>>builder().addAll(a.workers).addAll(b.workers).build();
-			this.ioinfo = IOInfo.create(workers);
+			this.ioinfo = ImmutableSortedSet.copyOf(IOInfo.TOKEN_SORT, IOInfo.create(workers));
 			this.fields.putAll(a.fields);
 			this.fields.putAll(b.fields);
 			this.fieldValues.putAll(a.fieldValues);
@@ -591,6 +610,159 @@ public final class Compiler {
 				}
 			}
 		}
+
+		private void makeWorkMethod() {
+			assert workMethod == null : "remaking node work method";
+			mapIOInfo();
+			MethodType nodeWorkMethodType = module.types().getMethodType(module.types().getVoidType(), module.types().getRegularType(int.class));
+			workMethod = new Method("nodework"+this.id, nodeWorkMethodType, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass);
+			Argument multiple = Iterables.getOnlyElement(workMethod.arguments());
+			multiple.setName("multiple");
+			BasicBlock entryBlock = new BasicBlock(module, "entry");
+			workMethod.basicBlocks().add(entryBlock);
+
+			Map<Token, Value> localBuffers = new HashMap<>();
+			ImmutableList<Worker<?, ?>> orderedWorkers = TopologicalSort.sort(new ArrayList<>(workers), new TopologicalSort.PartialOrder<Worker<?, ?>>() {
+				@Override
+				public boolean lessThan(Worker<?, ?> a, Worker<?, ?> b) {
+					return Workers.getAllSuccessors(a).contains(b);
+				}
+			});
+			for (Worker<?, ?> w : orderedWorkers) {
+				//Input buffers
+				List<Worker<?, ?>> preds = (List<Worker<?, ?>>)Workers.getPredecessors(w);
+				List<Value> ichannels;
+				List<Value> ioffsets = new ArrayList<>();
+				if (preds.isEmpty()) {
+					ichannels = ImmutableList.<Value>of(buffers.get(Token.createOverallInputToken(w)).fields.get(0));
+					int r = w.getPopRates().get(0).max() * execsPerNodeExec.get(w);
+					BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
+					offset.setName("ioffset0");
+					entryBlock.instructions().add(offset);
+					ioffsets.add(offset);
+				} else {
+					ichannels = new ArrayList<>(preds.size());
+					for (int chanIdx = 0; chanIdx < preds.size(); ++chanIdx) {
+						Worker<?, ?> p = preds.get(chanIdx);
+						BufferData bufferData = buffers.get(new Token(p, w));
+						if (workers.contains(p)) {
+							assert bufferData == null : "BufferData created for internal buffer";
+							Value localBuffer = localBuffers.get(new Token(p, w));
+							assert localBuffer != null : "Local buffer needed before created";
+							ichannels.add(localBuffer);
+							ioffsets.add(module.constants().getConstant(0));
+						} else {
+							ichannels.add(bufferData.fields.get(0));
+							int r = w.getPopRates().get(chanIdx).max() * execsPerNodeExec.get(w);
+							BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
+							offset.setName("ioffset"+chanIdx);
+							entryBlock.instructions().add(offset);
+							ioffsets.add(offset);
+						}
+					}
+				}
+
+				Pair<Value, List<Instruction>> ichannelArray = createChannelArray(ichannels);
+				entryBlock.instructions().addAll(ichannelArray.second);
+				Pair<Value, List<Instruction>> ioffsetArray = createIntArray(ioffsets);
+				entryBlock.instructions().addAll(ioffsetArray.second);
+				Pair<Value, List<Instruction>> iincrementArray = createIntArray(Collections.<Value>nCopies(ioffsets.size(), module.constants().getConstant(1)));
+				entryBlock.instructions().addAll(iincrementArray.second);
+
+				//Output buffers
+				List<Worker<?, ?>> succs = (List<Worker<?, ?>>)Workers.getSuccessors(w);
+				List<Value> ochannels;
+				List<Value> ooffsets = new ArrayList<>();
+				if (succs.isEmpty()) {
+					ochannels = ImmutableList.<Value>of(buffers.get(Token.createOverallOutputToken(w)).fields.get(0));
+					int r = w.getPushRates().get(0).max() * execsPerNodeExec.get(w);
+					BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
+					offset.setName("ooffset0");
+					entryBlock.instructions().add(offset);
+					ooffsets.add(offset);
+				} else {
+					ochannels = new ArrayList<>(preds.size());
+					for (int chanIdx = 0; chanIdx < succs.size(); ++chanIdx) {
+						Worker<?, ?> s = succs.get(chanIdx);
+						BufferData bufferData = buffers.get(new Token(w, s));
+						if (workers.contains(s)) {
+							assert bufferData == null : "BufferData created for internal buffer";
+							Value localBuffer = localBuffers.get(new Token(w, s));
+							assert localBuffer != null : "Local buffer needed before created";
+							ochannels.add(localBuffer);
+							ooffsets.add(module.constants().getConstant(0));
+						} else {
+							ochannels.add(bufferData.fields.get(1));
+							int r = w.getPushRates().get(chanIdx).max() * execsPerNodeExec.get(w);
+							BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
+							offset.setName("ooffset"+chanIdx);
+							entryBlock.instructions().add(offset);
+							ooffsets.add(offset);
+						}
+					}
+				}
+
+				Pair<Value, List<Instruction>> ochannelArray = createChannelArray(ochannels);
+				entryBlock.instructions().addAll(ochannelArray.second);
+				Pair<Value, List<Instruction>> ooffsetArray = createIntArray(ooffsets);
+				entryBlock.instructions().addAll(ooffsetArray.second);
+				Pair<Value, List<Instruction>> oincrementArray = createIntArray(Collections.<Value>nCopies(ooffsets.size(), module.constants().getConstant(1)));
+				entryBlock.instructions().addAll(oincrementArray.second);
+
+				for (int i = 0; i < execsPerNodeExec.get(w); ++i) {
+					CallInst ci = new CallInst(workerWorkMethods.get(w), ichannelArray.first, ioffsetArray.first, iincrementArray.first, ochannelArray.first, ooffsetArray.first, oincrementArray.first);
+					entryBlock.instructions().add(ci);
+				}
+			}
+			entryBlock.instructions().add(new ReturnInst(module.types().getVoidType()));
+		}
+
+		private Pair<Value, List<Instruction>> createChannelArray(List<Value> channels) {
+			ImmutableList.Builder<Instruction> insts = ImmutableList.builder();
+			NewArrayInst nai = new NewArrayInst(module.types().getArrayType(Object[][].class), module.constants().getConstant(channels.size()));
+			insts.add(nai);
+			for (int i = 0; i < channels.size(); ++i) {
+				Value toStore = channels.get(i);
+				//If the value is a field, load it first.
+				if (toStore.getType() instanceof FieldType) {
+					LoadInst li = new LoadInst((Field)toStore);
+					insts.add(li);
+					toStore = li;
+				}
+				ArrayStoreInst asi = new ArrayStoreInst(nai, module.constants().getConstant(i), toStore);
+				insts.add(asi);
+			}
+			return new Pair<Value, List<Instruction>>(nai, insts.build());
+		}
+		private Pair<Value, List<Instruction>> createIntArray(List<Value> ints) {
+			ImmutableList.Builder<Instruction> insts = ImmutableList.builder();
+			NewArrayInst nai = new NewArrayInst(module.types().getArrayType(int[].class), module.constants().getConstant(ints.size()));
+			insts.add(nai);
+			for (int i = 0; i < ints.size(); ++i) {
+				Value toStore = ints.get(i);
+				ArrayStoreInst asi = new ArrayStoreInst(nai, module.constants().getConstant(i), toStore);
+				insts.add(asi);
+			}
+			return new Pair<Value, List<Instruction>>(nai, insts.build());
+		}
+
+		private void mapIOInfo() {
+			ImmutableMap.Builder<Worker<?, ?>, ImmutableSortedSet<IOInfo>> inputIOs = ImmutableMap.builder(),
+					outputIOs = ImmutableMap.builder();
+			for (Worker<?, ?> w : workers) {
+				ImmutableSortedSet.Builder<IOInfo> inputs = ImmutableSortedSet.orderedBy(IOInfo.TOKEN_SORT),
+						outputs = ImmutableSortedSet.orderedBy(IOInfo.TOKEN_SORT);
+				for (IOInfo info : ioinfo)
+					if (w.equals(info.downstream()))
+						inputs.add(info);
+					else if (w.equals(info.upstream()))
+						outputs.add(info);
+				inputIOs.put(w, inputs.build());
+				outputIOs.put(w, outputs.build());
+			}
+			this.inputIOs = inputIOs.build();
+			this.outputIOs = outputIOs.build();
+		}
 	}
 
 	private final class BufferData {
@@ -611,24 +783,39 @@ public final class Compiler {
 		 * always get filled to capacity.
 		 */
 		public final int initialSize;
+		/**
+		 * Note that either upstream xor downstream may be null.
+		 */
 		private BufferData(Worker<?, ?> upstream, Worker<?, ?> downstream) {
-			RegularType objArrayTy = blobKlass.getParent().types().getRegularType(Object[].class);
-			String fieldName = "buf"+Workers.getIdentifier(upstream)+"_"+Workers.getIdentifier(downstream);
+			final String upstreamId = upstream != null ? Integer.toString(Workers.getIdentifier(upstream)) : "input";
+			final String downstreamId = downstream != null ? Integer.toString(Workers.getIdentifier(downstream)) : "output";
+			final StreamNode upstreamNode = streamNodes.get(upstream);
 			final StreamNode downstreamNode = streamNodes.get(downstream);
-			//Do we need to synchronize to pass data between these two nodes?
-			boolean intracore = streamNodes.get(upstream).cores.equals(downstreamNode.cores);
-			if (intracore)
-				fields = ImmutableList.of(new Field(objArrayTy, fieldName, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass));
-			else
-				fields = ImmutableList.of(new Field(objArrayTy, fieldName+"a", EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass),
-						new Field(objArrayTy, fieldName+"b", EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass));
+			RegularType objArrayTy = module.types().getRegularType(Object[].class);
 
-			int chanIdx = Workers.getPredecessors(downstream).indexOf(upstream);
-			assert chanIdx != -1;
-			int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
-			int excessPeeks = Math.max(peek - pop, 0);
-			this.capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.get(downstreamNode) * multiplier * pop + excessPeeks;
-			this.initialSize = intracore ? excessPeeks : capacity;
+			String fieldName = "buf_"+upstreamId+"_"+downstreamId;
+			//Do we need to synchronize to pass data between these two nodes?
+			boolean intercore = upstreamNode != null && downstreamNode != null && upstreamNode != downstreamNode;
+			if (intercore)
+				fields = ImmutableList.of(new Field(objArrayTy, fieldName+"a", EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass),
+					new Field(objArrayTy, fieldName+"b", EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass));
+			else
+				fields = ImmutableList.of(new Field(objArrayTy, fieldName, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass));
+
+			if (downstream != null) {
+				//If upstream is null, it's the global input, channel 0.
+				int chanIdx = upstream != null ? Workers.getPredecessors(downstream).indexOf(upstream) : 0;
+				assert chanIdx != -1;
+				int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
+				int excessPeeks = Math.max(peek - pop, 0);
+				this.capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.get(downstreamNode) * multiplier * pop + excessPeeks;
+				this.initialSize = intercore ? excessPeeks : capacity;
+			} else { //downstream == null
+				//If downstream is null, it's the global output, channel 0.
+				int push = upstream.getPushRates().get(0).max();
+				this.capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.get(upstreamNode) * multiplier * push;
+				this.initialSize = 0;
+			}
 		}
 	}
 
