@@ -59,6 +59,12 @@ public class SingleThreadedBlob implements Blob {
 	private final AtomicReference<Runnable> callbackContainer = new AtomicReference<>();
 
 	/**
+	 * We need this flag to successfully complete the draining. We need to stop the execution when not enough stream tuples available
+	 * at inputChannels after draining is called on this blob.
+	 */
+	private boolean finishDraining = false;
+
+	/**
 	 * @param workers
 	 *            : set of workers assigned to this blob.
 	 * @param config
@@ -138,8 +144,9 @@ public class SingleThreadedBlob implements Blob {
 		assert this.callbackContainer.get() != null : "Illegal call. Call back is not set";
 		// TODO: We can optimize the draining in a way that just processing the workers those are related to the non-empty input
 		// channels. Current algorithm processes all workers in the Blob until all input channels of the Blob become empty.
-		while (!allInputChannelsEmpty()) {
-			System.out.println("DEBUG: Draing...");
+		finishDraining = false;
+		while (!isAllInputChannelEmpty() && !finishDraining) {
+			System.out.println("DEBUG: " + Thread.currentThread().getName() + " is Draing...");
 			interpret();
 		}
 		System.out.println("DEBUG: Draing of " + Thread.currentThread().getName() + " is finished");
@@ -149,9 +156,10 @@ public class SingleThreadedBlob implements Blob {
 	/**
 	 * @return <code>true</code> if all input channels of the {@link Blob} are empty.
 	 */
-	private boolean allInputChannelsEmpty() {
+	private boolean isAllInputChannelEmpty() {
 		boolean empty = true;
 		for (Channel<?> inchnl : inputChannels.values()) {
+
 			if (!inchnl.isEmpty())
 				empty = false;
 		}
@@ -230,10 +238,12 @@ public class SingleThreadedBlob implements Blob {
 			// Execute predecessors based on data dependencies.
 			int channel = indexOfUnsatisfiedChannel(current);
 			if (channel != -1) {
-				if (!workers.contains(Iterables.get(Workers.getPredecessors(current), channel, null)))
+				if (!workers.contains(Iterables.get(Workers.getPredecessors(current), channel, null))) {
 					// We need data from a worker not in our stream graph section,
 					// so we can't do anything.
+					finishDraining = true; // This flag has effect only after draining is called.
 					return false;
+				}
 				// Otherwise, recursively fire the worker blocking us.
 				stack.push(Workers.getPredecessors(current).get(channel));
 				continue recurse;
