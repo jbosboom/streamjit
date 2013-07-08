@@ -441,32 +441,6 @@ public final class Compiler {
 		}
 	}
 
-	/**
-	 * WorkerData contains worker-specific information.
-	 */
-	private static final class WorkerData {
-		private final Worker<?, ?> worker;
-		/**
-		 * The method corresponding to this worker's work method.  May be null
-		 * if the method hasn't been created yet.
-		 */
-		private Method workMethod;
-		/**
-		 * Maps fields in the worker class to fields in the blob class for this
-		 * particular worker.
-		 */
-		private final Map<Field, Field> fields = new IdentityHashMap<>();
-		/**
-		 * Maps final fields in the worker class to their actual values, for
-		 * inlining or blob initialization purposes.
-		 */
-		private final Map<Field, Object> fieldValues = new IdentityHashMap<>();
-		private Field popCount, pushCount;
-		private WorkerData(Worker<?, ?> worker) {
-			this.worker = worker;
-		}
-	}
-
 	private void externalSchedule() {
 		ImmutableSet<StreamNode> nodes = ImmutableSet.copyOf(streamNodes.values());
 		ImmutableList.Builder<Scheduler.Channel<StreamNode>> channels = ImmutableList.<Scheduler.Channel<StreamNode>>builder();
