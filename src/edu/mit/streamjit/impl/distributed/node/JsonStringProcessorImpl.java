@@ -195,7 +195,7 @@ public class JsonStringProcessorImpl implements JsonStringProcessor {
 	}
 
 	/**
-	 * Just does the round robin assignment. TODO: Need to optimally assign the workers to the threads.
+	 * Just does a round robin assignment. TODO: Need to optimally assign the workers to the threads.
 	 * 
 	 * @param workerSet
 	 * @param noOfPartitions

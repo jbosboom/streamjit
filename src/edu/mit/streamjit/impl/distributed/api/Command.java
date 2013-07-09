@@ -6,7 +6,7 @@ package edu.mit.streamjit.impl.distributed.api;
 
 public enum Command implements MessageElement {
 	/**
-	 * START the StreamJit Application.
+	 * Starts the StreamJit Application.
 	 */
 	START {
 		@Override
@@ -15,7 +15,7 @@ public enum Command implements MessageElement {
 		}
 	},
 	/**
-	 * Stop the StreamJit Application. Not the StreamNode.
+	 * Stops the StreamJit Application. Not the StreamNode. Blobs must be drained before stopping.
 	 */
 	STOP {
 		@Override

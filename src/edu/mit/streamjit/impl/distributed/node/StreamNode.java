@@ -24,7 +24,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 public class StreamNode extends Thread {
 
 	/**
-	 * Lets keep the package public (default) for the moment.
+	 * Lets keep this as package public (default) for the moment.
 	 */
 	Connection controllerConnection;
 	private int myNodeID = -1; // TODO: consider move or remove this from StreamNode class. If so, this class will be more handy.
