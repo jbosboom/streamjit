@@ -69,7 +69,8 @@ public class StreamNode extends Thread {
 				me.accept(mv);
 			} catch (ClassNotFoundException | IOException e) {
 				e.printStackTrace();
-				// TODO: Need to decide what to do when exception occurred.
+				// TODO: Need to decide what to do here. May be we can re try couple of time in a time interval before aborting the
+				// execution.
 				run = false;
 			}
 		}
