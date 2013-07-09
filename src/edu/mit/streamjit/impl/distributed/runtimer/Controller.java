@@ -10,14 +10,11 @@ import java.util.Map;
 import java.util.Set;
 
 import edu.mit.streamjit.api.CompiledStream;
-import edu.mit.streamjit.api.Identity;
-import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
-import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.api.BoundaryInputChannel;
@@ -47,8 +44,8 @@ public class Controller {
 	private int controllerNodeID;
 
 	/**
-	 * A {@link BoundaryOutputChannel} for the head of the stream graph. If source {@link Worker} happened to fall outside the
-	 * {@link Controller}, we need to push the {@link CompiledStream}.offer() data to the source.
+	 * A {@link BoundaryOutputChannel} for the head of the stream graph. If the first {@link Worker} happened to fall outside the
+	 * {@link Controller}, we need to push the {@link CompiledStream}.offer() data to the first {@link Worker} of the streamgraph.
 	 */
 	BoundaryOutputChannel<?> headChannel;
 

@@ -54,7 +54,7 @@ public class CommunicationManagerImpl implements CommunicationManager {
 			totalTcpConnections += commTypes.get(CommunicationType.TCP);
 
 		// TODO: Change this later.
-		// For the moment lets communicate with the StreamNode through TCP port.
+		// For the moment lets communicate with the local StreamNode through TCP port.
 		if (commTypes.containsKey(CommunicationType.LOCAL)) {
 			totalTcpConnections += 1;
 		}
@@ -64,8 +64,8 @@ public class CommunicationManagerImpl implements CommunicationManager {
 		if (commTypes.containsKey(CommunicationType.LOCAL))
 			createTcpLocalStreamNode();
 		connectionMap.clear();
-		int nodeID = 0; // nodeID 0 goes to the controller instance. Even though controller doesn't executes any workers, it handles
-						// head and tail channels.
+		int nodeID = 0; // nodeID 0 goes to the controller instance. We need this because Controller handles the head and tail
+						// channels, though it doesn't executes any workers.
 		while (true) {
 			List<Socket> acceptedSocketList = listnerSckt.getAcceptedSockets();
 			for (Socket s : acceptedSocketList) {

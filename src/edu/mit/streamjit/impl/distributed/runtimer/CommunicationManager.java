@@ -8,8 +8,8 @@ import edu.mit.streamjit.impl.distributed.api.NodeInfo;
 import edu.mit.streamjit.impl.distributed.node.Connection;
 
 /**
- * {@link CommunicationManager} manages all type of communications. keep track of all {@link Connection} and manages them. Need to
- * handle the connection loss and reconnection as well. Assigns machineID based on the connecting order.
+ * {@link CommunicationManager} manages all type of communications. keep track of all {@link Connection} and manages them. TODO: Need
+ * to handle the connection loss and reconnection. Assigns machineID based on the connecting order.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 13, 2013
@@ -30,6 +30,7 @@ public interface CommunicationManager {
 	 * {@link CommunicationType}.LOCAL in the argument comTypeCount has no effect.
 	 * 
 	 * @param comTypeCount
+	 *            Map that tells the number of connections need to be established for each {@link CommunicationType}.
 	 * @throws IOException
 	 */
 	public void connectMachines(Map<CommunicationType, Integer> comTypeCount) throws IOException;
