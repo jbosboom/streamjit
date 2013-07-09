@@ -135,6 +135,24 @@ public interface Blob {
 			return new Token(Workers.getIdentifier(lastWorker), -1);
 		}
 
+		/**
+		 * Returns the identifier of the upstream worker, or -1 for the overall
+		 * input of the stream graph.
+		 * @return the identifier of the upstream worker, or -1
+		 */
+		public int getUpstreamIdentifier() {
+			return upstreamIdentifier;
+		}
+
+		/**
+		 * Returns the identifier of the downstream worker, or -1 for the
+		 * overall output of the stream graph.
+		 * @return the identifier of the downstream worker, or -1
+		 */
+		public int getDownstreamIdentifier() {
+			return downstreamIdentifier;
+		}
+
 		@Override
 		public int compareTo(Token o) {
 			return ComparisonChain.start()
