@@ -153,6 +153,14 @@ public interface Blob {
 			return downstreamIdentifier;
 		}
 
+		public boolean isOverallInput() {
+			return upstreamIdentifier == -1;
+		}
+
+		public boolean isOverallOutput() {
+			return downstreamIdentifier == -1;
+		}
+
 		@Override
 		public int compareTo(Token o) {
 			return ComparisonChain.start()
