@@ -10,6 +10,7 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Table;
+import com.google.common.math.IntMath;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Joiner;
@@ -50,8 +51,10 @@ import edu.mit.streamjit.util.TopologicalSort;
 import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -455,8 +458,53 @@ public final class Compiler {
 		return Workers.getOutputChannels(w).size();
 	}
 
+	/**
+	 * Generates the corework* methods, which contain the steady-state code for
+	 * each core.  (The buffers are assumed to be already prepared.)
+	 */
 	private void generateCoreCode() {
+		Map<Integer, Method> coreCodeMethods = new HashMap<>();
+		List<StreamNode> nodes = new ArrayList<>(ImmutableSet.copyOf(streamNodes.values()));
+		Collections.sort(nodes, new Comparator<StreamNode>() {
+			@Override
+			public int compare(StreamNode o1, StreamNode o2) {
+				return Integer.compare(o1.id, o2.id);
+			}
+		});
 
+		for (StreamNode sn : nodes)
+			for (int core : sn.cores)
+				if (!coreCodeMethods.containsKey(core)) {
+					Method m = new Method("corework"+core, module.types().getMethodType(void.class), EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass);
+					coreCodeMethods.put(core, m);
+				}
+
+		for (StreamNode sn : nodes) {
+			Integer iterations = schedule.get(sn);
+			//TODO: at some point, this division should be config-controlled, so
+			//we can balance well in the presence of stateful (unparallelizable)
+			//filters.  For now just divide evenly.
+			//Assign full iterations to all cores, then distribute the remainder
+			//evenly.
+			int full = IntMath.divide(iterations, sn.cores.size(), RoundingMode.DOWN);
+			int remainder = iterations - full;
+			assert remainder >= 0 && remainder < sn.cores.size();
+			int multiple = 0;
+			for (int i = 0; i < sn.cores.size(); ++i) {
+				//Put each node's calls in a separate block for dump readability.
+				BasicBlock block = new BasicBlock(module, "node"+sn.id);
+				for (int j = 0; j < full + (i < remainder ? 1 : 0); ++j)
+					block.instructions().add(new CallInst(sn.workMethod, module.constants().getConstant(multiple++)));
+				coreCodeMethods.get(sn.cores.get(i)).basicBlocks().add(block);
+			}
+			assert multiple == iterations : "Didn't assign all iterations to cores";
+		}
+
+		for (Method m : coreCodeMethods.values()) {
+			BasicBlock block = new BasicBlock(module, "exit");
+			block.instructions().add(new ReturnInst(module.types().getVoidType()));
+			m.basicBlocks().add(block);
+		}
 	}
 
 	/**
