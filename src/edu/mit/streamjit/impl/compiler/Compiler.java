@@ -667,7 +667,7 @@ public final class Compiler {
 						Worker<?, ?> p = preds.get(chanIdx);
 						Token t = new Token(p, w);
 						if (workers.contains(p)) {
-							assert buffers.get(t) == null : "BufferData created for internal buffer";
+							assert !buffers.containsKey(t) : "BufferData created for internal buffer";
 							Value localBuffer = localBuffers.get(new Token(p, w));
 							assert localBuffer != null : "Local buffer needed before created";
 							ichannels.add(localBuffer);
@@ -707,7 +707,7 @@ public final class Compiler {
 						Worker<?, ?> s = succs.get(chanIdx);
 						Token t = new Token(w, s);
 						if (workers.contains(s)) {
-							assert buffers.get(t) == null : "BufferData created for internal buffer";
+							assert buffers.containsKey(t) : "BufferData created for internal buffer";
 							Value localBuffer = localBuffers.get(new Token(w, s));
 							assert localBuffer != null : "Local buffer needed before created";
 							ochannels.add(localBuffer);
