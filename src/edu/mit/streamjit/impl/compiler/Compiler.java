@@ -214,14 +214,61 @@ public final class Compiler {
 			//a node needs internal buffering, it handles that itself.  (This
 			//implies that peeking filters cannot be fused upwards, but that's
 			//a bad idea anyway.)
-			if (!streamNodes.get(p.first).equals(streamNodes.get(p.second)))
-				builder.put(new Token(p.first, p.second), new BufferData(p.first, p.second));
+			if (!streamNodes.get(p.first).equals(streamNodes.get(p.second))) {
+				Token t = new Token(p.first, p.second);
+				builder.put(t, makeBuffers(t, p.first, p.second));
+			}
 		//Make buffers for the inputs and outputs of this blob (which may or
 		//may not be overall inputs of the stream graph).
 		for (IOInfo info : ioinfo)
 			if (firstWorker.equals(info.downstream()) || lastWorker.equals(info.upstream()))
-				builder.put(info.token(), new BufferData(info.upstream(), info.downstream()));
+				builder.put(info.token(), makeBuffers(info.token(), info.upstream(), info.downstream()));
 		buffers = builder.build();
+	}
+
+	/**
+	 * Creates buffers in the blobKlass for the given workers, returning a
+	 * BufferData describing the buffers created.
+	 *
+	 * One of upstream xor downstream may be null for the overall input and
+	 * output.
+	 */
+	private BufferData makeBuffers(Token token, Worker<?, ?> upstream, Worker<?, ?> downstream) {
+		assert upstream != null || downstream != null;
+		assert upstream == null || token.getUpstreamIdentifier() == Workers.getIdentifier(upstream);
+		assert downstream == null || token.getDownstreamIdentifier() == Workers.getIdentifier(downstream);
+
+		final String upstreamId = upstream != null ? Integer.toString(Workers.getIdentifier(upstream)) : "input";
+		final String downstreamId = downstream != null ? Integer.toString(Workers.getIdentifier(downstream)) : "output";
+		final StreamNode upstreamNode = streamNodes.get(upstream);
+		final StreamNode downstreamNode = streamNodes.get(downstream);
+		RegularType objArrayTy = module.types().getRegularType(Object[].class);
+
+		String fieldName = "buf_"+upstreamId+"_"+downstreamId;
+		assert downstreamNode != upstreamNode;
+		String readerBufferFieldName = token.isOverallOutput() ? null : fieldName + "r";
+		String writerBufferFieldName = token.isOverallInput() ? null : fieldName + "w";
+		for (String field : new String[]{readerBufferFieldName, writerBufferFieldName})
+			if (field != null)
+				new Field(objArrayTy, field, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass);
+
+		int capacity, initialSize;
+		if (downstream != null) {
+			//If upstream is null, it's the global input, channel 0.
+			int chanIdx = upstream != null ? Workers.getPredecessors(downstream).indexOf(upstream) : 0;
+			assert chanIdx != -1;
+			int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
+			int excessPeeks = Math.max(peek - pop, 0);
+			capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.get(downstreamNode) * multiplier * pop + excessPeeks;
+			initialSize = capacity;
+		} else { //downstream == null
+			//If downstream is null, it's the global output, channel 0.
+			int push = upstream.getPushRates().get(0).max();
+			capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.get(upstreamNode) * multiplier * push;
+			initialSize = 0;
+		}
+
+		return new BufferData(token, readerBufferFieldName, writerBufferFieldName, capacity, initialSize);
 	}
 
 	/**
@@ -608,7 +655,7 @@ public final class Compiler {
 				List<Value> ichannels;
 				List<Value> ioffsets = new ArrayList<>();
 				if (preds.isEmpty()) {
-					ichannels = ImmutableList.<Value>of(buffers.get(Token.createOverallInputToken(w)).fields.get(0));
+					ichannels = ImmutableList.<Value>of(getReaderBuffer(Token.createOverallInputToken(w)));
 					int r = w.getPopRates().get(0).max() * execsPerNodeExec.get(w);
 					BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 					offset.setName("ioffset0");
@@ -618,15 +665,15 @@ public final class Compiler {
 					ichannels = new ArrayList<>(preds.size());
 					for (int chanIdx = 0; chanIdx < preds.size(); ++chanIdx) {
 						Worker<?, ?> p = preds.get(chanIdx);
-						BufferData bufferData = buffers.get(new Token(p, w));
+						Token t = new Token(p, w);
 						if (workers.contains(p)) {
-							assert bufferData == null : "BufferData created for internal buffer";
+							assert buffers.get(t) == null : "BufferData created for internal buffer";
 							Value localBuffer = localBuffers.get(new Token(p, w));
 							assert localBuffer != null : "Local buffer needed before created";
 							ichannels.add(localBuffer);
 							ioffsets.add(module.constants().getConstant(0));
 						} else {
-							ichannels.add(bufferData.fields.get(0));
+							ichannels.add(getReaderBuffer(t));
 							int r = w.getPopRates().get(chanIdx).max() * execsPerNodeExec.get(w);
 							BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 							offset.setName("ioffset"+chanIdx);
@@ -648,7 +695,7 @@ public final class Compiler {
 				List<Value> ochannels;
 				List<Value> ooffsets = new ArrayList<>();
 				if (succs.isEmpty()) {
-					ochannels = ImmutableList.<Value>of(buffers.get(Token.createOverallOutputToken(w)).fields.get(0));
+					ochannels = ImmutableList.<Value>of(getWriterBuffer(Token.createOverallOutputToken(w)));
 					int r = w.getPushRates().get(0).max() * execsPerNodeExec.get(w);
 					BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 					offset.setName("ooffset0");
@@ -658,15 +705,15 @@ public final class Compiler {
 					ochannels = new ArrayList<>(preds.size());
 					for (int chanIdx = 0; chanIdx < succs.size(); ++chanIdx) {
 						Worker<?, ?> s = succs.get(chanIdx);
-						BufferData bufferData = buffers.get(new Token(w, s));
+						Token t = new Token(w, s);
 						if (workers.contains(s)) {
-							assert bufferData == null : "BufferData created for internal buffer";
+							assert buffers.get(t) == null : "BufferData created for internal buffer";
 							Value localBuffer = localBuffers.get(new Token(w, s));
 							assert localBuffer != null : "Local buffer needed before created";
 							ochannels.add(localBuffer);
 							ooffsets.add(module.constants().getConstant(0));
 						} else {
-							ochannels.add(bufferData.fields.get(1));
+							ochannels.add(getWriterBuffer(t));
 							int r = w.getPushRates().get(chanIdx).max() * execsPerNodeExec.get(w);
 							BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 							offset.setName("ooffset"+chanIdx);
@@ -689,6 +736,13 @@ public final class Compiler {
 				}
 			}
 			entryBlock.instructions().add(new ReturnInst(module.types().getVoidType()));
+		}
+
+		private Field getReaderBuffer(Token t) {
+			return blobKlass.getField(buffers.get(t).readerBufferFieldName);
+		}
+		private Field getWriterBuffer(Token t) {
+			return blobKlass.getField(buffers.get(t).writerBufferFieldName);
 		}
 
 		private Pair<Value, List<Instruction>> createChannelArray(List<Value> channels) {
@@ -739,14 +793,25 @@ public final class Compiler {
 		}
 	}
 
-	private final class BufferData {
+	/**
+	 * Holds information about buffers.  This class is used both during
+	 * compilation and at runtime, so it doesn't directly refer to the Compiler
+	 * or IR-level constructs, to ensure they can be garbage collected when
+	 * compilation finishes.
+	 */
+	private static final class BufferData {
 		/**
-		 * The field (for intracore buffers) or two fields (for intercore
-		 * buffers) pointing to the buffers.  If there are two fields, the first
-		 * is the reader's buffer (which gets filled with initial buffering) and
-		 * the second is the writer's buffer (which is empty).
+		 * The Token for the edge this buffer is on.
 		 */
-		public final ImmutableList<Field> fields;
+		public final Token token;
+		/**
+		 * The names of the reader and writer buffers.  The reader buffer is the
+		 * one initially filled with data items for peeking purposes.
+		 *
+		 * The overall input buffer has no writer buffer; the overall output
+		 * buffer has no reader buffer.
+		 */
+		public final String readerBufferFieldName, writerBufferFieldName;
 		/**
 		 * The buffer capacity.
 		 */
@@ -757,39 +822,24 @@ public final class Compiler {
 		 * always get filled to capacity.
 		 */
 		public final int initialSize;
-		/**
-		 * Note that either upstream xor downstream may be null.
-		 */
-		private BufferData(Worker<?, ?> upstream, Worker<?, ?> downstream) {
-			final String upstreamId = upstream != null ? Integer.toString(Workers.getIdentifier(upstream)) : "input";
-			final String downstreamId = downstream != null ? Integer.toString(Workers.getIdentifier(downstream)) : "output";
-			final StreamNode upstreamNode = streamNodes.get(upstream);
-			final StreamNode downstreamNode = streamNodes.get(downstream);
-			RegularType objArrayTy = module.types().getRegularType(Object[].class);
+		private BufferData(Token token, String readerBufferFieldName, String writerBufferFieldName, int capacity, int initialSize) {
+			this.token = token;
+			this.readerBufferFieldName = readerBufferFieldName;
+			this.writerBufferFieldName = writerBufferFieldName;
+			this.capacity = capacity;
+			this.initialSize = initialSize;
+			assert readerBufferFieldName != null || token.isOverallOutput() : this;
+			assert writerBufferFieldName != null || token.isOverallInput() : this;
+			assert capacity >= 0 : this;
+			assert initialSize >= 0 : this;
+			assert initialSize <= capacity : this;
+		}
 
-			String fieldName = "buf_"+upstreamId+"_"+downstreamId;
-			//Do we need to synchronize to pass data between these two nodes?
-			boolean intercore = upstreamNode != null && downstreamNode != null && upstreamNode != downstreamNode;
-			if (intercore)
-				fields = ImmutableList.of(new Field(objArrayTy, fieldName+"a", EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass),
-					new Field(objArrayTy, fieldName+"b", EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass));
-			else
-				fields = ImmutableList.of(new Field(objArrayTy, fieldName, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass));
-
-			if (downstream != null) {
-				//If upstream is null, it's the global input, channel 0.
-				int chanIdx = upstream != null ? Workers.getPredecessors(downstream).indexOf(upstream) : 0;
-				assert chanIdx != -1;
-				int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
-				int excessPeeks = Math.max(peek - pop, 0);
-				this.capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.get(downstreamNode) * multiplier * pop + excessPeeks;
-				this.initialSize = intercore ? excessPeeks : capacity;
-			} else { //downstream == null
-				//If downstream is null, it's the global output, channel 0.
-				int push = upstream.getPushRates().get(0).max();
-				this.capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.get(upstreamNode) * multiplier * push;
-				this.initialSize = 0;
-			}
+		@Override
+		public String toString() {
+			return String.format("[%s: r: %s, w: %s, init: %d, max: %d]",
+					token, readerBufferFieldName, writerBufferFieldName,
+					initialSize, capacity);
 		}
 	}
 
