@@ -650,6 +650,7 @@ public final class Compiler {
 				}
 			});
 			for (Worker<?, ?> w : orderedWorkers) {
+				int wid = Workers.getIdentifier(w);
 				//Input buffers
 				List<Worker<?, ?>> preds = (List<Worker<?, ?>>)Workers.getPredecessors(w);
 				List<Value> ichannels;
@@ -684,10 +685,13 @@ public final class Compiler {
 				}
 
 				Pair<Value, List<Instruction>> ichannelArray = createChannelArray(ichannels);
+				ichannelArray.first.setName("ichannels_"+wid);
 				entryBlock.instructions().addAll(ichannelArray.second);
 				Pair<Value, List<Instruction>> ioffsetArray = createIntArray(ioffsets);
+				ioffsetArray.first.setName("ioffsets_"+wid);
 				entryBlock.instructions().addAll(ioffsetArray.second);
 				Pair<Value, List<Instruction>> iincrementArray = createIntArray(Collections.<Value>nCopies(ioffsets.size(), module.constants().getConstant(1)));
+				iincrementArray.first.setName("iincrements_"+wid);
 				entryBlock.instructions().addAll(iincrementArray.second);
 
 				//Output buffers
@@ -724,10 +728,13 @@ public final class Compiler {
 				}
 
 				Pair<Value, List<Instruction>> ochannelArray = createChannelArray(ochannels);
+				ochannelArray.first.setName("ochannels_"+wid);
 				entryBlock.instructions().addAll(ochannelArray.second);
 				Pair<Value, List<Instruction>> ooffsetArray = createIntArray(ooffsets);
+				ooffsetArray.first.setName("ooffsets_"+wid);
 				entryBlock.instructions().addAll(ooffsetArray.second);
 				Pair<Value, List<Instruction>> oincrementArray = createIntArray(Collections.<Value>nCopies(ooffsets.size(), module.constants().getConstant(1)));
+				oincrementArray.first.setName("oincrements_"+wid);
 				entryBlock.instructions().addAll(oincrementArray.second);
 
 				for (int i = 0; i < execsPerNodeExec.get(w); ++i) {
