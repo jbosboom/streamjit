@@ -102,7 +102,7 @@ public final class Scheduler {
 		ImmutableMap.Builder<T, Integer> retval = ImmutableMap.<T, Integer>builder();
 		for (Map.Entry<T, Integer> e : thingIds.entrySet()) {
 			BigInteger mult = v.getEntry(e.getValue()+1).getNumerator();
-			assert mult.signum() == 1;
+			assert mult.signum() >= 0;
 			assert mult.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) < 0 : mult;
 			retval.put(e.getKey(), v.getEntry(e.getValue()+1).getNumerator().intValue());
 		}
