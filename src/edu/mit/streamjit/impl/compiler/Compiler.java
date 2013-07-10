@@ -725,6 +725,7 @@ public final class Compiler {
 							//it's time to flip.
 							BinaryInst offset = new BinaryInst(offset0, BinaryInst.Operation.ADD, module.constants().getConstant(buffers.get(t).excessPeeks));
 							offset.setName("ooffset"+chanIdx);
+							entryBlock.instructions().add(offset0);
 							entryBlock.instructions().add(offset);
 							ooffsets.add(offset);
 						}
