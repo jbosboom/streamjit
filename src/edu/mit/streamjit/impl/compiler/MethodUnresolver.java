@@ -106,7 +106,8 @@ public final class MethodUnresolver {
 			createLabels();
 			for (BasicBlock b : method.basicBlocks())
 				methodNode.instructions.add(emit(b));
-			this.methodNode.maxLocals = Collections.max(registers.values())+2;
+			int maxRegister = registers.values().isEmpty() ? 0 : Collections.max(registers.values());
+			this.methodNode.maxLocals = maxRegister+2;
 			this.methodNode.maxStack = Short.MAX_VALUE;
 			buildLocalVariableTable();
 		}
