@@ -49,6 +49,7 @@ import edu.mit.streamjit.impl.interp.EmptyChannel;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.TopologicalSort;
 import java.io.PrintWriter;
+import java.lang.invoke.SwitchPoint;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.math.RoundingMode;
@@ -150,7 +151,7 @@ public final class Compiler {
 		this.packagePrefix = "compiler"+PACKAGE_NUMBER.getAndIncrement()+".";
 		this.blobKlass = new Klass(packagePrefix + "Blob",
 				module.getKlass(Object.class),
-				Collections.singletonList(module.getKlass(Blob.class)),
+				Collections.<Klass>emptyList(),
 				module);
 		this.multiplier = config.getParameter("multiplier", Configuration.IntParameter.class).getValue();
 		this.workMethodType = module.types().getMethodType(void.class, Object[][].class, int[].class, int[].class, Object[][].class, int[].class, int[].class);
@@ -529,10 +530,8 @@ public final class Compiler {
 		ModuleClassLoader mcl = new ModuleClassLoader(module);
 		try {
 			Class<?> blobClass = mcl.loadClass(blobKlass.getName());
-			Constructor<?> ctor = blobClass.getDeclaredConstructor();
-			ctor.setAccessible(true);
-			return (Blob)ctor.newInstance();
-		} catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException | IllegalAccessException | InstantiationException ex) {
+			return new CompilerBlobHost(workers, config, blobClass, ImmutableList.copyOf(buffers.values()));
+		} catch (ClassNotFoundException ex) {
 			throw new AssertionError(ex);
 		}
 	}
@@ -907,6 +906,63 @@ public final class Compiler {
 			return String.format("[%s: r: %s, w: %s, init: %d, max: %d, peeks: %d]",
 					token, readerBufferFieldName, writerBufferFieldName,
 					initialSize, capacity, excessPeeks);
+		}
+	}
+
+	private static final class CompilerBlobHost implements Blob {
+		private final ImmutableSet<Worker<?, ?>> workers;
+		private final Configuration configuration;
+		private final ImmutableList<BufferData> bufferData;
+		private final ImmutableMap<Token, Channel<?>> inputMap, outputMap;
+		private final Runnable[] runnables;
+		private final SwitchPoint sp1 = new SwitchPoint(), sp2 = new SwitchPoint();
+
+		public CompilerBlobHost(Set<Worker<?, ?>> workers, Configuration configuration, Class<?> blobClass, List<BufferData> bufferData) {
+			this.workers = ImmutableSet.copyOf(workers);
+			this.configuration = configuration;
+			this.bufferData = ImmutableList.copyOf(bufferData);
+
+			ImmutableSet<IOInfo> ioinfo = IOInfo.create(workers);
+			ImmutableMap.Builder<Token, Channel<?>> inputBuilder = ImmutableMap.builder(), outputBuilder = ImmutableMap.builder();
+			for (IOInfo info : ioinfo)
+				if (!workers.contains(info.upstream()))
+					inputBuilder.put(info.token(), info.channel());
+				else if (!workers.contains(info.downstream()))
+					outputBuilder.put(info.token(), info.channel());
+			this.inputMap = inputBuilder.build();
+			this.outputMap = outputBuilder.build();
+
+			throw new UnsupportedOperationException("TODO: build Runnables");
+		}
+
+		@Override
+		public Set<Worker<?, ?>> getWorkers() {
+			return workers;
+		}
+
+		@Override
+		public Map<Token, Channel<?>> getInputChannels() {
+			return inputMap;
+		}
+
+		@Override
+		public Map<Token, Channel<?>> getOutputChannels() {
+			return outputMap;
+		}
+
+		@Override
+		public int getCoreCount() {
+			return runnables.length;
+		}
+
+		@Override
+		public Runnable getCoreCode(int core) {
+			return runnables[core];
+		}
+
+		@Override
+		public void drain(Runnable callback) {
+			throw new UnsupportedOperationException("TODO");
 		}
 	}
 
