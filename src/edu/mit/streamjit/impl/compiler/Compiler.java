@@ -720,7 +720,10 @@ public final class Compiler {
 						} else {
 							ochannels.add(getWriterBuffer(t));
 							int r = w.getPushRates().get(chanIdx).max() * execsPerNodeExec.get(w);
-							BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
+							BinaryInst offset0 = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
+							//Leave room to copy the excess peeks in front when
+							//it's time to flip.
+							BinaryInst offset = new BinaryInst(offset0, BinaryInst.Operation.ADD, module.constants().getConstant(buffers.get(t).excessPeeks));
 							offset.setName("ooffset"+chanIdx);
 							entryBlock.instructions().add(offset);
 							ooffsets.add(offset);
