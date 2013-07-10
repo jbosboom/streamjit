@@ -252,13 +252,13 @@ public final class Compiler {
 			if (field != null)
 				new Field(objArrayTy, field, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass);
 
-		int capacity, initialSize;
+		int capacity, initialSize, excessPeeks;
 		if (downstream != null) {
 			//If upstream is null, it's the global input, channel 0.
 			int chanIdx = upstream != null ? Workers.getPredecessors(downstream).indexOf(upstream) : 0;
 			assert chanIdx != -1;
 			int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
-			int excessPeeks = Math.max(peek - pop, 0);
+			excessPeeks = Math.max(peek - pop, 0);
 			capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.get(downstreamNode) * multiplier * pop + excessPeeks;
 			initialSize = capacity;
 		} else { //downstream == null
@@ -266,9 +266,10 @@ public final class Compiler {
 			int push = upstream.getPushRates().get(0).max();
 			capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.get(upstreamNode) * multiplier * push;
 			initialSize = 0;
+			excessPeeks = 0;
 		}
 
-		return new BufferData(token, readerBufferFieldName, writerBufferFieldName, capacity, initialSize);
+		return new BufferData(token, readerBufferFieldName, writerBufferFieldName, capacity, initialSize, excessPeeks);
 	}
 
 	/**
@@ -829,24 +830,31 @@ public final class Compiler {
 		 * always get filled to capacity.
 		 */
 		public final int initialSize;
-		private BufferData(Token token, String readerBufferFieldName, String writerBufferFieldName, int capacity, int initialSize) {
+		/**
+		 * The number of items peeked at but not popped; that is, the number of
+		 * unconsumed items in the reader buffer that must be copied to the
+		 * front of the writer buffer when flipping buffers.
+		 */
+		public final int excessPeeks;
+		private BufferData(Token token, String readerBufferFieldName, String writerBufferFieldName, int capacity, int initialSize, int excessPeeks) {
 			this.token = token;
 			this.readerBufferFieldName = readerBufferFieldName;
 			this.writerBufferFieldName = writerBufferFieldName;
 			this.capacity = capacity;
 			this.initialSize = initialSize;
+			this.excessPeeks = excessPeeks;
 			assert readerBufferFieldName != null || token.isOverallOutput() : this;
 			assert writerBufferFieldName != null || token.isOverallInput() : this;
 			assert capacity >= 0 : this;
-			assert initialSize >= 0 : this;
-			assert initialSize <= capacity : this;
+			assert initialSize >= 0 && initialSize <= capacity : this;
+			assert excessPeeks >= 0 && excessPeeks <= capacity : this;
 		}
 
 		@Override
 		public String toString() {
-			return String.format("[%s: r: %s, w: %s, init: %d, max: %d]",
+			return String.format("[%s: r: %s, w: %s, init: %d, max: %d, peeks: %d]",
 					token, readerBufferFieldName, writerBufferFieldName,
-					initialSize, capacity);
+					initialSize, capacity, excessPeeks);
 		}
 	}
 
