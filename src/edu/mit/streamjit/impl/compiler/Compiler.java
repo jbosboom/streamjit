@@ -40,6 +40,7 @@ import edu.mit.streamjit.impl.compiler.insts.LoadInst;
 import edu.mit.streamjit.impl.compiler.insts.NewArrayInst;
 import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
 import edu.mit.streamjit.impl.compiler.insts.StoreInst;
+import edu.mit.streamjit.impl.compiler.types.ArrayType;
 import edu.mit.streamjit.impl.compiler.types.FieldType;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
@@ -104,6 +105,11 @@ public final class Compiler {
 	 */
 	private final MethodType workMethodType;
 	private ImmutableMap<Token, BufferData> buffers;
+	/**
+	 * Contains static fields so that final static fields in blobKlass can load
+	 * from them in the blobKlass static initializer.
+	 */
+	private final Klass fieldHelperKlass;
 	public Compiler(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
 		this.workers = workers;
 		this.config = config;
@@ -153,6 +159,10 @@ public final class Compiler {
 				module.getKlass(Object.class),
 				Collections.<Klass>emptyList(),
 				module);
+		this.fieldHelperKlass = new Klass(packagePrefix + "FieldHelper",
+				module.getKlass(Object.class),
+				Collections.<Klass>emptyList(),
+				module);
 		this.multiplier = config.getParameter("multiplier", Configuration.IntParameter.class).getValue();
 		this.workMethodType = module.types().getMethodType(void.class, Object[][].class, int[].class, int[].class, Object[][].class, int[].class, int[].class);
 	}
@@ -177,6 +187,7 @@ public final class Compiler {
 		for (StreamNode n : ImmutableSet.copyOf(streamNodes.values()))
 			n.makeWorkMethod();
 		generateCoreCode();
+		generateStaticInit();
 		addBlobPlumbing();
 		blobKlass.dump(new PrintWriter(System.out, true));
 		return instantiateBlob();
@@ -506,6 +517,41 @@ public final class Compiler {
 			block.instructions().add(new ReturnInst(module.types().getVoidType()));
 			m.basicBlocks().add(block);
 		}
+	}
+
+	private void generateStaticInit() {
+		Method clinit = new Method("<clinit>",
+				module.types().getMethodType(void.class),
+				EnumSet.of(Modifier.STATIC),
+				blobKlass);
+
+		//Generate fields in field helper, then copy them over in clinit.
+		BasicBlock fieldBlock = new BasicBlock(module, "copyFieldsFromHelper");
+		clinit.basicBlocks().add(fieldBlock);
+		for (StreamNode node : ImmutableSet.copyOf(streamNodes.values()))
+			for (Field cell : node.fields.values()) {
+				Field helper = new Field(cell.getType().getFieldType(), cell.getName(), EnumSet.of(Modifier.PUBLIC, Modifier.STATIC), fieldHelperKlass);
+				LoadInst li = new LoadInst(helper);
+				StoreInst si = new StoreInst(cell, li);
+				fieldBlock.instructions().add(li);
+				fieldBlock.instructions().add(si);
+			}
+
+		BasicBlock bufferBlock = new BasicBlock(module, "newBuffers");
+		clinit.basicBlocks().add(bufferBlock);
+		for (BufferData data : ImmutableSortedSet.copyOf(buffers.values()))
+			for (String fieldName : new String[]{data.readerBufferFieldName, data.writerBufferFieldName})
+				if (fieldName != null) {
+					Field field = blobKlass.getField(fieldName);
+					NewArrayInst nai = new NewArrayInst((ArrayType)field.getType().getFieldType(), module.constants().getConstant(data.capacity));
+					StoreInst si = new StoreInst(field, nai);
+					bufferBlock.instructions().add(nai);
+					bufferBlock.instructions().add(si);
+				}
+
+		BasicBlock exitBlock = new BasicBlock(module, "exit");
+		clinit.basicBlocks().add(exitBlock);
+		exitBlock.instructions().add(new ReturnInst(module.types().getVoidType()));
 	}
 
 	/**
