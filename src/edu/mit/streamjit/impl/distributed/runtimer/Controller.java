@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Worker;
@@ -172,9 +173,9 @@ public class Controller {
 
 		Configuration.Builder builder = Configuration.builder();
 
-		List<Integer> coresPerMachine = new ArrayList<>();
-		for (List<Set<Worker<?, ?>>> blobList : partitionsMachineMap.values()) {
-			coresPerMachine.add(blobList.size());
+		Map<Integer,Integer> coresPerMachine = new HashMap<>();
+		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine: partitionsMachineMap.entrySet()) {
+			coresPerMachine.put(machine.getKey(), machine.getValue().size());
 		}
 
 		PartitionParameter.Builder partParam = PartitionParameter.builder(GlobalConstants.PARTITION, coresPerMachine);
