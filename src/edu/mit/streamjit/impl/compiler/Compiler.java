@@ -163,6 +163,7 @@ public final class Compiler {
 				module.getKlass(Object.class),
 				Collections.<Klass>emptyList(),
 				module);
+		fieldHelperKlass.modifiers().add(Modifier.PUBLIC);
 		this.multiplier = config.getParameter("multiplier", Configuration.IntParameter.class).getValue();
 		this.workMethodType = module.types().getMethodType(void.class, Object[][].class, int[].class, int[].class, Object[][].class, int[].class, int[].class);
 	}
