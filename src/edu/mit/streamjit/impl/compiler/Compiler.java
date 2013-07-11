@@ -68,6 +68,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -984,6 +986,8 @@ public final class Compiler {
 		private final ImmutableMap<Token, Channel<?>> inputMap, outputMap;
 		private final Runnable[] runnables;
 		private final SwitchPoint sp1 = new SwitchPoint(), sp2 = new SwitchPoint();
+		private final CyclicBarrier barrier;
+		private volatile Runnable drainCallback;
 
 		public CompilerBlobHost(Set<Worker<?, ?>> workers, Configuration configuration, Class<?> blobClass, List<BufferData> bufferData) {
 			this.workers = ImmutableSet.copyOf(workers);
@@ -1013,23 +1017,30 @@ public final class Compiler {
 			});
 
 			MethodHandles.Lookup lookup = MethodHandles.lookup();
+			final java.lang.invoke.MethodType voidNoArgs = java.lang.invoke.MethodType.methodType(void.class);
+			MethodHandle nop = MethodHandles.identity(Void.class).bindTo(null).asType(voidNoArgs);
+			MethodHandle mainLoop, doInit, doAdjustBuffers, doDrain;
 			List<MethodHandle> coreWorkHandles = new ArrayList<>();
-			for (java.lang.reflect.Method m : coreWorkMethods)
-				try {
+			try {
+				for (java.lang.reflect.Method m : coreWorkMethods)
 					coreWorkHandles.add(lookup.unreflect(m));
-				} catch (IllegalAccessException ex) {
-					throw new AssertionError(ex);
-				}
-			MethodHandle nop = MethodHandles.identity(Void.class).bindTo(null).asType(java.lang.invoke.MethodType.methodType(void.class));
-			MethodHandle init = nop, drain = nop; //TODO!
+				mainLoop = lookup.findVirtual(CompilerBlobHost.class, "mainLoop", java.lang.invoke.MethodType.methodType(void.class, MethodHandle.class)).bindTo(this);
+				doInit = lookup.findVirtual(CompilerBlobHost.class, "doInit", voidNoArgs).bindTo(this);
+				doAdjustBuffers = lookup.findVirtual(CompilerBlobHost.class, "doAdjustBuffers", voidNoArgs).bindTo(this);
+				doDrain = lookup.findVirtual(CompilerBlobHost.class, "doDrain", voidNoArgs).bindTo(this);
+			} catch (IllegalAccessException | NoSuchMethodException ex) {
+				throw new AssertionError(ex);
+			}
 
 			this.runnables = new Runnable[coreWorkHandles.size()];
 			for (int i = 0; i < runnables.length; ++i) {
-				MethodHandle second = coreWorkHandles.get(i); //TODO: loop with barrier
-				MethodHandle first = (i == 0 ? init : nop), third = (i == 0 ? drain : nop);
-				MethodHandle overall = sp1.guardWithTest(first, sp2.guardWithTest(second, third));
+				MethodHandle main = mainLoop.bindTo(coreWorkHandles.get(i));
+				MethodHandle overall = sp1.guardWithTest(nop, sp2.guardWithTest(main, nop));
 				runnables[i] = MethodHandleProxies.asInterfaceInstance(Runnable.class, overall);
 			}
+
+			MethodHandle barrierAction = sp1.guardWithTest(doInit, sp2.guardWithTest(doAdjustBuffers, doDrain));
+			this.barrier = new CyclicBarrier(runnables.length, MethodHandleProxies.asInterfaceInstance(Runnable.class, barrierAction));
 		}
 
 		@Override
@@ -1059,7 +1070,33 @@ public final class Compiler {
 
 		@Override
 		public void drain(Runnable callback) {
-			throw new UnsupportedOperationException("TODO");
+			drainCallback = callback;
+			SwitchPoint.invalidateAll(new SwitchPoint[]{sp1, sp2});
+		}
+
+		private void mainLoop(MethodHandle corework) throws Throwable {
+			corework.invoke();
+			try {
+				barrier.await();
+			} catch (BrokenBarrierException ex) {
+				return;
+			} catch (InterruptedException ex) {
+				Thread.currentThread().interrupt();
+				return;
+			}
+		}
+
+		private void doInit() {
+
+		}
+
+		private void doAdjustBuffers() {
+
+		}
+
+		private void doDrain() {
+			//TODO: actual draining
+			drainCallback.run();
 		}
 	}
 
