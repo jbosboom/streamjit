@@ -576,11 +576,22 @@ public final class Compiler {
 	private Blob instantiateBlob() {
 		ModuleClassLoader mcl = new ModuleClassLoader(module);
 		try {
+			initFieldHelper(mcl.loadClass(fieldHelperKlass.getName()));
 			Class<?> blobClass = mcl.loadClass(blobKlass.getName());
 			return new CompilerBlobHost(workers, config, blobClass, ImmutableList.copyOf(buffers.values()));
 		} catch (ClassNotFoundException ex) {
 			throw new AssertionError(ex);
 		}
+	}
+
+	private void initFieldHelper(Class<?> fieldHelperClass) {
+		for (StreamNode node : ImmutableSet.copyOf(streamNodes.values()))
+			for (Table.Cell<Worker<?, ?>, Field, Object> cell : node.fieldValues.cellSet())
+				try {
+					fieldHelperClass.getField(node.fields.get(cell.getRowKey(), cell.getColumnKey()).getName()).set(null, cell.getValue());
+				} catch (NoSuchFieldException | IllegalAccessException ex) {
+					throw new AssertionError(ex);
+				}
 	}
 
 	private void externalSchedule() {
