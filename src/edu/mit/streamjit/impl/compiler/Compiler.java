@@ -858,7 +858,7 @@ public final class Compiler {
 	 * or IR-level constructs, to ensure they can be garbage collected when
 	 * compilation finishes.
 	 */
-	private static final class BufferData {
+	private static final class BufferData implements Comparable<BufferData> {
 		/**
 		 * The Token for the edge this buffer is on.
 		 */
@@ -899,6 +899,11 @@ public final class Compiler {
 			assert capacity >= 0 : this;
 			assert initialSize >= 0 && initialSize <= capacity : this;
 			assert excessPeeks >= 0 && excessPeeks <= capacity : this;
+		}
+
+		@Override
+		public int compareTo(BufferData other) {
+			return token.compareTo(other.token);
 		}
 
 		@Override
