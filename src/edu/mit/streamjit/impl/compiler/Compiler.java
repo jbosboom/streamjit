@@ -50,11 +50,15 @@ import edu.mit.streamjit.impl.interp.EmptyChannel;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.TopologicalSort;
 import java.io.PrintWriter;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandleProxies;
+import java.lang.invoke.MethodHandles;
 import java.lang.invoke.SwitchPoint;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -159,11 +163,12 @@ public final class Compiler {
 				module.getKlass(Object.class),
 				Collections.<Klass>emptyList(),
 				module);
+		blobKlass.modifiers().addAll(EnumSet.of(Modifier.PUBLIC, Modifier.FINAL));
 		this.fieldHelperKlass = new Klass(packagePrefix + "FieldHelper",
 				module.getKlass(Object.class),
 				Collections.<Klass>emptyList(),
 				module);
-		fieldHelperKlass.modifiers().add(Modifier.PUBLIC);
+		fieldHelperKlass.modifiers().addAll(EnumSet.of(Modifier.PUBLIC, Modifier.FINAL));
 		this.multiplier = config.getParameter("multiplier", Configuration.IntParameter.class).getValue();
 		this.workMethodType = module.types().getMethodType(void.class, Object[][].class, int[].class, int[].class, Object[][].class, int[].class, int[].class);
 	}
@@ -266,7 +271,7 @@ public final class Compiler {
 		String writerBufferFieldName = token.isOverallInput() ? null : fieldName + "w";
 		for (String field : new String[]{readerBufferFieldName, writerBufferFieldName})
 			if (field != null)
-				new Field(objArrayTy, field, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass);
+				new Field(objArrayTy, field, EnumSet.of(Modifier.PUBLIC, Modifier.STATIC), blobKlass);
 
 		int capacity, initialSize, excessPeeks;
 		if (downstream != null) {
@@ -488,7 +493,7 @@ public final class Compiler {
 		for (StreamNode sn : nodes)
 			for (int core : sn.cores)
 				if (!coreCodeMethods.containsKey(core)) {
-					Method m = new Method("corework"+core, module.types().getMethodType(void.class), EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), blobKlass);
+					Method m = new Method("corework"+core, module.types().getMethodType(void.class), EnumSet.of(Modifier.PUBLIC, Modifier.STATIC), blobKlass);
 					coreCodeMethods.put(core, m);
 				}
 
@@ -995,7 +1000,36 @@ public final class Compiler {
 			this.inputMap = inputBuilder.build();
 			this.outputMap = outputBuilder.build();
 
-			throw new UnsupportedOperationException("TODO: build Runnables");
+			List<java.lang.reflect.Method> coreWorkMethods = new ArrayList<>();
+			for (java.lang.reflect.Method m : blobClass.getMethods())
+				if (m.getName().startsWith("corework"))
+					coreWorkMethods.add(m);
+			//For determinism:
+			Collections.sort(coreWorkMethods, new Comparator<java.lang.reflect.Method>() {
+				@Override
+				public int compare(java.lang.reflect.Method o1, java.lang.reflect.Method o2) {
+					return o1.getName().compareTo(o2.getName());
+				}
+			});
+
+			MethodHandles.Lookup lookup = MethodHandles.lookup();
+			List<MethodHandle> coreWorkHandles = new ArrayList<>();
+			for (java.lang.reflect.Method m : coreWorkMethods)
+				try {
+					coreWorkHandles.add(lookup.unreflect(m));
+				} catch (IllegalAccessException ex) {
+					throw new AssertionError(ex);
+				}
+			MethodHandle nop = MethodHandles.identity(Void.class).bindTo(null).asType(java.lang.invoke.MethodType.methodType(void.class));
+			MethodHandle init = nop, drain = nop; //TODO!
+
+			this.runnables = new Runnable[coreWorkHandles.size()];
+			for (int i = 0; i < runnables.length; ++i) {
+				MethodHandle second = coreWorkHandles.get(i); //TODO: loop with barrier
+				MethodHandle first = (i == 0 ? init : nop), third = (i == 0 ? drain : nop);
+				MethodHandle overall = sp1.guardWithTest(first, sp2.guardWithTest(second, third));
+				runnables[i] = MethodHandleProxies.asInterfaceInstance(Runnable.class, overall);
+			}
 		}
 
 		@Override
@@ -1043,6 +1077,6 @@ public final class Compiler {
 		int maxNumCores = 1;
 		Compiler compiler = new Compiler(workers, config, maxNumCores);
 		Blob blob = compiler.compile();
-		blob.getCoreCount();
+		blob.getCoreCode(0).run();
 	}
 }
