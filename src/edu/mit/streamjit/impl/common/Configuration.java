@@ -1061,14 +1061,13 @@ public final class Configuration {
 		 */
 		public int getAssignedMachine(Worker<?, ?> worker) {
 			int id = Workers.getIdentifier(worker);
-			int machineID;
-			for (machineID = 0; machineID < machineBlobMap.size(); machineID++) {
+			for(int machineID : machineBlobMap.keySet() )
+			{
 				for (BlobSpecifier bs : machineBlobMap.get(machineID)) {
 					if (bs.getWorkerIdentifiers().contains(id))
 						return machineID;
 				}
 			}
-
 			throw new IllegalArgumentException(String.format("%s is not assigned to anyof the machines", worker));
 		}
 		
