@@ -80,7 +80,7 @@ public class ListenerSocket extends Thread {
 		int connectionCount = 0;
 		while (keepOnListen.get() && connectionCount < this.expectedConnections) {
 			try {
-				Socket socket = acceptConnection();
+				Socket socket = server.accept();
 				acceptedSockets.add(socket);
 				connectionCount++;
 			} catch (IOException e) {
@@ -98,16 +98,5 @@ public class ListenerSocket extends Thread {
 				}
 			}
 		}
-	}
-
-	private Socket acceptConnection() throws IOException {
-		Socket socket;
-		try {
-			socket = server.accept();
-		} catch (IOException e) {
-			e.printStackTrace();
-			throw e;
-		}
-		return socket;
 	}
 }
