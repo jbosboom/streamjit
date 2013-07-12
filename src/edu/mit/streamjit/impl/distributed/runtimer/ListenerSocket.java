@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -62,8 +63,7 @@ public class ListenerSocket extends Thread {
 		}
 
 		acceptedSockets = new ConcurrentLinkedQueue<>();
-		this.keepOnListen = new AtomicBoolean();
-		keepOnListen.set(true);
+		this.keepOnListen = new AtomicBoolean(true);
 	}
 
 	/**
@@ -97,6 +97,25 @@ public class ListenerSocket extends Thread {
 					e1.printStackTrace();
 				}
 			}
+		}
+	}
+
+	public Socket makeConnection(int timeOut) throws SocketTimeoutException, IOException {
+		try {
+			server.setSoTimeout(timeOut);
+			Socket socket = server.accept();
+			server.setSoTimeout(0);
+			return socket;
+		} catch (SocketTimeoutException stEx) {
+			throw stEx;
+		} catch (IOException e) {
+			// TODO What to do if IO exception occurred?
+			// 1. Abort the listening?
+			// 2. Close the socket and recreate new one?
+			// 3. Wait for some time and then keep on listen on the same socket.
+			// Currently case 3 is done.
+			e.printStackTrace();
+			throw e;
 		}
 	}
 }
