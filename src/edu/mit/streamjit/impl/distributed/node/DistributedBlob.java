@@ -30,7 +30,7 @@ import edu.mit.streamjit.impl.interp.Interpreter;
 
 public class DistributedBlob implements Blob {
 
-	private List<Blob> threadBlobs;
+	private List<Blob> blobList;
 
 	/**
 	 * Absolute input and output {@link Channel}s of a {@link Blob}
@@ -44,10 +44,10 @@ public class DistributedBlob implements Blob {
 	 * @param constraintsIter
 	 */
 	public DistributedBlob(List<Set<Worker<?, ?>>> workersIter, Iterable<MessageConstraint> constraintsIter, boolean isControllerNode) {
-		threadBlobs = new ArrayList<>();
+		blobList = new ArrayList<>();
 
 		for (Iterable<Worker<?, ?>> coreWorkers : workersIter) {
-			threadBlobs.add(new SingleThreadedBlob(coreWorkers, constraintsIter));
+			blobList.add(new SingleThreadedBlob(coreWorkers, constraintsIter));
 		}
 
 		ImmutableMap.Builder<Token, Channel<?>> inputChannelsBuilder = ImmutableMap.builder();
@@ -67,7 +67,7 @@ public class DistributedBlob implements Blob {
 	public Set<Worker<?, ?>> getWorkers() {
 		Set<Worker<?, ?>> workers = new HashSet<>();
 
-		for (Blob b : threadBlobs) {
+		for (Blob b : blobList) {
 			workers.addAll(b.getWorkers());
 		}
 		return workers;
@@ -85,16 +85,15 @@ public class DistributedBlob implements Blob {
 
 	@Override
 	public int getCoreCount() {
-		return threadBlobs.size();
+		return blobList.size();
 	}
 
 	@Override
 	public Runnable getCoreCode(int core) {
-		if (core >= threadBlobs.size())
-			throw new IllegalArgumentException(
-					String.format("Total cores assigned to this blob is %d, but Core code for the core %d has been asked.",
-							threadBlobs.size(), core));
-		return threadBlobs.get(core).getCoreCode(0);
+		if (core >= blobList.size())
+			throw new IllegalArgumentException(String.format(
+					"Total cores assigned to this blob is %d, but Core code for the core %d has been asked.", blobList.size(), core));
+		return blobList.get(core).getCoreCode(0);
 	}
 
 	@Override
