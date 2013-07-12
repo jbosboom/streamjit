@@ -2,7 +2,6 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
 import java.util.AbstractMap;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -59,6 +58,7 @@ public class Controller {
 
 	public Controller() {
 		this.comManager = new CommunicationManagerImpl();
+		this.controllerNodeID = 0;
 	}
 
 	public void connect(Map<CommunicationType, Integer> comTypeCount) {
@@ -76,6 +76,11 @@ public class Controller {
 
 	private void setMachineIds() {
 		this.nodeIDs = comManager.getConnectedMachineIDs();
+
+		if (nodeIDs.contains(controllerNodeID))
+			throw new AssertionError(String.format("Same ID (%d) has been assigned to the Controller and another StreamNode",
+					controllerNodeID));
+
 		for (int key : this.nodeIDs) {
 			try {
 				comManager.writeObject(key, Request.machineID);
@@ -99,9 +104,6 @@ public class Controller {
 				e.printStackTrace();
 			}
 		}
-		// TODO: This is temprory fix. change it later. Always reserve nodeID 0 for the controller. just assigning the maximum number
-		// for controller.
-		this.controllerNodeID = nodeIDs.size();
 		nodeInfoMap.put(controllerNodeID, NodeInfo.getMyinfo());
 	}
 
@@ -173,8 +175,8 @@ public class Controller {
 
 		Configuration.Builder builder = Configuration.builder();
 
-		Map<Integer,Integer> coresPerMachine = new HashMap<>();
-		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine: partitionsMachineMap.entrySet()) {
+		Map<Integer, Integer> coresPerMachine = new HashMap<>();
+		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine : partitionsMachineMap.entrySet()) {
 			coresPerMachine.put(machine.getKey(), machine.getValue().size());
 		}
 
