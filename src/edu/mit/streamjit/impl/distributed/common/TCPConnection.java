@@ -22,35 +22,29 @@ public class TCPConnection implements Connection {
 			System.out.println("ObjectInputStream created");
 		} catch (IOException iex) {
 			isconnected = false;
-			System.err.println(iex.toString());
-			System.exit(1);
+			iex.printStackTrace();
 		}
 	}
 
 	@Override
 	public void writeObject(Object obj) throws IOException {
 		if (isStillConnected()) {
-			if (ooStream != null) {
-				try {
-					ooStream.writeObject(obj);
-					// System.out.println("Object send...");
-				} catch (IOException ix) {
-					// Following doesn't change when other side of the socket is closed.....
-					/*
-					 * System.out.println("socket.isBound()" + socket.isBound()); System.out.println("socket.isClosed()" +
-					 * socket.isClosed()); System.out.println("socket.isConnected()" + socket.isConnected());
-					 * System.out.println("socket.isInputShutdown()" + socket.isInputShutdown());
-					 * System.out.println("socket.isOutputShutdown()" + socket.isOutputShutdown());
-					 */
-					isconnected = false;
-					throw ix;
-				}
-			} else {
-				throw new IOException("Connection not established");
+			try {
+				ooStream.writeObject(obj);
+				// System.out.println("Object send...");
+			} catch (IOException ix) {
+				// Following doesn't change when other side of the socket is closed.....
+				/*
+				 * System.out.println("socket.isBound()" + socket.isBound()); System.out.println("socket.isClosed()" +
+				 * socket.isClosed()); System.out.println("socket.isConnected()" + socket.isConnected());
+				 * System.out.println("socket.isInputShutdown()" + socket.isInputShutdown());
+				 * System.out.println("socket.isOutputShutdown()" + socket.isOutputShutdown());
+				 */
+				isconnected = false;
+				throw ix;
 			}
 		} else {
-			System.out.println("socket closed");
-			System.exit(0);
+			throw new IOException("TCPConnection: Socket is not connected");
 		}
 	}
 
@@ -63,8 +57,8 @@ public class TCPConnection implements Connection {
 			if (socket != null)
 				this.socket.close();
 		} catch (IOException ex) {
-			System.err.println(ex.toString());
-			System.exit(0);
+			isconnected = false;
+			ex.printStackTrace();
 		}
 	}
 
@@ -79,7 +73,6 @@ public class TCPConnection implements Connection {
 		T cb = null;
 		if (isStillConnected()) {
 			Object o = null;
-
 			try {
 				o = oiStream.readObject();
 				// System.out.println("DEBUG: tostring = " + o.toString());
@@ -99,8 +92,7 @@ public class TCPConnection implements Connection {
 				throw e;
 			}
 		} else {
-			System.out.println("socket closed");
-			System.exit(0);
+			throw new IOException("TCPConnection: Socket is not connected");
 		}
 		return cb; // TODO Need to handle this.
 	}
