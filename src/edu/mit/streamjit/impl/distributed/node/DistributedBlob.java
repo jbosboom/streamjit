@@ -17,6 +17,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.concurrent.DrainerCallback;
 import edu.mit.streamjit.impl.concurrent.SingleThreadedBlob;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.Interpreter;
@@ -98,6 +99,11 @@ public class DistributedBlob implements Blob {
 
 	@Override
 	public void drain(Runnable callback) {
-
+		if (callback == null)
+			new DrainerCallback(blobList).run();
+		else if (callback instanceof DrainerCallback) {
+			((DrainerCallback) callback).setBlobList(blobList);
+			callback.run();
+		}
 	}
 }

@@ -15,7 +15,12 @@ public class DrainerCallback implements Runnable {
 	private List<Blob> blobList;
 	private volatile int currentBlob;
 
-	DrainerCallback(List<Blob> blobList) {
+	public DrainerCallback(List<Blob> blobList) {
+		this.blobList = blobList;
+		currentBlob = 0;
+	}
+
+	public void setBlobList(List<Blob> blobList) {
 		this.blobList = blobList;
 		currentBlob = 0;
 	}
@@ -23,7 +28,6 @@ public class DrainerCallback implements Runnable {
 	@Override
 	public void run() {
 		// System.out.println("I am drainer callback. I am called by " + Thread.currentThread().getName());
-
 		if (currentBlob < blobList.size())
 			blobList.get(currentBlob++).drain(this);
 		else

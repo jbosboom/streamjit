@@ -4,6 +4,9 @@
  */
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.io.IOException;
+
+import edu.mit.streamjit.impl.distributed.api.AppStatus;
 import edu.mit.streamjit.impl.distributed.api.CommandProcessor;
 
 public class CommandProcessorImpl implements CommandProcessor {
@@ -21,8 +24,13 @@ public class CommandProcessorImpl implements CommandProcessor {
 
 	@Override
 	public void processSTOP() {
-		System.out.println("StraemJit app stopped...");
 		streamNode.getBlobsManager().stop();
+		System.out.println("StraemJit app stopped...");
+		try {
+			streamNode.controllerConnection.writeObject(AppStatus.STOPPED);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override

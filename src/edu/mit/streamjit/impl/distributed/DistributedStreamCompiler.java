@@ -160,19 +160,19 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		@Override
 		public boolean awaitDraining() throws InterruptedException {
-			// TODO Auto-generated method stub
-			return false;
+			controller.awaitDraing();
+			return true;
 		}
 
 		@Override
 		public boolean awaitDraining(long timeout, TimeUnit unit) throws InterruptedException {
-			// TODO Auto-generated method stub
-			return false;
+		controller.awaitDraing();
+			return true;
 		}
 
 		@Override
 		protected void doDrain() {
-			// TODO Auto-generated method stub
+			controller.doDrain();
 		}
 	}
 }

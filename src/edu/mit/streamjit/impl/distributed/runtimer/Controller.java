@@ -17,10 +17,12 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.distributed.api.AppStatus;
 import edu.mit.streamjit.impl.distributed.api.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.api.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.api.Command;
 import edu.mit.streamjit.impl.distributed.api.JsonString;
+import edu.mit.streamjit.impl.distributed.api.MessageElement;
 import edu.mit.streamjit.impl.distributed.api.NodeInfo;
 import edu.mit.streamjit.impl.distributed.api.Request;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
@@ -275,5 +277,44 @@ public class Controller {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	public void doDrain() {
+		// TODO: Need to derive a better mechanism to properly drain. We have to first build a blob graph to perform a ordered draining
+		// across the Stream Graph. Before that, workers should be assigned to blobs in a way there is no any cyclic data flow in
+		// between the blobs.
+		// Lets Stop all Blob execution now.
+		headChannel.stop();
+		sendToAll(Command.STOP);
+		tailChannel.stop();
+	}
+
+	public void awaitDraing() {
+		for (int nodeID : nodeIDs) {
+			try {
+				AppStatus sts = comManager.readObject(nodeID);
+				if (sts != AppStatus.STOPPED)
+					throw new IllegalStateException(String.format("Expecting AppStatus.STOPPED message from stream nodes. Received "
+							+ sts + " from StreamNode %s", getName(nodeID)));
+			} catch (ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		sendToAll(Command.EXIT);
+	}
+
+	/**
+	 * @param nodeID
+	 * @return Human readable name of the streamNode.
+	 */
+	private String getName(int nodeID) {
+		if (!nodeInfoMap.containsKey(nodeIDs))
+			throw new IllegalArgumentException(String.format("No stream node with nodeID %d exists", nodeID));
+		return nodeInfoMap.get(nodeIDs).getHostName();
 	}
 }

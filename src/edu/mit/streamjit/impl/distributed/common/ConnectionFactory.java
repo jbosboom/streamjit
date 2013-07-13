@@ -34,7 +34,6 @@ public class ConnectionFactory {
 					throw ioe;
 				System.out.println("Reattempting...." + i);
 			}
-
 			try {
 				Thread.sleep((i + 1) * 2000); // increase the sleep time by 2S for every iteration.
 			} catch (InterruptedException e) {
@@ -49,5 +48,4 @@ public class ConnectionFactory {
 			throw new IOException("Null Socket.");
 		return new TCPConnection(socket);
 	}
-
 }

@@ -102,12 +102,20 @@ public class BlobExecuterImpl implements BlobExecuter {
 			bc.stop();
 		}
 
+		doDrain();
+
 		for (Thread t : blobThreads)
 			try {
 				t.join();
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
+	}
+
+	private void doDrain() {
+		// We are passing null callback here as DistributedBlob can handle the draining within it's sub singlethreadedblobs. We may
+		// change this later and perform the draining in a global and ordered manner.
+		this.blob.drain(null);
 	}
 
 	@Override

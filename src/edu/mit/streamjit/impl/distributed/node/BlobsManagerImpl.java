@@ -1,14 +1,8 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since May 27, 2013
- */
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
@@ -16,6 +10,10 @@ import edu.mit.streamjit.impl.distributed.api.BlobExecuter;
 import edu.mit.streamjit.impl.distributed.api.BlobsManager;
 import edu.mit.streamjit.impl.distributed.api.NodeInfo;
 
+/**
+ * @author Sumanan sumanan@mit.edu
+ * @since May 27, 2013
+ */
 public class BlobsManagerImpl implements BlobsManager {
 
 	Set<BlobExecuter> blobExecuters;
@@ -35,14 +33,12 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	@Override
 	public void stop() {
-
 		for (BlobExecuter be : blobExecuters)
 			be.stop();
 	}
 
 	@Override
 	public void suspend() {
-
 		for (BlobExecuter be : blobExecuters)
 			be.suspend();
 	}
