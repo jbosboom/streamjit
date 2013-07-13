@@ -6,6 +6,8 @@ package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.mit.streamjit.impl.distributed.api.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection;
@@ -16,7 +18,7 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 
 	int portNo;
 
-	private volatile boolean stopFlag;
+	private AtomicBoolean stopFlag;
 
 	private Connection tcpConnection;
 
@@ -25,7 +27,7 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 	public TCPOutputChannel(Channel<E> channel, int portNo) {
 		this.channel = channel;
 		this.portNo = portNo;
-		this.stopFlag = false;
+		this.stopFlag = new AtomicBoolean(false);
 	}
 
 	@Override
@@ -55,11 +57,11 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 					try {
 						makeConnection();
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
+						// TODO: Need to handle this exception.
 						e.printStackTrace();
 					}
 				}
-				while (!stopFlag)
+				while (!stopFlag.get())
 					sendData();
 
 				try {
@@ -72,12 +74,39 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 	}
 
 	public void sendData() {
-		while (!this.channel.isEmpty()) {
+		while (!this.channel.isEmpty() && !stopFlag.get()) {
 			try {
 				tcpConnection.writeObject(channel.pop());
 			} catch (IOException e) {
-				e.printStackTrace();
+				try {
+					Thread.sleep(2000);
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				reConnect();
 			}
+		}
+	}
+
+	private void reConnect() {
+		ListenerSocket lstnSckt;
+		try {
+			lstnSckt = new ListenerSocket(portNo);
+			this.tcpConnection.closeConnection();
+			while (!stopFlag.get()) {
+				System.out.println("TCPOutputChannel : Reconnecting...");
+				try {
+					Socket skt = lstnSckt.makeConnection(1000);
+					this.tcpConnection = new TCPConnection(skt);
+					return;
+				} catch (SocketTimeoutException stex) {
+					// We make this exception to recheck the stopFlag. Otherwise thread will get struck at server.accept().
+				}
+			}
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
 		}
 	}
 
@@ -88,6 +117,6 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 
 	@Override
 	public void stop() {
-		this.stopFlag = true;
+		this.stopFlag.set(true);
 	}
 }

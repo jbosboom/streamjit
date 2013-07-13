@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.mit.streamjit.impl.distributed.api.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
@@ -22,13 +23,13 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 
 	private Connection tcpConnection;
 
-	private volatile boolean stopFlag;
+	private AtomicBoolean stopFlag;
 
 	public TCPInputChannel(Channel<E> channel, String ipAddress, int portNo) {
 		this.channel = channel;
 		this.ipAddress = ipAddress;
 		this.portNo = portNo;
-		this.stopFlag = false;
+		this.stopFlag = new AtomicBoolean(false);
 	}
 
 	@Override
@@ -51,7 +52,7 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 						ConnectionFactory cf = new ConnectionFactory();
 						tcpConnection = cf.getConnection(ipAddress, portNo);
 					} catch (IOException e) {
-						stopFlag = true;
+						// TODO: Need to handle this exception.
 						e.printStackTrace();
 					}
 				}
@@ -67,7 +68,7 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 	}
 
 	public void receiveData() {
-		while (!stopFlag) {
+		while (!stopFlag.get()) {
 			try {
 				E element = tcpConnection.readObject();
 				// TODO: need to confirm the channel have enough capacity to accept elements.
@@ -76,7 +77,32 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
 			} catch (IOException e) {
-				e.printStackTrace();
+				// TODO: Verify the program quality. Try to reconnect until it is told to stop.
+				try {
+					Thread.sleep(2000);
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				reConnect();
+			}
+		}
+	}
+
+	private void reConnect() {
+		while (!stopFlag.get()) {
+			try {
+				System.out.println("TCPInputChannel : Reconnecting...");
+				this.tcpConnection.closeConnection();
+				ConnectionFactory cf = new ConnectionFactory();
+				tcpConnection = cf.getConnection(ipAddress, portNo);
+				return;
+			} catch (IOException e) {
+				try {
+					Thread.sleep(3000);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
 			}
 		}
 	}
@@ -88,6 +114,6 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 
 	@Override
 	public void stop() {
-		this.stopFlag = true;
+		this.stopFlag.set(true);
 	}
 }
