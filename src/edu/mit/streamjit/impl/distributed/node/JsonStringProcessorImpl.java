@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import sun.awt.windows.ThemeReader;
+
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 
@@ -94,7 +96,8 @@ public class JsonStringProcessorImpl implements JsonStringProcessor {
 
 			for (BlobSpecifier bs : blobList) {
 				Set<Integer> workIdentifiers = bs.getWorkerIdentifiers();
-				System.out.println(workIdentifiers.toString());
+				System.out.println(String.format("DEBUG: %s - Following workers have been assigned to me. %s", Thread.currentThread()
+						.getName(), workIdentifiers.toString()));
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
 				// TODO: Need to partitions the workerset to threads. Lets do the equal partitioning.
 				Blob b = new DistributedBlob(partitionEqually(workerset, 1), Collections.<MessageConstraint> emptyList(), false);

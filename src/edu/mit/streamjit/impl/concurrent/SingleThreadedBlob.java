@@ -146,10 +146,10 @@ public class SingleThreadedBlob implements Blob {
 		// channels. Current algorithm processes all workers in the Blob until all input channels of the Blob become empty.
 		finishDraining = false;
 		while (!isAllInputChannelEmpty() && !finishDraining) {
-			System.out.println("DEBUG: " + Thread.currentThread().getName() + " is Draing...");
+			System.out.println("DEBUG: " + Thread.currentThread().getName() + " is Draining...");
 			interpret();
 		}
-		System.out.println("DEBUG: Draing of " + Thread.currentThread().getName() + " is finished");
+		System.out.println("DEBUG: Draining of " + Thread.currentThread().getName() + " is finished");
 		this.callbackContainer.get().run();
 	}
 
