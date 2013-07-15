@@ -7,6 +7,7 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.io.IOException;
 
 import edu.mit.streamjit.impl.distributed.api.AppStatus;
+import edu.mit.streamjit.impl.distributed.api.BlobsManager;
 import edu.mit.streamjit.impl.distributed.api.CommandProcessor;
 
 public class CommandProcessorImpl implements CommandProcessor {
@@ -18,18 +19,30 @@ public class CommandProcessorImpl implements CommandProcessor {
 
 	@Override
 	public void processSTART() {
-		System.out.println("StraemJit app started...");
-		streamNode.getBlobsManager().start();
+		BlobsManager bm = streamNode.getBlobsManager();
+		if (bm != null) {
+			bm.start();
+			System.out.println("StraemJit app started...");
+		} else {
+			// TODO: Need to handle this case. Need to send the error message to the controller.
+			System.out.println("Couldn't start the blobs...BlobsManager is null.");
+		}
 	}
 
 	@Override
 	public void processSTOP() {
-		streamNode.getBlobsManager().stop();
-		System.out.println("StraemJit app stopped...");
-		try {
-			streamNode.controllerConnection.writeObject(AppStatus.STOPPED);
-		} catch (IOException e) {
-			e.printStackTrace();
+		BlobsManager bm = streamNode.getBlobsManager();
+		if (bm != null) {
+			bm.stop();
+			System.out.println("StraemJit app stopped...");
+			try {
+				streamNode.controllerConnection.writeObject(AppStatus.STOPPED);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		} else {
+			// TODO: Need to handle this case. Need to send the error message to the controller.
+			System.out.println("Couldn't stop the blobs...BlobsManager is null.");
 		}
 	}
 
