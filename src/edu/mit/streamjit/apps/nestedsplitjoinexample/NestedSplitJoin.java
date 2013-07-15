@@ -18,6 +18,7 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
@@ -32,13 +33,14 @@ public class NestedSplitJoin {
 	public static void main(String[] args) throws InterruptedException {
 		Pipeline<Integer, Void> core = new Pipeline<Integer, Void>(new nestedSplitJoinCore(), new IntPrinter());
 		//StreamCompiler sc = new DebugStreamCompiler();
-		StreamCompiler sc = new ConcurrentStreamCompiler(2);
+		//StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Integer, Void> stream = sc.compile(core);
 		Integer output;
 		for (int i = 0; i < 10000; i++) {
 			stream.offer(i);
 		}
-
+		Thread.sleep(10000);
 		stream.drain();
 		stream.awaitDraining();
 	}

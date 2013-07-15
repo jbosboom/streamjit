@@ -34,28 +34,30 @@ import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
- * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/dct/streamit/DCT2.str for
- * original implementations. Each StreamIt's language constructs (i.e., pipeline, filter and splitjoin) are rewritten as classes in
- * StreamJit.
+ * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/dct/streamit/DCT2.str for original
+ * implementations. Each StreamIt's language constructs (i.e., pipeline, filter and splitjoin) are rewritten as classes in StreamJit.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Mar 13, 2013
  */
 public class DCT2 {
-	
+
 	public static void main(String[] args) throws InterruptedException {
 		DCT2Kernel kernel = new DCT2Kernel();
 		// StreamCompiler sc = new DebugStreamCompiler();
-		StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		// StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
 		Integer output;
-		for (int i = 0; i < 100000; i++) {
+		for (int i = 0; i < 1000; i++) {
 			stream.offer(i);
 			while ((output = stream.poll()) != null)
 				System.out.println(output);
+			Thread.sleep(1);
 		}
 
 		stream.drain();
@@ -65,8 +67,8 @@ public class DCT2 {
 	/**
 	 * FIXME: Original implementations is "void->void pipeline DCT2". Need to implement file support and void input support.
 	 */
-	private static class DCT2Kernel extends Pipeline<Integer, Integer> {
-		DCT2Kernel() {
+	public static class DCT2Kernel extends Pipeline<Integer, Integer> {
+		public DCT2Kernel() {
 			// add FileReader<int>("../input/idct-input-small.bin"); // FIXME
 			add(new iDCT8x8_ieee(16));
 			// add FileWriter<int>("idct-output2.bin"); //FIXME
@@ -148,8 +150,8 @@ public class DCT2 {
 	}
 
 	/**
-	 * This filter represents anonymous filter that exists inside iDCT_2D_reference_fine in the SteramIt's implementation.
-	 * FIXME: Do we need to push((pop() + 0.5).intValue())?
+	 * This filter represents anonymous filter that exists inside iDCT_2D_reference_fine in the SteramIt's implementation. FIXME: Do we
+	 * need to push((pop() + 0.5).intValue())?
 	 */
 	private static class FloatToInt extends Filter<Float, Integer> {
 

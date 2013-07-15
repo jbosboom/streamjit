@@ -10,6 +10,7 @@ import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
@@ -25,11 +26,13 @@ public class ChannelVocoder7 {
 	public static void main(String[] args) throws InterruptedException {
 		ChannelVocoder7Kernel kernel = new ChannelVocoder7Kernel();
 		//StreamCompiler sc = new DebugStreamCompiler();
-		StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		//StreamCompiler sc = new ConcurrentStreamCompiler(2);
+		StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Integer, Void> stream = sc.compile(kernel);
 		for (int i = 0; i < 10000; ++i) {
 			stream.offer(i);
 		}
+		Thread.sleep(20000);
 		stream.drain();
 		stream.awaitDraining();
 	}
@@ -50,9 +53,9 @@ public class ChannelVocoder7 {
 	 * Thus, each output is the combination of 18 band envelope values from the filter bank and a single pitch detector value. This
 	 * value is either the pitch if the sound was voiced or 0 if the sound was unvoiced.
 	 **/
-	private static class ChannelVocoder7Kernel extends Pipeline<Integer, Void> {
+	public static class ChannelVocoder7Kernel extends Pipeline<Integer, Void> {
 
-		ChannelVocoder7Kernel() {
+		public ChannelVocoder7Kernel() {
 			add(new DataSource());
 			// add FileReader<float>("../input/input");
 			// low pass filter to filter out high freq noise

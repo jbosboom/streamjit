@@ -7,6 +7,8 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
@@ -33,12 +35,15 @@ public class BitonicSort {
 		int N = 8;
 
 		BitonicSort2 kernel = new BitonicSort2();
-		StreamCompiler sc = new DebugStreamCompiler();
+		//StreamCompiler sc = new DebugStreamCompiler();
+		//StreamCompiler sc = new ConcurrentStreamCompiler(6);
+		StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
 		Integer output;
 		for (int i = N * N * N * N; i > 0; --i) {
 			stream.offer(i);
 		}
+		Thread.sleep(10000);
 		while ((output = stream.poll()) != null)
 			System.out.println(output);
 		stream.drain();
@@ -342,13 +347,13 @@ public class BitonicSort {
 	 * FileWriter<?> and void input to the source worker, implementation is bit changed here. But anyway these need to be fixed soon.
 	 * Correct class definition should be "private static class BitonicSort2 extends Pipeline<Void, Void>"
 	 */
-	private static class BitonicSort2 extends Pipeline<Integer, Integer> {
+	public static class BitonicSort2 extends Pipeline<Integer, Integer> {
 		/* Make sure N is a power_of_2 */
 		int N = 8;
 		/* true for UP sort and false for DOWN sort */
 		boolean sortdir = true;
 
-		BitonicSort2() {
+		public BitonicSort2() {
 			// add KeySource(N);
 			// add FileReader<int>("../input/BitonicSort2.in");
 			add(new BitonicSortKernel(N, sortdir));

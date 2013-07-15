@@ -7,6 +7,8 @@ import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
@@ -20,11 +22,14 @@ public class FilterBank6 {
 
 	public static void main(String[] args) throws InterruptedException {
 		FilterBank6Kernel kernel = new FilterBank6Kernel();
-		StreamCompiler sc = new DebugStreamCompiler();
+		//StreamCompiler sc = new DebugStreamCompiler();
+		//StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Integer, Void> stream = sc.compile(kernel);
-		for (int i = 0; i < 10000; ++i) {
+		for (int i = 0; i < 1000; ++i) {
 			stream.offer(i);
 		}
+		Thread.sleep(10000);
 		stream.drain();
 		stream.awaitDraining();
 	}
@@ -35,8 +40,8 @@ public class FilterBank6 {
 	 * frequency bands. It then performs some processing on them (the exact
 	 * processing is yet to be determined, and then reconstructs them.
 	 **/
-	private static class FilterBank6Kernel extends Pipeline<Integer, Void> {
-		FilterBank6Kernel() {
+	public static class FilterBank6Kernel extends Pipeline<Integer, Void> {
+		public FilterBank6Kernel() {
 			add(new DataSource());
 			// add FileReader<float>("../input/input");
 			add(new FilterBankPipeline(8));

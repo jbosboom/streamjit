@@ -38,6 +38,8 @@ public class BeamFormer1 {
 			// while ((output = stream.poll()) != null)
 			// System.out.println(output);
 		}
+		
+		Thread.sleep(10000);
 		stream.drain();
 		stream.awaitDraining();
 	}
