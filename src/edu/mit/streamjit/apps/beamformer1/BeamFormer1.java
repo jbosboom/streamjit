@@ -10,13 +10,14 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
  * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/beamformer/streamit/BeamFormer1.str for
  * original implementations. Each StreamIt's language constructs (i.e., pipeline, filter and splitjoin) are rewritten as classes in
  * StreamJit.
- *  
+ * 
  * FIXME: All FileWriter<?> and FileReader<?> are replaced with ?Source and ?Printer respectively.
  * 
  * @author Sumanan sumanan@mit.edu
@@ -27,8 +28,9 @@ public class BeamFormer1 {
 	public static void main(String[] args) throws InterruptedException {
 
 		BeamFormer1Kernel core = new BeamFormer1Kernel();
-		//StreamCompiler sc = new DebugStreamCompiler();
-		StreamCompiler sc = new ConcurrentStreamCompiler(2);
+		// StreamCompiler sc = new DebugStreamCompiler();
+		// StreamCompiler sc = new ConcurrentStreamCompiler(2);
+		StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Float, Void> stream = sc.compile(core);
 		for (float i = 0; i < 100000; ++i) {
 			stream.offer(i); // This offer value i has no effect in the program. As we can not call stream.offer(), just sending
@@ -38,7 +40,6 @@ public class BeamFormer1 {
 		}
 		stream.drain();
 		stream.awaitDraining();
-
 	}
 
 	/**
@@ -49,7 +50,7 @@ public class BeamFormer1 {
 	 * 
 	 * @author sumanan
 	 */
-	private static class BeamFormer1Kernel extends Pipeline<Float, Void> {
+	public static class BeamFormer1Kernel extends Pipeline<Float, Void> {
 		int numChannels = 12;
 		int numSamples = 256;
 		int numBeams = 4;
