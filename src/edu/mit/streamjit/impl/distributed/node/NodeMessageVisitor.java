@@ -13,6 +13,7 @@ import edu.mit.streamjit.impl.distributed.api.ErrorProcessor;
 import edu.mit.streamjit.impl.distributed.api.JsonString;
 import edu.mit.streamjit.impl.distributed.api.JsonStringProcessor;
 import edu.mit.streamjit.impl.distributed.api.MessageVisitor;
+import edu.mit.streamjit.impl.distributed.api.NodeInfo;
 import edu.mit.streamjit.impl.distributed.api.Request;
 import edu.mit.streamjit.impl.distributed.api.RequestProcessor;
 import edu.mit.streamjit.impl.distributed.api.SystemInfo;
@@ -25,7 +26,8 @@ public class NodeMessageVisitor implements MessageVisitor {
 	private RequestProcessor rp;
 	private JsonStringProcessor jp;
 
-	public NodeMessageVisitor(AppStatusProcessor asp, CommandProcessor cp, ErrorProcessor ep, RequestProcessor rp, JsonStringProcessor jp) {
+	public NodeMessageVisitor(AppStatusProcessor asp, CommandProcessor cp, ErrorProcessor ep, RequestProcessor rp,
+			JsonStringProcessor jp) {
 		this.asp = asp;
 		this.cp = cp;
 		this.ep = ep;
@@ -61,5 +63,10 @@ public class NodeMessageVisitor implements MessageVisitor {
 	@Override
 	public void visit(JsonString json) {
 		json.process(jp);
+	}
+
+	@Override
+	public void visit(NodeInfo nodeInfo) {
+		throw new AssertionError("NodeInfo doesn't support MessageVisitor for the moment.");
 	}
 }
