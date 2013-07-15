@@ -26,7 +26,6 @@ public class ConnectionFactory {
 		for (int i = 0; i < maxTryAttempts; i++) {
 			try {
 				Socket socket = new Socket(serverAddress, portNo);
-				System.out.println("Connection with controller established");
 				return new TCPConnection(socket);
 			} catch (IOException ioe) {
 				System.out.println("IO Connection failed");

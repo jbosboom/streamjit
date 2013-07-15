@@ -123,7 +123,6 @@ public class BlobVisitor extends StreamVisitor {
 				// TODO: Here I am casting to raw type due to the interface channelfactory doesn't provide bounded types. Need to
 				// tackle this.
 				Channel<I> chnl = this.channelFactory.makeChannel(worker, (Worker) predecessor);
-				System.out.println("predecessor relationship...");
 
 				Workers.getOutputChannels(predecessor).set(srcIdx, chnl);
 				Workers.getInputChannels(worker).set(dstIdx, chnl);
@@ -143,7 +142,6 @@ public class BlobVisitor extends StreamVisitor {
 				// TODO: Here I am casting to raw type due to the interface channelfactory doesn't provide bounded types. Need to
 				// tackle this.
 				Channel<O> chnl = this.channelFactory.makeChannel((Worker) worker, successor);
-				System.out.println("successor relationship...");
 
 				Workers.getOutputChannels(worker).set(srcIdx, chnl);
 				Workers.getInputChannels(successor).set(dstIdx, chnl);

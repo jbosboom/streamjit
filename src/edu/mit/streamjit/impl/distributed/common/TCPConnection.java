@@ -12,14 +12,16 @@ public class TCPConnection implements Connection {
 	private Socket socket = null;
 	private boolean isconnected = false;
 
+	// For debugging purpose: Just to count the number of TCP connections made.
+	private static int count = 0;
+
 	public TCPConnection(Socket socket) {
 		try {
 			this.socket = socket;
 			ooStream = new ObjectOutputStream(this.socket.getOutputStream());
 			oiStream = new ObjectInputStream(this.socket.getInputStream());
-			System.out.println("ObjectOutputStream created");
 			isconnected = true;
-			System.out.println("ObjectInputStream created");
+			System.out.println(String.format("DEBUG: TCP connection %d has been established", count++));
 		} catch (IOException iex) {
 			isconnected = false;
 			iex.printStackTrace();
