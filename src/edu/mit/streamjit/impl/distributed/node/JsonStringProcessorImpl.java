@@ -172,7 +172,7 @@ public class JsonStringProcessorImpl implements JsonStringProcessor {
 			// System.exit(0);
 		} catch (Exception e) {
 			e.printStackTrace();
-			System.out.println("Couldn't find the toplevel worker...Exiting");
+			System.out.println("Couldn't find the toplevel worker.");
 
 			// TODO: Try catch inside a catch block. Good practice???
 			try {
@@ -193,8 +193,9 @@ public class JsonStringProcessorImpl implements JsonStringProcessor {
 				return k;
 			}
 		}
-		throw new ClassNotFoundException(String.format("Innter class %s is not found in the outter class %s", InnterClassName,
-				OutterClass.getName()));
+		throw new ClassNotFoundException(String.format(
+				"Innter class %s is not found in the outter class %s. Check the accessibility/visibility of the inner class",
+				InnterClassName, OutterClass.getName()));
 	}
 
 	/**
