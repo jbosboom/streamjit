@@ -544,7 +544,7 @@ public final class Configuration {
 	 * List<String> can be handled okay)
 	 * @param <T>
 	 */
-	public static final class SwitchParameter<T> implements GenericParameter<Boolean> {
+	public static final class SwitchParameter<T> implements GenericParameter<T> {
 		private static final long serialVersionUID = 1L;
 		private final String name;
 		/**
@@ -1065,6 +1065,7 @@ public final class Configuration {
 		Configuration.Builder builder = Configuration.builder();
 		builder.addParameter(new IntParameter("foo", 0, 10, 8));
 		builder.addParameter(SwitchParameter.create("bar", true));
+		builder.addParameter(new SwitchParameter<>("baz", Integer.class, 3, Arrays.asList(1, 2, 3, 4)));
 
 		Identity<Integer> first = new Identity<>(), second = new Identity<>();
 		Pipeline<Integer, Integer> pipeline = new Pipeline<>(first, second);
@@ -1083,6 +1084,7 @@ public final class Configuration {
 		builder.putExtraData("topLevelClassName", first.getClass().getName());
 
 		Configuration cfg1 = builder.build();
+		SwitchParameter<Integer> parameter = cfg1.getParameter("baz", SwitchParameter.class, Integer.class);
 		String json = Jsonifiers.toJson(cfg1).toString();
 		System.out.println(json);
 		Configuration cfg2 = Jsonifiers.fromJson(json, Configuration.class);
