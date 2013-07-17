@@ -27,7 +27,7 @@ public class ConcurrentChannelFactory implements ChannelFactory {
 
 	@Override
 	public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
-		assert blobWorkers.contains(upstream) || blobWorkers.contains(downstream) : "Illegal assignment: source worker is not in the current blob";
+		assert blobWorkers.contains(upstream) || blobWorkers.contains(downstream) : "Illegal assignment: Both source and destination workers are not in the current blob";
 		Channel<E> chnl;
 
 		if (blobWorkers.contains(upstream) && blobWorkers.contains(downstream))

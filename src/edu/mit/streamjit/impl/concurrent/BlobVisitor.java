@@ -22,7 +22,7 @@ import edu.mit.streamjit.impl.interp.ChannelFactory;
  * manufactured by {@link ConcurrentChannelFactory} is used to make connection.
  * 
  * Note: In prior to get service from {@link BlobVisitor}, all workers in the stream graph should be connected by setting all
- * predecessors, successors. Consider using {@link ConnectWorkersVisitor} to set all predecessors, successors, relationships before
+ * predecessors and successors. Consider using {@link ConnectWorkersVisitor} to set all predecessors and successors relationships before
  * start partitioning
  * 
  * @author Sumanan sumanan@mit.edu
