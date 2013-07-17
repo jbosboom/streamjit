@@ -80,6 +80,10 @@ public interface Blob {
 	 * blob's drain() method until the data reaches that blob's input channels
 	 * (i.e., the callback should not immediately call drain() without
 	 * additional synchronization).
+	 * <p/>
+	 * The caller should interrupt the threads running the Blob's Runnables
+	 * (from getCoreCode()) so they can observe the draining in case they are
+	 * blocked.
 	 * @param callback the callback to call after draining is finished
 	 */
 	public void drain(Runnable callback);
