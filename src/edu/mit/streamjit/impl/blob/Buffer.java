@@ -53,6 +53,9 @@ public interface Buffer<T> {
 	 * array, or does nothing.
 	 * @param data the array to write into
 	 * @return true iff data was read
+	 * @throws IllegalArgumentException if the array's length is greater than
+	 * this buffer's capacity (so that the call would always "fail", causing an
+	 * infinite retry loop)
 	 */
 	public boolean readAll(T[] data);
 
@@ -62,6 +65,9 @@ public interface Buffer<T> {
 	 * @param data the array to read into
 	 * @param offset the offset to begin writing at
 	 * @return true iff data was read
+	 * @throws IllegalArgumentException if the array's length is greater than
+	 * this buffer's capacity (so that the call would always "fail", causing an
+	 * infinite retry loop)
 	 */
 	public boolean readAll(T[] data, int offset);
 
