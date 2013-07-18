@@ -161,7 +161,7 @@ public class Interpreter implements Blob {
 	}
 
 	@Override
-	public Integer getMinimumBufferCapacity(Token token) {
+	public int getMinimumBufferCapacity(Token token) {
 		Integer i = minimumBufferSizes.get(token);
 		return (i != null) ? i : 1;
 	}
