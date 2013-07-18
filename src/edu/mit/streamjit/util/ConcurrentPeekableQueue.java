@@ -78,7 +78,7 @@ public class ConcurrentPeekableQueue<E> {
 			if (f == rear.get())
 				return null; //Don't retry; fail the poll.
 
-			if (x == null) {//Is the front empty?
+			if (x != null) {//Is the front nonempty?
 				if (elements.compareAndSet(i, x, null)) {//Try to remove an element.
 					//Try to increment front.  If we fail, other threads will
 					//also try to increment before any further removals, so we
@@ -86,7 +86,7 @@ public class ConcurrentPeekableQueue<E> {
 					front.compareAndSet(f, f+1);
 					return x;
 				}
-			} else //front not empty.  Try to help other threads.
+			} else //front empty.  Try to help other threads.
 				front.compareAndSet(f, f+1);
 
 			//If we get here, we failed at some point.  Try again.
@@ -163,5 +163,15 @@ public class ConcurrentPeekableQueue<E> {
 //				removed = true;
 			}
 		};
+	}
+
+	public static void main(String[] args) {
+		ConcurrentPeekableQueue<Integer> cpq = new ConcurrentPeekableQueue<>(40);
+		cpq.offer(0);
+		cpq.offer(1);
+		cpq.offer(2);
+		System.out.println(cpq.size());
+		System.out.println(cpq.iterator().next());
+		System.out.println(cpq.poll());
 	}
 }
