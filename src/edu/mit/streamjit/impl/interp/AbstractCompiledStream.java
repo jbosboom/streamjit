@@ -1,30 +1,30 @@
 package edu.mit.streamjit.impl.interp;
 
 import edu.mit.streamjit.api.CompiledStream;
-import java.util.NoSuchElementException;
+import edu.mit.streamjit.impl.blob.Buffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 /**
  * A skeletal implementation of CompiledStream that forwards offer() and poll()
- * to push() and pop() operations on Channel instances.
+ * to write() and read() operations on Buffer instances.
  *
  * This class provides a properly-synchronized implementation of drain() and
  * related methods using volatile variables and a CountDownLatch.  offer() and
  * poll() are not synchronized; if the implementation requires interacting with
- * other threads, synchronized Channel implementations should be used.
+ * other threads, synchronized Buffer implementations should be used.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 1/3/2013
  */
 public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, O> {
 	/**
-	 * The channel being used for input: offer() turns into push().
+	 * The buffer being used for input: offer() turns into write().
 	 */
-	private final Channel<? super I> inputChannel;
+	private final Buffer inputBuffer;
 	/**
-	 * The channel being used for output: poll() turns into pop().
+	 * The buffer being used for output: poll() turns into read().
 	 */
-	private final Channel<? extends O> outputChannel;
+	private final Buffer outputBuffer;
 	/**
 	 * Whether the stream is in the process of draining (or already drained);
 	 * specifically, whether calls to offer() should be forwarded to the channel
@@ -42,42 +42,30 @@ public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, 
 	private final CountDownLatch awaitDrainingLatch = new CountDownLatch(1);
 
 	/**
-	 * Creates a new AbstractCompiledStream, using the given channels for input
+	 * Creates a new AbstractCompiledStream, using the given buffers for input
 	 * and output.  If the implementation does anything with threads, these
-	 * channels should be synchronized.  If the stream has a source and/or a
-	 * sink, consider using an EmptyChannel for input and/or output.
-	 * @param inputChannel the channel to use for input
-	 * @param outputChannel the channel to use for output
+	 * buffers should be synchronized.
+	 * @param inputBuffer the buffer to use for input
+	 * @param outputBuffer the buffer to use for output
 	 */
-	public AbstractCompiledStream(Channel<? super I> inputChannel, Channel<? extends O> outputChannel) {
-		if (inputChannel == null || outputChannel == null)
+	public AbstractCompiledStream(Buffer inputBuffer, Buffer outputBuffer) {
+		if (inputBuffer == null || outputBuffer == null)
 			throw new NullPointerException();
-		this.inputChannel = inputChannel;
-		this.outputChannel = outputChannel;
+		this.inputBuffer = inputBuffer;
+		this.outputBuffer = outputBuffer;
 	}
 
 	@Override
 	public boolean offer(I input) {
 		if (draining)
 			return false;
-
-		try {
-			inputChannel.push(input);
-		} catch (IllegalStateException ex) {
-			//Capacity-bounded channel is full.
-			return false;
-		}
-		return true;
+		return inputBuffer.write(input);
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public O poll() {
-		try {
-			return outputChannel.pop();
-		} catch (NoSuchElementException ex) {
-			//Channel is empty.
-			return null;
-		}
+		return (O)outputBuffer.read();
 	}
 
 	@Override
