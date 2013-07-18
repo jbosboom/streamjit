@@ -31,12 +31,12 @@ package edu.mit.streamjit.impl.blob;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 7/17/2013
  */
-public interface Buffer<T> {
+public interface Buffer {
 	/**
 	 * Reads up to one data item from the buffer.
 	 * @return the read item, or null if no data was read
 	 */
-	public T read();
+	public Object read();
 
 	/**
 	 * Reads up to length data items from this buffer into the given array
@@ -46,7 +46,7 @@ public interface Buffer<T> {
 	 * @param length the number of items to read
 	 * @return the number of data items read (between 0 and length, inclusive)
 	 */
-	public int read(T[] data, int offset, int length);
+	public int read(Object[] data, int offset, int length);
 
 	/**
 	 * Atomically reads enough data items from this buffer to fill the given
@@ -57,7 +57,7 @@ public interface Buffer<T> {
 	 * this buffer's capacity (so that the call would always "fail", causing an
 	 * infinite retry loop)
 	 */
-	public boolean readAll(T[] data);
+	public boolean readAll(Object[] data);
 
 	/**
 	 * Atomically reads enough data items from this buffer to fill the given
@@ -69,14 +69,14 @@ public interface Buffer<T> {
 	 * this buffer's capacity (so that the call would always "fail", causing an
 	 * infinite retry loop)
 	 */
-	public boolean readAll(T[] data, int offset);
+	public boolean readAll(Object[] data, int offset);
 
 	/**
 	 * Writes up to one data item into the buffer
 	 * @param t the data item to write
 	 * @return true iff data was written
 	 */
-	public boolean write(T t);
+	public boolean write(Object t);
 
 	/**
 	 * Writes up to length data items from the given array beginning at offset
@@ -87,7 +87,7 @@ public interface Buffer<T> {
 	 * @return the number of data items written (between 0 and length,
 	 * inclusive)
 	 */
-	public int write(T[] data, int offset, int length);
+	public int write(Object[] data, int offset, int length);
 
 	/**
 	 * Returns the number of data items currently in this buffer. Due to the

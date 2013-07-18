@@ -59,7 +59,7 @@ public interface Blob {
 	 * for one of this Blob's input or output edges
 	 * @throws IllegalStateException if installBuffers is called more than once
 	 */
-	public void installBuffers(Map<Token, Buffer<?>> buffers);
+	public void installBuffers(Map<Token, Buffer> buffers);
 
 	/**
 	 * Gets the number of cores that can run parts of this blob.
