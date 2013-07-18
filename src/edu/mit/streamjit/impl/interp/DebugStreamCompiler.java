@@ -15,9 +15,9 @@ import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Rate;
+import edu.mit.streamjit.impl.blob.ArrayDequeBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
@@ -57,8 +57,8 @@ public class DebugStreamCompiler implements StreamCompiler {
 		DebugInterpreter interpreter = new DebugInterpreter(Workers.getAllWorkersInGraph(source), constraints);
 		Token inputToken = Iterables.getOnlyElement(interpreter.getInputs());
 		Token outputToken = Iterables.getOnlyElement(interpreter.getOutputs());
-		Buffer inputBuffer = new ConcurrentArrayBuffer(interpreter.getMinimumBufferCapacity(inputToken));
-		Buffer outputBuffer = new ConcurrentArrayBuffer(interpreter.getMinimumBufferCapacity(outputToken));
+		Buffer inputBuffer = new ArrayDequeBuffer(interpreter.getMinimumBufferCapacity(inputToken));
+		Buffer outputBuffer = new ArrayDequeBuffer(interpreter.getMinimumBufferCapacity(outputToken));
 		ImmutableMap<Token, Buffer> bufferMap = ImmutableMap.<Token, Buffer>builder()
 				.put(inputToken, inputBuffer)
 				.put(outputToken, outputBuffer)
