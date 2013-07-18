@@ -22,7 +22,7 @@ public class ConcurrentPeekableQueue<E> {
 	private final AtomicLong front, rear;
 	public ConcurrentPeekableQueue(int maxSize) {
 		if (maxSize <= 1)
-			throw new IllegalArgumentException("Size too small: maxSize");
+			throw new IllegalArgumentException("Size too small:"+ maxSize);
 		this.elements = new AtomicReferenceArray<>(maxSize);
 		this.front = new AtomicLong(0);
 		this.rear = new AtomicLong(0);
