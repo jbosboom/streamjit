@@ -11,6 +11,9 @@ import edu.mit.streamjit.util.ConcurrentPeekableQueue;
 public class ConcurrentArrayBuffer implements Buffer {
 	private final ConcurrentPeekableQueue<Object> queue;
 	public ConcurrentArrayBuffer(int capacity) {
+		//ConcurrentPeekableQueue must be at least 2 capacity.
+		if (capacity == 1)
+			capacity = 2;
 		this.queue = new ConcurrentPeekableQueue<>(capacity);
 	}
 
