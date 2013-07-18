@@ -123,6 +123,15 @@ public class ConcurrentPeekableQueue<E> {
 	}
 
 	/**
+	 * Returns the maximum number of elements that can be in this queue.  This
+	 * value will never change during the life of the queue.
+	 * @return this queue's capacity
+	 */
+	public int capacity() {
+		return elements.length();
+	}
+
+	/**
 	 * Returns an iterator over the elements of this queue, front to back.
 	 * The returned iterator's behavior is undefined if this queue is modified
 	 * while iteration is in progress.
