@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.interp;
+package edu.mit.streamjit.util;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
