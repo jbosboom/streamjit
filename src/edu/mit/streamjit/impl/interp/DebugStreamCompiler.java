@@ -166,7 +166,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		private static final class DebugChannelFactory implements ChannelFactory {
 			@Override
 			public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
-				throw new UnsupportedOperationException("TODO");
+				return new DebugChannel<>();
 			}
 			@Override
 			public boolean equals(Object other) {
