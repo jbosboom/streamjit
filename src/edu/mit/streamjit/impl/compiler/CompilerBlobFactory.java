@@ -21,7 +21,9 @@ public final class CompilerBlobFactory implements BlobFactory {
 
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
-		throw new UnsupportedOperationException("TODO");
+		return Configuration.builder()
+				.addParameter(new Configuration.IntParameter("multiplier", 1, 1000000, 1))
+				.build();
 	}
 
 	@Override

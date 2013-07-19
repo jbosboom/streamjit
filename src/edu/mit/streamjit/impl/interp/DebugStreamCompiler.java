@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.interp;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.api.Worker;
@@ -14,10 +15,16 @@ import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Rate;
+import edu.mit.streamjit.impl.blob.ArrayDequeBuffer;
+import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -39,19 +46,11 @@ import java.util.concurrent.TimeUnit;
 public class DebugStreamCompiler implements StreamCompiler {
 	@Override
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
-		ConnectWorkersVisitor cpwv = new ConnectWorkersVisitor(new ChannelFactory() {
-			@Override
-			public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
-				return new DebugChannel<>();
-			}
-		});
+		ConnectWorkersVisitor cpwv = new ConnectWorkersVisitor();
 		stream.visit(cpwv);
 		stream.visit(new VerifyStreamGraph());
 		Worker<I, ?> source = (Worker<I, ?>)cpwv.getSource();
-		Channel<I> head = (Channel<I>)Workers.getInputChannels(source).get(0);
-		Worker<?, O> sink = (Worker<?, O>)cpwv.getSink();
-		Channel<O> tail = (Channel<O>)Workers.getOutputChannels(sink).get(0);
-
+		
 		List<MessageConstraint> constraints = MessageConstraint.findConstraints(source);
 		Set<Portal<?>> portals = new HashSet<>();
 		for (MessageConstraint mc : constraints)
@@ -59,7 +58,17 @@ public class DebugStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 
-		return new DebugCompiledStream<>(head, tail, source, sink, constraints);
+		DebugInterpreter interpreter = new DebugInterpreter(Workers.getAllWorkersInGraph(source), constraints);
+		Token inputToken = Iterables.getOnlyElement(interpreter.getInputs());
+		Token outputToken = Iterables.getOnlyElement(interpreter.getOutputs());
+		Buffer inputBuffer = new ArrayDequeBuffer(interpreter.getMinimumBufferCapacity(inputToken));
+		Buffer outputBuffer = new ArrayDequeBuffer(interpreter.getMinimumBufferCapacity(outputToken));
+		ImmutableMap<Token, Buffer> bufferMap = ImmutableMap.<Token, Buffer>builder()
+				.put(inputToken, inputBuffer)
+				.put(outputToken, outputBuffer)
+				.build();
+		interpreter.installBuffers(bufferMap);
+		return new DebugCompiledStream<>(interpreter, inputBuffer, outputBuffer);
 	}
 
 	/**
@@ -72,7 +81,13 @@ public class DebugStreamCompiler implements StreamCompiler {
 	 */
 	private static class DebugCompiledStream<I, O> extends AbstractCompiledStream<I, O> {
 		private final Interpreter interpreter;
-		
+		private final Buffer inputBuffer;
+		private DebugCompiledStream(Interpreter interpreter, Buffer inputBuffer, Buffer outputBuffer) {
+			super(inputBuffer, outputBuffer);
+			this.interpreter = interpreter;
+			this.inputBuffer = inputBuffer;		
+		}
+
 		/**
 		 * The latch that threads blocked in awaitDraining() block on.
 		 */
@@ -107,17 +122,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 			this.fullyDrained = fullyDrained;
 			awaitDrainingLatch.countDown();
 		}
-		
-		DebugCompiledStream(Channel<? super I> head, Channel<? extends O> tail, Worker<?, ?> source, Worker<?, ?> sink, List<MessageConstraint> constraints) {
-			super(head, tail);
-			this.interpreter = new Interpreter(Workers.getAllWorkersInGraph(source), constraints) {
-				@Override
-				protected void afterFire(Worker<?, ?> worker) {
-					checkRatesAfterFire(worker);
-				}
-			};
-		}
-
+	
 		@Override
 		public synchronized boolean offer(I input) {
 			boolean ret = super.offer(input);
@@ -136,17 +141,28 @@ public class DebugStreamCompiler implements StreamCompiler {
 			//avoid blocking in drain(), but we only have one thread.
 			interpreter.interpret();
 			//We need to see if any elements were left undrained.
-			Channel<?> inputChannel = Iterables.getOnlyElement(interpreter.getInputChannels().values());
-			Channel<?> outputChannel = Iterables.getOnlyElement(interpreter.getOutputChannels().values());
-			UndrainedVisitor v = new UndrainedVisitor(inputChannel, outputChannel);
+			UndrainedVisitor v = new UndrainedVisitor(inputBuffer);
 			finishedDraining(v.isFullyDrained());
+		}
+
+
+	}
+
+	private static final class DebugInterpreter extends Interpreter {
+		private DebugInterpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter) {
+			super(workersIter, constraintsIter, makeConfig());
+		}
+
+		@Override
+		protected void afterFire(Worker<?, ?> worker) {
+			checkRatesAfterFire(worker);
 		}
 
 		/**
 		 * Checks the given worker (which has just fired)'s rate declarations
 		 * against its actual behavior.
 		 */
-		private <I, O> void checkRatesAfterFire(Worker<I, O> worker) {
+		private static <I, O> void checkRatesAfterFire(Worker<I, O> worker) {
 			List<Channel<? extends I>> inputChannels = Workers.getInputChannels(worker);
 			List<Rate> popRates = worker.getPopRates();
 			List<Rate> peekRates = worker.getPeekRates();
@@ -178,6 +194,28 @@ public class DebugStreamCompiler implements StreamCompiler {
 				channel.resetStatistics();
 			}
 		}
+
+		private static Configuration makeConfig() {
+			List<ChannelFactory> universe = Arrays.<ChannelFactory>asList(new DebugChannelFactory());
+			//TODO: add Config modification helpers, modify default interpreter blob config
+			Configuration config = Configuration.builder().addParameter(new SwitchParameter<>("channelFactory", ChannelFactory.class, universe.get(0), universe)).build();
+			return config;
+		}
+
+		private static final class DebugChannelFactory implements ChannelFactory {
+			@Override
+			public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
+				return new DebugChannel<>();
+			}
+			@Override
+			public boolean equals(Object other) {
+				return other instanceof DebugChannelFactory;
+			}
+			@Override
+			public int hashCode() {
+				return 0;
+			}
+		}
 	}
 
 	/**
@@ -186,15 +224,13 @@ public class DebugStreamCompiler implements StreamCompiler {
 	 * TODO: check for pending messages?
 	 */
 	private static class UndrainedVisitor extends StreamVisitor {
-		private final Channel<?> streamOutput;
 		private boolean fullyDrained = true;
 		/**
 		 * Constructs a new UndrainedVisitor for a stream with the given input
 		 * and output channels.
 		 */
-		UndrainedVisitor(Channel<?> streamInput, Channel<?> streamOutput) {
-			this.streamOutput = streamOutput;
-			if (!streamInput.isEmpty())
+		UndrainedVisitor(Buffer streamInput) {
+			if (streamInput.size() > 0)
 				fullyDrained = false;
 		}
 
@@ -207,9 +243,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 			//output channel of some other worker, and we checked the first one
 			//in the constructor, so we only need to check output channels here.
 			for (Channel<?> c : Workers.getOutputChannels(worker))
-				//Ignore the stream's final output, as it doesn't count as
-				//"undrained" even if it hasn't been picked up yet.
-				if (c != streamOutput && !c.isEmpty())
+				if (!c.isEmpty())
 					fullyDrained = false;
 		}
 		@Override

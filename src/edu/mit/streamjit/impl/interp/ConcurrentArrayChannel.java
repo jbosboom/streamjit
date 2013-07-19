@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.interp;
 
+import edu.mit.streamjit.util.ConcurrentPeekableQueue;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 

@@ -34,6 +34,13 @@ public final class Cloning {
 		for (Argument a : source.arguments())
 			checkArgument(vmap.containsKey(a));
 
+		if (source.isMutable())
+			for (LocalVariable v : source.localVariables())
+				if (!vmap.containsKey(v)) {
+					LocalVariable nv = new LocalVariable(v.getType().getFieldType(), v.getName(), dest);
+					vmap.put(v, nv);
+				}
+
 		for (BasicBlock oldBlock : source.basicBlocks()) {
 			BasicBlock newBlock = cloneBasicBlock(oldBlock, vmap);
 			dest.basicBlocks().add(newBlock);

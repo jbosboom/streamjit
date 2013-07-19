@@ -46,6 +46,10 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 	 * Lazily initialized during resolution.
 	 */
 	private ParentedList<Method, BasicBlock> basicBlocks;
+	/**
+	 * Created only for Methods that don't mirror methods of live Class objects.
+	 */
+	private final ParentedList<Method, LocalVariable> localVariables;
 	public Method(java.lang.reflect.Method method, Klass parent) {
 		super(parent.getParent().types().getMethodType(method), method.getName());
 		//parent is set by our parent adding us to its list prior to making it
@@ -53,6 +57,7 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		//unmodifiable later because it's stored in a final field.)
 		this.modifiers = Sets.immutableEnumSet(Modifier.fromMethodBits(Shorts.checkedCast(method.getModifiers())));
 		//We're unresolved, so we don't have arguments or basic blocks.
+		this.localVariables = null;
 	}
 	public Method(java.lang.reflect.Constructor<?> ctor, Klass parent) {
 		super(parent.getParent().types().getMethodType(ctor), "<init>");
@@ -61,6 +66,7 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		//unmodifiable later because it's stored in a final field.)
 		this.modifiers = Sets.immutableEnumSet(Modifier.fromMethodBits(Shorts.checkedCast(ctor.getModifiers())));
 		//We're unresolved, so we don't have arguments or basic blocks.
+		this.localVariables = null;
 	}
 	public Method(String name, MethodType type, Set<Modifier> modifiers, Klass parent) {
 		super(type, name);
@@ -74,6 +80,7 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		this.modifiers = modifiers;
 		this.arguments = buildArguments();
 		this.basicBlocks = new ParentedList<>(this, BasicBlock.class);
+		this.localVariables = new ParentedList<>(this, LocalVariable.class);
 		parent.methods().add(this);
 	}
 
@@ -121,9 +128,28 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		return arguments;
 	}
 
+	public Argument getArgument(String name) {
+		for (Argument a : arguments())
+			if (a.getName().equals(name))
+				return a;
+		return null;
+	}
+
 	public List<BasicBlock> basicBlocks() {
 		checkState(isResolved(), "not resolved: %s", this);
 		return basicBlocks;
+	}
+
+	public List<LocalVariable> localVariables() {
+		checkState(localVariables != null, "mirrors live Class object: %s", this);
+		return localVariables;
+	}
+
+	public LocalVariable getLocalVariable(String name) {
+		for (LocalVariable v : localVariables())
+			if (v.getName().equals(name))
+				return v;
+		return null;
 	}
 
 	public boolean isConstructor() {
@@ -203,6 +229,16 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 
 		writer.write(" {");
 		writer.println();
+		if (isMutable()) {
+			for (LocalVariable v : localVariables()) {
+				writer.write("\t");
+				writer.write(v.toString());
+				writer.write(";");
+				writer.println();
+			}
+			if (!localVariables.isEmpty())
+				writer.println();
+		}
 		for (BasicBlock b : basicBlocks()) {
 			writer.write(b.getName());
 			writer.write(": ");

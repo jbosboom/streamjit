@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.interp;
+package edu.mit.streamjit.util;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -22,7 +22,7 @@ public class ConcurrentPeekableQueue<E> {
 	private final AtomicLong front, rear;
 	public ConcurrentPeekableQueue(int maxSize) {
 		if (maxSize <= 1)
-			throw new IllegalArgumentException("Size too small: maxSize");
+			throw new IllegalArgumentException("Size too small:"+ maxSize);
 		this.elements = new AtomicReferenceArray<>(maxSize);
 		this.front = new AtomicLong(0);
 		this.rear = new AtomicLong(0);
@@ -78,7 +78,7 @@ public class ConcurrentPeekableQueue<E> {
 			if (f == rear.get())
 				return null; //Don't retry; fail the poll.
 
-			if (x == null) {//Is the front empty?
+			if (x != null) {//Is the front nonempty?
 				if (elements.compareAndSet(i, x, null)) {//Try to remove an element.
 					//Try to increment front.  If we fail, other threads will
 					//also try to increment before any further removals, so we
@@ -86,7 +86,7 @@ public class ConcurrentPeekableQueue<E> {
 					front.compareAndSet(f, f+1);
 					return x;
 				}
-			} else //front not empty.  Try to help other threads.
+			} else //front empty.  Try to help other threads.
 				front.compareAndSet(f, f+1);
 
 			//If we get here, we failed at some point.  Try again.
@@ -123,6 +123,15 @@ public class ConcurrentPeekableQueue<E> {
 	}
 
 	/**
+	 * Returns the maximum number of elements that can be in this queue.  This
+	 * value will never change during the life of the queue.
+	 * @return this queue's capacity
+	 */
+	public int capacity() {
+		return elements.length();
+	}
+
+	/**
 	 * Returns an iterator over the elements of this queue, front to back.
 	 * The returned iterator's behavior is undefined if this queue is modified
 	 * while iteration is in progress.
@@ -154,5 +163,15 @@ public class ConcurrentPeekableQueue<E> {
 //				removed = true;
 			}
 		};
+	}
+
+	public static void main(String[] args) {
+		ConcurrentPeekableQueue<Integer> cpq = new ConcurrentPeekableQueue<>(40);
+		cpq.offer(0);
+		cpq.offer(1);
+		cpq.offer(2);
+		System.out.println(cpq.size());
+		System.out.println(cpq.iterator().next());
+		System.out.println(cpq.poll());
 	}
 }

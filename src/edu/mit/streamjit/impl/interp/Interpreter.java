@@ -10,13 +10,17 @@ import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.BlobFactory;
+import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.util.EmptyRunnable;
+import edu.mit.streamjit.util.Pair;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
@@ -54,7 +58,9 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class Interpreter implements Blob {
 	private final ImmutableSet<Worker<?, ?>> workers, sinks;
-	private final ImmutableMap<Token, Channel<?>> inputChannels, outputChannels;
+	private final Configuration config;
+	private final ImmutableSet<Token> inputs, outputs;
+	private final ImmutableMap<Token, Integer> minimumBufferSizes;
 	/**
 	 * Maps workers to all constraints of which they are recipients.
 	 */
@@ -65,10 +71,19 @@ public class Interpreter implements Blob {
 	 * empty Runnable that we execute in place of interpret().
 	 */
 	private final AtomicReference<Runnable> callback = new AtomicReference<>();
-	public Interpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter) {
+	private final ImmutableSet<IOInfo> ioinfo;
+	/**
+	 * Maps Channels to the buffers they correspond to.  Output channels are
+	 * flushed to output buffers; input channels are checked for data when we
+	 * can't fire a source.
+	 */
+	private ImmutableMap<Channel<?>, Buffer> inputBuffers, outputBuffers;
+	public Interpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter, Configuration config) {
 		this.workers = ImmutableSet.copyOf(workersIter);
 		this.sinks = Workers.getBottommostWorkers(workers);
+		this.config = config;
 
+		//Validate constraints.
 		for (MessageConstraint mc : constraintsIter)
 			if (this.workers.contains(mc.getSender()) != this.workers.contains(mc.getRecipient()))
 				throw new IllegalArgumentException("Constraint crosses interpreter boundary: "+mc);
@@ -81,28 +96,91 @@ public class Interpreter implements Blob {
 			}
 			constraintList.add(constraint);
 		}
+		//Create channels.
+		SwitchParameter<ChannelFactory> parameter = config.getParameter("channelFactory", SwitchParameter.class, ChannelFactory.class);
+		ChannelFactory factory = parameter.getValue();
+		for (Pair<Worker<?, ?>, Worker<?, ?>> p : allWorkerPairsInBlob()) {
+			Channel channel = factory.makeChannel((Worker)p.first, (Worker)p.second);
+			int i = Workers.getSuccessors(p.first).indexOf(p.second);
+			Workers.getOutputChannels(p.first).set(i, channel);
+			int j = Workers.getPredecessors(p.second).indexOf(p.first);
+			Workers.getInputChannels(p.second).set(j, channel);
+		}
+		ImmutableSet.Builder<Token> inputTokens = ImmutableSet.builder(), outputTokens = ImmutableSet.builder();
+		ImmutableMap.Builder<Token, Integer> minimumBufferSize = ImmutableMap.builder();
+		for (IOInfo info : IOInfo.create(workers)) {
+			Channel channel = factory.makeChannel((Worker)info.upstream(), (Worker)info.downstream());
+			List channelList;
+			int index;
+			if (info.isInput()) {
+				channelList = Workers.getInputChannels(info.downstream());
+				index = info.getDownstreamChannelIndex();
+			} else {
+				channelList = Workers.getOutputChannels(info.upstream());
+				index = info.getUpstreamChannelIndex();
+			}
+			if (channelList.isEmpty())
+				channelList.add(channel);
+			else
+				channelList.set(index, channel);
 
-		ImmutableMap.Builder<Token, Channel<?>> inputChannelsBuilder = ImmutableMap.builder();
-		ImmutableMap.Builder<Token, Channel<?>> outputChannelsBuilder = ImmutableMap.builder();
-		for (IOInfo info : IOInfo.create(workers))
-			(info.isInput() ? inputChannelsBuilder : outputChannelsBuilder).put(info.token(), info.channel());
-		this.inputChannels = inputChannelsBuilder.build();
-		this.outputChannels = outputChannelsBuilder.build();
+			(info.isInput() ? inputTokens : outputTokens).add(info.token());
+			if (info.isInput()) {
+				Worker<?, ?> w = info.downstream();
+				int chanIdx = info.token().isOverallInput() ? 0 : Workers.getPredecessors(w).indexOf(info.upstream());
+				int rate = Math.max(w.getPeekRates().get(chanIdx).max(), w.getPopRates().get(chanIdx).max());
+				minimumBufferSize.put(info.token(), rate);
+			}
+		}
+
+		this.inputs = inputTokens.build();
+		this.outputs = outputTokens.build();
+		this.minimumBufferSizes = minimumBufferSize.build();
+		this.ioinfo = IOInfo.create(workers);
+	}
+
+	//TODO: copied from Compiler, refactor into static method somewhere
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private ImmutableList<Pair<Worker<?, ?>, Worker<?, ?>>> allWorkerPairsInBlob() {
+		ImmutableList.Builder<Pair<Worker<?, ?>, Worker<?, ?>>> builder = ImmutableList.<Pair<Worker<?, ?>, Worker<?, ?>>>builder();
+		for (Worker<?, ?> u : workers)
+			for (Worker<?, ?> d : Workers.getSuccessors(u))
+				if (workers.contains(d))
+					builder.add(new Pair(u, d));
+		return builder.build();
+	}
+
+	@Override
+	public Set<Token> getInputs() {
+		return inputs;
+	}
+
+	@Override
+	public Set<Token> getOutputs() {
+		return outputs;
+	}
+
+	@Override
+	public Integer getMinimumBufferCapacity(Token token) {
+		Integer i = minimumBufferSizes.get(token);
+		return (i != null) ? i : 1;
+	}
+
+	@Override
+	public void installBuffers(Map<Token, Buffer> buffers) {
+		ImmutableMap.Builder<Channel<?>, Buffer> inputBufferBuilder = ImmutableMap.builder(), outputBufferBuilder = ImmutableMap.builder();
+		for (IOInfo info : ioinfo) {
+			Buffer buffer = buffers.get(info.token());
+			if (buffer != null)
+				(info.isInput() ? inputBufferBuilder : outputBufferBuilder).put(info.channel(), buffer);
+		}
+		this.inputBuffers = inputBufferBuilder.build();
+		this.outputBuffers = outputBufferBuilder.build();
 	}
 
 	@Override
 	public ImmutableSet<Worker<?, ?>> getWorkers() {
 		return workers;
-	}
-
-	@Override
-	public Map<Token, Channel<?>> getInputChannels() {
-		return inputChannels;
-	}
-
-	@Override
-	public Map<Token, Channel<?>> getOutputChannels() {
-		return outputChannels;
 	}
 
 	@Override
@@ -140,12 +218,21 @@ public class Interpreter implements Blob {
 		@Override
 		public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
 			//TODO: get the constraints!
-			return new Interpreter(workers, Collections.<MessageConstraint>emptyList());
+			return new Interpreter(workers, Collections.<MessageConstraint>emptyList(), config);
 		}
 		@Override
 		public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
-			//TODO: Interpreter doesn't yet have any parameters.
-			return Configuration.builder().build();
+			//TODO: more choices
+			List<ChannelFactory> channelFactories = Arrays.<ChannelFactory>asList(new ChannelFactory() {
+				@Override
+				public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
+					return new ArrayChannel<>();
+				}
+			});
+			Configuration.SwitchParameter<ChannelFactory> facParam
+					= new Configuration.SwitchParameter<>("channelFactory",
+					ChannelFactory.class, channelFactories.get(0), channelFactories);
+			return Configuration.builder().addParameter(facParam).build();
 		}
 		@Override
 		public boolean equals(Object o) {
@@ -176,6 +263,13 @@ public class Interpreter implements Blob {
 			for (Worker<?, ?> sink : sinks)
 				everFired |= fired |= pull(sink);
 		} while (fired);
+
+		if (everFired)
+			//Flush output buffers, spinning if necessary.
+			for (Map.Entry<Channel<?>, Buffer> e : outputBuffers.entrySet())
+				for (Object outputItem : e.getKey())
+					while (!e.getValue().write(outputItem))
+						/* intentional empty statement */;
 		return everFired;
 	}
 
@@ -209,10 +303,19 @@ public class Interpreter implements Blob {
 			//Execute predecessors based on data dependencies.
 			int channel = indexOfUnsatisfiedChannel(current);
 			if (channel != -1) {
-				if (!workers.contains(Iterables.get(Workers.getPredecessors(current), channel, null)))
-					//We need data from a worker not in our stream graph section,
-					//so we can't do anything.
-					return false;
+				if (!workers.contains(Iterables.get(Workers.getPredecessors(current), channel, null))) {
+					//Try to get an item for this channel.
+					Channel unsatChannel = Workers.getInputChannels(current).get(channel);
+					Buffer buffer = inputBuffers.get(unsatChannel);
+					//TODO: compute how much and use readAll()
+					Object item = buffer.read();
+					if (item != null) {
+						unsatChannel.push(item);
+						continue recurse; //try again
+					} else
+						return false; //Couldn't fire.
+				}
+
 				//Otherwise, recursively fire the worker blocking us.
 				stack.push(Workers.getPredecessors(current).get(channel));
 				continue recurse;

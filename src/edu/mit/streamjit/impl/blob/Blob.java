@@ -4,7 +4,6 @@ import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ComparisonChain;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.interp.Channel;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
@@ -27,16 +26,40 @@ public interface Blob {
 	public Set<Worker<?, ?>> getWorkers();
 
 	/**
-	 * Returns an immutable Map from tokens to the input channels of this blob.
-	 * @return an immutable Map from tokens to the input channels of this blob
+	 * Returns an immutable set of Tokens representing the input edges to this
+	 * Blob.
+	 * @return an immutable set of Tokens representing the input edges to this
+	 * Blob.
 	 */
-	public Map<Token, Channel<?>> getInputChannels();
+	public Set<Token> getInputs();
 
 	/**
-	 * Returns an immutable Map from tokens to the output channels of this blob.
-	 * @return an immutable Map from tokens to the output channels of this blob
+	 * Returns an immutable set of Tokens representing the output edges to this
+	 * Blob.
+	 * @return an immutable set of Tokens representing the output edges to this
+	 * Blob.
 	 */
-	public Map<Token, Channel<?>> getOutputChannels();
+	public Set<Token> getOutputs();
+
+	/**
+	 * Returns this Blob's requested minimum capacity for the buffer on the
+	 * edge represented by the given token.
+	 * @param token the edge to get minimum capacity for
+	 * @return the minimum capacity for the given edge
+	 * @throws IllegalArgumentException if the given token is not an input or
+	 * output edge of this Blob
+	 */
+	public Integer getMinimumBufferCapacity(Token token);
+
+	/**
+	 * Installs buffers for this Blob's input and output edges.
+	 * @param buffers an immutable map of tokens to the buffer on the corresponding
+	 * edge
+	 * @throws IllegalArgumentException if the given map doesn't contain a mapping
+	 * for one of this Blob's input or output edges
+	 * @throws IllegalStateException if installBuffers is called more than once
+	 */
+	public void installBuffers(Map<Token, Buffer> buffers);
 
 	/**
 	 * Gets the number of cores that can run parts of this blob.
@@ -80,6 +103,10 @@ public interface Blob {
 	 * blob's drain() method until the data reaches that blob's input channels
 	 * (i.e., the callback should not immediately call drain() without
 	 * additional synchronization).
+	 * <p/>
+	 * The caller should interrupt the threads running the Blob's Runnables
+	 * (from getCoreCode()) so they can observe the draining in case they are
+	 * blocked.
 	 * @param callback the callback to call after draining is finished
 	 */
 	public void drain(Runnable callback);
@@ -133,6 +160,32 @@ public interface Blob {
 			checkArgument(Workers.getIdentifier(lastWorker) != -1);
 			checkArgument(Workers.getSuccessors(lastWorker).isEmpty(), "not actually last worker");
 			return new Token(Workers.getIdentifier(lastWorker), -1);
+		}
+
+		/**
+		 * Returns the identifier of the upstream worker, or -1 for the overall
+		 * input of the stream graph.
+		 * @return the identifier of the upstream worker, or -1
+		 */
+		public int getUpstreamIdentifier() {
+			return upstreamIdentifier;
+		}
+
+		/**
+		 * Returns the identifier of the downstream worker, or -1 for the
+		 * overall output of the stream graph.
+		 * @return the identifier of the downstream worker, or -1
+		 */
+		public int getDownstreamIdentifier() {
+			return downstreamIdentifier;
+		}
+
+		public boolean isOverallInput() {
+			return upstreamIdentifier == -1;
+		}
+
+		public boolean isOverallOutput() {
+			return downstreamIdentifier == -1;
 		}
 
 		@Override
