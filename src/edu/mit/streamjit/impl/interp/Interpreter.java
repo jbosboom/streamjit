@@ -97,7 +97,7 @@ public class Interpreter implements Blob {
 			constraintList.add(constraint);
 		}
 		//Create channels.
-		SwitchParameter<ChannelFactory> parameter = config.getParameter("channelFactory", SwitchParameter.class, ChannelFactory.class);
+		SwitchParameter<ChannelFactory> parameter = this.config.getParameter("channelFactory", SwitchParameter.class, ChannelFactory.class);
 		ChannelFactory factory = parameter.getValue();
 		for (Pair<Worker<?, ?>, Worker<?, ?>> p : allWorkerPairsInBlob()) {
 			Channel channel = factory.makeChannel((Worker)p.first, (Worker)p.second);
