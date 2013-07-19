@@ -46,15 +46,18 @@ public class Controller {
 	private int controllerNodeID;
 
 	/**
-	 * A {@link BoundaryOutputChannel} for the head of the stream graph. If the first {@link Worker} happened to fall outside the
-	 * {@link Controller}, we need to push the {@link CompiledStream}.offer() data to the first {@link Worker} of the streamgraph.
+	 * A {@link BoundaryOutputChannel} for the head of the stream graph. If the
+	 * first {@link Worker} happened to fall outside the {@link Controller}, we
+	 * need to push the {@link CompiledStream}.offer() data to the first
+	 * {@link Worker} of the streamgraph.
 	 */
 	BoundaryOutputChannel<?> headChannel;
 
 	/**
-	 * A {@link BoundaryInputChannel} for the tail of the whole stream graph. If the sink {@link Worker} happened to fall outside the
-	 * {@link Controller}, we need to pull the sink's output in to the {@link Controller} in order to make {@link CompiledStream}
-	 * .pull() to work.
+	 * A {@link BoundaryInputChannel} for the tail of the whole stream graph. If
+	 * the sink {@link Worker} happened to fall outside the {@link Controller},
+	 * we need to pull the sink's output in to the {@link Controller} in order
+	 * to make {@link CompiledStream} .pull() to work.
 	 */
 	BoundaryInputChannel<?> tailChannel;
 
@@ -80,8 +83,10 @@ public class Controller {
 		this.nodeIDs = comManager.getConnectedMachineIDs();
 
 		if (nodeIDs.contains(controllerNodeID))
-			throw new AssertionError(String.format("Same ID (%d) has been assigned to the Controller and another StreamNode",
-					controllerNodeID));
+			throw new AssertionError(
+					String.format(
+							"Same ID (%d) has been assigned to the Controller and another StreamNode",
+							controllerNodeID));
 
 		for (int key : this.nodeIDs) {
 			try {
@@ -141,11 +146,15 @@ public class Controller {
 	}
 
 	@SuppressWarnings("unchecked")
-	public void setPartition(Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap, String toplevelclass,
-			List<MessageConstraint> constraints, Worker<?, ?> source, Worker<?, ?> sink) {
-		String jarFilePath = this.getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
+	public void setPartition(
+			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
+			String toplevelclass, List<MessageConstraint> constraints,
+			Worker<?, ?> source, Worker<?, ?> sink) {
+		String jarFilePath = this.getClass().getProtectionDomain()
+				.getCodeSource().getLocation().getPath();
 
-		Configuration cfg = makeConfiguration(partitionsMachineMap, jarFilePath, toplevelclass, source, sink);
+		Configuration cfg = makeConfiguration(partitionsMachineMap,
+				jarFilePath, toplevelclass, source, sink);
 		JsonString json = new JsonString(cfg.toJson());
 		sendToAll(json);
 
@@ -153,13 +162,16 @@ public class Controller {
 		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = (Map<Token, Map.Entry<Integer, Integer>>) cfg
 				.getExtraData(GlobalConstants.TOKEN_MACHINE_MAP);
 
-		Map<Token, Integer> portIdMap = (Map<Token, Integer>) cfg.getExtraData(GlobalConstants.PORTID_MAP);
+		Map<Token, Integer> portIdMap = (Map<Token, Integer>) cfg
+				.getExtraData(GlobalConstants.PORTID_MAP);
 
-		Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) cfg.getExtraData(GlobalConstants.NODE_INFO_MAP);
+		Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) cfg
+				.getExtraData(GlobalConstants.NODE_INFO_MAP);
 
 		if (getAssignedMachine(source, partitionsMachineMap) != controllerNodeID) {
 			Token t = Token.createOverallInputToken(source);
-			headChannel = new TCPOutputChannel<>(Workers.getInputChannels(source).get(0), portIdMap.get(t));
+			headChannel = new TCPOutputChannel<>(Workers.getInputChannels(
+					source).get(0), portIdMap.get(t));
 		}
 
 		if (getAssignedMachine(sink, partitionsMachineMap) != controllerNodeID) {
@@ -168,28 +180,34 @@ public class Controller {
 			int nodeID = tokenMachineMap.get(t).getKey();
 			NodeInfo nodeInfo = nodeInfoMap.get(nodeID);
 			String ipAddress = nodeInfo.getIpAddress().getHostAddress();
-			tailChannel = new TCPInputChannel<>(Workers.getOutputChannels(sink).get(0), ipAddress, portIdMap.get(t));
+			tailChannel = new TCPInputChannel<>(Workers.getOutputChannels(sink)
+					.get(0), ipAddress, portIdMap.get(t));
 		}
 	}
 
-	private Configuration makeConfiguration(Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap, String jarFilePath,
-			String topLevelClass, Worker<?, ?> source, Worker<?, ?> sink) {
+	private Configuration makeConfiguration(
+			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
+			String jarFilePath, String topLevelClass, Worker<?, ?> source,
+			Worker<?, ?> sink) {
 
 		Configuration.Builder builder = Configuration.builder();
 
 		Map<Integer, Integer> coresPerMachine = new HashMap<>();
-		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine : partitionsMachineMap.entrySet()) {
+		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine : partitionsMachineMap
+				.entrySet()) {
 			coresPerMachine.put(machine.getKey(), machine.getValue().size());
 		}
 
-		PartitionParameter.Builder partParam = PartitionParameter.builder(GlobalConstants.PARTITION, coresPerMachine);
+		PartitionParameter.Builder partParam = PartitionParameter.builder(
+				GlobalConstants.PARTITION, coresPerMachine);
 
 		// TODO: need to add correct blob factory.
 		BlobFactory factory = new Interpreter.InterpreterBlobFactory();
 		partParam.addBlobFactory(factory);
 
 		for (Integer machineID : partitionsMachineMap.keySet()) {
-			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap.get(machineID);
+			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap
+					.get(machineID);
 			for (Set<Worker<?, ?>> blobWorkers : blobList) {
 				// TODO: One core per blob. Need to change this.
 				partParam.addBlob(machineID, 1, factory, blobWorkers);
@@ -201,10 +219,12 @@ public class Controller {
 		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = new HashMap<>();
 		Map<Token, Integer> portIdMap = new HashMap<>();
 
-		buildTokenMap(partitionsMachineMap, tokenMachineMap, portIdMap, source, sink);
+		buildTokenMap(partitionsMachineMap, tokenMachineMap, portIdMap, source,
+				sink);
 
 		builder.putExtraData(GlobalConstants.JARFILE_PATH, jarFilePath);
-		builder.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME, topLevelClass);
+		builder.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME,
+				topLevelClass);
 		builder.putExtraData(GlobalConstants.NODE_INFO_MAP, nodeInfoMap);
 		builder.putExtraData(GlobalConstants.TOKEN_MACHINE_MAP, tokenMachineMap);
 		builder.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
@@ -212,10 +232,13 @@ public class Controller {
 		return builder.build();
 	}
 
-	// Key - MachineID of the source node, Value - MachineID of the destination node.
+	// Key - MachineID of the source node, Value - MachineID of the destination
+	// node.
 	// all maps should be initialized.
-	private void buildTokenMap(Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
-			Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap, Map<Token, Integer> portIdMap, Worker<?, ?> source,
+	private void buildTokenMap(
+			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
+			Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap,
+			Map<Token, Integer> portIdMap, Worker<?, ?> source,
 			Worker<?, ?> sink) {
 
 		assert partitionsMachineMap != null : "partitionsMachineMap is null";
@@ -224,8 +247,12 @@ public class Controller {
 
 		int startPortNo = 24896; // Just a random magic number.
 		for (Integer machineID : partitionsMachineMap.keySet()) {
-			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap.get(machineID);
-			Set<Worker<?, ?>> allWorkers = new HashSet<>(); // Contains all workers those are assigned to the current machineID
+			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap
+					.get(machineID);
+			Set<Worker<?, ?>> allWorkers = new HashSet<>(); // Contains all
+															// workers those are
+															// assigned to the
+															// current machineID
 															// machine.
 			for (Set<Worker<?, ?>> blobWorkers : blobList) {
 				allWorkers.addAll(blobWorkers);
@@ -235,9 +262,11 @@ public class Controller {
 				for (Worker<?, ?> succ : Workers.getSuccessors(w)) {
 					if (allWorkers.contains(succ))
 						continue;
-					int dstMachineID = getAssignedMachine(succ, partitionsMachineMap);
+					int dstMachineID = getAssignedMachine(succ,
+							partitionsMachineMap);
 					Token t = new Token(w, succ);
-					tokenMachineMap.put(t, new AbstractMap.SimpleEntry<>(machineID, dstMachineID));
+					tokenMachineMap.put(t, new AbstractMap.SimpleEntry<>(
+							machineID, dstMachineID));
 					portIdMap.put(t, startPortNo++);
 				}
 			}
@@ -245,12 +274,14 @@ public class Controller {
 
 		Token headToken = Token.createOverallInputToken(source);
 		int dstMachineID = getAssignedMachine(source, partitionsMachineMap);
-		tokenMachineMap.put(headToken, new AbstractMap.SimpleEntry<>(controllerNodeID, dstMachineID));
+		tokenMachineMap.put(headToken, new AbstractMap.SimpleEntry<>(
+				controllerNodeID, dstMachineID));
 		portIdMap.put(headToken, startPortNo++);
 
 		Token tailToken = Token.createOverallOutputToken(sink);
 		int srcMahineID = getAssignedMachine(sink, partitionsMachineMap);
-		tokenMachineMap.put(tailToken, new AbstractMap.SimpleEntry<>(srcMahineID, controllerNodeID));
+		tokenMachineMap.put(tailToken, new AbstractMap.SimpleEntry<>(
+				srcMahineID, controllerNodeID));
 		portIdMap.put(tailToken, startPortNo++);
 	}
 
@@ -258,15 +289,18 @@ public class Controller {
 	 * @param worker
 	 * @return the machineID where on which the passed worker is assigned.
 	 */
-	public int getAssignedMachine(Worker<?, ?> worker, Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
+	public int getAssignedMachine(Worker<?, ?> worker,
+			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
 		for (Integer machineID : partitionsMachineMap.keySet()) {
-			for (Set<Worker<?, ?>> workers : partitionsMachineMap.get(machineID)) {
+			for (Set<Worker<?, ?>> workers : partitionsMachineMap
+					.get(machineID)) {
 				if (workers.contains(worker))
 					return machineID;
 			}
 		}
 
-		throw new IllegalArgumentException(String.format("%s is not assigned to anyof the machines", worker));
+		throw new IllegalArgumentException(String.format(
+				"%s is not assigned to anyof the machines", worker));
 	}
 
 	private void sendToAll(Object object) {
@@ -280,8 +314,10 @@ public class Controller {
 	}
 
 	public void doDrain() {
-		// TODO: Need to derive a better mechanism to properly drain. We have to first build a blob graph to perform a ordered draining
-		// across the Stream Graph. Before that, workers should be assigned to blobs in a way there is no any cyclic data flow in
+		// TODO: Need to derive a better mechanism to properly drain. We have to
+		// first build a blob graph to perform a ordered draining
+		// across the Stream Graph. Before that, workers should be assigned to
+		// blobs in a way there is no any cyclic data flow in
 		// between the blobs.
 		// Lets Stop all Blob execution now.
 		headChannel.stop();
@@ -294,8 +330,10 @@ public class Controller {
 			try {
 				AppStatus sts = comManager.readObject(nodeID);
 				if (sts != AppStatus.STOPPED)
-					throw new IllegalStateException(String.format("Expecting AppStatus.STOPPED message from stream nodes. Received "
-							+ sts + " from StreamNode %s", getName(nodeID)));
+					throw new IllegalStateException(String.format(
+							"Expecting AppStatus.STOPPED message from stream nodes. Received "
+									+ sts + " from StreamNode %s",
+							getName(nodeID)));
 			} catch (ClassNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -314,7 +352,8 @@ public class Controller {
 	 */
 	private String getName(int nodeID) {
 		if (!nodeInfoMap.containsKey(nodeIDs))
-			throw new IllegalArgumentException(String.format("No stream node with nodeID %d exists", nodeID));
+			throw new IllegalArgumentException(String.format(
+					"No stream node with nodeID %d exists", nodeID));
 		return nodeInfoMap.get(nodeIDs).getHostName();
 	}
 }

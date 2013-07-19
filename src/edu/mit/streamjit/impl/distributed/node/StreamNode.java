@@ -12,11 +12,13 @@ import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
- * In StreamJit's jargon "Stream node" means a computing node that runs part or full a streamJit application. </p> Here, the class
- * {@link StreamNode} is a StreamJit's run timer for each distributed node. So {@link StreamNode} is singleton pattern as there can be
- * only one {@link StreamNode} instance per computing node. Once it got connected with the {@link Controller}, it will keep on
- * listening and processing the commands from the {@link Controller}. {@link Controller} can issue the {@link Command} EXIT to stop the
- * streamNode.
+ * In StreamJit's jargon "Stream node" means a computing node that runs part or
+ * full a streamJit application. </p> Here, the class {@link StreamNode} is a
+ * StreamJit's run timer for each distributed node. So {@link StreamNode} is
+ * singleton pattern as there can be only one {@link StreamNode} instance per
+ * computing node. Once it got connected with the {@link Controller}, it will
+ * keep on listening and processing the commands from the {@link Controller}.
+ * {@link Controller} can issue the {@link Command} EXIT to stop the streamNode.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 10, 2013
@@ -27,12 +29,16 @@ public class StreamNode extends Thread {
 	 * Lets keep this as package public (default) for the moment.
 	 */
 	Connection controllerConnection;
-	private int myNodeID = -1; // TODO: consider move or remove this from StreamNode class. If so, this class will be more handy.
+	private int myNodeID = -1; // TODO: consider move or remove this from
+								// StreamNode class. If so, this class will be
+								// more handy.
 	private MessageVisitor mv;
 
 	private BlobsManager blobsManager;
 
-	private boolean run; // As we assume that all controller communication and the MessageElement processing is managed by single
+	private boolean run; // As we assume that all controller communication and
+							// the MessageElement processing is managed by
+							// single
 							// thread,
 							// no need to make this variable thread safe.
 
@@ -52,13 +58,16 @@ public class StreamNode extends Thread {
 	}
 
 	/**
-	 * {@link StreamNode} is Singleton pattern in order to ensure one instance per JVM..
+	 * {@link StreamNode} is Singleton pattern in order to ensure one instance
+	 * per JVM..
 	 */
 	private StreamNode(Connection connection) {
 		super("Stream Node");
 		this.controllerConnection = connection;
-		this.mv = new NodeMessageVisitor(new AppStatusProcessorImpl(), new CommandProcessorImpl(this), new ErrorProcessorImpl(),
-				new RequestProcessorImpl(this), new JsonStringProcessorImpl(this));
+		this.mv = new NodeMessageVisitor(new AppStatusProcessorImpl(),
+				new CommandProcessorImpl(this), new ErrorProcessorImpl(),
+				new RequestProcessorImpl(this), new JsonStringProcessorImpl(
+						this));
 		this.run = true;
 	}
 
@@ -69,7 +78,8 @@ public class StreamNode extends Thread {
 				me.accept(mv);
 			} catch (ClassNotFoundException | IOException e) {
 				e.printStackTrace();
-				// TODO: Need to decide what to do here. May be we can re try couple of time in a time interval before aborting the
+				// TODO: Need to decide what to do here. May be we can re try
+				// couple of time in a time interval before aborting the
 				// execution.
 				run = false;
 			}
@@ -125,9 +135,10 @@ public class StreamNode extends Thread {
 
 		if (args.length < requiredArgCount) {
 			/*
-			 * System.out.println(args.length);
-			 * System.out.println("Not enough parameters passed. Please provide thr following parameters.");
-			 * System.out.println("0: Controller's IP address"); System.exit(0);
+			 * System.out.println(args.length); System.out.println(
+			 * "Not enough parameters passed. Please provide thr following parameters."
+			 * ); System.out.println("0: Controller's IP address");
+			 * System.exit(0);
 			 */
 		}
 
@@ -160,7 +171,8 @@ public class StreamNode extends Thread {
 			new StreamNode(tcpConnection).run();
 		} catch (IOException e) {
 			e.printStackTrace();
-			System.out.println("Creating connection with the controller failed.");
+			System.out
+					.println("Creating connection with the controller failed.");
 		}
 	}
 }
