@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.interp;
 
-import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -16,14 +15,13 @@ import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.util.EmptyRunnable;
+import edu.mit.streamjit.partitioner.Partitioner;
 import edu.mit.streamjit.util.Pair;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,23 +59,40 @@ public class Interpreter implements Blob {
 	private final Configuration config;
 	private final ImmutableSet<Token> inputs, outputs;
 	private final ImmutableMap<Token, Integer> minimumBufferSizes;
+	
 	/**
 	 * Maps workers to all constraints of which they are recipients.
 	 */
 	private final Map<Worker<?, ?>, List<MessageConstraint>> constraintsForRecipient = new IdentityHashMap<>();
+
 	/**
-	 * When running normally, null.  After drain() has been called, contains the
-	 * callback we should execute.  After the callback is executed, becomes an
-	 * empty Runnable that we execute in place of interpret().
+	 * When running normally, null. After drain() has been called, contains the
+	 * callback we should execute.
 	 */
-	private final AtomicReference<Runnable> callback = new AtomicReference<>();
+	private final AtomicReference<Runnable> callbackContainer = new AtomicReference<>();
+
+	/**
+	 * Set this flag to false to stop the normal stream execution and to trigger
+	 * the draining.
+	 */
+	private volatile boolean infinityRunFlag = true;
+
+	/**
+	 * We need this flag to successfully complete the draining. We need to stop
+	 * the execution when not enough stream tuples available at inputChannels
+	 * after draining is called on this blob.
+	 */
+	private boolean finishDraining = false;
+	
 	private final ImmutableSet<IOInfo> ioinfo;
+	
 	/**
 	 * Maps Channels to the buffers they correspond to.  Output channels are
 	 * flushed to output buffers; input channels are checked for data when we
 	 * can't fire a source.
 	 */
 	private ImmutableMap<Channel<?>, Buffer> inputBuffers, outputBuffers;
+	
 	public Interpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter, Configuration config) {
 		this.workers = ImmutableSet.copyOf(workersIter);
 		this.sinks = Workers.getBottommostWorkers(workers);
@@ -190,28 +205,70 @@ public class Interpreter implements Blob {
 
 	@Override
 	public Runnable getCoreCode(int core) {
-		checkElementIndex(core, getCoreCount());
+		if (core != 0)
+			throw new AssertionError(
+					"core number can only be 0 as SingleThreadedBlob is single threaded implementation. requested core no is "
+							+ core);
 		return new Runnable() {
 			@Override
 			public void run() {
-				Runnable callback = Interpreter.this.callback.get();
-				if (callback == null)
+				while (infinityRunFlag) {
 					interpret();
-				else {
-					//Run the callback (which may be empty).
-					callback.run();
-					//Set the callback to empty so we only run it once.
-					Interpreter.this.callback.set(new EmptyRunnable());
 				}
+				myDrain();
 			}
 		};
 	}
 
+	/**
+	 * Drains this {@link Blob} and pass the call back to next blob. Assumes all
+	 * prior {@link Blob}s are drained when the current {@link Blob} is called
+	 * for draining. For the time being, it is {@link Partitioner}'s
+	 * responsibility to generate the partitions for the blobs those are not
+	 * circularly dependent.
+	 */
+	private void myDrain() {
+		assert this.callbackContainer.get() != null : "Illegal call. Call back is not set";
+		// TODO: We can optimize the draining in a way that just processing the
+		// workers those are related to the non-empty input
+		// channels. Current algorithm processes all workers in the Blob until
+		// all input channels of the Blob become empty.
+		finishDraining = false;
+		while (!isAllInputChannelEmpty() && !finishDraining) {
+			System.out.println("DEBUG: " + Thread.currentThread().getName()
+					+ " is Draining...");
+			interpret();
+		}
+		System.out.println("DEBUG: Draining of "
+				+ Thread.currentThread().getName() + " is finished");
+		this.callbackContainer.get().run();
+	}
+
+	/**
+	 * @return <code>true</code> if all input buffer of the {@link Blob} are
+	 *         empty.
+	 */
+	private boolean isAllInputChannelEmpty() {
+		boolean empty = true;
+		for (Buffer inbuf : inputBuffers.values()) {
+			if (inbuf.size() != 0)
+				empty = false;
+		}
+		return empty;
+	}
+
 	@Override
 	public void drain(Runnable callback) {
-		//Set the callback; the core code will run it after its next interpret().
-		if (!this.callback.compareAndSet(null, callback))
+		if (callback == null) {
+			throw new IllegalArgumentException("NULL callback is passed.");
+		}
+
+		// Set the callback; the core code will run it after its next
+		// interpret().
+		if (!this.callbackContainer.compareAndSet(null, callback))
 			throw new IllegalStateException("drain() called multiple times");
+
+		this.infinityRunFlag = false;
 	}
 
 	public static final class InterpreterBlobFactory implements BlobFactory {
