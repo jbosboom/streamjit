@@ -210,7 +210,7 @@ public class Interpreter implements Blob {
 	@Override
 	public void drain(Runnable callback) {
 		//Set the callback; the core code will run it after its next interpret().
-		if (!this.callback.compareAndSet(callback, null))
+		if (!this.callback.compareAndSet(null, callback))
 			throw new IllegalStateException("drain() called multiple times");
 	}
 
