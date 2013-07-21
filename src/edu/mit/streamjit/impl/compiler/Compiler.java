@@ -24,6 +24,7 @@ import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.IOInfo;
@@ -585,7 +586,7 @@ public final class Compiler {
 		try {
 			initFieldHelper(mcl.loadClass(fieldHelperKlass.getName()));
 			Class<?> blobClass = mcl.loadClass(blobKlass.getName());
-			return new CompilerBlobHost(workers, config, blobClass, ImmutableList.copyOf(buffers.values()));
+			return new CompilerBlobHost(workers, config, blobClass, ImmutableList.copyOf(buffers.values()), initSchedule);
 		} catch (ClassNotFoundException ex) {
 			throw new AssertionError(ex);
 		}
@@ -982,27 +983,48 @@ public final class Compiler {
 	private static final class CompilerBlobHost implements Blob {
 		private final ImmutableSet<Worker<?, ?>> workers;
 		private final Configuration configuration;
-		private final ImmutableList<BufferData> bufferData;
-		private final ImmutableMap<Token, Channel<?>> inputMap, outputMap;
+		private final ImmutableMap<Token, BufferData> bufferData;
+		private final ImmutableMap<Worker<?, ?>, Integer> initSchedule;
+		private final ImmutableSortedSet<Token> inputTokens, outputTokens;
+		private final ImmutableMap<Token, Integer> minimumBufferSize;
 		private final Runnable[] runnables;
 		private final SwitchPoint sp1 = new SwitchPoint(), sp2 = new SwitchPoint();
 		private final CyclicBarrier barrier;
+		private ImmutableMap<Token, Buffer> buffers;
 		private volatile Runnable drainCallback;
 
-		public CompilerBlobHost(Set<Worker<?, ?>> workers, Configuration configuration, Class<?> blobClass, List<BufferData> bufferData) {
+		public CompilerBlobHost(Set<Worker<?, ?>> workers, Configuration configuration, Class<?> blobClass, List<BufferData> bufferData, Map<Worker<?, ?>, Integer> initSchedule) {
 			this.workers = ImmutableSet.copyOf(workers);
 			this.configuration = configuration;
-			this.bufferData = ImmutableList.copyOf(bufferData);
+			this.initSchedule = ImmutableMap.copyOf(initSchedule);
+
+			ImmutableMap.Builder<Token, BufferData> bufferDataBuilder = ImmutableMap.builder();
+			for (BufferData d : bufferData)
+				bufferDataBuilder.put(d.token, d);
+			this.bufferData = bufferDataBuilder.build();
 
 			ImmutableSet<IOInfo> ioinfo = IOInfo.create(workers);
-			ImmutableMap.Builder<Token, Channel<?>> inputBuilder = ImmutableMap.builder(), outputBuilder = ImmutableMap.builder();
+			ImmutableSortedSet.Builder<Token> inputTokensBuilder = ImmutableSortedSet.naturalOrder(), outputTokensBuilder = ImmutableSortedSet.naturalOrder();
+			ImmutableMap.Builder<Token, Integer> minimumBufferSizeBuilder = ImmutableMap.builder();
 			for (IOInfo info : ioinfo)
-				if (!workers.contains(info.upstream()))
-					inputBuilder.put(info.token(), info.channel());
-				else if (!workers.contains(info.downstream()))
-					outputBuilder.put(info.token(), info.channel());
-			this.inputMap = inputBuilder.build();
-			this.outputMap = outputBuilder.build();
+				if (info.isInput()) {
+					inputTokensBuilder.add(info.token());
+					Worker<?, ?> worker = info.downstream();
+					BufferData data = this.bufferData.get(info.token());
+					int initSchedulePopReq = worker.getPopRates().get(info.getDownstreamChannelIndex()).max();
+					int initSchedulePeekReq = worker.getPeekRates().get(info.getDownstreamChannelIndex()).max();
+					int initScheduleReq = Math.max(initSchedulePopReq, initSchedulePeekReq);
+					minimumBufferSizeBuilder.put(info.token(), Math.max(initScheduleReq, data.capacity));
+				} else {
+					outputTokensBuilder.add(info.token());
+					//TODO: request enough for one or more steady-states worth of output?
+					//We still have to support partial writes but we can give an
+					//efficiency hint here.  Perhaps autotunable fraction?
+					minimumBufferSizeBuilder.put(info.token(), 1);
+				}
+			this.inputTokens = inputTokensBuilder.build();
+			this.outputTokens = outputTokensBuilder.build();
+			this.minimumBufferSize = minimumBufferSizeBuilder.build();
 
 			List<java.lang.reflect.Method> coreWorkMethods = new ArrayList<>();
 			for (java.lang.reflect.Method m : blobClass.getMethods())
@@ -1049,13 +1071,28 @@ public final class Compiler {
 		}
 
 		@Override
-		public Map<Token, Channel<?>> getInputChannels() {
-			return inputMap;
+		public Set<Token> getInputs() {
+			return inputTokens;
 		}
 
 		@Override
-		public Map<Token, Channel<?>> getOutputChannels() {
-			return outputMap;
+		public Set<Token> getOutputs() {
+			return outputTokens;
+		}
+
+		@Override
+		public int getMinimumBufferCapacity(Token token) {
+			return minimumBufferSize.get(token);
+		}
+
+		@Override
+		public void installBuffers(Map<Token, Buffer> buffers) {
+			ImmutableMap.Builder<Token, Buffer> buffersBuilder = ImmutableMap.builder();
+			for (Token t : getInputs())
+				buffersBuilder.put(t, buffers.get(t));
+			for (Token t : getOutputs())
+				buffersBuilder.put(t, buffers.get(t));
+			this.buffers = buffersBuilder.build();
 		}
 
 		@Override
@@ -1098,16 +1135,15 @@ public final class Compiler {
 			//TODO: actual draining
 			drainCallback.run();
 		}
+
+		private boolean isDraining() {
+			return drainCallback != null;
+		}
 	}
 
 	public static void main(String[] args) {
 		OneToOneElement<Integer, Integer> graph = new Splitjoin<>(new RoundrobinSplitter<Integer>(), new RoundrobinJoiner<Integer>(), new Identity<Integer>(), new Identity<Integer>());
-		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor(new ChannelFactory() {
-			@Override
-			public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
-				return new EmptyChannel<>();
-			}
-		});
+		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		graph.visit(cwv);
 		Set<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
 		Configuration config = new CompilerBlobFactory().getDefaultConfiguration(workers);
