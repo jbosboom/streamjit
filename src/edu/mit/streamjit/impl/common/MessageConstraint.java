@@ -369,7 +369,7 @@ public final class MessageConstraint {
 		//TODO: see if NodesInPathsComputer adds these itself or not
 		allNodes.add(goalEdge.upstream);
 		allNodes.add(goalEdge.downstream);
-		List<Worker<?, ?>> sortedNodes = topologicalSort(allNodes);
+		List<Worker<?, ?>> sortedNodes = Workers.topologicalSort(allNodes);
 		//Add self-edges for all workers.
 		for (Worker<?, ?> w : sortedNodes) {
 			Edge selfEdge = new Edge(w, w);
@@ -612,21 +612,6 @@ public final class MessageConstraint {
 			}
 			return !nodes.isEmpty();
 		}
-	}
-
-	/**
-	 * Topologically sort the given set of nodes, such that each node precedes
-	 * all of its successors in the returned list.
-	 * @param nodes the set of nodes to sort
-	 * @return a topologically-ordered list of the given nodes
-	 */
-	private static List<Worker<?, ?>> topologicalSort(Set<Worker<?, ?>> nodes) {
-		return TopologicalSort.sort(nodes, new TopologicalSort.PartialOrder<Worker<?, ?>>() {
-			@Override
-			public boolean lessThan(Worker a, Worker b) {
-				return Workers.getAllSuccessors(a).contains(b);
-			}
-		});
 	}
 
 	/**

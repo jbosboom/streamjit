@@ -757,12 +757,7 @@ public final class Compiler {
 			workMethod.basicBlocks().add(entryBlock);
 
 			Map<Token, Value> localBuffers = new HashMap<>();
-			ImmutableList<Worker<?, ?>> orderedWorkers = TopologicalSort.sort(new ArrayList<>(workers), new TopologicalSort.PartialOrder<Worker<?, ?>>() {
-				@Override
-				public boolean lessThan(Worker<?, ?> a, Worker<?, ?> b) {
-					return Workers.getAllSuccessors(a).contains(b);
-				}
-			});
+			ImmutableList<Worker<?, ?>> orderedWorkers = Workers.topologicalSort(workers);
 			for (Worker<?, ?> w : orderedWorkers) {
 				int wid = Workers.getIdentifier(w);
 				//Input buffers
