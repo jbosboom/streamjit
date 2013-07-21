@@ -8,6 +8,7 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.interp.Channel;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -16,22 +17,48 @@ import java.util.Set;
  * @since 4/3/2013
  */
 public class IOInfo {
+	/**
+	 * The kind of edge this IOInfo represents, in relation to the set of
+	 * workers it was created from.
+	 */
+	private static enum ConnectionKind {
+		/**
+		 * An edge from a worker not in the set to a worker in the set.
+		 */
+		INPUT,
+		/**
+		 * An edge from a worker in the set to a worker not in the set.
+		 */
+		OUTPUT,
+		/**
+		 * An edge between two workers in the set.
+		 */
+		INTERNAL};
 	private final Worker<?, ?> upstream;
 	private final Worker<?, ?> downstream;
 	private final Channel<?> channel;
 	private final Blob.Token token;
-	private final boolean isInput;
+	private final ConnectionKind connectionKind;
 
-	private IOInfo(Worker<?, ?> upstream, Worker<?, ?> downstream, Channel<?> channel, Blob.Token token, boolean isInput) {
+	private IOInfo(Worker<?, ?> upstream, Worker<?, ?> downstream, Channel<?> channel, Blob.Token token, ConnectionKind kind) {
 		checkArgument(upstream != null || downstream != null);
-		checkArgument(isInput && downstream != null || !isInput && upstream != null);
+		switch (kind) {
+			case INPUT:
+				checkArgument(downstream != null);
+				break;
+			case OUTPUT:
+				checkArgument(upstream != null);
+				break;
+			case INTERNAL:
+				checkArgument(upstream != null && downstream != null);
+		}
 		if (upstream != null && downstream != null)
 			checkArgument(Workers.compareStreamPosition(upstream, downstream) == Workers.StreamPosition.UPSTREAM);
 		this.upstream = upstream;
 		this.downstream = downstream;
 		this.channel = channel;
 		this.token = checkNotNull(token);
-		this.isInput = isInput;
+		this.connectionKind = kind;
 	}
 
 	@SuppressWarnings(value = "unchecked")
@@ -46,7 +73,7 @@ public class IOInfo {
 			if (preds.isEmpty()) {
 				checkArgument(!overallInput, "two overall inputs?!");
 				Channel<?> chan = Iterables.get(ichans, 0, null);
-				retval.add(new IOInfo(null, w, chan, Blob.Token.createOverallInputToken(w), true));
+				retval.add(new IOInfo(null, w, chan, Blob.Token.createOverallInputToken(w), ConnectionKind.INPUT));
 				overallInput = true;
 			}
 			for (int i = 0; i < preds.size(); ++i) {
@@ -54,7 +81,7 @@ public class IOInfo {
 				if (workers.contains(pred)) continue;
 				Channel<?> chan = Iterables.get(ichans, i, null);
 				Blob.Token token = new Blob.Token(pred, w);
-				retval.add(new IOInfo(pred, w, chan, token, true));
+				retval.add(new IOInfo(pred, w, chan, token, ConnectionKind.INPUT));
 			}
 		}
 		for (Worker<?, ?> w : workers) {
@@ -64,7 +91,7 @@ public class IOInfo {
 			if (succs.isEmpty()) {
 				checkArgument(!overallOutput, "two overall outputs?!");
 				Channel<?> chan = Iterables.get(ochans, 0, null);
-				retval.add(new IOInfo(w, null, chan, Blob.Token.createOverallOutputToken(w), false));
+				retval.add(new IOInfo(w, null, chan, Blob.Token.createOverallOutputToken(w), ConnectionKind.OUTPUT));
 				overallOutput = true;
 			}
 			for (int i = 0; i < succs.size(); ++i) {
@@ -72,7 +99,7 @@ public class IOInfo {
 				if (workers.contains(succ)) continue;
 				Channel<?> chan = Iterables.get(ochans, i, null);
 				Blob.Token token = new Blob.Token(w, succ);
-				retval.add(new IOInfo(w, succ, chan, token, false));
+				retval.add(new IOInfo(w, succ, chan, token, ConnectionKind.OUTPUT));
 			}
 		}
 		return retval.build();
@@ -109,17 +136,17 @@ public class IOInfo {
 	}
 
 	public boolean isInput() {
-		return isInput;
+		return connectionKind.equals(ConnectionKind.INPUT);
 	}
 
 	public boolean isOutput() {
-		return !isInput();
+		return connectionKind.equals(ConnectionKind.OUTPUT);
 	}
 
 	@Override
 	public String toString() {
 		return String.format("%s %s: %s -> %s, %s",
-				isInput() ? "input" : "output",
+				connectionKind.toString().toLowerCase(Locale.ENGLISH),
 				token(),
 				upstream(),
 				downstream(),
