@@ -108,7 +108,7 @@ public class Interpreter implements Blob {
 		}
 		ImmutableSet.Builder<Token> inputTokens = ImmutableSet.builder(), outputTokens = ImmutableSet.builder();
 		ImmutableMap.Builder<Token, Integer> minimumBufferSize = ImmutableMap.builder();
-		for (IOInfo info : IOInfo.create(workers)) {
+		for (IOInfo info : IOInfo.externalEdges(workers)) {
 			Channel channel = factory.makeChannel((Worker)info.upstream(), (Worker)info.downstream());
 			List channelList;
 			int index;
@@ -136,7 +136,7 @@ public class Interpreter implements Blob {
 		this.inputs = inputTokens.build();
 		this.outputs = outputTokens.build();
 		this.minimumBufferSizes = minimumBufferSize.build();
-		this.ioinfo = IOInfo.create(workers);
+		this.ioinfo = IOInfo.externalEdges(workers);
 	}
 
 	//TODO: copied from Compiler, refactor into static method somewhere

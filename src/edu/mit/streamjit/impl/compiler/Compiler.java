@@ -121,7 +121,7 @@ public final class Compiler {
 		this.workers = workers;
 		this.config = config;
 		this.maxNumCores = maxNumCores;
-		this.ioinfo = IOInfo.create(workers);
+		this.ioinfo = IOInfo.externalEdges(workers);
 
 		//We can only have one first and last worker, though they can have
 		//multiple inputs/outputs.
@@ -327,7 +327,7 @@ public final class Compiler {
 	 * copy to work with.  After remapping every use of that receiver (remapping
 	 * field accesses to the worker's static fields, remapping JIT-hooks to
 	 * their implementations, and remapping utility methods in the worker class
-	 * recursively), we then create the actual work method without the receiver
+	 * recursively), we then externalEdges the actual work method without the receiver
 	 * argument.
 	 * @param worker
 	 */
@@ -643,7 +643,7 @@ public final class Compiler {
 		private StreamNode(Worker<?, ?> worker) {
 			this.id = Workers.getIdentifier(worker);
 			this.workers = (ImmutableSet<Worker<?, ?>>)ImmutableSet.of(worker);
-			this.ioinfo = ImmutableSortedSet.copyOf(IOInfo.TOKEN_SORT, IOInfo.create(workers));
+			this.ioinfo = ImmutableSortedSet.copyOf(IOInfo.TOKEN_SORT, IOInfo.externalEdges(workers));
 			buildWorkerData(worker);
 
 			assert !streamNodes.containsKey(worker);
@@ -657,7 +657,7 @@ public final class Compiler {
 		private StreamNode(StreamNode a, StreamNode b) {
 			this.id = Math.min(a.id, b.id);
 			this.workers = ImmutableSet.<Worker<?, ?>>builder().addAll(a.workers).addAll(b.workers).build();
-			this.ioinfo = ImmutableSortedSet.copyOf(IOInfo.TOKEN_SORT, IOInfo.create(workers));
+			this.ioinfo = ImmutableSortedSet.copyOf(IOInfo.TOKEN_SORT, IOInfo.externalEdges(workers));
 			this.fields.putAll(a.fields);
 			this.fields.putAll(b.fields);
 			this.fieldValues.putAll(a.fieldValues);
@@ -1003,7 +1003,7 @@ public final class Compiler {
 				bufferDataBuilder.put(d.token, d);
 			this.bufferData = bufferDataBuilder.build();
 
-			ImmutableSet<IOInfo> ioinfo = IOInfo.create(workers);
+			ImmutableSet<IOInfo> ioinfo = IOInfo.externalEdges(workers);
 			ImmutableSortedSet.Builder<Token> inputTokensBuilder = ImmutableSortedSet.naturalOrder(), outputTokensBuilder = ImmutableSortedSet.naturalOrder();
 			ImmutableMap.Builder<Token, Integer> minimumBufferSizeBuilder = ImmutableMap.builder();
 			for (IOInfo info : ioinfo)

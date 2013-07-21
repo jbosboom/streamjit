@@ -61,8 +61,17 @@ public class IOInfo {
 		this.connectionKind = kind;
 	}
 
+	/**
+	 * Creates IOInfo objects for all external edges of the given set of workers
+	 * (that is, edges where exactly one worker is in the set).  The workers
+	 * must have their predecessor/successor relationships initialized, but they
+	 * need not be connected with channels.  The given set need not be
+	 * connected (in the reachability sense).
+	 * @param workers a set of workers
+	 * @return a set of IOInfo objects for all external edges of the given set
+	 */
 	@SuppressWarnings(value = "unchecked")
-	public static ImmutableSet<IOInfo> create(Set<Worker<?, ?>> workers) {
+	public static ImmutableSet<IOInfo> externalEdges(Set<Worker<?, ?>> workers) {
 		ImmutableSet.Builder<IOInfo> retval = ImmutableSet.builder();
 		boolean overallInput = false;
 		boolean overallOutput = false;
