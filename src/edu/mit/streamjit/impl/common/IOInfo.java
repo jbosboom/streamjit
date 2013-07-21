@@ -1,6 +1,8 @@
 package edu.mit.streamjit.impl.common;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.base.Predicate;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.api.Worker;
@@ -62,16 +64,14 @@ public class IOInfo {
 	}
 
 	/**
-	 * Creates IOInfo objects for all external edges of the given set of workers
-	 * (that is, edges where exactly one worker is in the set).  The workers
+	 * Creates IOInfo objects for all edges of the given set of workers.  The workers
 	 * must have their predecessor/successor relationships initialized, but they
 	 * need not be connected with channels.  The given set need not be
 	 * connected (in the reachability sense).
 	 * @param workers a set of workers
-	 * @return a set of IOInfo objects for all external edges of the given set
+	 * @return a set of IOInfo objects for all edges of the given set
 	 */
-	@SuppressWarnings(value = "unchecked")
-	public static ImmutableSet<IOInfo> externalEdges(Set<Worker<?, ?>> workers) {
+	public static ImmutableSet<IOInfo> allEdges(Set<Worker<?, ?>> workers) {
 		ImmutableSet.Builder<IOInfo> retval = ImmutableSet.builder();
 		boolean overallInput = false;
 		boolean overallOutput = false;
@@ -87,10 +87,10 @@ public class IOInfo {
 			}
 			for (int i = 0; i < preds.size(); ++i) {
 				Worker<?, ?> pred = preds.get(i);
-				if (workers.contains(pred)) continue;
 				Channel<?> chan = Iterables.get(ichans, i, null);
 				Blob.Token token = new Blob.Token(pred, w);
-				retval.add(new IOInfo(pred, w, chan, token, ConnectionKind.INPUT));
+				retval.add(new IOInfo(pred, w, chan, token,
+						workers.contains(pred) ? ConnectionKind.INTERNAL : ConnectionKind.INPUT));
 			}
 		}
 		for (Worker<?, ?> w : workers) {
@@ -105,13 +105,49 @@ public class IOInfo {
 			}
 			for (int i = 0; i < succs.size(); ++i) {
 				Worker<?, ?> succ = succs.get(i);
-				if (workers.contains(succ)) continue;
 				Channel<?> chan = Iterables.get(ochans, i, null);
 				Blob.Token token = new Blob.Token(w, succ);
-				retval.add(new IOInfo(w, succ, chan, token, ConnectionKind.OUTPUT));
+				retval.add(new IOInfo(w, succ, chan, token,
+						workers.contains(succ) ? ConnectionKind.INTERNAL : ConnectionKind.OUTPUT));
 			}
 		}
 		return retval.build();
+	}
+
+	/**
+	 * Creates IOInfo objects for all external edges of the given set of workers
+	 * (that is, edges where exactly one worker is in the set).  The workers
+	 * must have their predecessor/successor relationships initialized, but they
+	 * need not be connected with channels.  The given set need not be
+	 * connected (in the reachability sense).
+	 * @param workers a set of workers
+	 * @return a set of IOInfo objects for all external edges of the given set
+	 */
+	public static ImmutableSet<IOInfo> externalEdges(Set<Worker<?, ?>> workers) {
+		return FluentIterable.from(allEdges(workers)).filter(new Predicate<IOInfo>() {
+			@Override
+			public boolean apply(IOInfo input) {
+				return input.isInput() || input.isOutput();
+			}
+		}).toSet();
+	}
+
+	/**
+	 * Creates IOInfo objects for all internal edges of the given set of workers
+	 * (that is, edges where both workers are in the set).  The workers
+	 * must have their predecessor/successor relationships initialized, but they
+	 * need not be connected with channels.  The given set need not be
+	 * connected (in the reachability sense).
+	 * @param workers a set of workers
+	 * @return a set of IOInfo objects for all internal edges of the given set
+	 */
+	public static ImmutableSet<IOInfo> internalEdges(Set<Worker<?, ?>> workers) {
+		return FluentIterable.from(allEdges(workers)).filter(new Predicate<IOInfo>() {
+			@Override
+			public boolean apply(IOInfo input) {
+				return input.connectionKind == ConnectionKind.INTERNAL;
+			}
+		}).toSet();
 	}
 
 	public Worker<?, ?> upstream() {
