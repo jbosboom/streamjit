@@ -1079,12 +1079,13 @@ public final class Compiler {
 
 			final java.lang.invoke.MethodType voidNoArgs = java.lang.invoke.MethodType.methodType(void.class);
 			MethodHandle nop = MethodHandles.identity(Void.class).bindTo(null).asType(voidNoArgs);
-			MethodHandle mainLoop, doInit, doAdjustBuffers, doDrain;
+			MethodHandle mainLoop, doInit, doAdjustBuffers, doDrain, newAssertionError;
 			try {
 				mainLoop = lookup.findVirtual(CompilerBlobHost.class, "mainLoop", java.lang.invoke.MethodType.methodType(void.class, MethodHandle.class)).bindTo(this);
 				doInit = lookup.findVirtual(CompilerBlobHost.class, "doInit", voidNoArgs).bindTo(this);
 				doAdjustBuffers = lookup.findVirtual(CompilerBlobHost.class, "doAdjustBuffers", voidNoArgs).bindTo(this);
 				doDrain = lookup.findVirtual(CompilerBlobHost.class, "doDrain", voidNoArgs).bindTo(this);
+				newAssertionError = lookup.findConstructor(AssertionError.class, java.lang.invoke.MethodType.methodType(void.class, Object.class));
 			} catch (IllegalAccessException | NoSuchMethodException ex) {
 				throw new AssertionError(ex);
 			}
@@ -1096,12 +1097,15 @@ public final class Compiler {
 
 			this.runnables = new Runnable[coreWorkHandles.size()];
 			for (int i = 0; i < runnables.length; ++i) {
-				MethodHandle main = mainLoop.bindTo(coreWorkHandles.get(i));
-				MethodHandle overall = sp1.guardWithTest(nop, sp2.guardWithTest(main, nop));
+				MethodHandle mainNop = mainLoop.bindTo(nop);
+				MethodHandle mainCorework = mainLoop.bindTo(coreWorkHandles.get(i));
+				MethodHandle overall = sp1.guardWithTest(mainNop, sp2.guardWithTest(mainCorework, nop));
 				runnables[i] = MethodHandleProxies.asInterfaceInstance(Runnable.class, overall);
 			}
 
-			MethodHandle barrierAction = sp1.guardWithTest(doInit, sp2.guardWithTest(doAdjustBuffers, doDrain));
+			MethodHandle thrower = MethodHandles.throwException(void.class, AssertionError.class);
+			MethodHandle doThrowAE = MethodHandles.filterReturnValue(newAssertionError.bindTo("Can't happen! Barrier action reached after draining?"), thrower);
+			MethodHandle barrierAction = sp1.guardWithTest(doInit, sp2.guardWithTest(doAdjustBuffers, doThrowAE));
 			this.barrier = new CyclicBarrier(runnables.length, MethodHandleProxies.asInterfaceInstance(Runnable.class, barrierAction));
 		}
 
@@ -1227,6 +1231,8 @@ public final class Compiler {
 			//TODO: Now that we don't need the channels, null them out.
 
 			//TODO: Move state to fields.
+
+			SwitchPoint.invalidateAll(new SwitchPoint[]{sp1});
 		}
 
 		private void doAdjustBuffers() throws Throwable {
@@ -1303,7 +1309,15 @@ public final class Compiler {
 			buffers.put(t, new ArrayDequeBuffer());
 		blob.installBuffers(buffers);
 
-		((CompilerBlobHost)blob).doInit();
 		blob.getCoreCode(0).run();
+		blob.getCoreCode(0).run();
+		blob.getCoreCode(0).run();
+		blob.getCoreCode(0).run();
+		blob.getCoreCode(0).run();
+
+		Buffer b = buffers.get(blob.getOutputs().iterator().next());
+		Object o;
+		while ((o = b.read()) != null)
+			System.out.println(o);
 	}
 }
