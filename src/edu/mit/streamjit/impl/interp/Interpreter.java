@@ -4,13 +4,16 @@ import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Rate;
+import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.IOInfo;
@@ -18,6 +21,9 @@ import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.util.EmptyRunnable;
 import edu.mit.streamjit.util.Pair;
+import edu.mit.streamjit.util.ReflectionUtils;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -212,6 +218,34 @@ public class Interpreter implements Blob {
 		//Set the callback; the core code will run it after its next interpret().
 		if (!this.callback.compareAndSet(callback, null))
 			throw new IllegalStateException("drain() called multiple times");
+	}
+
+	@Override
+	public DrainData getDrainData() {
+		ImmutableMap.Builder<Token, ImmutableList<Object>> dataBuilder = ImmutableMap.builder();
+		for (IOInfo info : IOInfo.allEdges(workers))
+			dataBuilder.put(info.token(), ImmutableList.copyOf(info.channel()));
+
+		ImmutableTable.Builder<Integer, String, Object> stateBuilder = ImmutableTable.builder();
+		for (Worker<?, ?> worker : workers) {
+			if (!(worker instanceof StatefulFilter))
+				continue;
+			int id = Workers.getIdentifier(worker);
+			for (Class<?> klass = worker.getClass(); !klass.equals(StatefulFilter.class); klass = klass.getSuperclass()) {
+				for (Field f : klass.getDeclaredFields()) {
+					if ((f.getModifiers() & (Modifier.STATIC | Modifier.FINAL)) != 0)
+						continue;
+					f.setAccessible(true);
+					try {
+						stateBuilder.put(id, f.getName(), f.get(worker));
+					} catch (IllegalArgumentException | IllegalAccessException ex) {
+						throw new AssertionError(ex);
+					}
+				}
+			}
+		}
+
+		return new DrainData(dataBuilder.build(), stateBuilder.build());
 	}
 
 	public static final class InterpreterBlobFactory implements BlobFactory {
