@@ -30,16 +30,12 @@ public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, 
 	 * specifically, whether calls to offer() should be forwarded to the channel
 	 * or not.
 	 */
-	private volatile boolean draining = false;
+	private volatile boolean draining = false, drainingComplete = false;
 	/**
 	 * Once the awaitDrainingLatch is cleared, indicates whether the stream was
 	 * fully drained or if there were data items stuck in buffers.
 	 */
 	private volatile boolean fullyDrained = false;
-	/**
-	 * The latch that threads blocked in awaitDraining() block on.
-	 */
-	private final CountDownLatch awaitDrainingLatch = new CountDownLatch(1);
 
 	/**
 	 * Creates a new AbstractCompiledStream, using the given buffers for input
@@ -75,15 +71,8 @@ public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, 
 	}
 
 	@Override
-	public final boolean awaitDraining() throws InterruptedException {
-		awaitDrainingLatch.await();
-		return fullyDrained;
-	}
-
-	@Override
-	public final boolean awaitDraining(long timeout, TimeUnit unit) throws InterruptedException {
-		awaitDrainingLatch.await(timeout, unit);
-		return fullyDrained;
+	public boolean isDrained() {
+		return drainingComplete;
 	}
 
 	/**
@@ -106,6 +95,6 @@ public abstract class AbstractCompiledStream<I, O> implements CompiledStream<I, 
 	protected final void finishedDraining(boolean fullyDrained) {
 		//TODO: enforce that the method is called once?
 		this.fullyDrained = fullyDrained;
-		awaitDrainingLatch.countDown();
+		this.drainingComplete = true;
 	}
 }
