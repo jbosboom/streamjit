@@ -57,6 +57,8 @@ public class DrainData {
 		}
 
 		ImmutableTable.Builder<Integer, String, Object> stateBuilder = ImmutableTable.builder();
+		if (!Sets.intersection(state.rowKeySet(), other.state.rowKeySet()).isEmpty())
+			throw new IllegalArgumentException("bad merge: one worker's state split across DrainData");
 		stateBuilder.putAll(state);
 		stateBuilder.putAll(other.state);
 		return new DrainData(dataBuilder.build(), stateBuilder.build());
