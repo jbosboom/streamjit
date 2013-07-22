@@ -169,7 +169,7 @@ public class IOInfo {
 	public int getDownstreamChannelIndex() {
 		if (token().isOverallInput())
 			return 0;
-		return Workers.getSuccessors(downstream).indexOf(upstream);
+		return Workers.getPredecessors(downstream).indexOf(upstream);
 	}
 
 	public Channel<?> channel() {
