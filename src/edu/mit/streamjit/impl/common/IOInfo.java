@@ -4,6 +4,7 @@ import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
@@ -72,7 +73,9 @@ public class IOInfo {
 	 * @return a set of IOInfo objects for all edges of the given set
 	 */
 	public static ImmutableSet<IOInfo> allEdges(Set<Worker<?, ?>> workers) {
-		ImmutableSet.Builder<IOInfo> retval = ImmutableSet.builder();
+		//TODO: we'll get most edges twice, once while traversing preds and once
+		//for succs.  Using a sorted set is a total hack.
+		ImmutableSortedSet.Builder<IOInfo> retval = ImmutableSortedSet.orderedBy(IOInfo.TOKEN_SORT);
 		boolean overallInput = false;
 		boolean overallOutput = false;
 		for (Worker<?, ?> w : workers) {
