@@ -239,7 +239,7 @@ public class SingleThreadedBlob implements Blob {
 			int channel = indexOfUnsatisfiedChannel(current);
 			if (channel != -1) {
 				if (!workers.contains(Iterables.get(Workers.getPredecessors(current), channel, null))) {
-					// We need data from a worker not in our stream graph section,
+					// We need data from a worker that is not in our blob,
 					// so we can't do anything.
 					finishDraining = true; // This flag has effect only after draining is called.
 					return false;
