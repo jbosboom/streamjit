@@ -234,7 +234,7 @@ public class Interpreter implements Blob {
 		// channels. Current algorithm processes all workers in the Blob until
 		// all input channels of the Blob become empty.
 		finishDraining = false;
-		while (!isAllInputChannelEmpty() && !finishDraining) {
+		while (!isAllInputBufferEmpty() && !finishDraining) {
 			System.out.println("DEBUG: " + Thread.currentThread().getName()
 					+ " is Draining...");
 			interpret();
@@ -242,13 +242,32 @@ public class Interpreter implements Blob {
 		System.out.println("DEBUG: Draining of "
 				+ Thread.currentThread().getName() + " is finished");
 		this.callbackContainer.get().run();
+
+		// After calling the next blob for the draining, data in all output
+		// channels need to be pushed into output buffers.
+		int i = 0;
+		while (pushOutputs()){
+			i++;
+			System.out.println(Thread.currentThread().getName() + " Draining finished Copying data");
+			if(i > 20)
+			{
+				System.out.println(Thread.currentThread().getName() + " Still have data. But couldn't copy the data. Terminating");
+				break;
+			}
+			try {
+				Thread.sleep(200);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 
 	/**
 	 * @return <code>true</code> if all input buffer of the {@link Blob} are
 	 *         empty.
 	 */
-	private boolean isAllInputChannelEmpty() {
+	private boolean isAllInputBufferEmpty() {
 		boolean empty = true;
 		for (Buffer inbuf : inputBuffers.values()) {
 			if (inbuf.size() != 0)
@@ -322,6 +341,13 @@ public class Interpreter implements Blob {
 		} while (fired);
 
 		// Flush output buffers, spinning if necessary.
+		pushOutputs();
+		return everFired;
+	}
+	
+	private boolean pushOutputs()
+	{
+		boolean hasResidue = false;
 		for (Map.Entry<Channel<?>, Buffer> e : outputBuffers.entrySet()) {
 			Channel<?> outchnl = e.getKey();
 			Buffer outbuf = e.getValue();
@@ -331,8 +357,11 @@ public class Interpreter implements Blob {
 							.println("Buffer writing failed. Verify the algorithm");
 				}
 			}
+			
+			if(!outchnl.isEmpty())
+				hasResidue = true;
 		}
-		return everFired;
+		return hasResidue;
 	}
 
 	/**
@@ -378,7 +407,12 @@ public class Interpreter implements Blob {
 					} else
 					{
 						// TODO : Optimization. This branch is taken more frequently.
-						// System.out.println(Thread.currentThread().getName() + " Couldn't fire. By inputBuffer is Empty");
+						//System.out.println(Thread.currentThread().getName() + " Couldn't fire. By inputBuffer is Empty");
+						
+						// We need data from a worker that is not in our blob,
+						// so we can't do anything.
+						finishDraining = true; // This flag has effect only after draining is called.
+						
 						return false; //Couldn't fire.
 					}
 				}
