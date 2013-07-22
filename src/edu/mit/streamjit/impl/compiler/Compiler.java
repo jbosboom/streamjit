@@ -983,7 +983,7 @@ public final class Compiler {
 		private final ImmutableMap<Token, BufferData> bufferData;
 		private final ImmutableMap<Worker<?, ?>, Integer> initSchedule;
 		private final ImmutableMap<Token, Integer> initScheduleReqs;
-		private final ImmutableSortedSet<Token> inputTokens, outputTokens;
+		private final ImmutableSortedSet<Token> inputTokens, outputTokens, internalTokens;
 		private final ImmutableMap<Token, Integer> minimumBufferSize;
 		private final Class<?> blobClass;
 		private final ImmutableMap<String, MethodHandle> blobClassMethods, blobClassFieldGetters, blobClassFieldSetters;
@@ -1035,6 +1035,11 @@ public final class Compiler {
 			this.inputTokens = inputTokensBuilder.build();
 			this.outputTokens = outputTokensBuilder.build();
 			this.minimumBufferSize = minimumBufferSizeBuilder.build();
+
+			ImmutableSortedSet.Builder<Token> internalTokensBuilder = ImmutableSortedSet.naturalOrder();
+			for (IOInfo info : IOInfo.internalEdges(workers))
+				internalTokensBuilder.add(info.token());
+			this.internalTokens = internalTokensBuilder.build();
 
 			MethodHandles.Lookup lookup = MethodHandles.lookup();
 			ImmutableMap.Builder<String, MethodHandle> methodBuilder = ImmutableMap.builder(),
@@ -1224,8 +1229,38 @@ public final class Compiler {
 			//TODO: Move state to fields.
 		}
 
-		private void doAdjustBuffers() {
+		private void doAdjustBuffers() throws Throwable {
+			//Flush output buffers.
+			for (Token t : getOutputs()) {
+				String fieldName = bufferData.get(t).writerBufferFieldName;
+				Object[] data = (Object[])blobClassFieldGetters.get(fieldName).invokeExact();
+				Buffer buffer = buffers.get(t);
+				int written = 0;
+				while (written < data.length)
+					written += buffer.write(data, written, data.length - written);
+			}
 
+			//Copy unconsumed peek data, then flip buffers.
+			for (Token t : internalTokens) {
+				BufferData data = bufferData.get(t);
+				Object[] reader = (Object[])blobClassFieldGetters.get(data.readerBufferFieldName).invokeExact();
+				Object[] writer = (Object[])blobClassFieldGetters.get(data.writerBufferFieldName).invokeExact();
+				if (data.excessPeeks > 0)
+					System.arraycopy(reader, reader.length - data.excessPeeks, writer, 0, data.excessPeeks);
+				blobClassFieldSetters.get(data.readerBufferFieldName).invokeExact(writer);
+				blobClassFieldSetters.get(data.writerBufferFieldName).invokeExact(reader);
+			}
+
+			//Fill input buffers (draining-aware).
+			for (Token t : getInputs()) {
+				Object[] data = (Object[])blobClassFieldGetters.get(bufferData.get(t).readerBufferFieldName).invokeExact();
+				Buffer buffer = buffers.get(t);
+				if (isDraining())
+					throw new AssertionError("TODO: draining while adjusting buffers");
+				while (!buffer.readAll(data))
+					if (isDraining())
+						throw new AssertionError("TODO: draining while adjusting buffers");
+			}
 		}
 
 		private void doDrain() {
