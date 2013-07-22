@@ -147,7 +147,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		// TODO: Just to increase the performance. Change it later
 		bufSize = Math.max(1000, bufSize);
 
-		Buffer buf = new ArrayDequeBuffer(bufSize);
+		Buffer buf = new ConcurrentArrayBuffer(bufSize);
 		bufferMapBuilder.put(outputToken, buf);
 		return bufferMapBuilder.build();
 	}
