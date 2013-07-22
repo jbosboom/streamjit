@@ -235,20 +235,18 @@ public final class Compiler {
 	 */
 	private void declareBuffers() {
 		ImmutableMap.Builder<Token, BufferData> builder = ImmutableMap.<Token, BufferData>builder();
-		for (Pair<Worker<?, ?>, Worker<?, ?>> p : allWorkerPairsInBlob())
+		for (IOInfo info : IOInfo.internalEdges(workers))
 			//Only declare buffers for worker pairs not in the same node.  If
 			//a node needs internal buffering, it handles that itself.  (This
 			//implies that peeking filters cannot be fused upwards, but that's
 			//a bad idea anyway.)
-			if (!streamNodes.get(p.first).equals(streamNodes.get(p.second))) {
-				Token t = new Token(p.first, p.second);
-				builder.put(t, makeBuffers(t, p.first, p.second));
-			}
+			if (!streamNodes.get(info.upstream()).equals(streamNodes.get(info.downstream())))
+				builder.put(info.token(), makeBuffers(info));
 		//Make buffers for the inputs and outputs of this blob (which may or
 		//may not be overall inputs of the stream graph).
 		for (IOInfo info : ioinfo)
 			if (firstWorker.equals(info.downstream()) || lastWorker.equals(info.upstream()))
-				builder.put(info.token(), makeBuffers(info.token(), info.upstream(), info.downstream()));
+				builder.put(info.token(), makeBuffers(info));
 		buffers = builder.build();
 	}
 
@@ -259,13 +257,13 @@ public final class Compiler {
 	 * One of upstream xor downstream may be null for the overall input and
 	 * output.
 	 */
-	private BufferData makeBuffers(Token token, Worker<?, ?> upstream, Worker<?, ?> downstream) {
+	private BufferData makeBuffers(IOInfo info) {
+		Worker<?, ?> upstream = info.upstream(), downstream = info.downstream();
+		Token token = info.token();
 		assert upstream != null || downstream != null;
-		assert upstream == null || token.getUpstreamIdentifier() == Workers.getIdentifier(upstream);
-		assert downstream == null || token.getDownstreamIdentifier() == Workers.getIdentifier(downstream);
 
-		final String upstreamId = upstream != null ? Integer.toString(Workers.getIdentifier(upstream)) : "input";
-		final String downstreamId = downstream != null ? Integer.toString(Workers.getIdentifier(downstream)) : "output";
+		final String upstreamId = upstream != null ? Integer.toString(token.getUpstreamIdentifier()) : "input";
+		final String downstreamId = downstream != null ? Integer.toString(token.getDownstreamIdentifier()) : "output";
 		final StreamNode upstreamNode = streamNodes.get(upstream);
 		final StreamNode downstreamNode = streamNodes.get(downstream);
 		RegularType objArrayTy = module.types().getRegularType(Object[].class);
@@ -281,15 +279,13 @@ public final class Compiler {
 		int capacity, initialSize, excessPeeks;
 		if (downstream != null) {
 			//If upstream is null, it's the global input, channel 0.
-			int chanIdx = upstream != null ? Workers.getPredecessors(downstream).indexOf(upstream) : 0;
-			assert chanIdx != -1;
+			int chanIdx = info.getDownstreamChannelIndex();
 			int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
 			excessPeeks = Math.max(peek - pop, 0);
 			capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.get(downstreamNode) * multiplier * pop + excessPeeks;
 			initialSize = capacity;
 		} else { //downstream == null
-			//If downstream is null, it's the global output, channel 0.
-			int push = upstream.getPushRates().get(0).max();
+			int push = upstream.getPushRates().get(info.getUpstreamChannelIndex()).max();
 			capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.get(upstreamNode) * multiplier * push;
 			initialSize = 0;
 			excessPeeks = 0;
@@ -303,24 +299,12 @@ public final class Compiler {
 	 */
 	private void computeInitSchedule() {
 		ImmutableList.Builder<Scheduler.Channel<Worker<?, ?>>> builder = ImmutableList.<Scheduler.Channel<Worker<?, ?>>>builder();
-		for (Pair<Worker<?, ?>, Worker<?, ?>> p : allWorkerPairsInBlob()) {
-			int i = Workers.getSuccessors(p.first).indexOf(p.second);
-			int j = Workers.getPredecessors(p.second).indexOf(p.first);
-			int pushRate = p.first.getPushRates().get(i).max();
-			int popRate = p.second.getPopRates().get(j).max();
-			builder.add(new Scheduler.Channel<>(p.first, p.second, pushRate, popRate, buffers.get(new Token(p.first, p.second)).initialSize));
-		}
+		for (IOInfo info : IOInfo.internalEdges(workers))
+			builder.add(new Scheduler.Channel<>(info.upstream(), info.downstream(),
+					info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max(),
+					info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max(),
+					buffers.get(info.token()).initialSize));
 		initSchedule = Scheduler.schedule(builder.build());
-	}
-
-	@SuppressWarnings({"unchecked", "rawtypes"})
-	private ImmutableList<Pair<Worker<?, ?>, Worker<?, ?>>> allWorkerPairsInBlob() {
-		ImmutableList.Builder<Pair<Worker<?, ?>, Worker<?, ?>>> builder = ImmutableList.<Pair<Worker<?, ?>, Worker<?, ?>>>builder();
-		for (Worker<?, ?> u : workers)
-			for (Worker<?, ?> d : Workers.getSuccessors(u))
-				if (workers.contains(d))
-					builder.add(new Pair(u, d));
-		return builder.build();
 	}
 
 	/**
