@@ -86,4 +86,9 @@ public class DrainData {
 				stateBuilder.put(c);
 		return new DrainData(dataBuilder.build(), stateBuilder.build());
 	}
+
+	@Override
+	public String toString() {
+		return String.format("[%s, %s]", data, state);
+	}
 }
