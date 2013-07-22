@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,7 +17,8 @@ import java.util.Set;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 7/22/2013
  */
-public class DrainData {
+public class DrainData implements Serializable {
+	private static final long serialVersionUID = 1L;
 	private ImmutableMap<Token, ImmutableList<Object>> data;
 	private ImmutableTable<Integer, String, Object> state;
 	//TODO: in-flight messages
