@@ -55,7 +55,7 @@ public class IOInfo {
 				checkArgument(upstream != null && downstream != null);
 		}
 		if (upstream != null && downstream != null)
-			checkArgument(Workers.compareStreamPosition(upstream, downstream) == Workers.StreamPosition.UPSTREAM);
+			checkArgument(Workers.getSuccessors(upstream).contains(downstream));
 		this.upstream = upstream;
 		this.downstream = downstream;
 		this.channel = channel;
