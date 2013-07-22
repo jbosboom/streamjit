@@ -1,13 +1,17 @@
 package edu.mit.streamjit.impl.common;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.base.Predicate;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.interp.Channel;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -16,27 +20,62 @@ import java.util.Set;
  * @since 4/3/2013
  */
 public class IOInfo {
+	/**
+	 * The kind of edge this IOInfo represents, in relation to the set of
+	 * workers it was created from.
+	 */
+	private static enum ConnectionKind {
+		/**
+		 * An edge from a worker not in the set to a worker in the set.
+		 */
+		INPUT,
+		/**
+		 * An edge from a worker in the set to a worker not in the set.
+		 */
+		OUTPUT,
+		/**
+		 * An edge between two workers in the set.
+		 */
+		INTERNAL};
 	private final Worker<?, ?> upstream;
 	private final Worker<?, ?> downstream;
 	private final Channel<?> channel;
 	private final Blob.Token token;
-	private final boolean isInput;
+	private final ConnectionKind connectionKind;
 
-	private IOInfo(Worker<?, ?> upstream, Worker<?, ?> downstream, Channel<?> channel, Blob.Token token, boolean isInput) {
+	private IOInfo(Worker<?, ?> upstream, Worker<?, ?> downstream, Channel<?> channel, Blob.Token token, ConnectionKind kind) {
 		checkArgument(upstream != null || downstream != null);
-		checkArgument(isInput && downstream != null || !isInput && upstream != null);
+		switch (kind) {
+			case INPUT:
+				checkArgument(downstream != null);
+				break;
+			case OUTPUT:
+				checkArgument(upstream != null);
+				break;
+			case INTERNAL:
+				checkArgument(upstream != null && downstream != null);
+		}
 		if (upstream != null && downstream != null)
-			checkArgument(Workers.compareStreamPosition(upstream, downstream) == Workers.StreamPosition.UPSTREAM);
+			checkArgument(Workers.getSuccessors(upstream).contains(downstream));
 		this.upstream = upstream;
 		this.downstream = downstream;
 		this.channel = channel;
 		this.token = checkNotNull(token);
-		this.isInput = isInput;
+		this.connectionKind = kind;
 	}
 
-	@SuppressWarnings(value = "unchecked")
-	public static ImmutableSet<IOInfo> create(Set<Worker<?, ?>> workers) {
-		ImmutableSet.Builder<IOInfo> retval = ImmutableSet.builder();
+	/**
+	 * Creates IOInfo objects for all edges of the given set of workers.  The workers
+	 * must have their predecessor/successor relationships initialized, but they
+	 * need not be connected with channels.  The given set need not be
+	 * connected (in the reachability sense).
+	 * @param workers a set of workers
+	 * @return a set of IOInfo objects for all edges of the given set
+	 */
+	public static ImmutableSet<IOInfo> allEdges(Set<Worker<?, ?>> workers) {
+		//TODO: we'll get most edges twice, once while traversing preds and once
+		//for succs.  Using a sorted set is a total hack.
+		ImmutableSortedSet.Builder<IOInfo> retval = ImmutableSortedSet.orderedBy(IOInfo.TOKEN_SORT);
 		boolean overallInput = false;
 		boolean overallOutput = false;
 		for (Worker<?, ?> w : workers) {
@@ -46,15 +85,15 @@ public class IOInfo {
 			if (preds.isEmpty()) {
 				checkArgument(!overallInput, "two overall inputs?!");
 				Channel<?> chan = Iterables.get(ichans, 0, null);
-				retval.add(new IOInfo(null, w, chan, Blob.Token.createOverallInputToken(w), true));
+				retval.add(new IOInfo(null, w, chan, Blob.Token.createOverallInputToken(w), ConnectionKind.INPUT));
 				overallInput = true;
 			}
 			for (int i = 0; i < preds.size(); ++i) {
 				Worker<?, ?> pred = preds.get(i);
-				if (workers.contains(pred)) continue;
 				Channel<?> chan = Iterables.get(ichans, i, null);
 				Blob.Token token = new Blob.Token(pred, w);
-				retval.add(new IOInfo(pred, w, chan, token, true));
+				retval.add(new IOInfo(pred, w, chan, token,
+						workers.contains(pred) ? ConnectionKind.INTERNAL : ConnectionKind.INPUT));
 			}
 		}
 		for (Worker<?, ?> w : workers) {
@@ -64,18 +103,54 @@ public class IOInfo {
 			if (succs.isEmpty()) {
 				checkArgument(!overallOutput, "two overall outputs?!");
 				Channel<?> chan = Iterables.get(ochans, 0, null);
-				retval.add(new IOInfo(w, null, chan, Blob.Token.createOverallOutputToken(w), false));
+				retval.add(new IOInfo(w, null, chan, Blob.Token.createOverallOutputToken(w), ConnectionKind.OUTPUT));
 				overallOutput = true;
 			}
 			for (int i = 0; i < succs.size(); ++i) {
 				Worker<?, ?> succ = succs.get(i);
-				if (workers.contains(succ)) continue;
 				Channel<?> chan = Iterables.get(ochans, i, null);
 				Blob.Token token = new Blob.Token(w, succ);
-				retval.add(new IOInfo(w, succ, chan, token, false));
+				retval.add(new IOInfo(w, succ, chan, token,
+						workers.contains(succ) ? ConnectionKind.INTERNAL : ConnectionKind.OUTPUT));
 			}
 		}
 		return retval.build();
+	}
+
+	/**
+	 * Creates IOInfo objects for all external edges of the given set of workers
+	 * (that is, edges where exactly one worker is in the set).  The workers
+	 * must have their predecessor/successor relationships initialized, but they
+	 * need not be connected with channels.  The given set need not be
+	 * connected (in the reachability sense).
+	 * @param workers a set of workers
+	 * @return a set of IOInfo objects for all external edges of the given set
+	 */
+	public static ImmutableSet<IOInfo> externalEdges(Set<Worker<?, ?>> workers) {
+		return FluentIterable.from(allEdges(workers)).filter(new Predicate<IOInfo>() {
+			@Override
+			public boolean apply(IOInfo input) {
+				return input.isInput() || input.isOutput();
+			}
+		}).toSet();
+	}
+
+	/**
+	 * Creates IOInfo objects for all internal edges of the given set of workers
+	 * (that is, edges where both workers are in the set).  The workers
+	 * must have their predecessor/successor relationships initialized, but they
+	 * need not be connected with channels.  The given set need not be
+	 * connected (in the reachability sense).
+	 * @param workers a set of workers
+	 * @return a set of IOInfo objects for all internal edges of the given set
+	 */
+	public static ImmutableSet<IOInfo> internalEdges(Set<Worker<?, ?>> workers) {
+		return FluentIterable.from(allEdges(workers)).filter(new Predicate<IOInfo>() {
+			@Override
+			public boolean apply(IOInfo input) {
+				return input.connectionKind == ConnectionKind.INTERNAL;
+			}
+		}).toSet();
 	}
 
 	public Worker<?, ?> upstream() {
@@ -109,17 +184,17 @@ public class IOInfo {
 	}
 
 	public boolean isInput() {
-		return isInput;
+		return connectionKind.equals(ConnectionKind.INPUT);
 	}
 
 	public boolean isOutput() {
-		return !isInput();
+		return connectionKind.equals(ConnectionKind.OUTPUT);
 	}
 
 	@Override
 	public String toString() {
 		return String.format("%s %s: %s -> %s, %s",
-				isInput() ? "input" : "output",
+				connectionKind.toString().toLowerCase(Locale.ENGLISH),
 				token(),
 				upstream(),
 				downstream(),

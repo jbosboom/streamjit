@@ -1,6 +1,8 @@
 package edu.mit.streamjit.impl.common;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.math.IntMath;
+import com.google.common.primitives.Ints;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
@@ -369,7 +371,7 @@ public final class MessageConstraint {
 		//TODO: see if NodesInPathsComputer adds these itself or not
 		allNodes.add(goalEdge.upstream);
 		allNodes.add(goalEdge.downstream);
-		List<Worker<?, ?>> sortedNodes = topologicalSort(allNodes);
+		List<Worker<?, ?>> sortedNodes = Workers.topologicalSort(allNodes);
 		//Add self-edges for all workers.
 		for (Worker<?, ?> w : sortedNodes) {
 			Edge selfEdge = new Edge(w, w);
@@ -469,7 +471,6 @@ public final class MessageConstraint {
 			if (!peekRate.isFixed() || !popRate.isFixed())
 				throw new IllegalStreamGraphException("Messaging over dynamic rate", downstream);
 
-			int steadyGCD = gcd(pushRate.max(), popRate.max());
 			int steadyStateData = lcm(pushRate.max(), popRate.max());
 			int upstreamSteadyExecutions = steadyStateData/pushRate.max();
 			int downstreamSteadyExecutions = steadyStateData/popRate.max();
@@ -506,20 +507,20 @@ public final class MessageConstraint {
 		public static SDEPData mergeParallel(SDEPData left, SDEPData right) {
 			assert left != right;
 			int downstreamInitExecutions = Math.max(left.downstreamInitExecutions, right.downstreamInitExecutions);
-			int upstreamInitExecutions = checkedCast(Math.max(left.sdep(downstreamInitExecutions), right.sdep(downstreamInitExecutions)));
+			int upstreamInitExecutions = Ints.checkedCast(Math.max(left.sdep(downstreamInitExecutions), right.sdep(downstreamInitExecutions)));
 
 			int use1 = left.upstreamSteadyExecutions, use2 = right.upstreamSteadyExecutions;
 			int dse1 = left.downstreamSteadyExecutions, dse2 = right.downstreamSteadyExecutions;
 			//TODO: why only using use2/dse2?  because we do use1/dse1 * mult later?
-			int uMult = use2 / gcd(use1, use2);
-			int dMult = dse2 / gcd(dse1, dse2);
-			int mult = uMult / gcd(uMult, dMult) * dMult;
+			int uMult = use2 / IntMath.gcd(use1, use2);
+			int dMult = dse2 / IntMath.gcd(dse1, dse2);
+			int mult = uMult / IntMath.gcd(uMult, dMult) * dMult;
 			int upstreamSteadyExecutions = use1 * mult;
 			int downstreamSteadyExecutions = dse1 * mult;
 
 			int[] sdep = new int[downstreamInitExecutions + downstreamSteadyExecutions + 1];
 			for (int i = 0; i < sdep.length; ++i)
-				sdep[i] = checkedCast(Math.max(left.sdep(i), right.sdep(i)));
+				sdep[i] = Ints.checkedCast(Math.max(left.sdep(i), right.sdep(i)));
 			return new SDEPData(upstreamInitExecutions, upstreamSteadyExecutions, downstreamInitExecutions, downstreamSteadyExecutions, sdep);
 		}
 
@@ -527,10 +528,10 @@ public final class MessageConstraint {
 		 * Merge two edges that connect two different nodes.  (Pipelines.)
 		 */
 		public static SDEPData combineSeries(SDEPData upstream, SDEPData downstream) {
-			int upstreamInitExecutions = checkedCast(Math.max(upstream.upstreamInitExecutions, upstream.sdep(downstream.upstreamInitExecutions)));
-			int downstreamInitExecutions = checkedCast(Math.max(downstream.downstreamInitExecutions, upstream.reverseSdep(downstream.downstreamInitExecutions)));
+			int upstreamInitExecutions = Ints.checkedCast(Math.max(upstream.upstreamInitExecutions, upstream.sdep(downstream.upstreamInitExecutions)));
+			int downstreamInitExecutions = Ints.checkedCast(Math.max(downstream.downstreamInitExecutions, upstream.reverseSdep(downstream.downstreamInitExecutions)));
 
-			int gcd = gcd(upstream.downstreamSteadyExecutions, downstream.upstreamSteadyExecutions);
+			int gcd = IntMath.gcd(upstream.downstreamSteadyExecutions, downstream.upstreamSteadyExecutions);
 			int uMult = downstream.upstreamSteadyExecutions / gcd;
 			int dMult = upstream.downstreamSteadyExecutions / gcd;
 			int upstreamSteadyExecutions = upstream.upstreamSteadyExecutions * uMult;
@@ -538,17 +539,17 @@ public final class MessageConstraint {
 
 			int[] sdep = new int[downstreamInitExecutions + downstreamSteadyExecutions + 1];
 			for (int i = 0; i < sdep.length; ++i)
-				sdep[i] = checkedCast(upstream.sdep(downstream.sdep(i)));
+				sdep[i] = Ints.checkedCast(upstream.sdep(downstream.sdep(i)));
 			return new SDEPData(upstreamInitExecutions, upstreamSteadyExecutions, downstreamInitExecutions, downstreamSteadyExecutions, sdep);
 		}
 
 		public long sdep(long downstreamExecutionCount) {
 			if (downstreamExecutionCount < downstreamInitExecutions + 1)
-				return sdep[checkedCast(downstreamExecutionCount)];
+				return sdep[Ints.checkedCast(downstreamExecutionCount)];
 			long steadyStates = (downstreamExecutionCount - (downstreamInitExecutions + 1)) / downstreamSteadyExecutions;
 			//Where we are in the current steady state, adjusted to ignore the
 			//initialization prefix in the sdep array.
-			int curSteadyStateProgress = checkedCast((downstreamExecutionCount - (downstreamInitExecutions + 1)) % downstreamSteadyExecutions + downstreamInitExecutions + 1);
+			int curSteadyStateProgress = Ints.checkedCast((downstreamExecutionCount - (downstreamInitExecutions + 1)) % downstreamSteadyExecutions + downstreamInitExecutions + 1);
 			return sdep[curSteadyStateProgress] + steadyStates * upstreamSteadyExecutions;
 		}
 
@@ -564,7 +565,7 @@ public final class MessageConstraint {
 
 			//Find how many times the downstream executed during the
 			//upstreamExecutionCount portion of the steady state.
-			int downstreamExecutionCount = Arrays.binarySearch(sdep, checkedCast(upstreamExecutionCount));
+			int downstreamExecutionCount = Arrays.binarySearch(sdep, Ints.checkedCast(upstreamExecutionCount));
 			//Arrays.binarySearch doesn't guarantee which index it'll find, but
 			//we want the first one.  If we didn't find one, this is a no-op.
 			while (downstreamExecutionCount > 0 && sdep[downstreamExecutionCount] == upstreamExecutionCount)
@@ -614,38 +615,9 @@ public final class MessageConstraint {
 		}
 	}
 
-	/**
-	 * Topologically sort the given set of nodes, such that each node precedes
-	 * all of its successors in the returned list.
-	 * @param nodes the set of nodes to sort
-	 * @return a topologically-ordered list of the given nodes
-	 */
-	private static List<Worker<?, ?>> topologicalSort(Set<Worker<?, ?>> nodes) {
-		return TopologicalSort.sort(nodes, new TopologicalSort.PartialOrder<Worker<?, ?>>() {
-			@Override
-			public boolean lessThan(Worker a, Worker b) {
-				return Workers.getAllSuccessors(a).contains(b);
-			}
-		});
-	}
-
-	/**
-	 * Shouldn't this be in the standard library already?
-	 */
-	private static int gcd(int a, int b) {
-		assert a > 0 && b >= 0;
-		return b == 0 ? a : gcd(b, a % b);
-	}
-
 	private static int lcm(int a, int b) {
 		//Divide before multiplying for overflow resistance.
-		return a / gcd(a, b) * b;
-	}
-
-	private static int checkedCast(long x) {
-		if (x != (int)x)
-			throw new ArithmeticException("Can't case "+x+" to int");
-		return (int)x;
+		return a / IntMath.gcd(a, b) * b;
 	}
 
 	/**

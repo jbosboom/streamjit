@@ -22,8 +22,10 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.impl.blob.ArrayDequeBuffer;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.IOInfo;
@@ -44,6 +46,7 @@ import edu.mit.streamjit.impl.compiler.types.ArrayType;
 import edu.mit.streamjit.impl.compiler.types.FieldType;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
+import edu.mit.streamjit.impl.interp.ArrayChannel;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.EmptyChannel;
@@ -120,7 +123,7 @@ public final class Compiler {
 		this.workers = workers;
 		this.config = config;
 		this.maxNumCores = maxNumCores;
-		this.ioinfo = IOInfo.create(workers);
+		this.ioinfo = IOInfo.externalEdges(workers);
 
 		//We can only have one first and last worker, though they can have
 		//multiple inputs/outputs.
@@ -232,20 +235,18 @@ public final class Compiler {
 	 */
 	private void declareBuffers() {
 		ImmutableMap.Builder<Token, BufferData> builder = ImmutableMap.<Token, BufferData>builder();
-		for (Pair<Worker<?, ?>, Worker<?, ?>> p : allWorkerPairsInBlob())
+		for (IOInfo info : IOInfo.internalEdges(workers))
 			//Only declare buffers for worker pairs not in the same node.  If
 			//a node needs internal buffering, it handles that itself.  (This
 			//implies that peeking filters cannot be fused upwards, but that's
 			//a bad idea anyway.)
-			if (!streamNodes.get(p.first).equals(streamNodes.get(p.second))) {
-				Token t = new Token(p.first, p.second);
-				builder.put(t, makeBuffers(t, p.first, p.second));
-			}
+			if (!streamNodes.get(info.upstream()).equals(streamNodes.get(info.downstream())))
+				builder.put(info.token(), makeBuffers(info));
 		//Make buffers for the inputs and outputs of this blob (which may or
 		//may not be overall inputs of the stream graph).
 		for (IOInfo info : ioinfo)
 			if (firstWorker.equals(info.downstream()) || lastWorker.equals(info.upstream()))
-				builder.put(info.token(), makeBuffers(info.token(), info.upstream(), info.downstream()));
+				builder.put(info.token(), makeBuffers(info));
 		buffers = builder.build();
 	}
 
@@ -256,13 +257,13 @@ public final class Compiler {
 	 * One of upstream xor downstream may be null for the overall input and
 	 * output.
 	 */
-	private BufferData makeBuffers(Token token, Worker<?, ?> upstream, Worker<?, ?> downstream) {
+	private BufferData makeBuffers(IOInfo info) {
+		Worker<?, ?> upstream = info.upstream(), downstream = info.downstream();
+		Token token = info.token();
 		assert upstream != null || downstream != null;
-		assert upstream == null || token.getUpstreamIdentifier() == Workers.getIdentifier(upstream);
-		assert downstream == null || token.getDownstreamIdentifier() == Workers.getIdentifier(downstream);
 
-		final String upstreamId = upstream != null ? Integer.toString(Workers.getIdentifier(upstream)) : "input";
-		final String downstreamId = downstream != null ? Integer.toString(Workers.getIdentifier(downstream)) : "output";
+		final String upstreamId = upstream != null ? Integer.toString(token.getUpstreamIdentifier()) : "input";
+		final String downstreamId = downstream != null ? Integer.toString(token.getDownstreamIdentifier()) : "output";
 		final StreamNode upstreamNode = streamNodes.get(upstream);
 		final StreamNode downstreamNode = streamNodes.get(downstream);
 		RegularType objArrayTy = module.types().getRegularType(Object[].class);
@@ -278,15 +279,13 @@ public final class Compiler {
 		int capacity, initialSize, excessPeeks;
 		if (downstream != null) {
 			//If upstream is null, it's the global input, channel 0.
-			int chanIdx = upstream != null ? Workers.getPredecessors(downstream).indexOf(upstream) : 0;
-			assert chanIdx != -1;
+			int chanIdx = info.getDownstreamChannelIndex();
 			int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
 			excessPeeks = Math.max(peek - pop, 0);
 			capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.get(downstreamNode) * multiplier * pop + excessPeeks;
 			initialSize = capacity;
 		} else { //downstream == null
-			//If downstream is null, it's the global output, channel 0.
-			int push = upstream.getPushRates().get(0).max();
+			int push = upstream.getPushRates().get(info.getUpstreamChannelIndex()).max();
 			capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.get(upstreamNode) * multiplier * push;
 			initialSize = 0;
 			excessPeeks = 0;
@@ -300,24 +299,12 @@ public final class Compiler {
 	 */
 	private void computeInitSchedule() {
 		ImmutableList.Builder<Scheduler.Channel<Worker<?, ?>>> builder = ImmutableList.<Scheduler.Channel<Worker<?, ?>>>builder();
-		for (Pair<Worker<?, ?>, Worker<?, ?>> p : allWorkerPairsInBlob()) {
-			int i = Workers.getSuccessors(p.first).indexOf(p.second);
-			int j = Workers.getPredecessors(p.second).indexOf(p.first);
-			int pushRate = p.first.getPushRates().get(i).max();
-			int popRate = p.second.getPopRates().get(j).max();
-			builder.add(new Scheduler.Channel<>(p.first, p.second, pushRate, popRate, buffers.get(new Token(p.first, p.second)).initialSize));
-		}
+		for (IOInfo info : IOInfo.internalEdges(workers))
+			builder.add(new Scheduler.Channel<>(info.upstream(), info.downstream(),
+					info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max(),
+					info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max(),
+					buffers.get(info.token()).initialSize));
 		initSchedule = Scheduler.schedule(builder.build());
-	}
-
-	@SuppressWarnings({"unchecked", "rawtypes"})
-	private ImmutableList<Pair<Worker<?, ?>, Worker<?, ?>>> allWorkerPairsInBlob() {
-		ImmutableList.Builder<Pair<Worker<?, ?>, Worker<?, ?>>> builder = ImmutableList.<Pair<Worker<?, ?>, Worker<?, ?>>>builder();
-		for (Worker<?, ?> u : workers)
-			for (Worker<?, ?> d : Workers.getSuccessors(u))
-				if (workers.contains(d))
-					builder.add(new Pair(u, d));
-		return builder.build();
 	}
 
 	/**
@@ -326,7 +313,7 @@ public final class Compiler {
 	 * copy to work with.  After remapping every use of that receiver (remapping
 	 * field accesses to the worker's static fields, remapping JIT-hooks to
 	 * their implementations, and remapping utility methods in the worker class
-	 * recursively), we then create the actual work method without the receiver
+	 * recursively), we then externalEdges the actual work method without the receiver
 	 * argument.
 	 * @param worker
 	 */
@@ -585,7 +572,7 @@ public final class Compiler {
 		try {
 			initFieldHelper(mcl.loadClass(fieldHelperKlass.getName()));
 			Class<?> blobClass = mcl.loadClass(blobKlass.getName());
-			return new CompilerBlobHost(workers, config, blobClass, ImmutableList.copyOf(buffers.values()));
+			return new CompilerBlobHost(workers, config, blobClass, ImmutableList.copyOf(buffers.values()), initSchedule);
 		} catch (ClassNotFoundException ex) {
 			throw new AssertionError(ex);
 		}
@@ -642,7 +629,7 @@ public final class Compiler {
 		private StreamNode(Worker<?, ?> worker) {
 			this.id = Workers.getIdentifier(worker);
 			this.workers = (ImmutableSet<Worker<?, ?>>)ImmutableSet.of(worker);
-			this.ioinfo = ImmutableSortedSet.copyOf(IOInfo.TOKEN_SORT, IOInfo.create(workers));
+			this.ioinfo = ImmutableSortedSet.copyOf(IOInfo.TOKEN_SORT, IOInfo.externalEdges(workers));
 			buildWorkerData(worker);
 
 			assert !streamNodes.containsKey(worker);
@@ -656,7 +643,7 @@ public final class Compiler {
 		private StreamNode(StreamNode a, StreamNode b) {
 			this.id = Math.min(a.id, b.id);
 			this.workers = ImmutableSet.<Worker<?, ?>>builder().addAll(a.workers).addAll(b.workers).build();
-			this.ioinfo = ImmutableSortedSet.copyOf(IOInfo.TOKEN_SORT, IOInfo.create(workers));
+			this.ioinfo = ImmutableSortedSet.copyOf(IOInfo.TOKEN_SORT, IOInfo.externalEdges(workers));
 			this.fields.putAll(a.fields);
 			this.fields.putAll(b.fields);
 			this.fieldValues.putAll(a.fieldValues);
@@ -756,12 +743,7 @@ public final class Compiler {
 			workMethod.basicBlocks().add(entryBlock);
 
 			Map<Token, Value> localBuffers = new HashMap<>();
-			ImmutableList<Worker<?, ?>> orderedWorkers = TopologicalSort.sort(new ArrayList<>(workers), new TopologicalSort.PartialOrder<Worker<?, ?>>() {
-				@Override
-				public boolean lessThan(Worker<?, ?> a, Worker<?, ?> b) {
-					return Workers.getAllSuccessors(a).contains(b);
-				}
-			});
+			ImmutableList<Worker<?, ?>> orderedWorkers = Workers.topologicalSort(workers);
 			for (Worker<?, ?> w : orderedWorkers) {
 				int wid = Workers.getIdentifier(w);
 				//Input buffers
@@ -982,64 +964,132 @@ public final class Compiler {
 	private static final class CompilerBlobHost implements Blob {
 		private final ImmutableSet<Worker<?, ?>> workers;
 		private final Configuration configuration;
-		private final ImmutableList<BufferData> bufferData;
-		private final ImmutableMap<Token, Channel<?>> inputMap, outputMap;
+		private final ImmutableMap<Token, BufferData> bufferData;
+		private final ImmutableMap<Worker<?, ?>, Integer> initSchedule;
+		private final ImmutableMap<Token, Integer> initScheduleReqs;
+		private final ImmutableSortedSet<Token> inputTokens, outputTokens, internalTokens;
+		private final ImmutableMap<Token, Integer> minimumBufferSize;
+		private final Class<?> blobClass;
+		private final ImmutableMap<String, MethodHandle> blobClassMethods, blobClassFieldGetters, blobClassFieldSetters;
 		private final Runnable[] runnables;
 		private final SwitchPoint sp1 = new SwitchPoint(), sp2 = new SwitchPoint();
 		private final CyclicBarrier barrier;
+		private ImmutableMap<Token, Buffer> buffers;
 		private volatile Runnable drainCallback;
 
-		public CompilerBlobHost(Set<Worker<?, ?>> workers, Configuration configuration, Class<?> blobClass, List<BufferData> bufferData) {
+		public CompilerBlobHost(Set<Worker<?, ?>> workers, Configuration configuration, Class<?> blobClass, List<BufferData> bufferData, Map<Worker<?, ?>, Integer> initSchedule) {
 			this.workers = ImmutableSet.copyOf(workers);
 			this.configuration = configuration;
-			this.bufferData = ImmutableList.copyOf(bufferData);
+			this.initSchedule = ImmutableMap.copyOf(initSchedule);
+			this.blobClass = blobClass;
 
-			ImmutableSet<IOInfo> ioinfo = IOInfo.create(workers);
-			ImmutableMap.Builder<Token, Channel<?>> inputBuilder = ImmutableMap.builder(), outputBuilder = ImmutableMap.builder();
+			ImmutableMap.Builder<Token, BufferData> bufferDataBuilder = ImmutableMap.builder();
+			for (BufferData d : bufferData)
+				bufferDataBuilder.put(d.token, d);
+			this.bufferData = bufferDataBuilder.build();
+
+			ImmutableSet<IOInfo> ioinfo = IOInfo.externalEdges(workers);
+			ImmutableMap.Builder<Token, Integer> initScheduleReqsBuilder = ImmutableMap.builder();
+			for (IOInfo info : ioinfo) {
+				if (!info.isInput()) continue;
+				Worker<?, ?> worker = info.downstream();
+				int index = info.getDownstreamChannelIndex();
+				int popRate = worker.getPopRates().get(index).max();
+				int peekRate = worker.getPeekRates().get(index).max();
+				int excessPeeks = Math.max(0, peekRate - popRate);
+				int required = popRate * initSchedule.get(worker) + excessPeeks + this.bufferData.get(info.token()).initialSize;
+				initScheduleReqsBuilder.put(info.token(), required);
+			}
+			this.initScheduleReqs = initScheduleReqsBuilder.build();
+
+			ImmutableSortedSet.Builder<Token> inputTokensBuilder = ImmutableSortedSet.naturalOrder(), outputTokensBuilder = ImmutableSortedSet.naturalOrder();
+			ImmutableMap.Builder<Token, Integer> minimumBufferSizeBuilder = ImmutableMap.builder();
 			for (IOInfo info : ioinfo)
-				if (!workers.contains(info.upstream()))
-					inputBuilder.put(info.token(), info.channel());
-				else if (!workers.contains(info.downstream()))
-					outputBuilder.put(info.token(), info.channel());
-			this.inputMap = inputBuilder.build();
-			this.outputMap = outputBuilder.build();
-
-			List<java.lang.reflect.Method> coreWorkMethods = new ArrayList<>();
-			for (java.lang.reflect.Method m : blobClass.getMethods())
-				if (m.getName().startsWith("corework"))
-					coreWorkMethods.add(m);
-			//For determinism:
-			Collections.sort(coreWorkMethods, new Comparator<java.lang.reflect.Method>() {
-				@Override
-				public int compare(java.lang.reflect.Method o1, java.lang.reflect.Method o2) {
-					return o1.getName().compareTo(o2.getName());
+				if (info.isInput()) {
+					inputTokensBuilder.add(info.token());
+					BufferData data = this.bufferData.get(info.token());
+					minimumBufferSizeBuilder.put(info.token(), Math.max(initScheduleReqs.get(info.token()), data.capacity));
+				} else {
+					outputTokensBuilder.add(info.token());
+					//TODO: request enough for one or more steady-states worth of output?
+					//We still have to support partial writes but we can give an
+					//efficiency hint here.  Perhaps autotunable fraction?
+					minimumBufferSizeBuilder.put(info.token(), 1);
 				}
-			});
+			this.inputTokens = inputTokensBuilder.build();
+			this.outputTokens = outputTokensBuilder.build();
+			this.minimumBufferSize = minimumBufferSizeBuilder.build();
+
+			ImmutableSortedSet.Builder<Token> internalTokensBuilder = ImmutableSortedSet.naturalOrder();
+			for (IOInfo info : IOInfo.internalEdges(workers))
+				internalTokensBuilder.add(info.token());
+			this.internalTokens = internalTokensBuilder.build();
 
 			MethodHandles.Lookup lookup = MethodHandles.lookup();
+			ImmutableMap.Builder<String, MethodHandle> methodBuilder = ImmutableMap.builder(),
+					fieldGetterBuilder = ImmutableMap.builder(),
+					fieldSetterBuilder = ImmutableMap.builder();
+			try {
+				java.lang.reflect.Method[] methods = blobClass.getDeclaredMethods();
+				Arrays.sort(methods, new Comparator<java.lang.reflect.Method>() {
+					@Override
+					public int compare(java.lang.reflect.Method o1, java.lang.reflect.Method o2) {
+						return o1.getName().compareTo(o2.getName());
+					}
+				});
+				for (java.lang.reflect.Method m : methods) {
+					m.setAccessible(true);
+					methodBuilder.put(m.getName(), lookup.unreflect(m));
+				}
+
+				java.lang.reflect.Field[] fields = blobClass.getDeclaredFields();
+				Arrays.sort(fields, new Comparator<java.lang.reflect.Field>() {
+					@Override
+					public int compare(java.lang.reflect.Field o1, java.lang.reflect.Field o2) {
+						return o1.getName().compareTo(o2.getName());
+					}
+				});
+				for (java.lang.reflect.Field f : fields) {
+					f.setAccessible(true);
+					fieldGetterBuilder.put(f.getName(), lookup.unreflectGetter(f));
+					fieldSetterBuilder.put(f.getName(), lookup.unreflectSetter(f));
+				}
+			} catch (IllegalAccessException | SecurityException ex) {
+				throw new AssertionError(ex);
+			}
+			this.blobClassMethods = methodBuilder.build();
+			this.blobClassFieldGetters = fieldGetterBuilder.build();
+			this.blobClassFieldSetters = fieldSetterBuilder.build();
+
 			final java.lang.invoke.MethodType voidNoArgs = java.lang.invoke.MethodType.methodType(void.class);
 			MethodHandle nop = MethodHandles.identity(Void.class).bindTo(null).asType(voidNoArgs);
-			MethodHandle mainLoop, doInit, doAdjustBuffers, doDrain;
-			List<MethodHandle> coreWorkHandles = new ArrayList<>();
+			MethodHandle mainLoop, doInit, doAdjustBuffers, doDrain, newAssertionError;
 			try {
-				for (java.lang.reflect.Method m : coreWorkMethods)
-					coreWorkHandles.add(lookup.unreflect(m));
 				mainLoop = lookup.findVirtual(CompilerBlobHost.class, "mainLoop", java.lang.invoke.MethodType.methodType(void.class, MethodHandle.class)).bindTo(this);
 				doInit = lookup.findVirtual(CompilerBlobHost.class, "doInit", voidNoArgs).bindTo(this);
 				doAdjustBuffers = lookup.findVirtual(CompilerBlobHost.class, "doAdjustBuffers", voidNoArgs).bindTo(this);
 				doDrain = lookup.findVirtual(CompilerBlobHost.class, "doDrain", voidNoArgs).bindTo(this);
+				newAssertionError = lookup.findConstructor(AssertionError.class, java.lang.invoke.MethodType.methodType(void.class, Object.class));
 			} catch (IllegalAccessException | NoSuchMethodException ex) {
 				throw new AssertionError(ex);
 			}
 
+			List<MethodHandle> coreWorkHandles = new ArrayList<>();
+			for (Map.Entry<String, MethodHandle> methods : blobClassMethods.entrySet())
+				if (methods.getKey().startsWith("corework"))
+					coreWorkHandles.add(methods.getValue());
+
 			this.runnables = new Runnable[coreWorkHandles.size()];
 			for (int i = 0; i < runnables.length; ++i) {
-				MethodHandle main = mainLoop.bindTo(coreWorkHandles.get(i));
-				MethodHandle overall = sp1.guardWithTest(nop, sp2.guardWithTest(main, nop));
+				MethodHandle mainNop = mainLoop.bindTo(nop);
+				MethodHandle mainCorework = mainLoop.bindTo(coreWorkHandles.get(i));
+				MethodHandle overall = sp1.guardWithTest(mainNop, sp2.guardWithTest(mainCorework, nop));
 				runnables[i] = MethodHandleProxies.asInterfaceInstance(Runnable.class, overall);
 			}
 
-			MethodHandle barrierAction = sp1.guardWithTest(doInit, sp2.guardWithTest(doAdjustBuffers, doDrain));
+			MethodHandle thrower = MethodHandles.throwException(void.class, AssertionError.class);
+			MethodHandle doThrowAE = MethodHandles.filterReturnValue(newAssertionError.bindTo("Can't happen! Barrier action reached after draining?"), thrower);
+			MethodHandle barrierAction = sp1.guardWithTest(doInit, sp2.guardWithTest(doAdjustBuffers, doThrowAE));
 			this.barrier = new CyclicBarrier(runnables.length, MethodHandleProxies.asInterfaceInstance(Runnable.class, barrierAction));
 		}
 
@@ -1049,13 +1099,28 @@ public final class Compiler {
 		}
 
 		@Override
-		public Map<Token, Channel<?>> getInputChannels() {
-			return inputMap;
+		public Set<Token> getInputs() {
+			return inputTokens;
 		}
 
 		@Override
-		public Map<Token, Channel<?>> getOutputChannels() {
-			return outputMap;
+		public Set<Token> getOutputs() {
+			return outputTokens;
+		}
+
+		@Override
+		public int getMinimumBufferCapacity(Token token) {
+			return minimumBufferSize.get(token);
+		}
+
+		@Override
+		public void installBuffers(Map<Token, Buffer> buffers) {
+			ImmutableMap.Builder<Token, Buffer> buffersBuilder = ImmutableMap.builder();
+			for (Token t : getInputs())
+				buffersBuilder.put(t, buffers.get(t));
+			for (Token t : getOutputs())
+				buffersBuilder.put(t, buffers.get(t));
+			this.buffers = buffersBuilder.build();
 		}
 
 		@Override
@@ -1086,34 +1151,157 @@ public final class Compiler {
 			}
 		}
 
-		private void doInit() {
+		private void doInit() throws Throwable {
+			//Create channels.
+			ImmutableSet<IOInfo> allEdges = IOInfo.allEdges(workers);
+			Map<Token, Channel<Object>> channelMap = new HashMap<>();
+			for (IOInfo i : allEdges) {
+				Channel<Object> c = new ArrayChannel<>();
+				if (i.upstream() != null && !i.isInput())
+					addOrSet(Workers.getOutputChannels(i.upstream()), i.getUpstreamChannelIndex(), c);
+				if (i.downstream() != null && !i.isOutput())
+					addOrSet(Workers.getInputChannels(i.downstream()), i.getDownstreamChannelIndex(), c);
+				channelMap.put(i.token(), c);
+			}
 
+			//Fill input channels.
+			for (IOInfo i : allEdges) {
+				if (!i.isInput()) continue;
+				int required = initScheduleReqs.get(i.token());
+				Channel<Object> channel = channelMap.get(i.token());
+				Buffer buffer = buffers.get(i.token());
+				Object[] data = new Object[required];
+				while (!buffer.readAll(data))
+					if (isDraining())
+						throw new AssertionError("TODO: draining during init");
+				for (Object datum : data)
+					channel.push(datum);
+			}
+
+			//Work workers in topological order.
+			for (Worker<?, ?> worker : Workers.topologicalSort(workers)) {
+				int iterations = initSchedule.get(worker);
+				for (int i = 0; i < iterations; ++i)
+					Workers.doWork(worker);
+			}
+
+			//Flush output (if any was generated?).
+			for (Token output : getOutputs()) {
+				Channel<Object> channel = channelMap.get(output);
+				Buffer buffer = buffers.get(output);
+				while (!channel.isEmpty()) {
+					Object obj = channel.pop();
+					while (!buffer.write(obj))
+						/* deliberate empty statement */;
+				}
+			}
+
+			//Move buffered items from channels to buffers.
+			for (Map.Entry<Token, Channel<Object>> entry : channelMap.entrySet()) {
+				Token token = entry.getKey();
+				Channel<Object> channel = entry.getValue();
+				BufferData data = bufferData.get(token);
+				assert channel.size() == data.initialSize : String.format("%s: expected %d, got %d", token, data.initialSize, channel.size());
+				if (data.readerBufferFieldName == null) {
+					assert data.initialSize == 0;
+					continue;
+				}
+
+				Object[] objs = Iterables.toArray(channel, Object.class);
+				Object[] buffer = (Object[])blobClassFieldGetters.get(data.readerBufferFieldName).invokeExact();
+				System.arraycopy(objs, 0, buffer, 0, objs.length);
+			}
+
+			//TODO: Now that we don't need the channels, null them out.
+
+			//TODO: Move state to fields.
+
+			SwitchPoint.invalidateAll(new SwitchPoint[]{sp1});
 		}
 
-		private void doAdjustBuffers() {
+		private void doAdjustBuffers() throws Throwable {
+			//Flush output buffers.
+			for (Token t : getOutputs()) {
+				String fieldName = bufferData.get(t).writerBufferFieldName;
+				Object[] data = (Object[])blobClassFieldGetters.get(fieldName).invokeExact();
+				Buffer buffer = buffers.get(t);
+				int written = 0;
+				while (written < data.length)
+					written += buffer.write(data, written, data.length - written);
+			}
 
+			//Copy unconsumed peek data, then flip buffers.
+			for (Token t : internalTokens) {
+				BufferData data = bufferData.get(t);
+				Object[] reader = (Object[])blobClassFieldGetters.get(data.readerBufferFieldName).invokeExact();
+				Object[] writer = (Object[])blobClassFieldGetters.get(data.writerBufferFieldName).invokeExact();
+				if (data.excessPeeks > 0)
+					System.arraycopy(reader, reader.length - data.excessPeeks, writer, 0, data.excessPeeks);
+				blobClassFieldSetters.get(data.readerBufferFieldName).invokeExact(writer);
+				blobClassFieldSetters.get(data.writerBufferFieldName).invokeExact(reader);
+			}
+
+			//Fill input buffers (draining-aware).
+			for (Token t : getInputs()) {
+				Object[] data = (Object[])blobClassFieldGetters.get(bufferData.get(t).readerBufferFieldName).invokeExact();
+				Buffer buffer = buffers.get(t);
+				if (isDraining())
+					throw new AssertionError("TODO: draining while adjusting buffers");
+				while (!buffer.readAll(data))
+					if (isDraining())
+						throw new AssertionError("TODO: draining while adjusting buffers");
+			}
 		}
 
 		private void doDrain() {
 			//TODO: actual draining
 			drainCallback.run();
 		}
+
+		private boolean isDraining() {
+			return drainCallback != null;
+		}
+
+		private static void addOrSet(List list, int i, Object obj) {
+			if (i < list.size())
+				list.set(i, obj);
+			else {
+				assert i == 0;
+				list.add(obj);
+			}
+		}
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Throwable {
 		OneToOneElement<Integer, Integer> graph = new Splitjoin<>(new RoundrobinSplitter<Integer>(), new RoundrobinJoiner<Integer>(), new Identity<Integer>(), new Identity<Integer>());
-		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor(new ChannelFactory() {
-			@Override
-			public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
-				return new EmptyChannel<>();
-			}
-		});
+		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		graph.visit(cwv);
 		Set<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
 		Configuration config = new CompilerBlobFactory().getDefaultConfiguration(workers);
 		int maxNumCores = 1;
 		Compiler compiler = new Compiler(workers, config, maxNumCores);
+
 		Blob blob = compiler.compile();
+		Map<Token, Buffer> buffers = new HashMap<>();
+		for (Token t : blob.getInputs()) {
+			ArrayDequeBuffer buf = new ArrayDequeBuffer();
+			for (int i = 0; i < 1000; ++i)
+				buf.write(i);
+			buffers.put(t, buf);
+		}
+		for (Token t : blob.getOutputs())
+			buffers.put(t, new ArrayDequeBuffer());
+		blob.installBuffers(buffers);
+
 		blob.getCoreCode(0).run();
+		blob.getCoreCode(0).run();
+		blob.getCoreCode(0).run();
+		blob.getCoreCode(0).run();
+		blob.getCoreCode(0).run();
+
+		Buffer b = buffers.get(blob.getOutputs().iterator().next());
+		Object o;
+		while ((o = b.read()) != null)
+			System.out.println(o);
 	}
 }

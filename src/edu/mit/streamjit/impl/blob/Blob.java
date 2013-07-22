@@ -51,7 +51,7 @@ public interface Blob {
 	 * @throws IllegalArgumentException if the given token is not an input or
 	 * output edge of this Blob
 	 */
-	public Integer getMinimumBufferCapacity(Token token);
+	public int getMinimumBufferCapacity(Token token);
 
 	/**
 	 * Installs buffers for this Blob's input and output edges.
@@ -112,6 +112,17 @@ public interface Blob {
 	 * @param callback the callback to call after draining is finished
 	 */
 	public void drain(Runnable callback);
+
+	/**
+	 * Gets a DrainData representing the state of this Blob after draining. This
+	 * method may only be called after the callback passed to drain() has been
+	 * called.
+	 *
+	 * DrainData does not include data left in inter-Blob Buffers, which the
+	 * runtime system already knows about and must track separately.
+	 * @return DrainData for this blob
+	 */
+	public DrainData getDrainData();
 	//TODO: getConfig()
 
 	/**

@@ -37,37 +37,19 @@ public interface CompiledStream<I, O> {
 	 * Initiate draining this stream.  After this method returns, no elements
 	 * can be added to the stream with offer(); all calls to offer() will fail
 	 * by returning false.
-	 *
-	 * This method does not wait for the stream to drain; to block, use
-	 * awaitDraining().
 	 */
 	void drain();
 
 	/**
-	 * Wait for this stream to finish draining.  If this stream has already
-	 * finished draining, returns immediately.
-	 *
-	 * Note that calling this method will not cause the stream to drain if it
-	 * has not already begun; if the intent is to drain and wait, call drain()
-	 * before calling this method.
-	 * @return true if the stream was fully drained, or false if elements were
-	 * left in buffers
-	 * @throws InterruptedException if this thread is interrupted while waiting
+	 * Returns true if the stream has finished draining. Once this method
+	 * returns true, it will always return true in the future. Once a thread
+	 * observes this method to return true, it can retrieve all output data
+	 * items by calling poll() until poll() returns null.
+	 * <p/>
+	 * Note that busy-waiting on isDrained() without calling poll() may lead to
+	 * deadlock; either alternate polling and checking for draining, or use two
+	 * separate threads.
+	 * @return true if the stream has finished draining
 	 */
-	boolean awaitDraining() throws InterruptedException;
-
-	/**
-	 * Wait up to a given duration for this stream to finish draining.  If this
-	 * stream has already finished draining, returns immediately.
-	 *
-	 * Note that calling this method will not cause the stream to drain if it
-	 * has not already begun; if the intent is to drain and wait, call drain()
-	 * before calling this method.
-	 * @param timeout the maximum time to wait
-	 * @param unit the unit of the timeout argument
-	 * @return true if the stream was fully drained, or false if elements were
-	 * left in buffers
-	 * @throws InterruptedException if this thread is interrupted while waiting
-	 */
-	boolean awaitDraining(long timeout, TimeUnit unit) throws InterruptedException;
+	public boolean isDrained();
 }

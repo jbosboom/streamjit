@@ -1,9 +1,11 @@
 package edu.mit.streamjit.impl.common;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.interp.Message;
+import edu.mit.streamjit.util.TopologicalSort;
 import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.List;
@@ -103,6 +105,21 @@ public abstract class Workers {
 				.addAll(getAllPredecessors(worker))
 				.addAll(getAllSuccessors(worker))
 				.build();
+	}
+
+	/**
+	 * Topologically sort the given set of nodes, such that each node precedes
+	 * all of its successors in the returned list.
+	 * @param nodes the set of nodes to sort
+	 * @return a topologically-ordered list of the given nodes
+	 */
+	public static ImmutableList<Worker<?, ?>> topologicalSort(Iterable<Worker<?, ?>> workers) {
+		return TopologicalSort.sort(workers, new TopologicalSort.PartialOrder<Worker<?, ?>>() {
+			@Override
+			public boolean lessThan(Worker<?, ?> a, Worker<?, ?> b) {
+				return Workers.getAllSuccessors(a).contains(b);
+			}
+		});
 	}
 
 	/**
