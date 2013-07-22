@@ -312,8 +312,8 @@ public class Interpreter implements Blob {
 	 * @return true iff progress was made
 	 */
 	public boolean interpret() {
-		//Fire each sink once if possible, then repeat until we can't fire any
-		//sinks.
+		// Fire each sink once if possible, then repeat until we can't fire any
+		// sinks.
 		boolean fired, everFired = false;
 		do {
 			fired = false;
@@ -321,12 +321,17 @@ public class Interpreter implements Blob {
 				everFired |= fired |= pull(sink);
 		} while (fired);
 
-		if (everFired)
-			//Flush output buffers, spinning if necessary.
-			for (Map.Entry<Channel<?>, Buffer> e : outputBuffers.entrySet())
-				for (Object outputItem : e.getKey())
-					while (!e.getValue().write(outputItem))
-						/* intentional empty statement */;
+		// Flush output buffers, spinning if necessary.
+		for (Map.Entry<Channel<?>, Buffer> e : outputBuffers.entrySet()) {
+			Channel<?> outchnl = e.getKey();
+			Buffer outbuf = e.getValue();
+			while (!outchnl.isEmpty() && outbuf.capacity() > outbuf.size()) {
+				if (!outbuf.write(outchnl.pop())) {
+					System.out
+							.println("Buffer writing failed. Verify the algorithm");
+				}
+			}
+		}
 		return everFired;
 	}
 
@@ -367,10 +372,15 @@ public class Interpreter implements Blob {
 					//TODO: compute how much and use readAll()
 					Object item = buffer.read();
 					if (item != null) {
+						// System.out.println(Thread.currentThread().getName() + " "+ item.toString());
 						unsatChannel.push(item);
 						continue recurse; //try again
 					} else
+					{
+						// TODO : Optimization. This branch is taken more frequently.
+						// System.out.println(Thread.currentThread().getName() + " Couldn't fire. By inputBuffer is Empty");
 						return false; //Couldn't fire.
+					}
 				}
 
 				//Otherwise, recursively fire the worker blocking us.
