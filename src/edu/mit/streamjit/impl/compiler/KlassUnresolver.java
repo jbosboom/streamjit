@@ -1,10 +1,8 @@
 package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
-import edu.mit.streamjit.api.Identity;
 import java.io.PrintWriter;
 import java.util.Arrays;
-import java.util.Map;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
