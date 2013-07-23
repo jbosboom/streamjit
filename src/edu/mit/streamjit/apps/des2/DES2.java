@@ -147,13 +147,25 @@ public class DES2 {
 		StreamCompiler sc = new DebugStreamCompiler();
 		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
 		Integer output;
-		for (int i = 0; i < 100000; i++) {
-			stream.offer(i);
+		for (int i = 0; i < 100000;) {
+			if (stream.offer(i)) {
+				// System.out.println("Offer success " + i);
+				i++;
+			} else {
+				// System.out.println("Offer failed " + i);
+				Thread.sleep(10);
+			}
 			while ((output = stream.poll()) != null)
 				System.out.println(output);
 		}
 		stream.drain();
-		stream.awaitDraining();
+		
+		while (!stream.isDrained())
+			while ((output = stream.poll()) != null)
+				System.out.println(output);
+
+		while ((output = stream.poll()) != null)
+			System.out.println(output);
 	}
 
 	/**

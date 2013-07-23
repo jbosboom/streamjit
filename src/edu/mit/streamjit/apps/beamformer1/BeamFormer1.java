@@ -14,11 +14,13 @@ import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
- * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/beamformer/streamit/BeamFormer1.str for
- * original implementations. Each StreamIt's language constructs (i.e., pipeline, filter and splitjoin) are rewritten as classes in
- * StreamJit.
+ * Rewritten StreamIt's asplos06 benchmarks. Refer
+ * STREAMIT_HOME/apps/benchmarks/asplos06/beamformer/streamit/BeamFormer1.str
+ * for original implementations. Each StreamIt's language constructs (i.e.,
+ * pipeline, filter and splitjoin) are rewritten as classes in StreamJit.
  * 
- * FIXME: All FileWriter<?> and FileReader<?> are replaced with ?Source and ?Printer respectively.
+ * FIXME: All FileWriter<?> and FileReader<?> are replaced with ?Source and
+ * ?Printer respectively.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Mar 8, 2013
@@ -29,26 +31,34 @@ public class BeamFormer1 {
 
 		BeamFormer1Kernel core = new BeamFormer1Kernel();
 		// StreamCompiler sc = new DebugStreamCompiler();
-		// StreamCompiler sc = new ConcurrentStreamCompiler(2);
-		StreamCompiler sc = new DistributedStreamCompiler(2);
+		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		//StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Float, Void> stream = sc.compile(core);
-		for (float i = 0; i < 100000; ++i) {
-			stream.offer(i); // This offer value i has no effect in the program. As we can not call stream.offer(), just sending
-								// garbage value.
-			// while ((output = stream.poll()) != null)
-			// System.out.println(output);
-		}
 		
-		Thread.sleep(10000);
+		for (float i = 0; i < 100000;) {
+			// This offerring value i has no effect in the program. As we can
+			// not call stream.offer(), just sending
+			// garbage value.
+			if (stream.offer(i)) {
+				// System.out.println("Offer success " + i);
+				i++;
+			} else {
+				Thread.sleep(10);
+			}
+		}
+
+		// Thread.sleep(10000);
 		stream.drain();
-		stream.awaitDraining();
+		while (!stream.isDrained());
 	}
 
 	/**
-	 * This class represents "pipeline Beamformer1" in the BeamFormer1.str benchmark. "pipeline Beamformer1" is actually void->void.
-	 * But, as StreamJit currently doesn't support void input at source worker, Slightly changed to float->void and filereading is
-	 * ignored. TODO: Implement the file reading and writing filters in StreamJit and modify this application to work exactly as the
-	 * original BeamFormer1.str
+	 * This class represents "pipeline Beamformer1" in the BeamFormer1.str
+	 * benchmark. "pipeline Beamformer1" is actually void->void. But, as
+	 * StreamJit currently doesn't support void input at source worker, Slightly
+	 * changed to float->void and filereading is ignored. TODO: Implement the
+	 * file reading and writing filters in StreamJit and modify this application
+	 * to work exactly as the original BeamFormer1.str
 	 * 
 	 * @author sumanan
 	 */
@@ -66,27 +76,39 @@ public class BeamFormer1 {
 		int numPostDec2 = numPostDec1 / fineDecimationRatio;
 		int mfSize = numSegments * numPostDec2;
 		int pulseSize = numPostDec2 / 2;
-		int predecPulseSize = pulseSize * coarseDecimationRatio * fineDecimationRatio;
+		int predecPulseSize = pulseSize * coarseDecimationRatio
+				* fineDecimationRatio;
 		int targetBeam = numBeams / 4;
 		int targetSample = numSamples / 4;
 
-		int targetSamplePostDec = targetSample / coarseDecimationRatio / fineDecimationRatio;
+		int targetSamplePostDec = targetSample / coarseDecimationRatio
+				/ fineDecimationRatio;
 		float dOverLambda = 0.5f;
 		float cfarThreshold = (float) (0.95 * dOverLambda * numChannels * (0.5 * pulseSize));
 
 		public BeamFormer1Kernel() {
 
-			// FIXME: split roundrobin(0); is needed. i.e., null splitter, have no pushes to it's children
-			Splitjoin<Float, Float> splitJoin1 = new Splitjoin<>(new RoundrobinSplitter<Float>(), new RoundrobinJoiner<Float>(2));
+			// FIXME: split roundrobin(0); is needed. i.e., null splitter, have
+			// no pushes to it's children
+			Splitjoin<Float, Float> splitJoin1 = new Splitjoin<>(
+					new RoundrobinSplitter<Float>(),
+					new RoundrobinJoiner<Float>(2));
 			for (int i = 0; i < numChannels; i++) {
-				splitJoin1.add(new Pipeline<Float, Float>(new InputGenerate(i, numSamples, targetBeam, targetSample, cfarThreshold),
-						new BeamFirFilter(numCoarseFilterTaps, numSamples, coarseDecimationRatio), new BeamFirFilter(
-								numFineFilterTaps, numPostDec1, fineDecimationRatio)));
+				splitJoin1.add(new Pipeline<Float, Float>(new InputGenerate(i,
+						numSamples, targetBeam, targetSample, cfarThreshold),
+						new BeamFirFilter(numCoarseFilterTaps, numSamples,
+								coarseDecimationRatio), new BeamFirFilter(
+								numFineFilterTaps, numPostDec1,
+								fineDecimationRatio)));
 			}
 
-			Splitjoin<Float, Float> splitJoin2 = new Splitjoin<>(new DuplicateSplitter<Float>(), new RoundrobinJoiner<Float>());
+			Splitjoin<Float, Float> splitJoin2 = new Splitjoin<>(
+					new DuplicateSplitter<Float>(),
+					new RoundrobinJoiner<Float>());
 			for (int i = 0; i < numBeams; i++) {
-				splitJoin2.add(new Pipeline<Float, Float>(new BeamForm(i, numChannels), new BeamFirFilter(mfSize, numPostDec2, 1),
+				splitJoin2.add(new Pipeline<Float, Float>(new BeamForm(i,
+						numChannels),
+						new BeamFirFilter(mfSize, numPostDec2, 1),
 						new Magnitude()));
 			}
 
@@ -107,7 +129,8 @@ public class BeamFormer1 {
 		private int curSample;
 		private final boolean holdsTarget;
 
-		public InputGenerate(int myChannel, int numberOfSamples, int tarBeam, int targetSample, float thresh) {
+		public InputGenerate(int myChannel, int numberOfSamples, int tarBeam,
+				int targetSample, float thresh) {
 			super(1, 2, 0);
 			this.myChannel = myChannel;
 			this.numberOfSamples = numberOfSamples;
@@ -120,7 +143,8 @@ public class BeamFormer1 {
 
 		@Override
 		public void work() {
-			// FIXME: this pop is just added because current StreamJit doens't support a filter with void input type. Need to support
+			// FIXME: this pop is just added because current StreamJit doens't
+			// support a filter with void input type. Need to support
 			// it soon.
 			pop(); // As current implementation has no support to fire the
 					// streamgraph with void element, we offer the graph with
@@ -204,8 +228,10 @@ public class BeamFormer1 {
 
 			modPos = numTapsMinusOne - pos;
 			for (i = 0; i < numTaps; i++) {
-				real_curr += realBuffer[modPos] * real_weight[i] + imagBuffer[modPos] * imag_weight[i];
-				imag_curr += imagBuffer[modPos] * real_weight[i] + realBuffer[modPos] * imag_weight[i];
+				real_curr += realBuffer[modPos] * real_weight[i]
+						+ imagBuffer[modPos] * imag_weight[i];
+				imag_curr += imagBuffer[modPos] * real_weight[i]
+						+ realBuffer[modPos] * imag_weight[i];
 
 				modPos = (modPos + 1) & numTapsMinusOne;
 			}
@@ -259,7 +285,8 @@ public class BeamFormer1 {
 		private float[] real_weight;
 		private float[] imag_weight;
 
-		public CoarseBeamFirFilter(int numTaps, int inputLength, int decimationRatio) {
+		public CoarseBeamFirFilter(int numTaps, int inputLength,
+				int decimationRatio) {
 			super(2 * inputLength, 2 * inputLength);
 			this.numTaps = numTaps;
 			this.inputLength = inputLength;
@@ -295,8 +322,10 @@ public class BeamFormer1 {
 				for (int j = 0; j < i; j++) {
 					int realIndex = 2 * (i - j - 1);
 					int imagIndex = realIndex + 1;
-					real_curr += real_weight[j] * peek(realIndex) + imag_weight[j] * peek(imagIndex);
-					imag_curr += real_weight[j] * peek(imagIndex) + imag_weight[j] * peek(realIndex);
+					real_curr += real_weight[j] * peek(realIndex)
+							+ imag_weight[j] * peek(imagIndex);
+					imag_curr += real_weight[j] * peek(imagIndex)
+							+ imag_weight[j] * peek(realIndex);
 				}
 				push(real_curr);
 				push(imag_curr);
@@ -310,8 +339,10 @@ public class BeamFormer1 {
 				for (int j = 0; j < numTaps; j++) {
 					int realIndex = 2 * (numTaps - j - 1);
 					int imagIndex = realIndex + 1;
-					real_curr += real_weight[j] * peek(realIndex) + imag_weight[j] * peek(imagIndex);
-					imag_curr += real_weight[j] * peek(imagIndex) + imag_weight[j] * peek(realIndex);
+					real_curr += real_weight[j] * peek(realIndex)
+							+ imag_weight[j] * peek(imagIndex);
+					imag_curr += real_weight[j] * peek(imagIndex)
+							+ imag_weight[j] * peek(realIndex);
 				}
 				push(real_curr);
 				push(imag_curr);
@@ -355,8 +386,10 @@ public class BeamFormer1 {
 				float real_pop = pop();
 				float imag_pop = pop();
 
-				real_curr += real_weight[i] * real_pop - imag_weight[i] * imag_pop;
-				imag_curr += real_weight[i] * imag_pop + imag_weight[i] * real_pop;
+				real_curr += real_weight[i] * real_pop - imag_weight[i]
+						* imag_pop;
+				imag_curr += real_weight[i] * imag_pop + imag_weight[i]
+						* real_pop;
 			}
 			push(real_curr);
 			push(imag_curr);
@@ -394,7 +427,8 @@ public class BeamFormer1 {
 		private boolean holdsTarget;
 		private float thresh;
 
-		public Detector(int _myBeam, int numSamples, int targetBeam, int targetSample, float cfarThresholde) {
+		public Detector(int _myBeam, int numSamples, int targetBeam,
+				int targetSample, float cfarThresholde) {
 			super(1, 1);
 			this._myBeam = _myBeam;
 			this.numSamples = numSamples;

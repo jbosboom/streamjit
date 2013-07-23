@@ -27,8 +27,11 @@ public class DownstreamMessageTest {
 		for (int i = 0; i < 10; ++i)
 			compiledStream.offer(i);
 		compiledStream.drain();
-		compiledStream.awaitDraining();
 		Integer x = null;
+		while (!compiledStream.isDrained())
+			while ((x = compiledStream.poll()) != null)
+				System.out.println(x);
+
 		while ((x = compiledStream.poll()) != null)
 			System.out.println(x);
 	}

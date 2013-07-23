@@ -37,7 +37,8 @@ public class MinimalKernel extends Pipeline<Integer, Void> {
 		@Override
 		public void work() {
 			for (int i = 0; i < this.getPopRates().get(0).avg(); i++)
-				System.out.println(pop());
+				// System.out.println(pop());
+				pop();
 		}
 	}
 

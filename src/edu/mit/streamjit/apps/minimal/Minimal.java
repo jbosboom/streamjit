@@ -20,23 +20,35 @@ public class Minimal {
 
 		MinimalKernel kernel = new MinimalKernel();
 		// StreamCompiler sc = new DebugStreamCompiler();
-		// StreamCompiler sc = new ConcurrentStreamCompiler(4);
-		StreamCompiler sc = new DistributedStreamCompiler(2);
+		StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		// StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Integer, Void> stream = sc.compile(kernel);
 		Integer output;
-		for (int i = 0; i < 1000000; ++i) {
-			stream.offer(i);
-			// System.out.println("Offered" + i);
-			// while ((output = stream.poll()) != null)
-			// System.out.println(output);
-		}
-		// TODO: Analyze the need of this sleep when using the DistributedStreamCompiler. 
-		Thread.sleep(5000);
 		
+		// DEBUG variable
+		int j = 0;
+		for (int i = 0; i < 1000000;) {
+			if (stream.offer(i)) {
+				// System.out.println("Offer success " + i);
+				++i;
+				j = 0;
+			} else {
+				j++;
+				if (j > 100)
+				 System.out.println("Offer failed " + i);
+				Thread.sleep(10);
+			}
+		}
+
+		// TODO: Analyze the need of this sleep when using the
+		// DistributedStreamCompiler.
+		// Thread.sleep(5000);
+
 		stream.drain();
 		System.out.println("Drain called");
-		stream.awaitDraining();
-		System.out.println("awaitDraining finished, Exiting");
-		System.out.println("Main is exiting...");
+		while (!stream.isDrained()) {
+			Thread.sleep(100);
+		}
+		System.out.println("Draining finished, Exiting");
 	}
 }

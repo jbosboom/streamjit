@@ -20,28 +20,32 @@ public class FMRadio {
 	public static void main(String[] args) throws InterruptedException {
 		FMRadioCore core = new FMRadioCore();
 		// StreamCompiler sc = new DebugStreamCompiler();
-		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
-		//StreamCompiler sc = new DistributedStreamCompiler(2);
+		StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		// StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Float, Float> stream = sc.compile(core);
 		Float output;
-		for (int i = 0; i < 10000; ++i) {
-			stream.offer((float) i);
+		for (int i = 0; i < 1000000;) {
+			if (stream.offer((float) i)) {
+				// System.out.println("Offer success " + i);
+				i++;
+			} else {
+				// System.out.println("Offer failded " + i);
+				 Thread.sleep(10);
+			}
+
+			while ((output = stream.poll()) != null)
+				System.out.println(output);
 		}
 
-		Thread.sleep(10000);
+		System.out.println("Draining called...");
+		stream.drain();
+		while (!stream.isDrained())
+			while ((output = stream.poll()) != null)
+				System.out.println(output);
+
 		while ((output = stream.poll()) != null)
 			System.out.println(output);
 
-		Thread.sleep(2000);
-		while ((output = stream.poll()) != null)
-			System.out.println(output);
-		
-		Thread.sleep(30000);
-		while ((output = stream.poll()) != null)
-			System.out.println(output);
-		
-		stream.drain();
-		stream.awaitDraining();
 	}
 
 	private static class LowPassFilter extends Filter<Float, Float> {
@@ -63,8 +67,9 @@ public class FMRadio {
 				if (i - m / 2 == 0)
 					coeff[i] = (float) (w / Math.PI);
 				else
-					coeff[i] = (float) (Math.sin(w * (i - m / 2)) / Math.PI / (i - m / 2) * (0.54 - 0.46 * Math.cos(2 * Math.PI * i
-							/ m)));
+					coeff[i] = (float) (Math.sin(w * (i - m / 2)) / Math.PI
+							/ (i - m / 2) * (0.54 - 0.46 * Math.cos(2 * Math.PI
+							* i / m)));
 		}
 
 		@Override
@@ -93,7 +98,8 @@ public class FMRadio {
 
 	// Inlined into BandPassFilter constructor, since it isn't used elsewhere.
 	// private static class BPFCore extends Splitjoin<Float, Float> {
-	// public <T extends Object, U extends Object> BPFCore(float rate, float low, float high, int taps) {
+	// public <T extends Object, U extends Object> BPFCore(float rate, float
+	// low, float high, int taps) {
 	// super(new DuplicateSplitter<Float>(), new RoundrobinJoiner<Float>(),
 	// new LowPassFilter(rate, low, taps, 0),
 	// new LowPassFilter(rate, high, taps, 0));
@@ -103,8 +109,10 @@ public class FMRadio {
 	private static class BandPassFilter extends Pipeline<Float, Float> {
 		BandPassFilter(float rate, float low, float high, int taps) {
 			// The splitjoin is BPFCore in the StreamIt source.
-			super(new Splitjoin<>(new DuplicateSplitter<Float>(), new RoundrobinJoiner<Float>(),
-					new LowPassFilter(rate, low, taps, 0), new LowPassFilter(rate, high, taps, 0)), new Subtractor());
+			super(new Splitjoin<>(new DuplicateSplitter<Float>(),
+					new RoundrobinJoiner<Float>(), new LowPassFilter(rate, low,
+							taps, 0), new LowPassFilter(rate, high, taps, 0)),
+					new Subtractor());
 		}
 	}
 
@@ -128,7 +136,8 @@ public class FMRadio {
 		private final float[] cutoffs, gains;
 		private final int taps;
 
-		Equalizer(float rate, final int bands, float[] cutoffs, float[] gains, int taps) {
+		Equalizer(float rate, final int bands, float[] cutoffs, float[] gains,
+				int taps) {
 			this.rate = rate;
 			this.bands = bands;
 			this.cutoffs = cutoffs;
@@ -138,9 +147,12 @@ public class FMRadio {
 			if (cutoffs.length != bands || gains.length != bands)
 				throw new IllegalArgumentException();
 
-			Splitjoin<Float, Float> eqSplit = new Splitjoin<>(new DuplicateSplitter<Float>(), new RoundrobinJoiner<Float>());
+			Splitjoin<Float, Float> eqSplit = new Splitjoin<>(
+					new DuplicateSplitter<Float>(),
+					new RoundrobinJoiner<Float>());
 			for (int i = 1; i < bands; ++i)
-				eqSplit.add(new Pipeline<Float, Float>(new BandPassFilter(rate, cutoffs[i - 1], cutoffs[i], taps), new Amplifier(
+				eqSplit.add(new Pipeline<Float, Float>(new BandPassFilter(rate,
+						cutoffs[i - 1], cutoffs[i], taps), new Amplifier(
 						gains[i])));
 			add(eqSplit);
 
@@ -189,8 +201,13 @@ public class FMRadio {
 	}
 
 	public static class FMRadioCore extends Pipeline<Float, Float> {
-		private static final float samplingRate = 250000000; // 250 MHz sampling rate is sensible
-		private static final float cutoffFrequency = 108000000; // guess... doesn't FM freq max at 108 Mhz?
+		private static final float samplingRate = 250000000; // 250 MHz sampling
+																// rate is
+																// sensible
+		private static final float cutoffFrequency = 108000000; // guess...
+																// doesn't FM
+																// freq max at
+																// 108 Mhz?
 		private static final int numberOfTaps = 64;
 		private static final float maxAmplitude = 27000;
 		private static final float bandwidth = 10000;
@@ -206,7 +223,9 @@ public class FMRadio {
 		static {
 			for (int i = 0; i < eqBands; i++)
 				// have exponentially spaced cutoffs
-				eqCutoff[i] = (float) Math.exp(i * (Math.log(high) - Math.log(low)) / (eqBands - 1) + Math.log(low));
+				eqCutoff[i] = (float) Math.exp(i
+						* (Math.log(high) - Math.log(low)) / (eqBands - 1)
+						+ Math.log(low));
 
 			// first gain doesn't really correspond to a band
 			eqGain[0] = 0;
@@ -218,8 +237,10 @@ public class FMRadio {
 		}
 
 		public FMRadioCore() {
-			super(new LowPassFilter(samplingRate, cutoffFrequency, numberOfTaps, 4), new FMDemodulator(samplingRate, maxAmplitude,
-					bandwidth), new Equalizer(samplingRate, eqBands, eqCutoff, eqGain, numberOfTaps));
+			super(new LowPassFilter(samplingRate, cutoffFrequency,
+					numberOfTaps, 4), new FMDemodulator(samplingRate,
+					maxAmplitude, bandwidth), new Equalizer(samplingRate,
+					eqBands, eqCutoff, eqGain, numberOfTaps));
 		}
 	}
 }

@@ -9,8 +9,10 @@ import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
- * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/fft/streamit/FFT5.str for original
- * implementations. Each StreamIt's language constructs (i.e., pipeline, filter and splitjoin) are rewritten as classes in StreamJit.
+ * Rewritten StreamIt's asplos06 benchmarks. Refer
+ * STREAMIT_HOME/apps/benchmarks/asplos06/fft/streamit/FFT5.str for original
+ * implementations. Each StreamIt's language constructs (i.e., pipeline, filter
+ * and splitjoin) are rewritten as classes in StreamJit.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Mar 14, 2013
@@ -20,24 +22,27 @@ public class FFT5 {
 	public static void main(String[] args) throws InterruptedException {
 		FFT5Kernel kernel = new FFT5Kernel();
 		// StreamCompiler sc = new DebugStreamCompiler();
-		// StreamCompiler sc = new ConcurrentStreamCompiler(2);
-		StreamCompiler sc = new DistributedStreamCompiler(2);
+		 StreamCompiler sc = new ConcurrentStreamCompiler(2);
+		// StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Float, Void> stream = sc.compile(kernel);
 		// Float output;
-		for (float i = 0; i < 1000; i++) {
-			stream.offer(i);
-			/*
-			 * while ((output = stream.poll()) != null) System.out.println(output);
-			 */
+		for (float i = 0; i < 1000;) {
+			if (stream.offer(i)) {
+				// System.out.println("Offer success " + i);
+				i++;
+			} else {
+				// System.out.println("Offer failed " + i);
+				Thread.sleep(10);
+			}
 		}
-		Thread.sleep(1000);
+		// Thread.sleep(1000);
 		stream.drain();
-		stream.awaitDraining();
+		while (!stream.isDrained());
 	}
 
 	/**
-	 * This represents "void->void pipeline FFT5()". FIXME: actual pipeline is void->void. Need to support void input, filereading, and
-	 * file writing.
+	 * This represents "void->void pipeline FFT5()". FIXME: actual pipeline is
+	 * void->void. Need to support void input, filereading, and file writing.
 	 */
 	public static class FFT5Kernel extends Pipeline<Float, Void> {
 		public FFT5Kernel() {
@@ -181,7 +186,8 @@ public class FFT5 {
 
 		public void work() {
 			int i;
-			// FIXME: Actual pop is 0. As StreamJit doesn't support void input, it receives input and just pops out it.
+			// FIXME: Actual pop is 0. As StreamJit doesn't support void input,
+			// it receives input and just pops out it.
 			pop(); // As current implementation has no support to fire the
 			// streamgraph with void element, we offer the graph with
 			// random values and just pop out here.

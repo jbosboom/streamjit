@@ -23,6 +23,6 @@ public class FileWriterExample {
 			stream.offer(i);
 		}
 		stream.drain();
-		stream.awaitDraining();
+		while(!stream.isDrained());
 	}
 }

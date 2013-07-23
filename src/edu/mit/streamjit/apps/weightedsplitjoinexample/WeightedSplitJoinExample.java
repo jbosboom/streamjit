@@ -13,37 +13,39 @@ public class WeightedSplitJoinExample {
 
 	/**
 	 * @param args
-	 * @throws InterruptedException 
+	 * @throws InterruptedException
 	 */
 	public static void main(String[] args) throws InterruptedException {
 		WeightedSplitJoinKernel kernel = new WeightedSplitJoinKernel();
 		StreamCompiler sc = new DebugStreamCompiler();
 		CompiledStream<Integer, Void> stream = sc.compile(kernel);
-		for(int i = 0; i < 10; i++)
-		{
-			stream.offer(i);
+		for (int i = 0; i < 10;) {
+			if (stream.offer(i)) {
+				i++;
+			} else
+				Thread.sleep(10);
 		}
 		stream.drain();
-		stream.awaitDraining();
+		while (stream.isDrained())
+			;
 	}
-	
-	private static class WeightedSplitJoinKernel extends Pipeline<Integer, Void>
-	{
-		WeightedSplitJoinKernel()
-		{
+
+	private static class WeightedSplitJoinKernel extends
+			Pipeline<Integer, Void> {
+		WeightedSplitJoinKernel() {
 			add(new SplitJoin1(), new IntPrinter());
 		}
 	}
-	
-	private static class SplitJoin1 extends Splitjoin<Integer, Integer>{
-		SplitJoin1()
-		{
-			super(new RoundrobinSplitter<Integer>(), new WeightedRoundrobinJoiner<Integer>(2));
-			add(new Identity(), new Identity());		
-		}		
+
+	private static class SplitJoin1 extends Splitjoin<Integer, Integer> {
+		SplitJoin1() {
+			super(new RoundrobinSplitter<Integer>(),
+					new WeightedRoundrobinJoiner<Integer>(2));
+			add(new Identity(), new Identity());
+		}
 	}
-	
-	private static class Identity extends Filter<Integer, Integer>{
+
+	private static class Identity extends Filter<Integer, Integer> {
 
 		public Identity() {
 			super(1, 1);
@@ -52,10 +54,10 @@ public class WeightedSplitJoinExample {
 		@Override
 		public void work() {
 			push(pop());
-		}		
+		}
 	}
-	
-	private static class IntPrinter extends Filter<Integer, Void>{
+
+	private static class IntPrinter extends Filter<Integer, Void> {
 
 		public IntPrinter() {
 			super(1, 0);
@@ -64,6 +66,6 @@ public class WeightedSplitJoinExample {
 		@Override
 		public void work() {
 			System.out.println(pop());
-		}		
+		}
 	}
 }

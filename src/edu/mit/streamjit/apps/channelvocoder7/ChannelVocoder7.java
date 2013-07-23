@@ -25,16 +25,25 @@ public class ChannelVocoder7 {
 	
 	public static void main(String[] args) throws InterruptedException {
 		ChannelVocoder7Kernel kernel = new ChannelVocoder7Kernel();
-		//StreamCompiler sc = new DebugStreamCompiler();
+		StreamCompiler sc = new DebugStreamCompiler();
 		//StreamCompiler sc = new ConcurrentStreamCompiler(2);
-		StreamCompiler sc = new DistributedStreamCompiler(2);
+		//StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Integer, Void> stream = sc.compile(kernel);
-		for (int i = 0; i < 10000; ++i) {
-			stream.offer(i);
+		for (int i = 0; i < 10000;) {
+			if (stream.offer(i))
+			{
+				//System.out.println("Offer success " + i);
+				i++;
+			}
+			else
+			{
+				//System.out.println("Offer failed " + i);
+				Thread.sleep(10);
+			}
 		}
-		Thread.sleep(20000);
+		//Thread.sleep(20000);
 		stream.drain();
-		stream.awaitDraining();
+		while(!stream.isDrained());
 	}
 
 	/**

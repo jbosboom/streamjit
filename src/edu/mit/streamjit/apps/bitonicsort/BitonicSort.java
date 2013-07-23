@@ -35,19 +35,29 @@ public class BitonicSort {
 		int N = 8;
 
 		BitonicSort2 kernel = new BitonicSort2();
-		//StreamCompiler sc = new DebugStreamCompiler();
-		//StreamCompiler sc = new ConcurrentStreamCompiler(6);
-		StreamCompiler sc = new DistributedStreamCompiler(2);
+		// StreamCompiler sc = new DebugStreamCompiler();
+		StreamCompiler sc = new ConcurrentStreamCompiler(6);
+		//StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
 		Integer output;
-		for (int i = N * N * N * N; i > 0; --i) {
-			stream.offer(i);
+		for (int i = N * N * N * N; i > 0;) {
+			if (stream.offer(i)) {
+				// System.out.println("Offer success " + i);
+				i--;
+			} else {
+				Thread.sleep(10);
+			}
+			while ((output = stream.poll()) != null)
+				System.out.println(output);
 		}
-		Thread.sleep(10000);
+	//	Thread.sleep(10000);
+		stream.drain();
+		while(!stream.isDrained())
+			while ((output = stream.poll()) != null)
+				System.out.println(output);
+		
 		while ((output = stream.poll()) != null)
 			System.out.println(output);
-		stream.drain();
-		stream.awaitDraining();
 	}
 
 	/**

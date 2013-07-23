@@ -24,7 +24,7 @@ public class FileReaderExample {
 			stream.offer(null);
 		}
 		stream.drain();
-		stream.awaitDraining();
+		while(!stream.isDrained());
 	}
 
 	private static class filePipeline extends Pipeline<Void, Integer> {

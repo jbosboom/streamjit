@@ -19,44 +19,48 @@ public class RoundRobinSplitterExample {
 	/**
 	 * @param args
 	 */
-	public static void main(String[] args) throws InterruptedException{
-		
+	public static void main(String[] args) throws InterruptedException {
+
 		RoundRobinSplitterMain rbs = new RoundRobinSplitterMain();
 		//StreamCompiler sc = new DebugStreamCompiler();
-		StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
 		CompiledStream<Integer, Void> stream = sc.compile(rbs);
 		Float output;
 
-		for (int i = 0; i < 10000; ++i) {
-			stream.offer(i);
-			/*
-			 * while ((output = stream.poll()) != null)
-			 * System.out.println(output);
-			 */
+		for (int i = 0; i < 10000;) {
+			if (stream.offer(i)) {
+				// System.out.println("Offer success " + i);
+				i++;
+			} else {
+				// System.out.println("Offer failed " + i);
+				Thread.sleep(10);
+			}
 		}
 		stream.drain();
-		stream.awaitDraining();
+		while (!stream.isDrained())
+			;
 	}
 
 	public static class RoundRobinSplitterMain extends Pipeline<Integer, Void> {
-		
-		public RoundRobinSplitterMain(){
-		
-		Splitjoin<Integer, Integer> splitJoin1 = new Splitjoin<>(
-				new RoundrobinSplitter<Integer>(),
-				new RoundrobinJoiner<Integer>());
-		for (int i = 0; i < 3; i++) {
-			splitJoin1.add(new Multplier(i + 1));
+
+		public RoundRobinSplitterMain() {
+
+			Splitjoin<Integer, Integer> splitJoin1 = new Splitjoin<>(
+					new RoundrobinSplitter<Integer>(),
+					new RoundrobinJoiner<Integer>());
+			for (int i = 0; i < 3; i++) {
+				splitJoin1.add(new Multplier(i + 1));
+			}
+			Multplier mp = new Multplier(1);
+			splitJoin1.add(new Pipeline<Integer, Integer>(new Multplier(1),
+					new Multplier(2), new Multplier(3)));
+			// splitJoin1.add(mp, mp, mp);
+			// splitJoin1.add(mp);
+			add(splitJoin1);
+			add(new IntPrinter());
 		}
-		Multplier mp = new Multplier(1);
-		splitJoin1.add(new Pipeline<Integer, Integer>(new Multplier(1), new Multplier(2), new Multplier(3)));
-		//splitJoin1.add(mp, mp, mp);
-		//splitJoin1.add(mp);
-		add(splitJoin1);
-		add(new IntPrinter());
-		}		
 	}
-	
+
 	private static class IntPrinter extends Filter<Integer, Void> {
 
 		public IntPrinter() {
@@ -80,7 +84,7 @@ public class RoundRobinSplitterExample {
 
 		@Override
 		public void work() {
-			push(this.factor*pop());
+			push(this.factor * pop());
 		}
-	}	
+	}
 }
