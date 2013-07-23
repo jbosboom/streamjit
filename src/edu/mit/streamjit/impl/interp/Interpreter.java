@@ -83,13 +83,6 @@ public class Interpreter implements Blob {
 	 */
 	private volatile boolean infinityRunFlag = true;
 
-	/**
-	 * We need this flag to successfully complete the draining. We need to stop
-	 * the execution when not enough stream tuples available at inputChannels
-	 * after draining is called on this blob.
-	 */
-	private boolean finishDraining = false;
-	
 	private final ImmutableSet<IOInfo> ioinfo;
 	
 	/**
@@ -101,7 +94,7 @@ public class Interpreter implements Blob {
 	
 	public Interpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter, Configuration config) {
 		this.workers = ImmutableSet.copyOf(workersIter);
-		this.sinks = Workers.getBottommostWorkers(workers);
+		this.sinks = Workers.findSinks(workers);
 		this.config = config;
 
 		//Validate constraints.
@@ -239,14 +232,30 @@ public class Interpreter implements Blob {
 		// workers those are related to the non-empty input
 		// channels. Current algorithm processes all workers in the Blob until
 		// all input channels of the Blob become empty.
-		finishDraining = false;
-		while (!isAllInputBufferEmpty() && !finishDraining) {
-			System.out.println("DEBUG: " + Thread.currentThread().getName()
-					+ " is Draining...");
-			interpret();
+		
+		int emptyCount = 0;
+		while (true) {
+			//System.out.println("DEBUG: " + Thread.currentThread().getName() + " is Draining...");
+			pullInputs();
+			if(interpret())
+				emptyCount = 0;
+			if(isAllInputBufferEmpty())
+			{
+				emptyCount ++;
+				if(emptyCount > 5)
+					break;
+				try {
+					Thread.sleep(200);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 		}
 		System.out.println("DEBUG: Draining of "
 				+ Thread.currentThread().getName() + " is finished");
+		
+		pushOutputs();
 		this.callbackContainer.get().run();
 
 		// After calling the next blob for the draining, data in all output
@@ -254,17 +263,11 @@ public class Interpreter implements Blob {
 		int i = 0;
 		while (pushOutputs()){
 			i++;
-			System.out.println(Thread.currentThread().getName() + " Draining finished Copying data");
-			if(i > 20)
+			// System.out.println(Thread.currentThread().getName() + " Draining finished Copying data");
+			if(i > 2000)
 			{
 				System.out.println(Thread.currentThread().getName() + " Still have data. But couldn't copy the data. Terminating");
 				break;
-			}
-			try {
-				Thread.sleep(200);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
 		}
 	}
@@ -372,13 +375,19 @@ public class Interpreter implements Blob {
 			fired = false;
 			for (Worker<?, ?> sink : sinks)
 				everFired |= fired |= pull(sink);
+			
+			// We need to push the outputs here. Otherwise next blob may starve
+			// for data if this blob keep on successfully firing but not pushing
+			// the output. This case happens in FMRadio benchmark.
+			pushOutputs();
 		} while (fired);
-
+		
 		// Flush output buffers, spinning if necessary.
-		pushOutputs();
 		return everFired;
 	}
 	
+	// DEBUG variable
+	int k = 0;
 	private boolean pushOutputs()
 	{
 		boolean hasResidue = false;
@@ -392,11 +401,42 @@ public class Interpreter implements Blob {
 				}
 			}
 			
-			if(!outchnl.isEmpty())
+			if (!outchnl.isEmpty()) {
 				hasResidue = true;
+				k++;
+				if (k > 10) {
+					System.out
+							.println(String
+									.format("@@@@%s I have %d ouputs remaining. OutputBuffer is full",
+											Thread.currentThread().getName(),
+											outchnl.size()));
+
+					k = 0;
+				}
+			} else
+				k = 0;
 		}
 		return hasResidue;
 	}
+	
+	private boolean pullInputs() {
+		boolean allPullSucc = true;
+		for (Map.Entry<Channel<?>, Buffer> e : inputBuffers.entrySet()) {
+			Channel inchnl = e.getKey();
+			Buffer inbuf = e.getValue();
+			while (inbuf.size() > 0) {
+				try {
+					inchnl.push(inbuf.read());
+				} catch (IllegalStateException ex) {
+					ex.printStackTrace();
+					allPullSucc = false;
+					break;
+				}
+			}
+		}
+		return allPullSucc;
+	}
+	
 
 	/**
 	 * Fires upstream filters just enough to allow worker to fire, or returns
@@ -435,18 +475,12 @@ public class Interpreter implements Blob {
 					//TODO: compute how much and use readAll()
 					Object item = buffer.read();
 					if (item != null) {
-						// System.out.println(Thread.currentThread().getName() + " "+ item.toString());
 						unsatChannel.push(item);
 						continue recurse; //try again
 					} else
 					{
 						// TODO : Optimization. This branch is taken more frequently.
-						//System.out.println(Thread.currentThread().getName() + " Couldn't fire. By inputBuffer is Empty");
-						
-						// We need data from a worker that is not in our blob,
-						// so we can't do anything.
-						finishDraining = true; // This flag has effect only after draining is called.
-						
+						// System.out.println(Thread.currentThread().getName() + " Couldn't fire. By inputBuffer is Empty");
 						return false; //Couldn't fire.
 					}
 				}
@@ -505,7 +539,7 @@ public class Interpreter implements Blob {
 		}
 		return -1;
 	}
-
+	
 	/**
 	 * Called after the given worker is fired.  Provided for the debug
 	 * interpreter to check rate declarations.
