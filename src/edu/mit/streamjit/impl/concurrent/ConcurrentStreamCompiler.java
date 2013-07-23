@@ -201,31 +201,15 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		}
 
 		@Override
-		public boolean awaitDraining() throws InterruptedException {
+		public boolean isDrained() {
+			boolean isDrained = true;
 			for (Thread t : blobThreads) {
-				try {
-					t.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-					throw e;
+				if (t.isAlive()) {
+					// System.out.println(t.getName() + " is still draining...");
+					isDrained = false;
 				}
 			}
-			return true;
-		}
-
-		@Override
-		public boolean awaitDraining(long timeout, TimeUnit unit)
-				throws InterruptedException {
-			long milliTimeout = unit.toMillis(timeout);
-			for (Thread t : blobThreads) {
-				try {
-					t.join(milliTimeout);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-					throw e;
-				}
-			}
-			return true;
+			return isDrained;
 		}
 	}
 
