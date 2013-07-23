@@ -88,41 +88,6 @@ public class DebugStreamCompiler implements StreamCompiler {
 			this.inputBuffer = inputBuffer;		
 		}
 
-		/**
-		 * The latch that threads blocked in awaitDraining() block on.
-		 */
-		private final CountDownLatch awaitDrainingLatch = new CountDownLatch(1);
-		
-		/**
-		 * Once the awaitDrainingLatch is cleared, indicates whether the stream was
-		 * fully drained or if there were data items stuck in buffers.
-		 */
-		private volatile boolean fullyDrained = false;	
-		
-		@Override
-		public final boolean awaitDraining() throws InterruptedException {
-			awaitDrainingLatch.await();
-			return fullyDrained;
-		}
-
-		@Override
-		public final boolean awaitDraining(long timeout, TimeUnit unit) throws InterruptedException {
-			awaitDrainingLatch.await(timeout, unit);
-			return fullyDrained;
-		}
-
-		/**
-		 * Called when draining is complete, to release clients
-		 * blocked in awaitDraining().  This method should only be called once.
-		 * @param fullyDrained true if the stream was fully drained, false if data
-		 * items remained in buffers
-		 */
-		private final void finishedDraining(boolean fullyDrained) {
-			//TODO: enforce that the method is called once?
-			this.fullyDrained = fullyDrained;
-			awaitDrainingLatch.countDown();
-		}
-	
 		@Override
 		public synchronized boolean offer(I input) {
 			boolean ret = super.offer(input);
