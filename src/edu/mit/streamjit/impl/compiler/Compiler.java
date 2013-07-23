@@ -1099,12 +1099,12 @@ public final class Compiler {
 		}
 
 		@Override
-		public Set<Token> getInputs() {
+		public ImmutableSet<Token> getInputs() {
 			return inputTokens;
 		}
 
 		@Override
-		public Set<Token> getOutputs() {
+		public ImmutableSet<Token> getOutputs() {
 			return outputTokens;
 		}
 
