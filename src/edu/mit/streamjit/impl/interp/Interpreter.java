@@ -204,6 +204,8 @@ public class Interpreter implements Blob {
 				if (callback == null)
 					interpret();
 				else {
+					//Do any remaining work.
+					interpret();
 					//Run the callback (which may be empty).
 					callback.run();
 					//Set the callback to empty so we only run it once.
