@@ -1,7 +1,3 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since May 29, 2013
- */
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
@@ -9,23 +5,32 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection;
 import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
-import edu.mit.streamjit.impl.interp.Channel;
 
-public class TCPOutputChannel<E> implements BoundaryOutputChannel {
+/**
+ * This is {@link BoundaryOutputChannel} over TCP. Reads data from the given
+ * {@link Buffer} and send them over the TCP connection.
+ * <p>
+ * Note: TCPOutputChannel acts as server when making TCP connection.
+ * 
+ * @author Sumanan sumanan@mit.edu
+ * @since May 29, 2013
+ */
+public class TCPOutputChannel implements BoundaryOutputChannel {
 
-	int portNo;
+	private int portNo;
 
 	private AtomicBoolean stopFlag;
 
 	private Connection tcpConnection;
 
-	private Channel<E> channel;
+	private Buffer buffer;
 
-	public TCPOutputChannel(Channel<E> channel, int portNo) {
-		this.channel = channel;
+	public TCPOutputChannel(Buffer buffer, int portNo) {
+		this.buffer = buffer;
 		this.portNo = portNo;
 		this.stopFlag = new AtomicBoolean(false);
 	}
@@ -76,9 +81,9 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel {
 	}
 
 	public void sendData() {
-		while (!this.channel.isEmpty() && !stopFlag.get()) {
+		while (this.buffer.size() > 0 && !stopFlag.get()) {
 			try {
-				tcpConnection.writeObject(channel.pop());
+				tcpConnection.writeObject(buffer.read());
 			} catch (IOException e) {
 				try {
 					Thread.sleep(2000);

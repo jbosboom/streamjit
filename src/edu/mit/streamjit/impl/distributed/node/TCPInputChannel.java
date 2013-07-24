@@ -3,19 +3,22 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
-import edu.mit.streamjit.impl.interp.Channel;
 
 /**
- * TCPInputChannel acts as client when making TCP connection.
+ * This is {@link BoundaryInputChannel} over TCP. Receive objects from TCP
+ * connection and write them into the given {@link Buffer}.
+ * <p>
+ * Note: TCPInputChannel acts as client when making TCP connection.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 29, 2013
  */
-public class TCPInputChannel<E> implements BoundaryInputChannel {
+public class TCPInputChannel implements BoundaryInputChannel {
 
-	private Channel<E> channel;
+	private Buffer buffer;
 
 	private String ipAddress;
 
@@ -25,8 +28,8 @@ public class TCPInputChannel<E> implements BoundaryInputChannel {
 
 	private AtomicBoolean stopFlag;
 
-	public TCPInputChannel(Channel<E> channel, String ipAddress, int portNo) {
-		this.channel = channel;
+	public TCPInputChannel(Buffer buffer, String ipAddress, int portNo) {
+		this.buffer = buffer;
 		this.ipAddress = ipAddress;
 		this.portNo = portNo;
 		this.stopFlag = new AtomicBoolean(false);
@@ -70,12 +73,16 @@ public class TCPInputChannel<E> implements BoundaryInputChannel {
 	public void receiveData() {
 		while (!stopFlag.get()) {
 			try {
-				E element = tcpConnection.readObject();
-				// TODO: need to confirm the channel have enough capacity to
-				// accept elements.
-				// Consider adding channel.getMaxSize() function. Already
-				// Channel.getSize is available.
-				this.channel.push(element);
+				Object obj = tcpConnection.readObject();
+				while (!this.buffer.write(obj)) {
+					try {
+						// TODO: Need to tune the sleep time.
+						Thread.sleep(5);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
 			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
 			} catch (IOException e) {
