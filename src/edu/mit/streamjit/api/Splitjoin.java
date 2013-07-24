@@ -12,14 +12,16 @@ import java.util.List;
  * @since 11/7/2012
  */
 public class Splitjoin<I, O> implements OneToOneElement<I, O> {
-	private final Splitter<I> splitter;
-	private final Joiner<O> joiner;
+	//We'd like this to be a Splitter<I, T>, but that would require introducing
+	//T as a type variable in Splitjoin.
+	private final Splitter splitter;
+	private final Joiner joiner;
 	private final List<OneToOneElement<?, ?>> elements;
-	public Splitjoin(Splitter<I> splitter, Joiner<O> joiner, OneToOneElement<? super I, ? extends O>... elements) {
+	public <T, U> Splitjoin(Splitter<I, T> splitter, Joiner<U, O> joiner, OneToOneElement<? super T, ? extends U>... elements) {
 		this(splitter, joiner, Arrays.asList(elements));
 	}
 
-	public Splitjoin(Splitter<I> splitter, Joiner<O> joiner, List<? extends OneToOneElement<? super I, ? extends O>> elements) {
+	public <T, U> Splitjoin(Splitter<I, T> splitter, Joiner<U, O> joiner, List<? extends OneToOneElement<? super T, ? extends U>> elements) {
 		int elems = elements.size();
 		int splitOuts = splitter.supportedOutputs();
 		int joinIns = joiner.supportedInputs();
@@ -39,7 +41,7 @@ public class Splitjoin<I, O> implements OneToOneElement<I, O> {
 		add(elements);
 	}
 
-	public final void add(OneToOneElement<? super I, ? extends O> element) {
+	public final void add(OneToOneElement<?, ?> element) {
 		if (element == null)
 			throw new NullPointerException();
 		if (element == this)
@@ -47,13 +49,13 @@ public class Splitjoin<I, O> implements OneToOneElement<I, O> {
 		elements.add(element);
 	}
 
-	public final void add(OneToOneElement<? super I, ? extends O> first, OneToOneElement<? super I, ? extends O>... more) {
+	public final void add(OneToOneElement<?, ?> first, OneToOneElement<?, ?>... more) {
 		add(first);
 		add(Arrays.asList(more));
 	}
 
-	public final void add(List<? extends OneToOneElement<? super I, ? extends O>> elements) {
-		for (OneToOneElement<? super I, ? extends O> element : elements)
+	public final void add(List<? extends OneToOneElement<?, ?>> elements) {
+		for (OneToOneElement<?, ?> element : elements)
 			add(element);
 	}
 
