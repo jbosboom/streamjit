@@ -1,15 +1,16 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since May 27, 2013
- */
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
 
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
-import edu.mit.streamjit.impl.distributed.common.BlobsManager;
+import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.CommandProcessor;
+import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
+/**
+ * @author Sumanan sumanan@mit.edu
+ * @since May 27, 2013
+ */
 public class CommandProcessorImpl implements CommandProcessor {
 	StreamNode streamNode;
 
@@ -24,8 +25,10 @@ public class CommandProcessorImpl implements CommandProcessor {
 			bm.start();
 			System.out.println("StraemJit app started...");
 		} else {
-			// TODO: Need to handle this case. Need to send the error message to the controller.
-			System.out.println("Couldn't start the blobs...BlobsManager is null.");
+			// TODO: Need to handle this case. Need to send the error message to
+			// the controller.
+			System.out
+					.println("Couldn't start the blobs...BlobsManager is null.");
 		}
 	}
 
@@ -41,19 +44,21 @@ public class CommandProcessorImpl implements CommandProcessor {
 				e.printStackTrace();
 			}
 		} else {
-			// TODO: Need to handle this case. Need to send the error message to the controller.
-			System.out.println("Couldn't stop the blobs...BlobsManager is null.");
+			// TODO: Need to handle this case. Need to send the error message to
+			// the controller.
+			System.out
+					.println("Couldn't stop the blobs...BlobsManager is null.");
 		}
 	}
 
 	@Override
 	public void processSUSPEND() {
-		streamNode.getBlobsManager().suspend();
+		throw new IllegalArgumentException("Suspend feature is not supported");
 	}
 
 	@Override
 	public void processRESUME() {
-		streamNode.getBlobsManager().resume();
+		throw new IllegalArgumentException("Resume feature is not supported");
 	}
 
 	@Override

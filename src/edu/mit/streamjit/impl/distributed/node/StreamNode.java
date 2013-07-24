@@ -2,7 +2,6 @@ package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
 
-import edu.mit.streamjit.impl.distributed.common.BlobsManager;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
