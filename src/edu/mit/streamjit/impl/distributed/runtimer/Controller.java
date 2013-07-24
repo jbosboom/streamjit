@@ -9,17 +9,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
+import com.google.common.collect.ImmutableMap;
+
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.BlobFactory;
+import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
-import edu.mit.streamjit.impl.distributed.common.BoundaryInputChannel;
-import edu.mit.streamjit.impl.distributed.common.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.JsonString;
@@ -66,7 +69,7 @@ public class Controller {
 	 * need to push the {@link CompiledStream}.offer() data to the first
 	 * {@link Worker} of the streamgraph.
 	 */
-	private BoundaryOutputChannel<?> headChannel;
+	private BoundaryOutputChannel headChannel;
 
 	/**
 	 * A {@link BoundaryInputChannel} for the tail of the whole stream graph. If
@@ -74,7 +77,7 @@ public class Controller {
 	 * we need to pull the sink's output in to the {@link Controller} in order
 	 * to make {@link CompiledStream} .pull() to work.
 	 */
-	private BoundaryInputChannel<?> tailChannel;
+	private BoundaryInputChannel tailChannel;
 
 	public Controller() {
 		this.comManager = new CommunicationManagerImpl();
@@ -175,7 +178,8 @@ public class Controller {
 	public void setPartition(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
 			String toplevelclass, List<MessageConstraint> constraints,
-			Worker<?, ?> source, Worker<?, ?> sink) {
+			Worker<?, ?> source, Worker<?, ?> sink,
+			ImmutableMap<Token, Buffer> bufferMap) {
 
 		String jarFilePath = this.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
@@ -197,18 +201,26 @@ public class Controller {
 
 		if (getAssignedMachine(source, partitionsMachineMap) != controllerNodeID) {
 			Token t = Token.createOverallInputToken(source);
-			headChannel = new TCPOutputChannel<>(Workers.getInputChannels(
-					source).get(0), portIdMap.get(t));
+			if (!bufferMap.containsKey(t))
+				throw new IllegalArgumentException(
+						"No head buffer in the passed bufferMap.");
+
+			headChannel = new TCPOutputChannel(bufferMap.get(t),
+					portIdMap.get(t));
 		}
 
 		if (getAssignedMachine(sink, partitionsMachineMap) != controllerNodeID) {
 			Token t = Token.createOverallOutputToken(sink);
+			if (!bufferMap.containsKey(t))
+				throw new IllegalArgumentException(
+						"No tail buffer in the passed bufferMap.");
 
 			int nodeID = tokenMachineMap.get(t).getKey();
 			NodeInfo nodeInfo = nodeInfoMap.get(nodeID);
 			String ipAddress = nodeInfo.getIpAddress().getHostAddress();
-			tailChannel = new TCPInputChannel<>(Workers.getOutputChannels(sink)
-					.get(0), ipAddress, portIdMap.get(t));
+
+			tailChannel = new TCPInputChannel(bufferMap.get(t), ipAddress,
+					portIdMap.get(t));
 		}
 	}
 
