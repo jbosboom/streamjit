@@ -22,11 +22,14 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Portals;
+import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A StreamCompiler that interprets the stream graph on the thread that calls
@@ -45,8 +48,9 @@ public class DebugStreamCompiler implements StreamCompiler {
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
 		ConnectWorkersVisitor cpwv = new ConnectWorkersVisitor();
 		stream.visit(cpwv);
-		Worker<?, ?> source = cpwv.getSource();
-
+		stream.visit(new VerifyStreamGraph());
+		Worker<I, ?> source = (Worker<I, ?>)cpwv.getSource();
+		
 		List<MessageConstraint> constraints = MessageConstraint.findConstraints(source);
 		Set<Portal<?>> portals = new HashSet<>();
 		for (MessageConstraint mc : constraints)
@@ -81,7 +85,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		private DebugCompiledStream(Interpreter interpreter, Buffer inputBuffer, Buffer outputBuffer) {
 			super(inputBuffer, outputBuffer);
 			this.interpreter = interpreter;
-			this.inputBuffer = inputBuffer;
+			this.inputBuffer = inputBuffer;		
 		}
 
 		@Override
@@ -225,7 +229,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 			return fullyDrained;
 		}
 		@Override
-		public void visitSplitter(Splitter<?, ?> splitter) {
+		public void visitSplitter(Splitter<?> splitter) {
 			visitWorker(splitter);
 		}
 		@Override
@@ -237,7 +241,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		public void exitSplitjoinBranch(OneToOneElement<?, ?> element) {
 		}
 		@Override
-		public void visitJoiner(Joiner<?, ?> joiner) {
+		public void visitJoiner(Joiner<?> joiner) {
 			visitWorker(joiner);
 		}
 		@Override

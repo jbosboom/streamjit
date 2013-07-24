@@ -79,8 +79,8 @@ public class IOInfo {
 		boolean overallInput = false;
 		boolean overallOutput = false;
 		for (Worker<?, ?> w : workers) {
-			List<Worker<?, ?>> preds = (List<Worker<?, ?>>)Workers.getPredecessors(w);
-			List<Channel<?>> ichans = (List<Channel<?>>)Workers.getInputChannels(w);
+			List<Worker<?, ?>> preds = (List<Worker<?, ?>>)(List)Workers.getPredecessors(w);
+			List<Channel<?>> ichans = (List<Channel<?>>)(List)Workers.getInputChannels(w);
 			checkArgument((preds.size() == ichans.size()) || (preds.isEmpty() && ichans.size() == 1));
 			if (preds.isEmpty()) {
 				checkArgument(!overallInput, "two overall inputs?!");
@@ -97,8 +97,8 @@ public class IOInfo {
 			}
 		}
 		for (Worker<?, ?> w : workers) {
-			List<Worker<?, ?>> succs = (List<Worker<?, ?>>)Workers.getSuccessors(w);
-			List<Channel<?>> ochans = (List<Channel<?>>)Workers.getOutputChannels(w);
+			List<Worker<?, ?>> succs = (List<Worker<?, ?>>)(List)Workers.getSuccessors(w);
+			List<Channel<?>> ochans = (List<Channel<?>>)(List)Workers.getOutputChannels(w);
 			checkArgument((succs.size() == ochans.size()) || (succs.isEmpty() && ochans.size() == 1));
 			if (succs.isEmpty()) {
 				checkArgument(!overallOutput, "two overall outputs?!");

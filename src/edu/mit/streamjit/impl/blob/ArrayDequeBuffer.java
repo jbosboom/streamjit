@@ -25,8 +25,10 @@ public class ArrayDequeBuffer implements Buffer {
 	public int read(Object[] data, int offset, int length) {
 		int read = 0;
 		Object obj;
-		while (read < length && (obj = deque.poll()) != null)
+		while (read < length && (obj = deque.poll()) != null){
 			data[offset++] = obj;
+			read++;
+		}
 		return read;
 	}
 

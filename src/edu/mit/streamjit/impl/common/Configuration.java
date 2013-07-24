@@ -10,11 +10,11 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
-import com.google.common.primitives.Ints;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.BlobFactory;
+import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecifier;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.json.Jsonifier;
@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.Objects;
 import java.util.Set;
@@ -377,7 +378,7 @@ public final class Configuration {
 	 * Users of Configuration shouldn't implement this interface themselves;
 	 * instead, use one of the provided implementations in Configuration.
 	 */
-	public interface Parameter extends Serializable {
+	public interface Parameter extends java.io.Serializable {
 		public String getName();
 	}
 
@@ -709,16 +710,18 @@ public final class Configuration {
 	public static final class PartitionParameter implements Parameter {
 		private static final long serialVersionUID = 1L;
 		private final String name;
+
 		/**
-		 * The number of cores on each machine. Always contains at least one
+		 * Map of MachineID and the number of cores on corresponding machine. Always contains at least one
 		 * element and all elements are always >= 1.
 		 */
-		private final ImmutableList<Integer> coresPerMachine;
+		private final ImmutableMap<Integer, Integer> machineCoreMap;
+
 		/**
-		 * A list per machine of a list of blobs on that machine. The inner
+		 * A map of machineID and list of blobs on that machine. The inner
 		 * lists are sorted.
 		 */
-		private final ImmutableList<ImmutableList<BlobSpecifier>> blobs;
+		private final ImmutableMap<Integer, ImmutableList<BlobSpecifier>> machineBlobMap;
 		/**
 		 * The BlobFactories that can be used to create blobs. This list
 		 * contains no duplicate elements.
@@ -734,30 +737,30 @@ public final class Configuration {
 		/**
 		 * Only called by the builder.
 		 */
-		private PartitionParameter(String name, ImmutableList<Integer> coresPerMachine, ImmutableList<ImmutableList<BlobSpecifier>> blobs, ImmutableList<BlobFactory> blobFactoryUniverse, int maxWorkerIdentifier) {
+		private PartitionParameter(String name, ImmutableMap<Integer, Integer> machineCoreMap, ImmutableMap<Integer, ImmutableList<BlobSpecifier>> blobs, ImmutableList<BlobFactory> blobFactoryUniverse, int maxWorkerIdentifier) {
 			this.name = name;
-			this.coresPerMachine = coresPerMachine;
-			this.blobs = blobs;
+			this.machineBlobMap = blobs;
 			this.blobFactoryUniverse = blobFactoryUniverse;
 			this.maxWorkerIdentifier = maxWorkerIdentifier;
+			this.machineCoreMap = machineCoreMap;
 		}
 
 		public static final class Builder {
 			private final String name;
-			private final ImmutableList<Integer> coresPerMachine;
-			private final int[] coresAvailable;
+			private final ImmutableMap<Integer, Integer> machineCoreMap;
+			private final Map<Integer, Integer> coresAvailable;
 			private final List<BlobFactory> blobFactoryUniverse = new ArrayList<>();
-			private final List<List<BlobSpecifier>> blobs = new ArrayList<>();
+			private final Map<Integer, List<BlobSpecifier>> machineBlobMap = new HashMap<>();
 			private final NavigableSet<Integer> workersInBlobs = new TreeSet<>();
 
-			private Builder(String name, ImmutableList<Integer> coresPerMachine) {
+			private Builder(String name, ImmutableMap<Integer, Integer> machineCoreMap) {
 				this.name = name;
-				this.coresPerMachine = coresPerMachine;
-				this.coresAvailable = Ints.toArray(this.coresPerMachine);
+				this.machineCoreMap = machineCoreMap;
+				this.coresAvailable = new HashMap<>(machineCoreMap);
 				//You might think we can use Collections.nCopies() here, but
 				//that would mean all cores would share the same list!
-				for (int i = 0; i < coresPerMachine.size(); ++i)
-					blobs.add(new ArrayList<BlobSpecifier>());
+				for (int i : machineCoreMap.keySet())
+					machineBlobMap.put(i, new ArrayList<BlobSpecifier>());
 			}
 
 			public Builder addBlobFactory(BlobFactory factory) {
@@ -768,10 +771,10 @@ public final class Configuration {
 			}
 
 			public Builder addBlob(int machine, int cores, BlobFactory blobFactory, Set<Worker<?, ?>> workers) {
-				checkElementIndex(machine, coresPerMachine.size());
-				checkArgument(cores <= coresAvailable[machine],
+				checkArgument(machineCoreMap.containsKey(machine), "No machine with the machineID %d", machine);
+				checkArgument(cores <= machineCoreMap.get(machine),
 						"allocating %s cores but only %s available on machine %s",
-						cores, coresAvailable[machine], machine);
+						cores, machineCoreMap.get(machine), machine);
 				checkArgument(blobFactoryUniverse.contains(blobFactory),
 						"blob factory %s not in universe %s", blobFactory, blobFactoryUniverse);
 				ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
@@ -784,31 +787,28 @@ public final class Configuration {
 				ImmutableSortedSet<Integer> workerIdentifiers = builder.build();
 
 				//Okay, we've checked everything.  Commit.
-				blobs.get(machine).add(new BlobSpecifier(workerIdentifiers, machine, cores, blobFactory));
+				machineBlobMap.get(machine).add(new BlobSpecifier(workerIdentifiers, machine, cores, blobFactory));
 				workersInBlobs.addAll(workerIdentifiers);
-				coresAvailable[machine] -= cores;
+				int remainingCores = coresAvailable.get(machine) - cores;
+				coresAvailable.put(machine, remainingCores);
 				return this;
 			}
 
 			public PartitionParameter build() {
-				ImmutableList.Builder<ImmutableList<BlobSpecifier>> blobBuilder = ImmutableList.builder();
-				for (List<BlobSpecifier> list : blobs) {
-					Collections.sort(list);
-					blobBuilder.add(ImmutableList.copyOf(list));
+				ImmutableMap.Builder<Integer, ImmutableList<BlobSpecifier>> blobBuilder = ImmutableMap.builder();
+				for (Entry<Integer, List<BlobSpecifier>> blobMapEntry : machineBlobMap.entrySet()) {
+					Collections.sort(blobMapEntry.getValue());
+					blobBuilder.put(blobMapEntry.getKey(), ImmutableList.copyOf(blobMapEntry.getValue()));
 				}
-				return new PartitionParameter(name, coresPerMachine, blobBuilder.build(), ImmutableList.copyOf(blobFactoryUniverse), workersInBlobs.last());
+				return new PartitionParameter(name, machineCoreMap, blobBuilder.build(), ImmutableList.copyOf(blobFactoryUniverse), workersInBlobs.last());
 			}
 		}
 
-		public static Builder builder(String name, List<Integer> coresPerMachine) {
-			checkArgument(!coresPerMachine.isEmpty());
-			for (Integer i : coresPerMachine)
+		public static Builder builder(String name, Map<Integer, Integer> machineCoreMap) {
+			checkArgument(!machineCoreMap.isEmpty());
+			for (Integer i : machineCoreMap.values())
 				checkArgument(checkNotNull(i) >= 1);
-			return new Builder(checkNotNull(Strings.emptyToNull(name)), ImmutableList.copyOf(coresPerMachine));
-		}
-
-		public static Builder builder(String name, int... coresPerMachine) {
-			return builder(name, Ints.asList(coresPerMachine));
+			return new Builder(checkNotNull(Strings.emptyToNull(name)), ImmutableMap.copyOf(machineCoreMap));
 		}
 
 		/**
@@ -957,44 +957,70 @@ public final class Configuration {
 				JsonObject obj = Jsonifiers.checkClassEqual(value, PartitionParameter.class);
 				String name = obj.getString("name");
 				int maxWorkerIdentifier = obj.getInt("maxWorkerIdentifier");
-				ImmutableList.Builder<Integer> coresPerMachine = ImmutableList.builder();
-				for (JsonValue v : obj.getJsonArray("coresPerMachine"))
-					coresPerMachine.add(Jsonifiers.fromJson(v, Integer.class));
+
+				Map<Integer, Integer> machineCoreMap = new HashMap<>();
+				JsonObject mapObj = checkNotNull(obj.getJsonObject("machineCoreMap"));
+				for (Map.Entry<String, JsonValue> data : mapObj.entrySet()) {
+					machineCoreMap.put(Integer.parseInt(data.getKey()), Jsonifiers.fromJson(data.getValue(), Integer.class));
+				}
+
 				ImmutableList.Builder<BlobFactory> blobFactoryUniverse = ImmutableList.builder();
 				for (JsonValue v : obj.getJsonArray("blobFactoryUniverse"))
 					blobFactoryUniverse.add(Jsonifiers.fromJson(v, BlobFactory.class));
-				List<List<BlobSpecifier>> mBlobs = new ArrayList<>();
-				for (int i = 0; i < coresPerMachine.build().size(); ++i)
-					mBlobs.add(new ArrayList<BlobSpecifier>());
-				for (JsonValue v : obj.getJsonArray("blobs")) {
-					BlobSpecifier bs = Jsonifiers.fromJson(v, BlobSpecifier.class);
-					mBlobs.get(bs.getMachine()).add(bs);
+
+				Map<Integer, List<BlobSpecifier>> blobMachineMap = new HashMap<>();
+				JsonObject blobsObj = checkNotNull(obj.getJsonObject("machineBlobMap"));
+				for (Map.Entry<String, JsonValue> data : blobsObj.entrySet()) {
+					List<BlobSpecifier> bsList = new ArrayList<BlobSpecifier>();
+					JsonArray arr = (JsonArray)data.getValue();
+					for(int i = 0; i < arr.size(); i++)
+					{
+						BlobSpecifier bs = Jsonifiers.fromJson(arr.get(i), BlobSpecifier.class);
+						if(bs.getMachine() != Integer.parseInt(data.getKey()))
+							throw new IllegalArgumentException("fromJson error : Blobs and corresponding assigned machines mismatch");
+						bsList.add(bs);
+					}
+
+					if(blobMachineMap.containsKey(Integer.parseInt(data.getKey())))
+						throw new IllegalArgumentException("Multiple BlobSpecifier list exists for same machine");
+					blobMachineMap.put(Integer.parseInt(data.getKey()), bsList);
 				}
-				ImmutableList.Builder<ImmutableList<BlobSpecifier>> blobs = ImmutableList.builder();
-				for (List<BlobSpecifier> m : mBlobs)
-					blobs.add(ImmutableList.copyOf(m));
-				return new PartitionParameter(name, coresPerMachine.build(), blobs.build(), blobFactoryUniverse.build(), maxWorkerIdentifier);
+
+				ImmutableMap.Builder<Integer, ImmutableList<BlobSpecifier>> blobBuilder = ImmutableMap.builder();
+				for (Entry<Integer, List<BlobSpecifier>> blobMapEntry : blobMachineMap.entrySet()) {
+					Collections.sort(blobMapEntry.getValue());
+					blobBuilder.put(blobMapEntry.getKey(), ImmutableList.copyOf(blobMapEntry.getValue()));
+				}
+
+				return new PartitionParameter(name, ImmutableMap.copyOf(machineCoreMap), blobBuilder.build(), blobFactoryUniverse.build(), maxWorkerIdentifier);
 			}
 
 			@Override
 			public JsonValue toJson(PartitionParameter t) {
-				JsonArrayBuilder coresPerMachine = Json.createArrayBuilder();
-				for (int i : t.coresPerMachine)
-					coresPerMachine.add(i);
+
+				JsonObjectBuilder machineCoreMapBuilder = Json.createObjectBuilder();
+				for (Map.Entry<Integer, Integer> data : t.machineCoreMap.entrySet()) {
+					machineCoreMapBuilder.add(data.getKey().toString(), Jsonifiers.toJson(data.getValue()));
+				}
+
 				JsonArrayBuilder blobFactoryUniverse = Json.createArrayBuilder();
 				for (BlobFactory factory : t.blobFactoryUniverse)
 					blobFactoryUniverse.add(Jsonifiers.toJson(factory));
-				JsonArrayBuilder blobs = Json.createArrayBuilder();
-				for (List<BlobSpecifier> machine : t.blobs)
-					for (BlobSpecifier blob : machine)
-						blobs.add(Jsonifiers.toJson(blob));
+
+				JsonObjectBuilder blobsBuilder = Json.createObjectBuilder();
+				for (Map.Entry<Integer,ImmutableList<BlobSpecifier>> machine : t.machineBlobMap.entrySet()) {
+					JsonArrayBuilder bsArraybuilder = Json.createArrayBuilder();
+					for(BlobSpecifier bs : machine.getValue())
+						bsArraybuilder.add(Jsonifiers.toJson(bs));
+					blobsBuilder.add(machine.getKey().toString(), bsArraybuilder);
+				}
 				return Json.createObjectBuilder()
 						.add("class", Jsonifiers.toJson(PartitionParameter.class))
 						.add("name", t.getName())
 						.add("maxWorkerIdentifier", t.maxWorkerIdentifier)
-						.add("coresPerMachine", coresPerMachine)
+						.add("machineCoreMap", machineCoreMapBuilder)
 						.add("blobFactoryUniverse", blobFactoryUniverse)
-						.add("blobs", blobs)
+						.add("machineBlobMap", blobsBuilder)
 						//Python-side support
 						.add("__module__", "parameters")
 						.add("__class__", PartitionParameter.class.getSimpleName())
@@ -1014,19 +1040,35 @@ public final class Configuration {
 		}
 
 		public int getMachineCount() {
-			return coresPerMachine.size();
+			return machineCoreMap.size();
 		}
 
 		public int getCoresOnMachine(int machine) {
-			return coresPerMachine.get(machine);
+			return machineCoreMap.get(machine);
 		}
 
 		public ImmutableList<BlobSpecifier> getBlobsOnMachine(int machine) {
-			return blobs.get(machine);
+			return machineBlobMap.get(machine);
 		}
 
 		public ImmutableList<BlobFactory> getBlobFactories() {
 			return blobFactoryUniverse;
+		}
+
+		/**
+		 * @param worker
+		 * @return the machineID where on which the passed worker is assigned.
+		 */
+		public int getAssignedMachine(Worker<?, ?> worker) {
+			int id = Workers.getIdentifier(worker);
+			for(int machineID : machineBlobMap.keySet() )
+			{
+				for (BlobSpecifier bs : machineBlobMap.get(machineID)) {
+					if (bs.getWorkerIdentifiers().contains(id))
+						return machineID;
+				}
+			}
+			throw new IllegalArgumentException(String.format("%s is not assigned to anyof the machines", worker));
 		}
 
 		@Override
@@ -1038,9 +1080,9 @@ public final class Configuration {
 			final PartitionParameter other = (PartitionParameter)obj;
 			if (!Objects.equals(this.name, other.name))
 				return false;
-			if (!Objects.equals(this.coresPerMachine, other.coresPerMachine))
+			if (!Objects.equals(this.machineCoreMap, other.machineCoreMap))
 				return false;
-			if (!Objects.equals(this.blobs, other.blobs))
+			if (!Objects.equals(this.machineBlobMap, other.machineBlobMap))
 				return false;
 			if (!Objects.equals(this.blobFactoryUniverse, other.blobFactoryUniverse))
 				return false;
@@ -1053,8 +1095,8 @@ public final class Configuration {
 		public int hashCode() {
 			int hash = 3;
 			hash = 61 * hash + Objects.hashCode(this.name);
-			hash = 61 * hash + Objects.hashCode(this.coresPerMachine);
-			hash = 61 * hash + Objects.hashCode(this.blobs);
+			hash = 61 * hash + Objects.hashCode(this.machineCoreMap);
+			hash = 61 * hash + Objects.hashCode(this.machineBlobMap);
 			hash = 61 * hash + Objects.hashCode(this.blobFactoryUniverse);
 			hash = 61 * hash + this.maxWorkerIdentifier;
 			return hash;
@@ -1072,11 +1114,23 @@ public final class Configuration {
 		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		pipeline.visit(cwv);
 
-		PartitionParameter.Builder partParam = PartitionParameter.builder("part", 1, 1);
+		Map<Integer, Integer> mapEx = new HashMap<>();
+		mapEx.put(2, 8);
+		mapEx.put(5, 16);
+		mapEx.put(11, 24);
+		mapEx.put(8, 12);
+		mapEx.put(3, 32);
+		mapEx.put(17, 64);
+
+		List<Integer> crsPerMachine = new ArrayList<>();
+		crsPerMachine.add(8);
+		crsPerMachine.add(16);
+
+		PartitionParameter.Builder partParam = PartitionParameter.builder("part", mapEx);
 		BlobFactory factory = new Interpreter.InterpreterBlobFactory();
 		partParam.addBlobFactory(factory);
-		partParam.addBlob(0, 1, factory, Collections.<Worker<?, ?>>singleton(first));
-		partParam.addBlob(1, 1, factory, Collections.<Worker<?, ?>>singleton(second));
+		partParam.addBlob(17, 4, factory, Collections.<Worker<?, ?>>singleton(first));
+		partParam.addBlob(17, 1, factory, Collections.<Worker<?, ?>>singleton(second));
 		builder.addParameter(partParam.build());
 
 		builder.putExtraData("one", 1);
@@ -1086,11 +1140,20 @@ public final class Configuration {
 		Configuration cfg1 = builder.build();
 		SwitchParameter<Integer> parameter = cfg1.getParameter("baz", SwitchParameter.class, Integer.class);
 		String json = Jsonifiers.toJson(cfg1).toString();
-		System.out.println(json);
+		//System.out.println(json);
 		Configuration cfg2 = Jsonifiers.fromJson(json, Configuration.class);
-		System.out.println(cfg2);
-		String json2 = Jsonifiers.toJson(cfg2).toString();
-		System.out.println(json2);
+		//System.out.println(cfg2);
+		//String json2 = Jsonifiers.toJson(cfg2).toString();
+		//System.out.println(json2);
+		PartitionParameter partp = (PartitionParameter) cfg2.getParameter("part");
+
+		System.out.println(partp.getCoresOnMachine(3));
+		List<BlobSpecifier> blobList = partp.getBlobsOnMachine(17);
+
+		for (BlobSpecifier bs : blobList)
+			System.out.println(bs.getWorkerIdentifiers());
+
+		//System.out.println(partp.getCoresOnMachineEx(17));
 
 		/*Configuration.Builder builder = Configuration.builder();
 		builder.addParameter(new IntParameter("foo", 0, 10, 8));

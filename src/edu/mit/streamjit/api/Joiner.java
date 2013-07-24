@@ -7,7 +7,7 @@ import edu.mit.streamjit.impl.common.Workers;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/7/2012
  */
-public abstract class Joiner<I, O> extends Worker<I, O> implements StreamElement<I, O> {
+public abstract class Joiner<O> extends Worker<O, O> {
 	public static final int UNLIMITED = Integer.MAX_VALUE;
 
 	@Override
@@ -49,7 +49,7 @@ public abstract class Joiner<I, O> extends Worker<I, O> implements StreamElement
 	 * @param position the position to peek at
 	 * @return an item on the input channel
 	 */
-	protected final I peek(int channel, int position) {
+	protected final O peek(int channel, int position) {
 		return Workers.getInputChannels(this).get(channel).peek(position);
 	};
 
@@ -63,7 +63,7 @@ public abstract class Joiner<I, O> extends Worker<I, O> implements StreamElement
 	 * @param channel the index of the input channel to pop from
 	 * @return the first item in the input channel
 	 */
-	protected final I pop(int channel) {
+	protected final O pop(int channel) {
 		return Workers.getInputChannels(this).get(channel).pop();
 	};
 

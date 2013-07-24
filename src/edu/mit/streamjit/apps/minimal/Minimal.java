@@ -6,10 +6,9 @@
 package edu.mit.streamjit.apps.minimal;
 
 import edu.mit.streamjit.api.CompiledStream;
-import edu.mit.streamjit.api.Filter;
-import edu.mit.streamjit.api.Pipeline;
-import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 public class Minimal {
@@ -20,49 +19,36 @@ public class Minimal {
 	public static void main(String[] args) throws InterruptedException {
 
 		MinimalKernel kernel = new MinimalKernel();
-		StreamCompiler sc = new DebugStreamCompiler();
+//		 StreamCompiler sc = new DebugStreamCompiler();
+		StreamCompiler sc = new ConcurrentStreamCompiler(2);
+		// StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Integer, Void> stream = sc.compile(kernel);
 		Integer output;
-		for (int i = 0; i < 10000; ++i) {
-			stream.offer(i);
-			//while ((output = stream.poll()) != null)
-				//System.out.println(output);
+
+		// DEBUG variable
+		int j = 0;
+		for (int i = 0; i < 100000;) {
+			if (stream.offer(i)) {
+				// System.out.println("Offer success " + i);
+				++i;
+				j = 0;
+			} else {
+				j++;
+				if (j > 100)
+				 System.out.println("Offer failed " + i);
+				Thread.sleep(10);
+			}
 		}
+
+		// TODO: Analyze the need of this sleep when using the
+		// DistributedStreamCompiler.
+		// Thread.sleep(5000);
+
 		stream.drain();
-		stream.awaitDraining();
-	}
-
-	private static class IntSource extends StatefulFilter<Integer, Integer> {
-
-		public IntSource(int i, int j, int k) {
-			super(i, j, k);
-			// TODO Auto-generated constructor stub
-		}		
-
-		@Override
-		public void work() {
-			push(pop());
+		System.out.println("Drain called");
+		while (!stream.isDrained()) {
+			Thread.sleep(100);
 		}
-	}
-
-	private static class IntPrinter extends Filter<Integer, Void> {
-
-		public IntPrinter(int i, int j, int k) {
-			super(i, j, k);
-			// TODO Auto-generated constructor stub
-		}
-
-		@Override
-		public void work() {
-			System.out.println(pop());
-
-		}
-	}
-
-	private static class MinimalKernel extends Pipeline<Integer, Void> {
-
-		public MinimalKernel() {
-			super(new IntSource(1, 1, 0), new IntPrinter(1, 0, 0));
-		}
+		System.out.println("Draining finished, Exiting");
 	}
 }

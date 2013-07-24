@@ -71,7 +71,7 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 	 * all branches are processed.
 	 */
 	private static class SplitjoinContext {
-		private Splitter<?, ?> splitter;
+		private Splitter<?> splitter;
 		private List<Worker<?, ?>> branchEnds = new ArrayList<>();
 	}
 

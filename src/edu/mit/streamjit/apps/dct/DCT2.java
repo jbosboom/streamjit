@@ -1,9 +1,3 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since Mar 13, 2013
- * Moved from StreamIt's ALPLOS06 benchmark
- */
-
 /*
  * Copyright 2005 by the Massachusetts Institute of Technology.
  *
@@ -39,30 +33,58 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
+/**
+ * Rewritten StreamIt's asplos06 benchmarks. Refer
+ * STREAMIT_HOME/apps/benchmarks/asplos06/dct/streamit/DCT2.str for original
+ * implementations. Each StreamIt's language constructs (i.e., pipeline, filter
+ * and splitjoin) are rewritten as classes in StreamJit.
+ * 
+ * @author Sumanan sumanan@mit.edu
+ * @since Mar 13, 2013
+ */
 public class DCT2 {
+
 	public static void main(String[] args) throws InterruptedException {
 		DCT2Kernel kernel = new DCT2Kernel();
-		StreamCompiler sc = new DebugStreamCompiler();
+		//StreamCompiler sc = new DebugStreamCompiler();
+		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		// StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
 		Integer output;
-		for (int i = 0; i < 100000; i++) {
-			stream.offer(i);	
+		for (int i = 0; i < 1000;) {
+			if (stream.offer(i)) {
+				// System.out.println("Offer success " + i);
+				i++;
+			} else {
+				// System.out.println("Offer failed " + i);
+				Thread.sleep(10);
+			}
 			while ((output = stream.poll()) != null)
 				System.out.println(output);
 		}
-		
-		stream.drain();
-		stream.awaitDraining();
 
+		stream.drain();
+		while (!stream.isDrained())
+			while ((output = stream.poll()) != null)
+				System.out.println(output);
+
+		while ((output = stream.poll()) != null)
+			System.out.println(output);
 	}
 
-	private static class DCT2Kernel extends Pipeline<Integer, Integer> {
-		DCT2Kernel(){
-	   // add FileReader<int>("../input/idct-input-small.bin"); // FIXME
-	    add(new iDCT8x8_ieee(16));
-	  //  add FileWriter<int>("idct-output2.bin");	//FIXME
+	/**
+	 * FIXME: Original implementations is "void->void pipeline DCT2". Need to
+	 * implement file support and void input support.
+	 */
+	public static class DCT2Kernel extends Pipeline<Integer, Integer> {
+		public DCT2Kernel() {
+			// add FileReader<int>("../input/idct-input-small.bin"); // FIXME
+			add(new iDCT8x8_ieee(16));
+			// add FileWriter<int>("idct-output2.bin"); //FIXME
 		}
 	}
 
@@ -79,9 +101,9 @@ public class DCT2 {
 	 *         domain, ordered by row and then column.
 	 * @param mode
 	 *            indicates algorithm to use; mode == 0: reference, coarse
-	 *            implementation mode == 1: reference, fine (parallel)
-	 *            implementation mode == 2: fast, coarse implementation mode ==
-	 *            3: fast, fine (parallel) implementation
+	 *            implementation. mode == 1: reference, fine (parallel)
+	 *            implementation. mode == 2: fast, coarse implementation. mode
+	 *            == 3: fast, fine (parallel) implementation.
 	 */
 	private static class iDCT8x8_ieee extends Pipeline<Integer, Integer> {
 		iDCT8x8_ieee(int x) {
@@ -103,7 +125,7 @@ public class DCT2 {
 	 * @param mode
 	 *            indicates algorithm to use; mode == 0: reference, coarse
 	 *            implementation, mode == 1: reference, fine (parallel)
-	 *            implementation
+	 *            implementation.
 	 */
 	private static class DCT8x8_ieee extends Pipeline<Integer, Integer> {
 		DCT8x8_ieee(int mode) {
@@ -141,6 +163,10 @@ public class DCT2 {
 		}
 	}
 
+	/**
+	 * This filter represents anonymous filter that exists inside
+	 * iDCT_2D_reference_fine in the SteramIt's implementation.
+	 */
 	private static class IntToFloat extends Filter<Integer, Float> {
 
 		public IntToFloat() {
@@ -153,6 +179,11 @@ public class DCT2 {
 		}
 	}
 
+	/**
+	 * This filter represents anonymous filter that exists inside
+	 * iDCT_2D_reference_fine in the SteramIt's implementation. FIXME: Do we
+	 * need to push((pop() + 0.5).intValue())?
+	 */
 	private static class FloatToInt extends Filter<Float, Integer> {
 
 		public FloatToInt() {
@@ -218,11 +249,11 @@ public class DCT2 {
 	 */
 	private static class DCT_2D_reference_fine extends
 			Pipeline<Integer, Integer> {
-		DCT_2D_reference_fine(int size){
-	    add (new IntToFloat());
-	    add (new DCT_1D_X_reference_fine(size));
-	    add (new DCT_1D_Y_reference_fine(size));
-	    add (new FloatToInt());
+		DCT_2D_reference_fine(int size) {
+			add(new IntToFloat());
+			add(new DCT_1D_X_reference_fine(size));
+			add(new DCT_1D_Y_reference_fine(size));
+			add(new FloatToInt());
 		}
 	}
 
@@ -231,11 +262,12 @@ public class DCT2 {
 	 */
 	private static class iDCT_1D_X_reference_fine extends
 			Splitjoin<Float, Float> {
-		iDCT_1D_X_reference_fine(int size){
-	    super(new RoundrobinSplitter<Float>(size), new RoundrobinJoiner<Float>(size));
-	    for (int i = 0; i < size; i++) {
-	        add ( new iDCT_1D_reference_fine(size)); 
-	    }
+		iDCT_1D_X_reference_fine(int size) {
+			super(new RoundrobinSplitter<Float>(size),
+					new RoundrobinJoiner<Float>(size));
+			for (int i = 0; i < size; i++) {
+				add(new iDCT_1D_reference_fine(size));
+			}
 		}
 	}
 
@@ -594,7 +626,7 @@ public class DCT2 {
 			super(size * size, size * size, size * size);
 			buffer = new int[size * size];
 		}
-		
+
 		public void work() {
 			for (int c = 0; c < size; c++) {
 				int x0 = peek(c + size * 0);

@@ -24,7 +24,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/7/2013
  */
-public final class WeightedRoundrobinSplitter<T> extends Splitter<T, T> {
+public final class WeightedRoundrobinSplitter<T> extends Splitter<T> {
 	private final int[] weights;
 	/**
 	 * Creates a new WeightedRoundrobinSplitter with the given weights.

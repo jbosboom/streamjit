@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,7 +102,7 @@ public class Interpreter implements Blob {
 			constraintList.add(constraint);
 		}
 		//Create channels.
-		SwitchParameter<ChannelFactory> parameter = config.getParameter("channelFactory", SwitchParameter.class, ChannelFactory.class);
+		SwitchParameter<ChannelFactory> parameter = this.config.getParameter("channelFactory", SwitchParameter.class, ChannelFactory.class);
 		ChannelFactory factory = parameter.getValue();
 		for (Pair<Worker<?, ?>, Worker<?, ?>> p : allWorkerPairsInBlob()) {
 			Channel channel = factory.makeChannel((Worker)p.first, (Worker)p.second);
@@ -218,7 +217,7 @@ public class Interpreter implements Blob {
 	@Override
 	public void drain(Runnable callback) {
 		//Set the callback; the core code will run it after its next interpret().
-		if (!this.callback.compareAndSet(null, callback))
+		if (!this.callback.compareAndSet(null, checkNotNull(callback)))
 			throw new IllegalStateException("drain() called multiple times");
 	}
 
@@ -298,15 +297,45 @@ public class Interpreter implements Blob {
 			fired = false;
 			for (Worker<?, ?> sink : sinks)
 				everFired |= fired |= pull(sink);
+
+			//Because we're using unbounded Channels, if we keep getting input,
+			//we'll keep firing our workers.  We need to flush output to buffers
+			//to prevent memory exhaustion and starvation of the next Blob.
+			pushOutputs();
 		} while (fired);
 
-		if (everFired)
-			//Flush output buffers, spinning if necessary.
-			for (Map.Entry<Channel<?>, Buffer> e : outputBuffers.entrySet())
-				for (Object outputItem : e.getKey())
-					while (!e.getValue().write(outputItem))
-						/* intentional empty statement */;
 		return everFired;
+	}
+
+	private void pushOutputs() {
+		//Flush in a round-robin manner to avoid deadlocks where our consumer is
+		//blocked on another one of our channels.
+		List<Channel<?>> check = new ArrayList<>(outputBuffers.keySet());
+		while (!check.isEmpty()) {
+			for (int i = check.size()-1; i >= 0; --i) {
+				Channel<?> channel = check.get(i);
+				if (channel.isEmpty()) {
+					check.remove(i);
+					continue;
+				}
+
+				Buffer buffer = outputBuffers.get(channel);
+				int room = Math.min(buffer.capacity() - buffer.size(), channel.size());
+				if (room == 0)
+					continue;
+
+				Object[] data = new Object[room];
+				for (int j = 0; j < data.length; ++j)
+					data[j] = channel.pop();
+				int written = 0;
+				int tries = 0;
+				while (written < data.length) {
+					written += buffer.write(data, written, data.length - written);
+					++tries;
+				}
+				assert tries == 1 : "We checked we have space, but still needed "+tries+" tries";
+			}
+		}
 	}
 
 	/**

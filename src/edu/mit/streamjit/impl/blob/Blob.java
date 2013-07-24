@@ -9,10 +9,12 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * A Blob represents a runnable part of a stream graph.  Blobs are responsible
+ * A Blob represents a runnable part of a stream graph. Blobs are responsible
  * for some workers from the stream graph, have some inputs and outputs
  * identified by Tokens, and provide some number of Runnables that can be
- * executed on cores.
+ * executed on cores. Blob is confined into a single machine boundary (i.e, A
+ * single blob never executed across multiple machines)
+ * 
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/22/2013
  */
@@ -68,7 +70,7 @@ public interface Blob {
 	public int getCoreCount();
 
 	/**
-	 * Gets a Runnable that the given core can run to run this blob.
+	 * Gets a Runnable that the given core can run to run this blob. Cores index starts from 0.
 	 * @param core the core to get a Runnable for
 	 * @return a Runnable for part of this blob
 	 */

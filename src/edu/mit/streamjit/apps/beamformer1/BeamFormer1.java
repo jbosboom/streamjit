@@ -1,7 +1,3 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since Mar 8, 2013
- */
 package edu.mit.streamjit.apps.beamformer1;
 
 import edu.mit.streamjit.api.CompiledStream;
@@ -13,29 +9,60 @@ import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
+/**
+ * Rewritten StreamIt's asplos06 benchmarks. Refer
+ * STREAMIT_HOME/apps/benchmarks/asplos06/beamformer/streamit/BeamFormer1.str
+ * for original implementations. Each StreamIt's language constructs (i.e.,
+ * pipeline, filter and splitjoin) are rewritten as classes in StreamJit.
+ * 
+ * FIXME: All FileWriter<?> and FileReader<?> are replaced with ?Source and
+ * ?Printer respectively.
+ * 
+ * @author Sumanan sumanan@mit.edu
+ * @since Mar 8, 2013
+ */
 public class BeamFormer1 {
 
-	/**
-	 * @param args
-	 */
 	public static void main(String[] args) throws InterruptedException {
 
 		BeamFormer1Kernel core = new BeamFormer1Kernel();
-		StreamCompiler sc = new DebugStreamCompiler();
+		// StreamCompiler sc = new DebugStreamCompiler();
+		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		//StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Float, Void> stream = sc.compile(core);
-		for (float i = 0; i < 100000; ++i) {
-			stream.offer(i);		// This offer value i has no effect in the program. As we can not call stream.offer(), just sending garbage value.
-			// while ((output = stream.poll()) != null)
-			// System.out.println(output);
+		
+		for (float i = 0; i < 100000;) {
+			// This offerring value i has no effect in the program. As we can
+			// not call stream.offer(), just sending
+			// garbage value.
+			if (stream.offer(i)) {
+				// System.out.println("Offer success " + i);
+				i++;
+			} else {
+				Thread.sleep(10);
+			}
 		}
-		stream.drain();
-		stream.awaitDraining();
 
+		// Thread.sleep(10000);
+		stream.drain();
+		while (!stream.isDrained());
 	}
 
-	private static class BeamFormer1Kernel extends Pipeline<Float, Void> {
+	/**
+	 * This class represents "pipeline Beamformer1" in the BeamFormer1.str
+	 * benchmark. "pipeline Beamformer1" is actually void->void. But, as
+	 * StreamJit currently doesn't support void input at source worker, Slightly
+	 * changed to float->void and filereading is ignored. TODO: Implement the
+	 * file reading and writing filters in StreamJit and modify this application
+	 * to work exactly as the original BeamFormer1.str
+	 * 
+	 * @author sumanan
+	 */
+	public static class BeamFormer1Kernel extends Pipeline<Float, Void> {
 		int numChannels = 12;
 		int numSamples = 256;
 		int numBeams = 4;
@@ -61,11 +88,13 @@ public class BeamFormer1 {
 
 		public BeamFormer1Kernel() {
 
+			// FIXME: split roundrobin(0); is needed. i.e., null splitter, have
+			// no pushes to it's children
 			Splitjoin<Float, Float> splitJoin1 = new Splitjoin<>(
 					new RoundrobinSplitter<Float>(),
-					new RoundrobinJoiner<Float>());
+					new RoundrobinJoiner<Float>(2));
 			for (int i = 0; i < numChannels; i++) {
-				splitJoin1.add(new Pipeline<Void, Float>(new InputGenerate(i,
+				splitJoin1.add(new Pipeline<Float, Float>(new InputGenerate(i,
 						numSamples, targetBeam, targetSample, cfarThreshold),
 						new BeamFirFilter(numCoarseFilterTaps, numSamples,
 								coarseDecimationRatio), new BeamFirFilter(
@@ -77,7 +106,7 @@ public class BeamFormer1 {
 					new DuplicateSplitter<Float>(),
 					new RoundrobinJoiner<Float>());
 			for (int i = 0; i < numBeams; i++) {
-				splitJoin2.add(new Pipeline<Void, Float>(new BeamForm(i,
+				splitJoin2.add(new Pipeline<Float, Float>(new BeamForm(i,
 						numChannels),
 						new BeamFirFilter(mfSize, numPostDec2, 1),
 						new Magnitude()));
@@ -89,6 +118,8 @@ public class BeamFormer1 {
 		}
 	}
 
+	// FIXME: We need to support Filter<Void, ?>.
+	// Original InputGenerate is void->float.
 	private static class InputGenerate extends StatefulFilter<Float, Float> {
 		private final int myChannel;
 		private final int numberOfSamples;
@@ -112,6 +143,9 @@ public class BeamFormer1 {
 
 		@Override
 		public void work() {
+			// FIXME: this pop is just added because current StreamJit doens't
+			// support a filter with void input type. Need to support
+			// it soon.
 			pop(); // As current implementation has no support to fire the
 					// streamgraph with void element, we offer the graph with
 					// random values and just pop out here.
@@ -136,7 +170,6 @@ public class BeamFormer1 {
 
 		public FloatPrinter() {
 			super(1, 0);
-			// TODO Auto-generated constructor stub
 		}
 
 		@Override
@@ -437,8 +470,6 @@ public class BeamFormer1 {
 
 			if (curSample >= numSamples)
 				curSample = 0;
-
 		}
-
 	}
 }
