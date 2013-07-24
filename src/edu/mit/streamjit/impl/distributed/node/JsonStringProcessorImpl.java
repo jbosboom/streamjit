@@ -29,10 +29,10 @@ import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecif
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.distributed.api.Error;
-import edu.mit.streamjit.impl.distributed.api.JsonStringProcessor;
-import edu.mit.streamjit.impl.distributed.api.NodeInfo;
+import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.JsonStringProcessor;
+import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.interp.ArrayChannel;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.SynchronizedChannel;

@@ -4,7 +4,7 @@
  */
 package edu.mit.streamjit.impl.distributed.node;
 
-import edu.mit.streamjit.impl.distributed.api.ErrorProcessor;
+import edu.mit.streamjit.impl.distributed.common.ErrorProcessor;
 
 public class ErrorProcessorImpl implements ErrorProcessor {
 

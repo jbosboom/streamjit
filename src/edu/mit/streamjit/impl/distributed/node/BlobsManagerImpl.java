@@ -6,9 +6,9 @@ import java.util.Set;
 
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.distributed.api.BlobExecuter;
-import edu.mit.streamjit.impl.distributed.api.BlobsManager;
-import edu.mit.streamjit.impl.distributed.api.NodeInfo;
+import edu.mit.streamjit.impl.distributed.common.BlobExecuter;
+import edu.mit.streamjit.impl.distributed.common.BlobsManager;
+import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 
 /**
  * @author Sumanan sumanan@mit.edu

@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.distributed.api;
+package edu.mit.streamjit.impl.distributed.common;
 
 import java.io.Serializable;
 

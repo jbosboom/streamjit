@@ -3,7 +3,7 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import edu.mit.streamjit.impl.distributed.api.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.interp.Channel;
 

@@ -4,19 +4,19 @@
  */
 package edu.mit.streamjit.impl.distributed.node;
 
-import edu.mit.streamjit.impl.distributed.api.AppStatus;
-import edu.mit.streamjit.impl.distributed.api.AppStatusProcessor;
-import edu.mit.streamjit.impl.distributed.api.Command;
-import edu.mit.streamjit.impl.distributed.api.CommandProcessor;
-import edu.mit.streamjit.impl.distributed.api.Error;
-import edu.mit.streamjit.impl.distributed.api.ErrorProcessor;
-import edu.mit.streamjit.impl.distributed.api.JsonString;
-import edu.mit.streamjit.impl.distributed.api.JsonStringProcessor;
-import edu.mit.streamjit.impl.distributed.api.MessageVisitor;
-import edu.mit.streamjit.impl.distributed.api.NodeInfo;
-import edu.mit.streamjit.impl.distributed.api.Request;
-import edu.mit.streamjit.impl.distributed.api.RequestProcessor;
-import edu.mit.streamjit.impl.distributed.api.SystemInfo;
+import edu.mit.streamjit.impl.distributed.common.AppStatus;
+import edu.mit.streamjit.impl.distributed.common.AppStatusProcessor;
+import edu.mit.streamjit.impl.distributed.common.Command;
+import edu.mit.streamjit.impl.distributed.common.CommandProcessor;
+import edu.mit.streamjit.impl.distributed.common.Error;
+import edu.mit.streamjit.impl.distributed.common.ErrorProcessor;
+import edu.mit.streamjit.impl.distributed.common.JsonString;
+import edu.mit.streamjit.impl.distributed.common.JsonStringProcessor;
+import edu.mit.streamjit.impl.distributed.common.MessageVisitor;
+import edu.mit.streamjit.impl.distributed.common.NodeInfo;
+import edu.mit.streamjit.impl.distributed.common.Request;
+import edu.mit.streamjit.impl.distributed.common.RequestProcessor;
+import edu.mit.streamjit.impl.distributed.common.SystemInfo;
 
 public class NodeMessageVisitor implements MessageVisitor {
 

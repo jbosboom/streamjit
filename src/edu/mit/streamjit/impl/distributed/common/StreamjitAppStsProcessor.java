@@ -4,7 +4,6 @@
  */
 package edu.mit.streamjit.impl.distributed.common;
 
-import edu.mit.streamjit.impl.distributed.api.AppStatusProcessor;
 
 public class StreamjitAppStsProcessor implements AppStatusProcessor {
 

@@ -6,9 +6,9 @@ package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
 
-import edu.mit.streamjit.impl.distributed.api.AppStatus;
-import edu.mit.streamjit.impl.distributed.api.BlobsManager;
-import edu.mit.streamjit.impl.distributed.api.CommandProcessor;
+import edu.mit.streamjit.impl.distributed.common.AppStatus;
+import edu.mit.streamjit.impl.distributed.common.BlobsManager;
+import edu.mit.streamjit.impl.distributed.common.CommandProcessor;
 
 public class CommandProcessorImpl implements CommandProcessor {
 	StreamNode streamNode;

@@ -8,8 +8,8 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-import edu.mit.streamjit.impl.distributed.api.NodeInfo;
-import edu.mit.streamjit.impl.distributed.api.RequestProcessor;
+import edu.mit.streamjit.impl.distributed.common.NodeInfo;
+import edu.mit.streamjit.impl.distributed.common.RequestProcessor;
 
 public class RequestProcessorImpl implements RequestProcessor {
 

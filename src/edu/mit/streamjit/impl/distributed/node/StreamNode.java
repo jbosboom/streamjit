@@ -2,13 +2,13 @@ package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
 
-import edu.mit.streamjit.impl.distributed.api.BlobsManager;
-import edu.mit.streamjit.impl.distributed.api.Command;
-import edu.mit.streamjit.impl.distributed.api.MessageElement;
-import edu.mit.streamjit.impl.distributed.api.MessageVisitor;
+import edu.mit.streamjit.impl.distributed.common.BlobsManager;
+import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
+import edu.mit.streamjit.impl.distributed.common.MessageElement;
+import edu.mit.streamjit.impl.distributed.common.MessageVisitor;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**

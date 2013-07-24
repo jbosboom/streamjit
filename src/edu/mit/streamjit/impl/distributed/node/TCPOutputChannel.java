@@ -9,7 +9,7 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import edu.mit.streamjit.impl.distributed.api.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection;
 import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
 import edu.mit.streamjit.impl.interp.Channel;

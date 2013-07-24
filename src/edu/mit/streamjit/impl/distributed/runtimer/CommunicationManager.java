@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import edu.mit.streamjit.impl.distributed.api.NodeInfo;
+import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.node.Connection;
 
 /**

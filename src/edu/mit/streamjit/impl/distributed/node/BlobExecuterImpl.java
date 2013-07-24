@@ -6,11 +6,11 @@ import java.util.Map;
 
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.distributed.api.BlobExecuter;
-import edu.mit.streamjit.impl.distributed.api.BoundaryChannel;
-import edu.mit.streamjit.impl.distributed.api.BoundaryInputChannel;
-import edu.mit.streamjit.impl.distributed.api.BoundaryOutputChannel;
-import edu.mit.streamjit.impl.distributed.api.NodeInfo;
+import edu.mit.streamjit.impl.distributed.common.BlobExecuter;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.interp.Channel;
 
 /**

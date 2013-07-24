@@ -2,7 +2,7 @@
  * @author Sumanan sumanan@mit.edu
  * @since May 15, 2013
  */
-package edu.mit.streamjit.impl.distributed.api;
+package edu.mit.streamjit.impl.distributed.common;
 
 import edu.mit.streamjit.impl.blob.Blob;
 
