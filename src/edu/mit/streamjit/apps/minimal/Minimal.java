@@ -19,15 +19,15 @@ public class Minimal {
 	public static void main(String[] args) throws InterruptedException {
 
 		MinimalKernel kernel = new MinimalKernel();
-		// StreamCompiler sc = new DebugStreamCompiler();
-		StreamCompiler sc = new ConcurrentStreamCompiler(4);
+//		 StreamCompiler sc = new DebugStreamCompiler();
+		StreamCompiler sc = new ConcurrentStreamCompiler(2);
 		// StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Integer, Void> stream = sc.compile(kernel);
 		Integer output;
-		
+
 		// DEBUG variable
 		int j = 0;
-		for (int i = 0; i < 1000000;) {
+		for (int i = 0; i < 100000;) {
 			if (stream.offer(i)) {
 				// System.out.println("Offer success " + i);
 				++i;

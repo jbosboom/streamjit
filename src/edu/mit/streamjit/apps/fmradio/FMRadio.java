@@ -12,14 +12,14 @@ import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
- * 
+ *
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/8/2012
  */
 public class FMRadio {
 	public static void main(String[] args) throws InterruptedException {
 		FMRadioCore core = new FMRadioCore();
-		// StreamCompiler sc = new DebugStreamCompiler();
+//		 StreamCompiler sc = new DebugStreamCompiler();
 		StreamCompiler sc = new ConcurrentStreamCompiler(4);
 		// StreamCompiler sc = new DistributedStreamCompiler(2);
 		CompiledStream<Float, Float> stream = sc.compile(core);

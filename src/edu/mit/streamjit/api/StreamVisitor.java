@@ -49,7 +49,7 @@ public abstract class StreamVisitor {
 	 * Visits a splitter.
 	 * @param splitter a splitter
 	 */
-	public abstract void visitSplitter(Splitter<?> splitter);
+	public abstract void visitSplitter(Splitter<?, ?> splitter);
 
 	/**
 	 * Called when entering a splitjoin branch. Implementations may return true
@@ -73,7 +73,7 @@ public abstract class StreamVisitor {
 	 * Visits a joiner.
 	 * @param joiner a joiner
 	 */
-	public abstract void visitJoiner(Joiner<?> joiner);
+	public abstract void visitJoiner(Joiner<?, ?> joiner);
 
 	/**
 	 * Called when exiting a splitjoin for which true was returned from the

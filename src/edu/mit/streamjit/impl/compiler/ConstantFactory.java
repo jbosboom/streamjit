@@ -1,7 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
-import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.impl.compiler.types.Type;
 import edu.mit.streamjit.impl.compiler.types.WrapperType;
 import edu.mit.streamjit.util.ReflectionUtils;

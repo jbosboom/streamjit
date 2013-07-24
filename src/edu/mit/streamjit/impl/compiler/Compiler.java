@@ -2,12 +2,10 @@ package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
-import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Table;
 import com.google.common.math.IntMath;
@@ -26,6 +24,7 @@ import edu.mit.streamjit.impl.blob.ArrayDequeBuffer;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.IOInfo;
@@ -49,16 +48,13 @@ import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.impl.interp.ArrayChannel;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
-import edu.mit.streamjit.impl.interp.EmptyChannel;
+import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.Pair;
-import edu.mit.streamjit.util.TopologicalSort;
 import java.io.PrintWriter;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandleProxies;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.SwitchPoint;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -67,12 +63,12 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -975,7 +971,9 @@ public final class Compiler {
 		private final SwitchPoint sp1 = new SwitchPoint(), sp2 = new SwitchPoint();
 		private final CyclicBarrier barrier;
 		private ImmutableMap<Token, Buffer> buffers;
+		private ImmutableMap<Token, Channel<Object>> channelMap;
 		private volatile Runnable drainCallback;
+		private volatile DrainData drainData;
 
 		public CompilerBlobHost(Set<Worker<?, ?>> workers, Configuration configuration, Class<?> blobClass, List<BufferData> bufferData, Map<Worker<?, ?>, Integer> initSchedule) {
 			this.workers = ImmutableSet.copyOf(workers);
@@ -1063,12 +1061,11 @@ public final class Compiler {
 
 			final java.lang.invoke.MethodType voidNoArgs = java.lang.invoke.MethodType.methodType(void.class);
 			MethodHandle nop = MethodHandles.identity(Void.class).bindTo(null).asType(voidNoArgs);
-			MethodHandle mainLoop, doInit, doAdjustBuffers, doDrain, newAssertionError;
+			MethodHandle mainLoop, doInit, doAdjustBuffers, newAssertionError;
 			try {
 				mainLoop = lookup.findVirtual(CompilerBlobHost.class, "mainLoop", java.lang.invoke.MethodType.methodType(void.class, MethodHandle.class)).bindTo(this);
 				doInit = lookup.findVirtual(CompilerBlobHost.class, "doInit", voidNoArgs).bindTo(this);
 				doAdjustBuffers = lookup.findVirtual(CompilerBlobHost.class, "doAdjustBuffers", voidNoArgs).bindTo(this);
-				doDrain = lookup.findVirtual(CompilerBlobHost.class, "doDrain", voidNoArgs).bindTo(this);
 				newAssertionError = lookup.findConstructor(AssertionError.class, java.lang.invoke.MethodType.methodType(void.class, Object.class));
 			} catch (IllegalAccessException | NoSuchMethodException ex) {
 				throw new AssertionError(ex);
@@ -1099,12 +1096,12 @@ public final class Compiler {
 		}
 
 		@Override
-		public Set<Token> getInputs() {
+		public ImmutableSet<Token> getInputs() {
 			return inputTokens;
 		}
 
 		@Override
-		public Set<Token> getOutputs() {
+		public ImmutableSet<Token> getOutputs() {
 			return outputTokens;
 		}
 
@@ -1136,7 +1133,11 @@ public final class Compiler {
 		@Override
 		public void drain(Runnable callback) {
 			drainCallback = callback;
-			SwitchPoint.invalidateAll(new SwitchPoint[]{sp1, sp2});
+		}
+
+		@Override
+		public DrainData getDrainData() {
+			return drainData;
 		}
 
 		private void mainLoop(MethodHandle corework) throws Throwable {
@@ -1154,15 +1155,16 @@ public final class Compiler {
 		private void doInit() throws Throwable {
 			//Create channels.
 			ImmutableSet<IOInfo> allEdges = IOInfo.allEdges(workers);
-			Map<Token, Channel<Object>> channelMap = new HashMap<>();
+			ImmutableMap.Builder<Token, Channel<Object>> channelMapBuilder = ImmutableMap.builder();
 			for (IOInfo i : allEdges) {
 				Channel<Object> c = new ArrayChannel<>();
 				if (i.upstream() != null && !i.isInput())
 					addOrSet(Workers.getOutputChannels(i.upstream()), i.getUpstreamChannelIndex(), c);
 				if (i.downstream() != null && !i.isOutput())
 					addOrSet(Workers.getInputChannels(i.downstream()), i.getDownstreamChannelIndex(), c);
-				channelMap.put(i.token(), c);
+				channelMapBuilder.put(i.token(), c);
 			}
+			this.channelMap = channelMapBuilder.build();
 
 			//Fill input channels.
 			for (IOInfo i : allEdges) {
@@ -1171,9 +1173,13 @@ public final class Compiler {
 				Channel<Object> channel = channelMap.get(i.token());
 				Buffer buffer = buffers.get(i.token());
 				Object[] data = new Object[required];
+				//These are the first reads we do, so we can't "waste" our
+				//interrupt here.
 				while (!buffer.readAll(data))
-					if (isDraining())
-						throw new AssertionError("TODO: draining during init");
+					if (isDraining()) {
+						doDrain(false, ImmutableList.<Token>of());
+						return;
+					}
 				for (Object datum : data)
 					channel.push(datum);
 			}
@@ -1210,9 +1216,9 @@ public final class Compiler {
 				Object[] objs = Iterables.toArray(channel, Object.class);
 				Object[] buffer = (Object[])blobClassFieldGetters.get(data.readerBufferFieldName).invokeExact();
 				System.arraycopy(objs, 0, buffer, 0, objs.length);
+				while (!channel.isEmpty())
+					channel.pop();
 			}
-
-			//TODO: Now that we don't need the channels, null them out.
 
 			//TODO: Move state to fields.
 
@@ -1242,20 +1248,98 @@ public final class Compiler {
 			}
 
 			//Fill input buffers (draining-aware).
-			for (Token t : getInputs()) {
+			ImmutableList<Token> inputList = getInputs().asList();
+			for (int i = 0; i < inputList.size(); ++i) {
+				Token t = inputList.get(i);
 				Object[] data = (Object[])blobClassFieldGetters.get(bufferData.get(t).readerBufferFieldName).invokeExact();
 				Buffer buffer = buffers.get(t);
-				if (isDraining())
-					throw new AssertionError("TODO: draining while adjusting buffers");
-				while (!buffer.readAll(data))
-					if (isDraining())
-						throw new AssertionError("TODO: draining while adjusting buffers");
+				if (isDraining()) {
+					//While draining, we can trust size() exactly, so we can
+					//check before proceeding to avoid wasting the interrupt.
+					if (buffer.size() >= data.length) {
+						boolean mustSucceed = buffer.readAll(data);
+						assert mustSucceed : "size() lies";
+					} else {
+						doDrain(true, inputList.subList(0, i));
+						return;
+					}
+				} else
+					while (!buffer.readAll(data))
+						if (isDraining()) {
+							doDrain(true, inputList.subList(0, i));
+							return;
+						}
 			}
 		}
 
-		private void doDrain() {
-			//TODO: actual draining
+		/**
+		 *
+		 * @param nonInputReaderBuffersLive true iff non-input reader buffers
+		 * are live (basically, true if we're draining from doAdjustBuffers,
+		 * false if from doInit)
+		 */
+		private void doDrain(boolean nonInputReaderBuffersLive, List<Token> additionalLiveBuffers) throws Throwable {
+			//We already have channels installed from initialization; we just
+			//have to fill them if our internal buffers are live.  (If we're
+			//draining during init some of the input channels are already
+			//primed with data -- that's okay.)
+			ImmutableSet.Builder<Token> live = ImmutableSet.builder();
+			if (nonInputReaderBuffersLive)
+				live.addAll(internalTokens);
+			live.addAll(additionalLiveBuffers);
+			for (Token t : live.build()) {
+				BufferData data = bufferData.get(t);
+				if (data != null) {
+					Channel<Object> c = channelMap.get(t);
+					assert c.isEmpty() : "data left in internal channel after init";
+					Object[] buf = (Object[])blobClassFieldGetters.get(data.readerBufferFieldName).invokeExact();
+					for (Object o : buf)
+						c.push(o);
+				}
+			}
+
+			//TODO: Move state into worker fields.
+
+			//Create an interpreter and use it to drain stuff.
+			//TODO: hack.  Make a proper Interpreter interface for this use case.
+			List<ChannelFactory> universe = Arrays.<ChannelFactory>asList(new ChannelFactory() {
+				@Override
+				@SuppressWarnings("unchecked")
+				public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
+					if (upstream == null)
+						return (Channel<E>)channelMap.get(Token.createOverallInputToken(downstream));
+					if (downstream == null)
+						return (Channel<E>)channelMap.get(Token.createOverallOutputToken(upstream));
+					return (Channel<E>)channelMap.get(new Token(upstream, downstream));
+				}
+				@Override
+				public boolean equals(Object o) {
+					return o != null && getClass() == o.getClass();
+				}
+				@Override
+				public int hashCode() {
+					return 10;
+				}
+			});
+			Configuration config = Configuration.builder().addParameter(new Configuration.SwitchParameter<>("channelFactory", ChannelFactory.class, universe.get(0), universe)).build();
+			Blob interp = new Interpreter.InterpreterBlobFactory().makeBlob(workers, config, 1);
+			interp.installBuffers(buffers);
+			Runnable interpCode = interp.getCoreCode(0);
+			final AtomicBoolean interpFinished = new AtomicBoolean();
+			interp.drain(new Runnable() {
+				@Override
+				public void run() {
+					interpFinished.set(true);
+				}
+			});
+			while (!interpFinished.get())
+				interpCode.run();
+			this.drainData = interp.getDrainData();
+
+			SwitchPoint.invalidateAll(new SwitchPoint[]{sp1, sp2});
 			drainCallback.run();
+
+			//TODO: null out blob class fields to permit GC.
 		}
 
 		private boolean isDraining() {
@@ -1293,15 +1377,22 @@ public final class Compiler {
 			buffers.put(t, new ArrayDequeBuffer());
 		blob.installBuffers(buffers);
 
-		blob.getCoreCode(0).run();
-		blob.getCoreCode(0).run();
-		blob.getCoreCode(0).run();
-		blob.getCoreCode(0).run();
-		blob.getCoreCode(0).run();
+		final AtomicBoolean drained = new AtomicBoolean();
+		blob.drain(new Runnable() {
+			@Override
+			public void run() {
+				drained.set(true);
+			}
+		});
 
+		Runnable r = blob.getCoreCode(0);
 		Buffer b = buffers.get(blob.getOutputs().iterator().next());
-		Object o;
-		while ((o = b.read()) != null)
-			System.out.println(o);
+		while (!drained.get()) {
+			r.run();
+			Object o;
+			while ((o = b.read()) != null)
+				System.out.println(o);
+		}
+		System.out.println(blob.getDrainData());
 	}
 }

@@ -153,16 +153,6 @@ public abstract class Workers {
 			bottommost.removeAll(Workers.getPredecessors(w));
 		return ImmutableSet.copyOf(bottommost);
 	}
-	
-	public static ImmutableSet<Worker<?, ?>> findSinks(Set<Worker<?, ?>> workers) {
-		Set<Worker<?, ?>> bottommost = new HashSet<>();
-		for (Worker<?, ?> w : workers) {
-			if (!workers.containsAll(Workers.getAllSuccessors(w))
-					|| Workers.getAllSuccessors(w).isEmpty())
-				bottommost.add(w);
-		}
-		return ImmutableSet.copyOf(bottommost);
-	}
 
 	public enum StreamPosition {
 		UPSTREAM, DOWNSTREAM, EQUAL, INCOMPARABLE;

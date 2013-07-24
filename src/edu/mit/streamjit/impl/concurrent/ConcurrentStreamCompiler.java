@@ -36,11 +36,12 @@ import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
+import java.util.Collections;
 
 /**
  * A stream compiler that partitions a streamgraph into multiple blobs and
  * execute it on multiple threads.
- * 
+ *
  * @author Sumanan sumanan@mit.edu
  * @since Apr 8, 2013
  */
@@ -168,20 +169,43 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		return val != 0 ? ((a * b) / val) : 0;
 	}
 
-	private static class ConcurrentCompiledStream<I, O> extends
+	public static class ConcurrentCompiledStream<I, O> extends
 			AbstractCompiledStream<I, O> {
 		List<Blob> blobList;
 		List<Thread> blobThreads;
+		Map<Blob, Set<MyThread>> threadMap = new HashMap<>();
+		DrainerCallback callback;
 
 		public ConcurrentCompiledStream(List<Blob> blobList,
 				Buffer inputBuffer, Buffer outputBuffer) {
 			super(inputBuffer, outputBuffer);
 			this.blobList = blobList;
 			blobThreads = new ArrayList<>(this.blobList.size());
-			for (Blob b : blobList) {
-				blobThreads.add(new Thread(b.getCoreCode(0)));
+			for (final Blob b : blobList) {
+				MyThread t = new MyThread(b.getCoreCode(0));
+				blobThreads.add(t);
+				threadMap.put(b, Collections.singleton(t));
 			}
+			callback = new DrainerCallback(blobList, threadMap);
 			start();
+		}
+
+		public static class MyThread extends Thread {
+			private volatile boolean stopping = false;
+			private final Runnable coreCode;
+			public MyThread(Runnable coreCode) {
+				this.coreCode = coreCode;
+			}
+
+			@Override
+			public void run() {
+				while (!stopping)
+					coreCode.run();
+			}
+
+			public void requestStop() {
+				stopping = true;
+			}
 		}
 
 		/*
@@ -197,7 +221,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 		@Override
 		protected void doDrain() {
-			new DrainerCallback(blobList).run();
+			blobList.get(0).drain(callback);
 		}
 
 		@Override

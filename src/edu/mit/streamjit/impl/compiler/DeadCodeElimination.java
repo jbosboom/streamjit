@@ -5,7 +5,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.impl.compiler.insts.Instruction;
 import edu.mit.streamjit.impl.compiler.insts.PhiInst;
-import edu.mit.streamjit.impl.compiler.insts.TerminatorInst;
 import edu.mit.streamjit.impl.compiler.types.VoidType;
 import java.util.ArrayDeque;
 import java.util.Collections;

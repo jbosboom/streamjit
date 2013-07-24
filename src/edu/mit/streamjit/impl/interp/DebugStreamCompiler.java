@@ -229,7 +229,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 			return fullyDrained;
 		}
 		@Override
-		public void visitSplitter(Splitter<?> splitter) {
+		public void visitSplitter(Splitter<?, ?> splitter) {
 			visitWorker(splitter);
 		}
 		@Override
@@ -241,7 +241,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		public void exitSplitjoinBranch(OneToOneElement<?, ?> element) {
 		}
 		@Override
-		public void visitJoiner(Joiner<?> joiner) {
+		public void visitJoiner(Joiner<?, ?> joiner) {
 			visitWorker(joiner);
 		}
 		@Override

@@ -378,7 +378,7 @@ public final class Configuration {
 	 * Users of Configuration shouldn't implement this interface themselves;
 	 * instead, use one of the provided implementations in Configuration.
 	 */
-	public interface Parameter extends Serializable {
+	public interface Parameter extends java.io.Serializable {
 		public String getName();
 	}
 
@@ -710,13 +710,13 @@ public final class Configuration {
 	public static final class PartitionParameter implements Parameter {
 		private static final long serialVersionUID = 1L;
 		private final String name;
-			
+
 		/**
 		 * Map of MachineID and the number of cores on corresponding machine. Always contains at least one
 		 * element and all elements are always >= 1.
 		 */
 		private final ImmutableMap<Integer, Integer> machineCoreMap;
-		
+
 		/**
 		 * A map of machineID and list of blobs on that machine. The inner
 		 * lists are sorted.
@@ -957,21 +957,21 @@ public final class Configuration {
 				JsonObject obj = Jsonifiers.checkClassEqual(value, PartitionParameter.class);
 				String name = obj.getString("name");
 				int maxWorkerIdentifier = obj.getInt("maxWorkerIdentifier");
-				
+
 				Map<Integer, Integer> machineCoreMap = new HashMap<>();
 				JsonObject mapObj = checkNotNull(obj.getJsonObject("machineCoreMap"));
 				for (Map.Entry<String, JsonValue> data : mapObj.entrySet()) {
-					machineCoreMap.put(Integer.parseInt(data.getKey()), Jsonifiers.fromJson(data.getValue(), Integer.class));					
+					machineCoreMap.put(Integer.parseInt(data.getKey()), Jsonifiers.fromJson(data.getValue(), Integer.class));
 				}
 
 				ImmutableList.Builder<BlobFactory> blobFactoryUniverse = ImmutableList.builder();
 				for (JsonValue v : obj.getJsonArray("blobFactoryUniverse"))
 					blobFactoryUniverse.add(Jsonifiers.fromJson(v, BlobFactory.class));
-				
+
 				Map<Integer, List<BlobSpecifier>> blobMachineMap = new HashMap<>();
 				JsonObject blobsObj = checkNotNull(obj.getJsonObject("machineBlobMap"));
 				for (Map.Entry<String, JsonValue> data : blobsObj.entrySet()) {
-					List<BlobSpecifier> bsList = new ArrayList<BlobSpecifier>();					
+					List<BlobSpecifier> bsList = new ArrayList<BlobSpecifier>();
 					JsonArray arr = (JsonArray)data.getValue();
 					for(int i = 0; i < arr.size(); i++)
 					{
@@ -980,33 +980,33 @@ public final class Configuration {
 							throw new IllegalArgumentException("fromJson error : Blobs and corresponding assigned machines mismatch");
 						bsList.add(bs);
 					}
-					
+
 					if(blobMachineMap.containsKey(Integer.parseInt(data.getKey())))
 						throw new IllegalArgumentException("Multiple BlobSpecifier list exists for same machine");
 					blobMachineMap.put(Integer.parseInt(data.getKey()), bsList);
 				}
-				
+
 				ImmutableMap.Builder<Integer, ImmutableList<BlobSpecifier>> blobBuilder = ImmutableMap.builder();
 				for (Entry<Integer, List<BlobSpecifier>> blobMapEntry : blobMachineMap.entrySet()) {
 					Collections.sort(blobMapEntry.getValue());
 					blobBuilder.put(blobMapEntry.getKey(), ImmutableList.copyOf(blobMapEntry.getValue()));
 				}
-				
+
 				return new PartitionParameter(name, ImmutableMap.copyOf(machineCoreMap), blobBuilder.build(), blobFactoryUniverse.build(), maxWorkerIdentifier);
 			}
 
 			@Override
 			public JsonValue toJson(PartitionParameter t) {
-								
+
 				JsonObjectBuilder machineCoreMapBuilder = Json.createObjectBuilder();
 				for (Map.Entry<Integer, Integer> data : t.machineCoreMap.entrySet()) {
 					machineCoreMapBuilder.add(data.getKey().toString(), Jsonifiers.toJson(data.getValue()));
 				}
-				
+
 				JsonArrayBuilder blobFactoryUniverse = Json.createArrayBuilder();
 				for (BlobFactory factory : t.blobFactoryUniverse)
 					blobFactoryUniverse.add(Jsonifiers.toJson(factory));
-				
+
 				JsonObjectBuilder blobsBuilder = Json.createObjectBuilder();
 				for (Map.Entry<Integer,ImmutableList<BlobSpecifier>> machine : t.machineBlobMap.entrySet()) {
 					JsonArrayBuilder bsArraybuilder = Json.createArrayBuilder();
@@ -1042,11 +1042,11 @@ public final class Configuration {
 		public int getMachineCount() {
 			return machineCoreMap.size();
 		}
-		
+
 		public int getCoresOnMachine(int machine) {
 			return machineCoreMap.get(machine);
 		}
-		
+
 		public ImmutableList<BlobSpecifier> getBlobsOnMachine(int machine) {
 			return machineBlobMap.get(machine);
 		}
@@ -1070,7 +1070,7 @@ public final class Configuration {
 			}
 			throw new IllegalArgumentException(String.format("%s is not assigned to anyof the machines", worker));
 		}
-		
+
 		@Override
 		public boolean equals(Object obj) {
 			if (obj == null)
@@ -1121,11 +1121,11 @@ public final class Configuration {
 		mapEx.put(8, 12);
 		mapEx.put(3, 32);
 		mapEx.put(17, 64);
-		
+
 		List<Integer> crsPerMachine = new ArrayList<>();
 		crsPerMachine.add(8);
 		crsPerMachine.add(16);
-		
+
 		PartitionParameter.Builder partParam = PartitionParameter.builder("part", mapEx);
 		BlobFactory factory = new Interpreter.InterpreterBlobFactory();
 		partParam.addBlobFactory(factory);
@@ -1146,13 +1146,13 @@ public final class Configuration {
 		//String json2 = Jsonifiers.toJson(cfg2).toString();
 		//System.out.println(json2);
 		PartitionParameter partp = (PartitionParameter) cfg2.getParameter("part");
-		
+
 		System.out.println(partp.getCoresOnMachine(3));
 		List<BlobSpecifier> blobList = partp.getBlobsOnMachine(17);
-				
-		for (BlobSpecifier bs : blobList) 
+
+		for (BlobSpecifier bs : blobList)
 			System.out.println(bs.getWorkerIdentifiers());
-		
+
 		//System.out.println(partp.getCoresOnMachineEx(17));
 
 		/*Configuration.Builder builder = Configuration.builder();

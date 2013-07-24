@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.interp;
 
+import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -18,7 +19,7 @@ import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.partitioner.Partitioner;
+import edu.mit.streamjit.util.EmptyRunnable;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.reflect.Field;
@@ -65,36 +66,26 @@ public class Interpreter implements Blob {
 	private final Configuration config;
 	private final ImmutableSet<Token> inputs, outputs;
 	private final ImmutableMap<Token, Integer> minimumBufferSizes;
-	
 	/**
 	 * Maps workers to all constraints of which they are recipients.
 	 */
 	private final Map<Worker<?, ?>, List<MessageConstraint>> constraintsForRecipient = new IdentityHashMap<>();
-
 	/**
-	 * When running normally, null. After drain() has been called, contains the
-	 * callback we should execute.
+	 * When running normally, null.  After drain() has been called, contains the
+	 * callback we should execute.  After the callback is executed, becomes an
+	 * empty Runnable that we execute in place of interpret().
 	 */
-	private final AtomicReference<Runnable> callbackContainer = new AtomicReference<>();
-
-	/**
-	 * Set this flag to false to stop the normal stream execution and to trigger
-	 * the draining.
-	 */
-	private volatile boolean infinityRunFlag = true;
-
+	private final AtomicReference<Runnable> callback = new AtomicReference<>();
 	private final ImmutableSet<IOInfo> ioinfo;
-	
 	/**
 	 * Maps Channels to the buffers they correspond to.  Output channels are
 	 * flushed to output buffers; input channels are checked for data when we
 	 * can't fire a source.
 	 */
 	private ImmutableMap<Channel<?>, Buffer> inputBuffers, outputBuffers;
-	
 	public Interpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter, Configuration config) {
 		this.workers = ImmutableSet.copyOf(workersIter);
-		this.sinks = Workers.findSinks(workers);
+		this.sinks = Workers.getBottommostWorkers(workers);
 		this.config = config;
 
 		//Validate constraints.
@@ -204,99 +195,30 @@ public class Interpreter implements Blob {
 
 	@Override
 	public Runnable getCoreCode(int core) {
-		if (core != 0)
-			throw new AssertionError(
-					"core number can only be 0 as SingleThreadedBlob is single threaded implementation. requested core no is "
-							+ core);
+		checkElementIndex(core, getCoreCount());
 		return new Runnable() {
 			@Override
 			public void run() {
-				while (infinityRunFlag) {
+				Runnable callback = Interpreter.this.callback.get();
+				if (callback == null)
 					interpret();
+				else {
+					//Do any remaining work.
+					interpret();
+					//Run the callback (which may be empty).
+					callback.run();
+					//Set the callback to empty so we only run it once.
+					Interpreter.this.callback.set(new EmptyRunnable());
 				}
-				myDrain();
 			}
 		};
 	}
 
-	/**
-	 * Drains this {@link Blob} and pass the call back to next blob. Assumes all
-	 * prior {@link Blob}s are drained when the current {@link Blob} is called
-	 * for draining. For the time being, it is {@link Partitioner}'s
-	 * responsibility to generate the partitions for the blobs those are not
-	 * circularly dependent.
-	 */
-	private void myDrain() {
-		assert this.callbackContainer.get() != null : "Illegal call. Call back is not set";
-		// TODO: We can optimize the draining in a way that just processing the
-		// workers those are related to the non-empty input
-		// channels. Current algorithm processes all workers in the Blob until
-		// all input channels of the Blob become empty.
-		
-		int emptyCount = 0;
-		while (true) {
-			//System.out.println("DEBUG: " + Thread.currentThread().getName() + " is Draining...");
-			pullInputs();
-			if(interpret())
-				emptyCount = 0;
-			if(isAllInputBufferEmpty())
-			{
-				emptyCount ++;
-				if(emptyCount > 5)
-					break;
-				try {
-					Thread.sleep(200);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-		}
-		System.out.println("DEBUG: Draining of "
-				+ Thread.currentThread().getName() + " is finished");
-		
-		pushOutputs();
-		this.callbackContainer.get().run();
-
-		// After calling the next blob for the draining, data in all output
-		// channels need to be pushed into output buffers.
-		int i = 0;
-		while (pushOutputs()){
-			i++;
-			// System.out.println(Thread.currentThread().getName() + " Draining finished Copying data");
-			if(i > 2000)
-			{
-				System.out.println(Thread.currentThread().getName() + " Still have data. But couldn't copy the data. Terminating");
-				break;
-			}
-		}
-	}
-
-	/**
-	 * @return <code>true</code> if all input buffer of the {@link Blob} are
-	 *         empty.
-	 */
-	private boolean isAllInputBufferEmpty() {
-		boolean empty = true;
-		for (Buffer inbuf : inputBuffers.values()) {
-			if (inbuf.size() != 0)
-				empty = false;
-		}
-		return empty;
-	}
-
 	@Override
 	public void drain(Runnable callback) {
-		if (callback == null) {
-			throw new IllegalArgumentException("NULL callback is passed.");
-		}
-
-		// Set the callback; the core code will run it after its next
-		// interpret().
-		if (!this.callbackContainer.compareAndSet(null, callback))
+		//Set the callback; the core code will run it after its next interpret().
+		if (!this.callback.compareAndSet(null, checkNotNull(callback)))
 			throw new IllegalStateException("drain() called multiple times");
-
-		this.infinityRunFlag = false;
 	}
 
 	@Override
@@ -368,75 +290,53 @@ public class Interpreter implements Blob {
 	 * @return true iff progress was made
 	 */
 	public boolean interpret() {
-		// Fire each sink once if possible, then repeat until we can't fire any
-		// sinks.
+		//Fire each sink once if possible, then repeat until we can't fire any
+		//sinks.
 		boolean fired, everFired = false;
 		do {
 			fired = false;
 			for (Worker<?, ?> sink : sinks)
 				everFired |= fired |= pull(sink);
-			
-			// We need to push the outputs here. Otherwise next blob may starve
-			// for data if this blob keep on successfully firing but not pushing
-			// the output. This case happens in FMRadio benchmark.
+
+			//Because we're using unbounded Channels, if we keep getting input,
+			//we'll keep firing our workers.  We need to flush output to buffers
+			//to prevent memory exhaustion and starvation of the next Blob.
 			pushOutputs();
 		} while (fired);
-		
-		// Flush output buffers, spinning if necessary.
+
 		return everFired;
 	}
-	
-	// DEBUG variable
-	int k = 0;
-	private boolean pushOutputs()
-	{
-		boolean hasResidue = false;
-		for (Map.Entry<Channel<?>, Buffer> e : outputBuffers.entrySet()) {
-			Channel<?> outchnl = e.getKey();
-			Buffer outbuf = e.getValue();
-			while (!outchnl.isEmpty() && outbuf.capacity() > outbuf.size()) {
-				if (!outbuf.write(outchnl.pop())) {
-					System.out
-							.println("Buffer writing failed. Verify the algorithm");
-				}
-			}
-			
-			if (!outchnl.isEmpty()) {
-				hasResidue = true;
-				k++;
-				if (k > 10) {
-					System.out
-							.println(String
-									.format("@@@@%s I have %d ouputs remaining. OutputBuffer is full",
-											Thread.currentThread().getName(),
-											outchnl.size()));
 
-					k = 0;
+	private void pushOutputs() {
+		//Flush in a round-robin manner to avoid deadlocks where our consumer is
+		//blocked on another one of our channels.
+		List<Channel<?>> check = new ArrayList<>(outputBuffers.keySet());
+		while (!check.isEmpty()) {
+			for (int i = check.size()-1; i >= 0; --i) {
+				Channel<?> channel = check.get(i);
+				if (channel.isEmpty()) {
+					check.remove(i);
+					continue;
 				}
-			} else
-				k = 0;
-		}
-		return hasResidue;
-	}
-	
-	private boolean pullInputs() {
-		boolean allPullSucc = true;
-		for (Map.Entry<Channel<?>, Buffer> e : inputBuffers.entrySet()) {
-			Channel inchnl = e.getKey();
-			Buffer inbuf = e.getValue();
-			while (inbuf.size() > 0) {
-				try {
-					inchnl.push(inbuf.read());
-				} catch (IllegalStateException ex) {
-					ex.printStackTrace();
-					allPullSucc = false;
-					break;
+
+				Buffer buffer = outputBuffers.get(channel);
+				int room = Math.min(buffer.capacity() - buffer.size(), channel.size());
+				if (room == 0)
+					continue;
+
+				Object[] data = new Object[room];
+				for (int j = 0; j < data.length; ++j)
+					data[j] = channel.pop();
+				int written = 0;
+				int tries = 0;
+				while (written < data.length) {
+					written += buffer.write(data, written, data.length - written);
+					++tries;
 				}
+				assert tries == 1 : "We checked we have space, but still needed "+tries+" tries";
 			}
 		}
-		return allPullSucc;
 	}
-	
 
 	/**
 	 * Fires upstream filters just enough to allow worker to fire, or returns
@@ -478,11 +378,7 @@ public class Interpreter implements Blob {
 						unsatChannel.push(item);
 						continue recurse; //try again
 					} else
-					{
-						// TODO : Optimization. This branch is taken more frequently.
-						// System.out.println(Thread.currentThread().getName() + " Couldn't fire. By inputBuffer is Empty");
 						return false; //Couldn't fire.
-					}
 				}
 
 				//Otherwise, recursively fire the worker blocking us.
@@ -539,7 +435,7 @@ public class Interpreter implements Blob {
 		}
 		return -1;
 	}
-	
+
 	/**
 	 * Called after the given worker is fired.  Provided for the debug
 	 * interpreter to check rate declarations.
