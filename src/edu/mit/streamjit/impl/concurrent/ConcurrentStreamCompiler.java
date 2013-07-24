@@ -205,7 +205,8 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 			boolean isDrained = true;
 			for (Thread t : blobThreads) {
 				if (t.isAlive()) {
-					// System.out.println(t.getName() + " is still draining...");
+					// System.out.println(t.getName() +
+					// " is still draining...");
 					isDrained = false;
 				}
 			}
