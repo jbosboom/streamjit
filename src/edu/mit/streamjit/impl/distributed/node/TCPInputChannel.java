@@ -3,7 +3,7 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import edu.mit.streamjit.impl.distributed.common.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.interp.Channel;
 
@@ -13,7 +13,7 @@ import edu.mit.streamjit.impl.interp.Channel;
  * @author Sumanan sumanan@mit.edu
  * @since May 29, 2013
  */
-public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
+public class TCPInputChannel<E> implements BoundaryInputChannel {
 
 	private Channel<E> channel;
 
@@ -71,13 +71,16 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 		while (!stopFlag.get()) {
 			try {
 				E element = tcpConnection.readObject();
-				// TODO: need to confirm the channel have enough capacity to accept elements.
-				// Consider adding channel.getMaxSize() function. Already Channel.getSize is available.
+				// TODO: need to confirm the channel have enough capacity to
+				// accept elements.
+				// Consider adding channel.getMaxSize() function. Already
+				// Channel.getSize is available.
 				this.channel.push(element);
 			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO: Verify the program quality. Try to reconnect until it is told to stop.
+				// TODO: Verify the program quality. Try to reconnect until it
+				// is told to stop.
 				try {
 					Thread.sleep(2000);
 				} catch (InterruptedException e1) {
@@ -108,7 +111,7 @@ public class TCPInputChannel<E> implements BoundaryInputChannel<E> {
 	}
 
 	@Override
-	public int getOtherMachineID() {
+	public int getOtherNodeID() {
 		return 0;
 	}
 

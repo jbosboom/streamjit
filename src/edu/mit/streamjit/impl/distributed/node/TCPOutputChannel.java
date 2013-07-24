@@ -9,12 +9,12 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import edu.mit.streamjit.impl.distributed.common.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection;
 import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
 import edu.mit.streamjit.impl.interp.Channel;
 
-public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
+public class TCPOutputChannel<E> implements BoundaryOutputChannel {
 
 	int portNo;
 
@@ -37,12 +37,14 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 
 	@Override
 	public boolean isStillConnected() {
-		return (tcpConnection == null) ? false : tcpConnection.isStillConnected();
+		return (tcpConnection == null) ? false : tcpConnection
+				.isStillConnected();
 	}
 
 	private void makeConnection() throws IOException {
 		ListenerSocket listnerSckt = new ListenerSocket(this.portNo, 1);
-		// As we need only one connection, lets run the accepting process in this caller thread rather that spawning a new thread.
+		// As we need only one connection, lets run the accepting process in
+		// this caller thread rather that spawning a new thread.
 		listnerSckt.run();
 		Socket socket = listnerSckt.getAcceptedSockets().get(0);
 		this.tcpConnection = new TCPConnection(socket);
@@ -101,7 +103,8 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 					this.tcpConnection = new TCPConnection(skt);
 					return;
 				} catch (SocketTimeoutException stex) {
-					// We make this exception to recheck the stopFlag. Otherwise thread will get struck at server.accept().
+					// We make this exception to recheck the stopFlag. Otherwise
+					// thread will get struck at server.accept().
 				}
 			}
 		} catch (IOException e1) {
@@ -111,7 +114,7 @@ public class TCPOutputChannel<E> implements BoundaryOutputChannel<E> {
 	}
 
 	@Override
-	public int getOtherMachineID() {
+	public int getOtherNodeID() {
 		return 0;
 	}
 
