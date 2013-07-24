@@ -22,16 +22,22 @@ import edu.mit.streamjit.impl.distributed.api.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.api.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.api.Command;
 import edu.mit.streamjit.impl.distributed.api.JsonString;
-import edu.mit.streamjit.impl.distributed.api.MessageElement;
 import edu.mit.streamjit.impl.distributed.api.NodeInfo;
 import edu.mit.streamjit.impl.distributed.api.Request;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
 import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.interp.Interpreter;
 
 /**
+ * {@link Controller} controls all {@link StreamNode}s in runtime. It has
+ * {@link CommunicationManager} and through {@link CommunicationManager}
+ * issue/receive commands from {@link StreamNode}s}. </p> TODO: Need to make
+ * {@link Controller} running on a separate thread such that it keep tracks of
+ * all messages sent/received from {@link StreamNode}s.
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since May 10, 2013
  */
@@ -41,9 +47,18 @@ public class Controller {
 
 	private List<Integer> nodeIDs;
 
-	Map<Integer, NodeInfo> nodeInfoMap;
+	/**
+	 * {@link NodeInfo} of each {@link StreamNode}s. See the {@link NodeInfo}
+	 * for further information.
+	 */
+	private Map<Integer, NodeInfo> nodeInfoMap;
 
-	private int controllerNodeID;
+	/**
+	 * NodeID for the {@link Controller}. We need this as Controller need to
+	 * handle the head and tail buffers. Most of the cases ID 0 will be assigned
+	 * to the Controller.
+	 */
+	private final int controllerNodeID;
 
 	/**
 	 * A {@link BoundaryOutputChannel} for the head of the stream graph. If the
@@ -51,7 +66,7 @@ public class Controller {
 	 * need to push the {@link CompiledStream}.offer() data to the first
 	 * {@link Worker} of the streamgraph.
 	 */
-	BoundaryOutputChannel<?> headChannel;
+	private BoundaryOutputChannel<?> headChannel;
 
 	/**
 	 * A {@link BoundaryInputChannel} for the tail of the whole stream graph. If
@@ -59,13 +74,20 @@ public class Controller {
 	 * we need to pull the sink's output in to the {@link Controller} in order
 	 * to make {@link CompiledStream} .pull() to work.
 	 */
-	BoundaryInputChannel<?> tailChannel;
+	private BoundaryInputChannel<?> tailChannel;
 
 	public Controller() {
 		this.comManager = new CommunicationManagerImpl();
 		this.controllerNodeID = 0;
 	}
 
+	/**
+	 * Establishes the connections with {@link StreamNode}s.
+	 * 
+	 * @param comTypeCount
+	 *            : A map that tells how many connections are expected to be
+	 *            established for each {@link CommunicationType}s
+	 */
 	public void connect(Map<CommunicationType, Integer> comTypeCount) {
 		// TODO: Need to handle this exception well.
 		try {
@@ -114,6 +136,9 @@ public class Controller {
 		nodeInfoMap.put(controllerNodeID, NodeInfo.getMyinfo());
 	}
 
+	/**
+	 * Start the execution of the StreamJit application.
+	 */
 	public void start() {
 		if (headChannel != null)
 			new Thread(headChannel.getRunnable(), "headChannel").start();
@@ -127,7 +152,8 @@ public class Controller {
 	/**
 	 * Blocking call.
 	 * 
-	 * @return : Map, key is machineID and value is coreCount.
+	 * @return : A map where key is nodeID and value is number of cores in the
+	 *         corresponding node.
 	 */
 	public Map<Integer, Integer> getCoreCount() {
 		Map<Integer, Integer> coreCounts = new HashMap<>();
@@ -150,6 +176,7 @@ public class Controller {
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
 			String toplevelclass, List<MessageConstraint> constraints,
 			Worker<?, ?> source, Worker<?, ?> sink) {
+
 		String jarFilePath = this.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
 
@@ -289,7 +316,7 @@ public class Controller {
 	 * @param worker
 	 * @return the machineID where on which the passed worker is assigned.
 	 */
-	public int getAssignedMachine(Worker<?, ?> worker,
+	private int getAssignedMachine(Worker<?, ?> worker,
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
 		for (Integer machineID : partitionsMachineMap.keySet()) {
 			for (Set<Worker<?, ?>> workers : partitionsMachineMap
@@ -325,7 +352,10 @@ public class Controller {
 		tailChannel.stop();
 	}
 
-	public void awaitDraing() {
+	// TODO: This is the temporary fix. Need to store the MEs received from the
+	// StreamNodes and process them for the isDrained() status. May be we can
+	// keep a Map<machineID, List<ME>>s
+	public boolean isDrained() {
 		for (int nodeID : nodeIDs) {
 			try {
 				AppStatus sts = comManager.readObject(nodeID);
@@ -342,8 +372,8 @@ public class Controller {
 				e.printStackTrace();
 			}
 		}
-
 		sendToAll(Command.EXIT);
+		return true;
 	}
 
 	/**
