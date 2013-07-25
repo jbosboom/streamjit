@@ -1,10 +1,11 @@
 package edu.mit.streamjit.impl.concurrent;
 
 import java.util.List;
-
-import edu.mit.streamjit.impl.blob.Blob;
 import java.util.Map;
 import java.util.Set;
+
+import edu.mit.streamjit.impl.blob.Blob;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler.ConcurrentCompiledStream.BlobThread;
 
 /**
  * Each {@link Blob} passes this runnable object to next {@link Blob}.drain() to
@@ -16,13 +17,12 @@ import java.util.Set;
 public class DrainerCallback implements Runnable {
 
 	private List<Blob> blobList;
-	private Map<Blob, Set<ConcurrentStreamCompiler.ConcurrentCompiledStream.MyThread>> threads;
+	private Map<Blob, Set<BlobThread>> threads;
 	private volatile int currentBlob;
 	private volatile boolean isDrained;
 
-	public DrainerCallback(
-			List<Blob> blobList,
-			Map<Blob, Set<ConcurrentStreamCompiler.ConcurrentCompiledStream.MyThread>> threads) {
+	public DrainerCallback(List<Blob> blobList,
+			Map<Blob, Set<BlobThread>> threads) {
 		this.blobList = blobList;
 		this.threads = threads;
 		currentBlob = 0;
@@ -36,12 +36,8 @@ public class DrainerCallback implements Runnable {
 
 	@Override
 	public void run() {
-		// System.out.println("I am drainer callback. I am called by " +
-		// Thread.currentThread().getName());
-
 		// Stop current blob's threads.
-		for (ConcurrentStreamCompiler.ConcurrentCompiledStream.MyThread t : threads
-				.get(blobList.get(currentBlob)))
+		for (BlobThread t : threads.get(blobList.get(currentBlob)))
 			t.requestStop();
 		++currentBlob;
 

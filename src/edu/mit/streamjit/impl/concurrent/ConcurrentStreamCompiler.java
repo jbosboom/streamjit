@@ -8,7 +8,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
@@ -18,7 +17,6 @@ import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.ArrayDequeBuffer;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
@@ -173,7 +171,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 			AbstractCompiledStream<I, O> {
 		List<Blob> blobList;
 		List<Thread> blobThreads;
-		Map<Blob, Set<MyThread>> threadMap = new HashMap<>();
+		Map<Blob, Set<BlobThread>> threadMap = new HashMap<>();
 		DrainerCallback callback;
 
 		public ConcurrentCompiledStream(List<Blob> blobList,
@@ -182,7 +180,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 			this.blobList = blobList;
 			blobThreads = new ArrayList<>(this.blobList.size());
 			for (final Blob b : blobList) {
-				MyThread t = new MyThread(b.getCoreCode(0));
+				BlobThread t = new BlobThread(b.getCoreCode(0));
 				blobThreads.add(t);
 				threadMap.put(b, Collections.singleton(t));
 			}
@@ -190,11 +188,11 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 			start();
 		}
 
-		public static class MyThread extends Thread {
+		public static class BlobThread extends Thread {
 			private volatile boolean stopping = false;
 			private final Runnable coreCode;
 
-			public MyThread(Runnable coreCode) {
+			public BlobThread(Runnable coreCode) {
 				this.coreCode = coreCode;
 			}
 
