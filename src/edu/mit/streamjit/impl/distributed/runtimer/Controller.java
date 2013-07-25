@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
 import java.util.AbstractMap;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -18,8 +19,10 @@ import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
+import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
@@ -32,6 +35,7 @@ import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
 import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
+import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 
 /**
@@ -229,8 +233,6 @@ public class Controller {
 			String jarFilePath, String topLevelClass, Worker<?, ?> source,
 			Worker<?, ?> sink) {
 
-		Configuration.Builder builder = Configuration.builder();
-
 		Map<Integer, Integer> coresPerMachine = new HashMap<>();
 		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine : partitionsMachineMap
 				.entrySet()) {
@@ -240,7 +242,6 @@ public class Controller {
 		PartitionParameter.Builder partParam = PartitionParameter.builder(
 				GlobalConstants.PARTITION, coresPerMachine);
 
-		// TODO: need to add correct blob factory.
 		BlobFactory factory = new Interpreter.InterpreterBlobFactory();
 		partParam.addBlobFactory(factory);
 
@@ -253,20 +254,28 @@ public class Controller {
 			}
 		}
 
-		builder.addParameter(partParam.build());
-
 		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = new HashMap<>();
 		Map<Token, Integer> portIdMap = new HashMap<>();
 
 		buildTokenMap(partitionsMachineMap, tokenMachineMap, portIdMap, source,
 				sink);
 
-		builder.putExtraData(GlobalConstants.JARFILE_PATH, jarFilePath);
-		builder.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME,
-				topLevelClass);
-		builder.putExtraData(GlobalConstants.NODE_INFO_MAP, nodeInfoMap);
-		builder.putExtraData(GlobalConstants.TOKEN_MACHINE_MAP, tokenMachineMap);
-		builder.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
+		List<ChannelFactory> universe = Arrays
+				.<ChannelFactory> asList(new ConcurrentChannelFactory());
+		SwitchParameter<ChannelFactory> cfParameter = new SwitchParameter<ChannelFactory>(
+				"channelFactory", ChannelFactory.class, universe.get(0),
+				universe);
+
+		Configuration.Builder builder = Configuration.builder();
+		builder.addParameter(partParam.build())
+				.addParameter(cfParameter)
+				.putExtraData(GlobalConstants.JARFILE_PATH, jarFilePath)
+				.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME,
+						topLevelClass)
+				.putExtraData(GlobalConstants.NODE_INFO_MAP, nodeInfoMap)
+				.putExtraData(GlobalConstants.TOKEN_MACHINE_MAP,
+						tokenMachineMap)
+				.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
 
 		return builder.build();
 	}
