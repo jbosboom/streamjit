@@ -41,7 +41,7 @@ import java.util.Collections;
 /**
  * A stream compiler that partitions a streamgraph into multiple blobs and
  * execute it on multiple threads.
- *
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since Apr 8, 2013
  */
@@ -193,6 +193,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		public static class MyThread extends Thread {
 			private volatile boolean stopping = false;
 			private final Runnable coreCode;
+
 			public MyThread(Runnable coreCode) {
 				this.coreCode = coreCode;
 			}
@@ -226,15 +227,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 		@Override
 		public boolean isDrained() {
-			boolean isDrained = true;
-			for (Thread t : blobThreads) {
-				if (t.isAlive()) {
-					// System.out.println(t.getName() +
-					// " is still draining...");
-					isDrained = false;
-				}
-			}
-			return isDrained;
+			return this.callback.isDrained();
 		}
 	}
 
