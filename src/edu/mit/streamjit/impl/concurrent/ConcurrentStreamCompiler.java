@@ -28,8 +28,6 @@ import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
-import edu.mit.streamjit.impl.interp.ArrayChannel;
-import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
@@ -232,8 +230,6 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 	private static Configuration makeConfig() {
 		List<ChannelFactory> universe = Arrays
 				.<ChannelFactory> asList(new ConcurrentChannelFactory());
-		// TODO: add Config modification helpers, modify default interpreter
-		// blob config
 		Configuration config = Configuration
 				.builder()
 				.addParameter(
@@ -241,24 +237,5 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 								ChannelFactory.class, universe.get(0), universe))
 				.build();
 		return config;
-	}
-
-	private static final class ConcurrentChannelFactory implements
-			ChannelFactory {
-		@Override
-		public <E> Channel<E> makeChannel(Worker<?, E> upstream,
-				Worker<E, ?> downstream) {
-			return new ArrayChannel<E>();
-		}
-
-		@Override
-		public boolean equals(Object other) {
-			return other instanceof ConcurrentChannelFactory;
-		}
-
-		@Override
-		public int hashCode() {
-			return 0;
-		}
 	}
 }
