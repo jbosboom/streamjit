@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.Set;
 
 import edu.mit.streamjit.impl.blob.Blob;
-import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler.ConcurrentCompiledStream.BlobThread;
+import edu.mit.streamjit.impl.common.BlobThread;
 
 /**
  * Each {@link Blob} passes this runnable object to next {@link Blob}.drain() to

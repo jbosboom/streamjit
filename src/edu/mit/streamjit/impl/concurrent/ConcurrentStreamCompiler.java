@@ -21,6 +21,7 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
+import edu.mit.streamjit.impl.common.BlobThread;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
@@ -184,25 +185,6 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 			}
 			callback = new DrainerCallback(blobList, threadMap);
 			start();
-		}
-
-		public static class BlobThread extends Thread {
-			private volatile boolean stopping = false;
-			private final Runnable coreCode;
-
-			public BlobThread(Runnable coreCode) {
-				this.coreCode = coreCode;
-			}
-
-			@Override
-			public void run() {
-				while (!stopping)
-					coreCode.run();
-			}
-
-			public void requestStop() {
-				stopping = true;
-			}
 		}
 
 		/*
