@@ -15,9 +15,8 @@ import edu.mit.streamjit.impl.common.Workers;
 
 /**
  * {@link AbstractPartitioner} does not implement any of {@link Partitioner}'s
- * methods. Instead, it does common pre-processing and
- * post-processing on stream graph that is needed by all {@link Partitioner}
- * classes.
+ * methods. Instead, it does common pre-processing and post-processing on stream
+ * graph that is needed by all {@link Partitioner} classes.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Apr 8, 2013
@@ -39,11 +38,9 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 
 	/**
 	 * The interface method PatririonEqually() is made final here to ensure the
-	 * methods preProcessStreamGraph() and verifyPartition()
-	 * are get called. Subclasses have to implement
-	 * PatririonEquallyImplementation() method to implement it's equal
-	 * partitioning
-	 * algorithm.
+	 * methods preProcessStreamGraph() and verifyPartition() are get called.
+	 * Subclasses have to implement PatririonEquallyImplementation() method to
+	 * implement it's equal partitioning algorithm.
 	 */
 	public final List<Set<Worker<?, ?>>> partitionEqually(
 			OneToOneElement<I, O> streamGraph, Worker<I, ?> source,
@@ -89,8 +86,8 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 
 	/**
 	 * Calculate and returns the depth of a {@link Splitjoin}. This function
-	 * handles unbalanced branches in the {@link Splitjoin} and
-	 * inner/nested {@link Splitjoin}s as well. This is a recursive function.
+	 * handles unbalanced branches in the {@link Splitjoin} and inner/nested
+	 * {@link Splitjoin}s as well. This is a recursive function.
 	 * 
 	 * @param splitter
 	 *            : {@link Splitter} of the {@link Splitjoin} which's depth is
@@ -149,8 +146,7 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 
 	/**
 	 * Returns all {@link Filter}s in a splitjoin. Does not include the splitter
-	 * or the joiner. This function doesn't support nested
-	 * splitjoins.
+	 * or the joiner. This function doesn't support nested splitjoins.
 	 * 
 	 * @param splitter
 	 * @return Returns all {@link Filter}s in a splitjoin. Does not include
@@ -178,31 +174,31 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 
 	/**
 	 * Verify the partitionlist for any duplicate workers in more than one
-	 * partition or any missing workers. Partition list should
-	 * completely satisfy the all workers in the stream graph with no
-	 * duplication or no misses. *
+	 * partition or any missing workers. Partition list should completely
+	 * satisfy the all workers in the stream graph with no duplication or no
+	 * misses. *
 	 * 
 	 * @param partitionList
 	 *            : list of partitions to be verified.
 	 * @return
 	 */
 	protected boolean verifyPartition(List<Set<Worker<?, ?>>> partitionList) {
-		List<Worker<?, ?>> workersInPartitionList = new LinkedList<>();
+		Set<Worker<?, ?>> workersInPartition = new HashSet<>();
 		for (Set<Worker<?, ?>> partition : partitionList) {
-			workersInPartitionList.addAll(partition);
+			workersInPartition.addAll(partition);
 		}
 		Set<Worker<?, ?>> allWorkers = Workers.getAllWorkersInGraph(source);
 
-		if (allWorkers.size() > workersInPartitionList.size())
+		if (allWorkers.size() > workersInPartition.size())
 			throw new AssertionError(
 					"Wrong partition: Possibly workers are missed");
 
-		if (workersInPartitionList.size() > allWorkers.size())
+		if (workersInPartition.size() > allWorkers.size())
 			throw new AssertionError(
 					"Wrong partition: Possibly workers are duplicated");
 
-		if (allWorkers.size() == workersInPartitionList.size()
-				&& !allWorkers.containsAll(workersInPartitionList))
+		if (allWorkers.size() == workersInPartition.size()
+				&& !allWorkers.containsAll(workersInPartition))
 			throw new AssertionError(
 					"Wrong partition: Possibly workers are duplicated and missed");
 
