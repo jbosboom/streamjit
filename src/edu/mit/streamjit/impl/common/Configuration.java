@@ -90,7 +90,8 @@ public final class Configuration {
 
 		/**
 		 * Constructs a new Builder with the given parameters and
-		 * subconfigurations.  Called only by Builder.clone().
+		 * subconfigurations.  Called only by Builder.clone() and
+		 * Configuration.builder(Configuration).
 		 * @param parameters the parameters
 		 * @param subconfigurations the subconfigurations
 		 */
@@ -208,6 +209,16 @@ public final class Configuration {
 	 */
 	public static Builder builder() {
 		return new Builder();
+	}
+
+	/**
+	 * Creates a new Builder with the same parameters, subconfigurations and
+	 * extra data as the given configuration.
+	 * @param config the Configuration to create a builder from
+	 * @return a new Builder with the configuration's contents
+	 */
+	public static Builder builder(Configuration config) {
+		return new Builder(config.getParametersMap(), config.getSubconfigurationsMap(), config.getExtraDataMap());
 	}
 
 	public static Configuration fromJson(String json) {
