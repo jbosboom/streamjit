@@ -29,7 +29,7 @@ public interface Partitioner<I, O> {
 	 * stream graph in to exactly equal chunks, then the last partition can be
 	 * the residue.
 	 */
-	public List<Set<Worker<?, ?>>> PatririonEqually(
+	public List<Set<Worker<?, ?>>> partitionEqually(
 			OneToOneElement<I, O> streamGraph, Worker<I, ?> source,
 			Worker<?, O> sink, int noOfPartitions);
 }

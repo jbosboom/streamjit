@@ -70,7 +70,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 		Partitioner<I, O> horzPartitioner = new HorizontalPartitioner<>();
 		List<Set<Worker<?, ?>>> partitionList = horzPartitioner
-				.PatririonEqually(stream, source, sink, this.noOfBlobs);
+				.partitionEqually(stream, source, sink, this.noOfBlobs);
 
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
 		// context.

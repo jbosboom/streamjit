@@ -45,7 +45,7 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 	 * partitioning
 	 * algorithm.
 	 */
-	public final List<Set<Worker<?, ?>>> PatririonEqually(
+	public final List<Set<Worker<?, ?>>> partitionEqually(
 			OneToOneElement<I, O> streamGraph, Worker<I, ?> source,
 			Worker<?, O> sink, int noOfPartitions) {
 		preProcessStreamGraph(streamGraph, source, sink);

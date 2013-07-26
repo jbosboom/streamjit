@@ -114,7 +114,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		// it is mapped based on the list order.
 		Partitioner<I, O> horzPartitioner = new HorizontalPartitioner<>();
 		List<Set<Worker<?, ?>>> partitionList = horzPartitioner
-				.PatririonEqually(stream, source, sink, totalCores);
+				.partitionEqually(stream, source, sink, totalCores);
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = mapPartitionstoMachines(
 				partitionList, coreCounts);
 
