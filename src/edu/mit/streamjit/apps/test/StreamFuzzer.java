@@ -1,6 +1,7 @@
 package edu.mit.streamjit.apps.test;
 
 import com.google.common.collect.ImmutableList;
+import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Joiner;
@@ -10,8 +11,10 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
+import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.impl.common.PrintStreamVisitor;
+import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -284,10 +287,33 @@ public final class StreamFuzzer {
 		}
 	}
 
+	private static final int INPUT_LENGTH = 1000;
+	private static List<Integer> run(FuzzElement element, StreamCompiler compiler) {
+		OneToOneElement<Integer, Integer> graph = element.instantiate();
+		CompiledStream<Integer, Integer> stream = compiler.compile(graph);
+		ImmutableList.Builder<Integer> retval = ImmutableList.builder();
+		Integer o;
+		for (int i = 0; i < INPUT_LENGTH;) {
+			if (stream.offer(i))
+				++i;
+			while ((o = stream.poll()) != null)
+				retval.add(o);
+		}
+
+		stream.drain();
+		while (!stream.isDrained())
+			while ((o = stream.poll()) != null)
+				retval.add(o);
+		while ((o = stream.poll()) != null)
+			retval.add(o);
+		return retval.build();
+	}
+
 	public static void main(String[] args) {
 		FuzzElement fuzz = StreamFuzzer.generate();
 		OneToOneElement<Integer, Integer> stream = fuzz.instantiate();
 		stream.visit(new PrintStreamVisitor(System.out));
 		System.out.println(fuzz.toJava());
+		System.out.println(run(fuzz, new DebugStreamCompiler()));
 	}
 }
