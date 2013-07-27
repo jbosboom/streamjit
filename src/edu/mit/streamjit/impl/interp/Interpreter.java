@@ -263,6 +263,14 @@ public class Interpreter implements Blob {
 				public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
 					return new ArrayChannel<>();
 				}
+				@Override
+				public boolean equals(Object other) {
+					return getClass() == other.getClass();
+				}
+				@Override
+				public int hashCode() {
+					return 0;
+				}
 			});
 			Configuration.SwitchParameter<ChannelFactory> facParam
 					= new Configuration.SwitchParameter<>("channelFactory",
