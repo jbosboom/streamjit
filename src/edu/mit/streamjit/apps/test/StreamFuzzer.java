@@ -16,6 +16,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 /**
@@ -31,6 +32,10 @@ public final class StreamFuzzer {
 	public interface FuzzElement {
 		public OneToOneElement<Integer, Integer> instantiate();
 		public String toJava();
+		@Override
+		public boolean equals(Object other);
+		@Override
+		public int hashCode();
 	}
 
 	public static FuzzElement generate() {
@@ -110,6 +115,28 @@ public final class StreamFuzzer {
 			//This will generate unchecked code if the filter is generic.
 			return "new " + filterClass.getCanonicalName() + "(" + ARG_JOINER.join(arguments)+")";
 		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			final FuzzStreamElement<T> other = (FuzzStreamElement<T>)obj;
+			if (!Objects.equals(this.filterClass, other.filterClass))
+				return false;
+			if (!Objects.equals(this.arguments, other.arguments))
+				return false;
+			return true;
+		}
+
+		@Override
+		public int hashCode() {
+			int hash = 7;
+			hash = 41 * hash + Objects.hashCode(this.filterClass);
+			hash = 41 * hash + Objects.hashCode(this.arguments);
+			return hash;
+		}
 	}
 
 	private static final class FuzzFilter extends FuzzStreamElement<Filter<Integer, Integer>> implements FuzzElement {
@@ -121,6 +148,7 @@ public final class StreamFuzzer {
 		public Filter<Integer, Integer> instantiate() {
 			return super.instantiate();
 		}
+		//use inherited equals()/hashCode()
 	}
 
 	private static final class FuzzPipeline implements FuzzElement {
@@ -142,6 +170,23 @@ public final class StreamFuzzer {
 				args.add(e.toJava());
 			return "new Pipeline(" + ARG_JOINER.join(args) + ")";
 		}
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			final FuzzPipeline other = (FuzzPipeline)obj;
+			if (!Objects.equals(this.elements, other.elements))
+				return false;
+			return true;
+		}
+		@Override
+		public int hashCode() {
+			int hash = 5;
+			hash = 59 * hash + Objects.hashCode(this.elements);
+			return hash;
+		}
 	}
 
 	/**
@@ -157,6 +202,7 @@ public final class StreamFuzzer {
 		public Splitter<Integer, Integer> instantiate() {
 			return super.instantiate();
 		}
+		//use inherited equals()/hashCode()
 	}
 
 	/**
@@ -171,6 +217,7 @@ public final class StreamFuzzer {
 		public Joiner<Integer, Integer> instantiate() {
 			return super.instantiate();
 		}
+		//use inherited equals()/hashCode()
 	}
 
 	private static final class FuzzSplitjoin implements FuzzElement {
@@ -197,6 +244,29 @@ public final class StreamFuzzer {
 				args.add(e.toJava());
 			args.add(joiner.toJava());
 			return "new Splitjoin(" + ARG_JOINER.join(args) + ")";
+		}
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			final FuzzSplitjoin other = (FuzzSplitjoin)obj;
+			if (!Objects.equals(this.splitter, other.splitter))
+				return false;
+			if (!Objects.equals(this.joiner, other.joiner))
+				return false;
+			if (!Objects.equals(this.branches, other.branches))
+				return false;
+			return true;
+		}
+		@Override
+		public int hashCode() {
+			int hash = 7;
+			hash = 71 * hash + Objects.hashCode(this.splitter);
+			hash = 71 * hash + Objects.hashCode(this.joiner);
+			hash = 71 * hash + Objects.hashCode(this.branches);
+			return hash;
 		}
 	}
 
