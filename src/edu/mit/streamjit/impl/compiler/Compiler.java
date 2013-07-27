@@ -294,13 +294,17 @@ public final class Compiler {
 	 * Computes the initialization schedule using the scheduler.
 	 */
 	private void computeInitSchedule() {
-		ImmutableList.Builder<Scheduler.Channel<Worker<?, ?>>> builder = ImmutableList.<Scheduler.Channel<Worker<?, ?>>>builder();
-		for (IOInfo info : IOInfo.internalEdges(workers))
-			builder.add(new Scheduler.Channel<>(info.upstream(), info.downstream(),
-					info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max(),
-					info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max(),
-					buffers.get(info.token()).initialSize));
-		initSchedule = Scheduler.schedule(builder.build());
+		if (workers.size() == 1)
+			initSchedule = (ImmutableMap<Worker<?, ?>, Integer>)ImmutableMap.of(workers.iterator().next(), 0);
+		else {
+			ImmutableList.Builder<Scheduler.Channel<Worker<?, ?>>> builder = ImmutableList.<Scheduler.Channel<Worker<?, ?>>>builder();
+			for (IOInfo info : IOInfo.internalEdges(workers))
+				builder.add(new Scheduler.Channel<>(info.upstream(), info.downstream(),
+						info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max(),
+						info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max(),
+						buffers.get(info.token()).initialSize));
+			initSchedule = Scheduler.schedule(builder.build());
+		}
 	}
 
 	/**
@@ -586,11 +590,15 @@ public final class Compiler {
 
 	private void externalSchedule() {
 		ImmutableSet<StreamNode> nodes = ImmutableSet.copyOf(streamNodes.values());
-		ImmutableList.Builder<Scheduler.Channel<StreamNode>> channels = ImmutableList.<Scheduler.Channel<StreamNode>>builder();
-		for (StreamNode a : nodes)
-			for (StreamNode b : nodes)
-				channels.addAll(a.findChannels(b));
-		schedule = Scheduler.schedule(channels.build());
+		if (nodes.size() == 1)
+			schedule = ImmutableMap.of(nodes.iterator().next(), 1);
+		else {
+			ImmutableList.Builder<Scheduler.Channel<StreamNode>> channels = ImmutableList.<Scheduler.Channel<StreamNode>>builder();
+			for (StreamNode a : nodes)
+				for (StreamNode b : nodes)
+					channels.addAll(a.findChannels(b));
+			schedule = Scheduler.schedule(channels.build());
+		}
 		System.out.println(schedule);
 	}
 
@@ -1357,7 +1365,7 @@ public final class Compiler {
 	}
 
 	public static void main(String[] args) throws Throwable {
-		OneToOneElement<Integer, Integer> graph = new Splitjoin<>(new RoundrobinSplitter<Integer>(), new RoundrobinJoiner<Integer>(), new Identity<Integer>(), new Identity<Integer>());
+		OneToOneElement<Integer, Integer> graph = new Identity<>();//new Splitjoin<>(new RoundrobinSplitter<Integer>(), new RoundrobinJoiner<Integer>(), new Identity<Integer>(), new Identity<Integer>());
 		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		graph.visit(cwv);
 		Set<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());

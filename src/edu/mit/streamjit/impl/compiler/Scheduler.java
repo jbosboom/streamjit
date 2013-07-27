@@ -56,6 +56,12 @@ public final class Scheduler {
 	 * @return a map of things to multiplicities
 	 */
 	public static <T> ImmutableMap<T, Integer> schedule(List<Channel<T>> channels) {
+		if (channels.isEmpty())
+			//This usually happens when there's only one thing in the graph.
+			//We don't have a list of things, only channels, so we can't return
+			//the obvious (thing => 1) schedule.
+			throw new IllegalArgumentException("can't schedule without channels");
+
 		Map<T, Integer> thingIds = new HashMap<>();
 		int things = 0;
 		for (Channel<T> channel : channels) {
