@@ -38,20 +38,21 @@ public final class StreamFuzzer {
 		public int hashCode();
 	}
 
+	private static final int MAX_DEPTH = 5;
 	public static FuzzElement generate() {
-		return makeStream();
+		return makeStream(MAX_DEPTH);
 	}
 
 	private static final Random rng = new Random();
 	private static final int FILTER_PROB = 50, PIPELINE_PROB = 25, SPLITJOIN_PROB = 25;
-	private static FuzzElement makeStream() {
+	private static FuzzElement makeStream(int depthLimit) {
 		int r = rng.nextInt(FILTER_PROB + PIPELINE_PROB + SPLITJOIN_PROB);
-		if (r < FILTER_PROB) {
+		if (depthLimit == 0 || r < FILTER_PROB) {
 			return makeFilter();
 		} else if (r < FILTER_PROB + PIPELINE_PROB) {
-			return makePipeline();
+			return makePipeline(depthLimit);
 		} else if (r < FILTER_PROB + PIPELINE_PROB + SPLITJOIN_PROB) {
-			return makeSplitjoin();
+			return makeSplitjoin(depthLimit);
 		} else
 			throw new AssertionError(r);
 	}
@@ -61,20 +62,20 @@ public final class StreamFuzzer {
 	}
 
 	private static final int MAX_PIPELINE_LENGTH = 5;
-	private static FuzzPipeline makePipeline() {
+	private static FuzzPipeline makePipeline(int depthLimit) {
 		int length = rng.nextInt(MAX_PIPELINE_LENGTH) + 1;
 		ImmutableList.Builder<FuzzElement> elements = ImmutableList.builder();
 		for (int i = 0; i < length; ++i)
-			elements.add(makeStream());
+			elements.add(makeStream(depthLimit - 1));
 		return new FuzzPipeline(elements.build());
 	}
 
 	private static final int MAX_SPLITJOIN_BRANCHES = 5;
-	private static FuzzSplitjoin makeSplitjoin() {
+	private static FuzzSplitjoin makeSplitjoin(int depthLimit) {
 		int numBranches = rng.nextInt(MAX_SPLITJOIN_BRANCHES) + 1;
 		ImmutableList.Builder<FuzzElement> branches = ImmutableList.builder();
 		for (int i = 0; i < numBranches; ++i)
-			branches.add(makeStream());
+			branches.add(makeStream(depthLimit - 1));
 		return new FuzzSplitjoin(makeSplitter(), makeJoiner(), branches.build());
 	}
 
