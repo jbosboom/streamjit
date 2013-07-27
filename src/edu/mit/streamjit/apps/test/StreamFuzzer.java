@@ -28,17 +28,18 @@ import java.util.Random;
  * @since 7/26/2013
  */
 public final class StreamFuzzer {
-	private final Random rng;
-	public StreamFuzzer() {
-		rng = new Random();
+	public interface FuzzElement {
+		public OneToOneElement<Integer, Integer> instantiate();
+		public String toJava();
 	}
 
-	public OneToOneElement<Integer, Integer> generate() {
-		return makeStream().instantiate();
+	public static FuzzElement generate() {
+		return makeStream();
 	}
 
+	private static final Random rng = new Random();
 	private static final int FILTER_PROB = 50, PIPELINE_PROB = 25, SPLITJOIN_PROB = 25;
-	private FuzzElement makeStream() {
+	private static FuzzElement makeStream() {
 		int r = rng.nextInt(FILTER_PROB + PIPELINE_PROB + SPLITJOIN_PROB);
 		if (r < FILTER_PROB) {
 			return makeFilter();
@@ -50,12 +51,12 @@ public final class StreamFuzzer {
 			throw new AssertionError(r);
 	}
 
-	private FuzzFilter makeFilter() {
+	private static FuzzFilter makeFilter() {
 		return new FuzzFilter(Identity.class, ImmutableList.of());
 	}
 
 	private static final int MAX_PIPELINE_LENGTH = 5;
-	private FuzzPipeline makePipeline() {
+	private static FuzzPipeline makePipeline() {
 		int length = rng.nextInt(MAX_PIPELINE_LENGTH) + 1;
 		ImmutableList.Builder<FuzzElement> elements = ImmutableList.builder();
 		for (int i = 0; i < length; ++i)
@@ -64,7 +65,7 @@ public final class StreamFuzzer {
 	}
 
 	private static final int MAX_SPLITJOIN_BRANCHES = 5;
-	private FuzzSplitjoin makeSplitjoin() {
+	private static FuzzSplitjoin makeSplitjoin() {
 		int numBranches = rng.nextInt(MAX_SPLITJOIN_BRANCHES) + 1;
 		ImmutableList.Builder<FuzzElement> branches = ImmutableList.builder();
 		for (int i = 0; i < numBranches; ++i)
@@ -72,17 +73,12 @@ public final class StreamFuzzer {
 		return new FuzzSplitjoin(makeSplitter(), makeJoiner(), branches.build());
 	}
 
-	private FuzzSplitter makeSplitter() {
+	private static FuzzSplitter makeSplitter() {
 		return new FuzzSplitter(RoundrobinSplitter.class, ImmutableList.of());
 	}
 
-	private FuzzJoiner makeJoiner() {
+	private static FuzzJoiner makeJoiner() {
 		return new FuzzJoiner(RoundrobinJoiner.class, ImmutableList.of());
-	}
-
-	private interface FuzzElement {
-		public OneToOneElement<Integer, Integer> instantiate();
-		public String toJava();
 	}
 
 	private static final com.google.common.base.Joiner ARG_JOINER = com.google.common.base.Joiner.on(", ");
@@ -205,7 +201,9 @@ public final class StreamFuzzer {
 	}
 
 	public static void main(String[] args) {
-		OneToOneElement<Integer, Integer> stream = new StreamFuzzer().generate();
+		FuzzElement fuzz = StreamFuzzer.generate();
+		OneToOneElement<Integer, Integer> stream = fuzz.instantiate();
 		stream.visit(new PrintStreamVisitor(System.out));
+		System.out.println(fuzz.toJava());
 	}
 }
