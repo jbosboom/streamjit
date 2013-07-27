@@ -15,7 +15,9 @@ import edu.mit.streamjit.impl.common.PrintStreamVisitor;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 
@@ -91,25 +93,36 @@ public final class StreamFuzzer {
 	private static class FuzzStreamElement<T extends StreamElement<Integer, Integer>> {
 		private final Class<? extends T> filterClass;
 		private final ImmutableList<Object> arguments;
+		private transient Constructor<? extends T> constructor;
 		protected FuzzStreamElement(Class<? extends T> filterClass, ImmutableList<Object> arguments) {
 			this.filterClass = filterClass;
 			this.arguments = arguments;
 		}
 		public T instantiate() {
+			if (constructor == null)
+				constructor = findConstructor();
+			try {
+				return constructor.newInstance(arguments.toArray());
+			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+				throw new AssertionError("Failed to instantiate "+constructor+" with "+arguments, ex);
+			}
+		}
+		private Constructor<? extends T> findConstructor() {
 			@SuppressWarnings("unchecked")
 			Constructor<? extends T>[] constructors = (Constructor<T>[])filterClass.getConstructors();
-			List<T> retvals = new ArrayList<>();
-			List<Throwable> exceptions = new ArrayList<>();
+			List<Constructor<? extends T>> retvals = new ArrayList<>();
+			Map<Constructor<? extends T>, Throwable> exceptions = new HashMap<>();
 			for (Constructor<? extends T> ctor : constructors)
 				try {
-					retvals.add(ctor.newInstance(arguments.toArray()));
+					ctor.newInstance(arguments.toArray());
+					retvals.add(ctor);
 				} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-					exceptions.add(ex);
+					exceptions.put(ctor, ex);
 				}
 			if (retvals.isEmpty())
 				throw new AssertionError("Couldn't create a "+filterClass+" from "+arguments+": exceptions "+exceptions);
 			if (retvals.size() > 1)
-				throw new AssertionError("Creating a "+filterClass+" from "+arguments+" was ambiguous");
+				throw new AssertionError("Creating a "+filterClass+" from "+arguments+" was ambiguous: "+retvals);
 			return retvals.get(0);
 		}
 		public String toJava() {
