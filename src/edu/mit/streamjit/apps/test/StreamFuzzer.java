@@ -66,8 +66,40 @@ public final class StreamFuzzer {
 			throw new AssertionError(r);
 	}
 
+	private static final ImmutableList<FuzzFilter> FILTERS = ImmutableList.<FuzzFilter>builder()
+			.add(new FuzzFilter(Identity.class, ImmutableList.of()))
+			.add(new FuzzFilter(Adder.class, ImmutableList.of(1)))
+			.add(new FuzzFilter(Adder.class, ImmutableList.of(20)))
+			.add(new FuzzFilter(Multiplier.class, ImmutableList.of(2)))
+			.add(new FuzzFilter(Multiplier.class, ImmutableList.of(3)))
+			.add(new FuzzFilter(Multiplier.class, ImmutableList.of(100)))
+			.build();
 	private static FuzzFilter makeFilter() {
-		return new FuzzFilter(Identity.class, ImmutableList.of());
+		return FILTERS.get(rng.nextInt(FILTERS.size()));
+	}
+
+	private static final class Adder extends Filter<Integer, Integer> {
+		private final int addend;
+		public Adder(int addend) {
+			super(1, 1);
+			this.addend = addend;
+		}
+		@Override
+		public void work() {
+			push(pop() + addend);
+		}
+	}
+
+	private static final class Multiplier extends Filter<Integer, Integer> {
+		private final int multiplier;
+		public Multiplier(int multiplier) {
+			super(1, 1);
+			this.multiplier = multiplier;
+		}
+		@Override
+		public void work() {
+			push(pop() * multiplier);
+		}
 	}
 
 	private static final int MAX_PIPELINE_LENGTH = 5;
