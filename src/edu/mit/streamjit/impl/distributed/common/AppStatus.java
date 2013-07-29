@@ -49,10 +49,14 @@ public enum AppStatus implements MessageElement {
 			apstatusProcessor.processNOT_STARTED();
 		}
 	},
-	WAITING {
+	/**
+	 * No any stream application is submitted for execution. Stream node does
+	 * nothing.
+	 */
+	NO_APP {
 		@Override
 		public void process(AppStatusProcessor apstatusProcessor) {
-			apstatusProcessor.processWAITING();
+			apstatusProcessor.processNO_APP();
 		}
 	};
 
@@ -80,6 +84,6 @@ public enum AppStatus implements MessageElement {
 
 		public void processNOT_STARTED();
 
-		public void processWAITING();
+		public void processNO_APP();
 	}
 }

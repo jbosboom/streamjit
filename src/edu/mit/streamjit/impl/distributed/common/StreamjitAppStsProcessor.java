@@ -29,7 +29,7 @@ public class StreamjitAppStsProcessor implements AppStatusProcessor {
 	}
 
 	@Override
-	public void processWAITING() {
+	public void processNO_APP() {
 		System.out.println("I am processing Waiting");
 	}
 

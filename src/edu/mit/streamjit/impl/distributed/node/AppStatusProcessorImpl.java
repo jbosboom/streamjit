@@ -33,7 +33,7 @@ public class AppStatusProcessorImpl implements AppStatusProcessor {
 	}
 
 	@Override
-	public void processWAITING() {
+	public void processNO_APP() {
 		throw new IllegalArgumentException(
 				"App status shouldn't be received by a StreamNode");
 	}
