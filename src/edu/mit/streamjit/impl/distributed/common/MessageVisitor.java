@@ -17,7 +17,7 @@ public interface MessageVisitor {
 
 	public void visit(Request request);
 
-	public void visit(JsonString json);
+	public void visit(ConfigurationString json);
 
 	public void visit(SystemInfo systemInfo);
 

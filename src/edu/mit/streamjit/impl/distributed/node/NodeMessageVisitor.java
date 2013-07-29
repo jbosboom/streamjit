@@ -10,8 +10,8 @@ import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
-import edu.mit.streamjit.impl.distributed.common.JsonString;
-import edu.mit.streamjit.impl.distributed.common.JsonString.JsonStringProcessor;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.MessageVisitor;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
@@ -24,10 +24,10 @@ public class NodeMessageVisitor implements MessageVisitor {
 	private CommandProcessor cp;
 	private ErrorProcessor ep;
 	private RequestProcessor rp;
-	private JsonStringProcessor jp;
+	private ConfigurationStringProcessor jp;
 
 	public NodeMessageVisitor(AppStatusProcessor asp, CommandProcessor cp,
-			ErrorProcessor ep, RequestProcessor rp, JsonStringProcessor jp) {
+			ErrorProcessor ep, RequestProcessor rp, ConfigurationStringProcessor jp) {
 		this.asp = asp;
 		this.cp = cp;
 		this.ep = ep;
@@ -61,7 +61,7 @@ public class NodeMessageVisitor implements MessageVisitor {
 	}
 
 	@Override
-	public void visit(JsonString json) {
+	public void visit(ConfigurationString json) {
 		json.process(jp);
 	}
 

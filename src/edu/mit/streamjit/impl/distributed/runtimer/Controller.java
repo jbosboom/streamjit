@@ -28,7 +28,7 @@ import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputCh
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.JsonString;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
@@ -190,7 +190,7 @@ public class Controller {
 
 		Configuration cfg = makeConfiguration(partitionsMachineMap,
 				jarFilePath, toplevelclass, source, sink);
-		JsonString json = new JsonString(cfg.toJson());
+		ConfigurationString json = new ConfigurationString(cfg.toJson());
 		sendToAll(json);
 
 		// TODO: Change this later.

@@ -12,13 +12,13 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class JsonString implements MessageElement {
+public class ConfigurationString implements MessageElement {
 
 	private static final long serialVersionUID = -5900812807902330853L;
 
 	private String jsonString;
 
-	public JsonString(String jsonString) {
+	public ConfigurationString(String jsonString) {
 		this.jsonString = jsonString;
 	}
 
@@ -27,20 +27,20 @@ public class JsonString implements MessageElement {
 		visitor.visit(this);
 	}
 
-	public void process(JsonStringProcessor jp) {
+	public void process(ConfigurationStringProcessor jp) {
 		jp.process(jsonString);
 	}
 
 	/**
-	 * Processes json string of a {@link Configuration} that is sent by
+	 * Processes configuration string of a {@link Configuration} that is sent by
 	 * {@link Controller}.
 	 * 
 	 * @author Sumanan sumanan@mit.edu
 	 * @since May 27, 2013
 	 */
-	public interface JsonStringProcessor {
+	public interface ConfigurationStringProcessor {
 
-		public void process(String json);
+		public void process(String cfg);
 
 	}
 }
