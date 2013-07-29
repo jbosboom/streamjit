@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.common;
 
+import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
@@ -22,8 +23,10 @@ public enum Command implements MessageElement {
 		}
 	},
 	/**
-	 * Stops the StreamJit Application. Not the StreamNode. Blobs must be
-	 * drained before stopping.
+	 * Stops the StreamJit Application. Not the StreamNode. {@link Controller}
+	 * can issue this command to stop the execution of the stream application in
+	 * exceptional situation such as some other stream node is failed. Execution
+	 * of application will be stopped. No draining carried.
 	 */
 	STOP {
 		@Override
@@ -31,16 +34,13 @@ public enum Command implements MessageElement {
 			commandProcessor.processSTOP();
 		}
 	},
-	SUSPEND {
+	/**
+	 * Properly drain the stream blob.
+	 */
+	DRAIN {
 		@Override
 		public void process(CommandProcessor commandProcessor) {
-			commandProcessor.processSUSPEND();
-		}
-	},
-	RESUME {
-		@Override
-		public void process(CommandProcessor commandProcessor) {
-			commandProcessor.processRESUME();
+			commandProcessor.processDRAIN();
 		}
 	},
 	/**
@@ -74,9 +74,7 @@ public enum Command implements MessageElement {
 
 		public void processSTOP();
 
-		public void processSUSPEND();
-
-		public void processRESUME();
+		public void processDRAIN();
 
 		public void processEXIT();
 	}

@@ -50,13 +50,8 @@ public class CommandProcessorImpl implements CommandProcessor {
 	}
 
 	@Override
-	public void processSUSPEND() {
+	public void processDRAIN() {
 		throw new IllegalArgumentException("Suspend feature is not supported");
-	}
-
-	@Override
-	public void processRESUME() {
-		throw new IllegalArgumentException("Resume feature is not supported");
 	}
 
 	@Override
