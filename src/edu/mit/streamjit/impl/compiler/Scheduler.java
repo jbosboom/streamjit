@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.jlinalg.AffineLinearSubspace;
+import org.jlinalg.InvalidOperationException;
 import org.jlinalg.LinSysSolver;
 import org.jlinalg.Matrix;
 import org.jlinalg.Vector;
@@ -82,7 +83,15 @@ public final class Scheduler {
 		}
 		Matrix<Rational> matrix = new Matrix<>(matrixArray);
 		Vector<Rational> vector = new Vector<>(vectorArray);
-		AffineLinearSubspace<Rational> solutionSpace = LinSysSolver.solutionSpace(matrix, vector).normalize();
+		AffineLinearSubspace<Rational> solutionSpace;
+		try {
+			solutionSpace = LinSysSolver.solutionSpace(matrix, vector).normalize();
+		} catch (InvalidOperationException ex) {
+			if (ex.getMessage().equals("both, the inhomogenous part and the generating system are empty."))
+				throw new IllegalArgumentException("Couldn't schedule "+channels, ex);
+			else
+				throw ex;
+		}
 		System.out.println(solutionSpace);
 		if (vector.isZero())
 			assert solutionSpace.getInhomogenousPart() == null;
