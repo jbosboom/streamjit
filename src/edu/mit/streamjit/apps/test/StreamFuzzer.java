@@ -13,7 +13,9 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.StreamElement;
+import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.PrintStreamVisitor;
+import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -310,10 +312,21 @@ public final class StreamFuzzer {
 	}
 
 	public static void main(String[] args) {
-		FuzzElement fuzz = StreamFuzzer.generate();
-		OneToOneElement<Integer, Integer> stream = fuzz.instantiate();
-		stream.visit(new PrintStreamVisitor(System.out));
-		System.out.println(fuzz.toJava());
-		System.out.println(run(fuzz, new DebugStreamCompiler()));
+		StreamCompiler debugSC = new DebugStreamCompiler();
+		StreamCompiler compilerSC = new BlobHostStreamCompiler(new CompilerBlobFactory(), 1);
+		while (true) {
+			FuzzElement fuzz = StreamFuzzer.generate();
+			List<Integer> debugOutput = run(fuzz, debugSC);
+			List<Integer> compilerOutput = run(fuzz, compilerSC);
+			if (!debugOutput.equals(compilerOutput)) {
+				fuzz.instantiate().visit(new PrintStreamVisitor(System.out));
+				System.out.println(fuzz.toJava());
+				//TODO: show only elements where they differ
+				System.out.println("Debug output: "+debugOutput);
+				System.out.println("Compiler output: "+compilerOutput);
+				break;
+			}
+			System.out.println(fuzz.hashCode()+" matched");
+		}
 	}
 }
