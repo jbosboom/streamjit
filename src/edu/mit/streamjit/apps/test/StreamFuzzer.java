@@ -257,9 +257,9 @@ public final class StreamFuzzer {
 		public String toJava() {
 			List<String> args = new ArrayList<>(branches.size()+2);
 			args.add(splitter.toJava());
+			args.add(joiner.toJava());
 			for (FuzzElement e : branches)
 				args.add(e.toJava());
-			args.add(joiner.toJava());
 			return "new Splitjoin(" + ARG_JOINER.join(args) + ")";
 		}
 		@Override
