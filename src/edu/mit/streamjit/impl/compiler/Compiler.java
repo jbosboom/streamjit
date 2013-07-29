@@ -20,10 +20,10 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.ArrayDequeBuffer;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
@@ -56,6 +56,7 @@ import java.lang.invoke.MethodHandleProxies;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.SwitchPoint;
 import java.math.RoundingMode;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1376,13 +1377,13 @@ public final class Compiler {
 		Blob blob = compiler.compile();
 		Map<Token, Buffer> buffers = new HashMap<>();
 		for (Token t : blob.getInputs()) {
-			ArrayDequeBuffer buf = new ArrayDequeBuffer();
+			Buffer buf = Buffers.queueBuffer(new ArrayDeque<>(), Integer.MAX_VALUE);
 			for (int i = 0; i < 1000; ++i)
 				buf.write(i);
 			buffers.put(t, buf);
 		}
 		for (Token t : blob.getOutputs())
-			buffers.put(t, new ArrayDequeBuffer());
+			buffers.put(t, Buffers.queueBuffer(new ArrayDeque<>(), Integer.MAX_VALUE));
 		blob.installBuffers(buffers);
 
 		final AtomicBoolean drained = new AtomicBoolean();

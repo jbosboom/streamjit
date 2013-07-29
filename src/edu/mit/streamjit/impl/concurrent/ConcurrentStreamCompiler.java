@@ -18,7 +18,6 @@ import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.ArrayDequeBuffer;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
