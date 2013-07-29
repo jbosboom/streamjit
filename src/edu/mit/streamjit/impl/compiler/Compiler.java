@@ -197,7 +197,7 @@ public final class Compiler {
 		generateCoreCode();
 		generateStaticInit();
 		addBlobPlumbing();
-		blobKlass.dump(new PrintWriter(System.out, true));
+		//blobKlass.dump(new PrintWriter(System.out, true));
 		return instantiateBlob();
 	}
 
@@ -600,7 +600,6 @@ public final class Compiler {
 					channels.addAll(a.findChannels(b));
 			schedule = Scheduler.schedule(channels.build());
 		}
-		System.out.println(schedule);
 	}
 
 	private final class StreamNode {
