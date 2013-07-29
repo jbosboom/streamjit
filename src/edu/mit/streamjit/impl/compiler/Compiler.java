@@ -512,6 +512,9 @@ public final class Compiler {
 			BasicBlock block = new BasicBlock(module, "exit");
 			block.instructions().add(new ReturnInst(module.types().getVoidType()));
 			m.basicBlocks().add(block);
+
+			for (int i = 0; i < m.basicBlocks().size()-1; ++i)
+				m.basicBlocks().get(i).instructions().add(new JumpInst(m.basicBlocks().get(i+1)));
 		}
 	}
 
@@ -548,6 +551,9 @@ public final class Compiler {
 		BasicBlock exitBlock = new BasicBlock(module, "exit");
 		clinit.basicBlocks().add(exitBlock);
 		exitBlock.instructions().add(new ReturnInst(module.types().getVoidType()));
+
+		for (int i = 0; i < clinit.basicBlocks().size()-1; ++i)
+				clinit.basicBlocks().get(i).instructions().add(new JumpInst(clinit.basicBlocks().get(i+1)));
 	}
 
 	/**

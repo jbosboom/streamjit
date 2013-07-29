@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.impl.compiler.insts.ArrayLengthInst;
 import edu.mit.streamjit.impl.compiler.insts.ArrayLoadInst;
@@ -166,6 +167,12 @@ public final class MethodUnresolver {
 	}
 
 	private InsnList emit(BasicBlock block) {
+		FluentIterable<TerminatorInst> terminators = FluentIterable.from(block.instructions()).filter(TerminatorInst.class);
+		if (terminators.isEmpty())
+			throw new IllegalArgumentException("block "+block.getName()+" in method "+block.getParent().getName()+" lacks a terminator");
+		if (terminators.size() > 1)
+			throw new IllegalArgumentException("block "+block.getName()+" in method "+block.getParent().getName()+" has multiple terminators: "+terminators);
+
 		InsnList insns = new InsnList();
 		insns.add(labels.get(block));
 		for (Instruction i : block.instructions()) {
