@@ -714,28 +714,33 @@ public final class Compiler {
 			Klass workerKlass = module.getKlass(worker.getClass());
 
 			//Build the new fields.
-			for (Field f : workerKlass.fields()) {
-				java.lang.reflect.Field rf = f.getBackingField();
-				Set<Modifier> modifiers = EnumSet.of(Modifier.PRIVATE, Modifier.STATIC);
-				//We can make the new field final if the original field is final or
-				//if the worker isn't stateful.
-				if (f.modifiers().contains(Modifier.FINAL) || !(worker instanceof StatefulFilter))
-					modifiers.add(Modifier.FINAL);
+			Klass splitter = module.getKlass(Splitter.class),
+					joiner = module.getKlass(Joiner.class),
+					filter = module.getKlass(Filter.class);
+			for (Klass k = workerKlass; !k.equals(filter) && !k.equals(splitter) && !k.equals(joiner); k = k.getSuperclass()) {
+				for (Field f : k.fields()) {
+					java.lang.reflect.Field rf = f.getBackingField();
+					Set<Modifier> modifiers = EnumSet.of(Modifier.PRIVATE, Modifier.STATIC);
+					//We can make the new field final if the original field is final or
+					//if the worker isn't stateful.
+					if (f.modifiers().contains(Modifier.FINAL) || !(worker instanceof StatefulFilter))
+						modifiers.add(Modifier.FINAL);
 
-				Field nf = new Field(f.getType().getFieldType(),
-						"w" + id + "$" + f.getName(),
-						modifiers,
-						blobKlass);
-				fields.put(worker, f, nf);
+					Field nf = new Field(f.getType().getFieldType(),
+							"w" + id + "$" + f.getName(),
+							modifiers,
+							blobKlass);
+					fields.put(worker, f, nf);
 
-				try {
-					rf.setAccessible(true);
-					Object value = rf.get(worker);
-					fieldValues.put(worker, f, value);
-				} catch (IllegalAccessException ex) {
-					//Either setAccessible will succeed or we'll throw a
-					//SecurityException, so we'll never get here.
-					throw new AssertionError("Can't happen!", ex);
+					try {
+						rf.setAccessible(true);
+						Object value = rf.get(worker);
+						fieldValues.put(worker, f, value);
+					} catch (IllegalAccessException ex) {
+						//Either setAccessible will succeed or we'll throw a
+						//SecurityException, so we'll never get here.
+						throw new AssertionError("Can't happen!", ex);
+					}
 				}
 			}
 		}
