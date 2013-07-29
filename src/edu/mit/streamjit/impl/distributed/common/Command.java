@@ -4,6 +4,8 @@
  */
 package edu.mit.streamjit.impl.distributed.common;
 
+import edu.mit.streamjit.impl.distributed.runtimer.Controller;
+
 public enum Command implements MessageElement {
 	/**
 	 * Starts the StreamJit Application.
@@ -52,4 +54,22 @@ public enum Command implements MessageElement {
 
 	public abstract void process(CommandProcessor commandProcessor);
 
+	/**
+	 * Processes the {@link Command}s received from {@link Controller}.
+	 * 
+	 * @author Sumanan sumanan@mit.edu
+	 * @since May 20, 2013
+	 */
+	public interface CommandProcessor {
+
+		public void processSTART();
+
+		public void processSTOP();
+
+		public void processSUSPEND();
+
+		public void processRESUME();
+
+		public void processEXIT();
+	}
 }

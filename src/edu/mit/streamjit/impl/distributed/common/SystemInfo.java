@@ -23,4 +23,8 @@ public class SystemInfo implements MessageElement {
 	public void accept(MessageVisitor visitor) {
 		visitor.visit(this);
 	}
+	
+	public interface SystemInfoProcessor {
+
+	}
 }

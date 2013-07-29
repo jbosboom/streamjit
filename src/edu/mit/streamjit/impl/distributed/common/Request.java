@@ -42,4 +42,17 @@ public enum Request implements MessageElement {
 
 	public abstract void process(RequestProcessor reqProcessor);
 
+
+	public interface RequestProcessor {
+
+		public void processAPPStatus();
+
+		public void processSysInfo();
+
+		public void processMaxCores();
+
+		public void processMachineID();
+		
+		public void processNodeInfo();
+	}
 }

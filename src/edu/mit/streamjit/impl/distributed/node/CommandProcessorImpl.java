@@ -3,9 +3,7 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.io.IOException;
 
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
-import edu.mit.streamjit.impl.distributed.common.Command;
-import edu.mit.streamjit.impl.distributed.common.CommandProcessor;
-import edu.mit.streamjit.impl.distributed.runtimer.Controller;
+import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 
 /**
  * @author Sumanan sumanan@mit.edu

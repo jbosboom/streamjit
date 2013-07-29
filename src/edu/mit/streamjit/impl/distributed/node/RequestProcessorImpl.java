@@ -5,11 +5,9 @@
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
-import edu.mit.streamjit.impl.distributed.common.RequestProcessor;
+import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
 
 public class RequestProcessorImpl implements RequestProcessor {
 
@@ -32,7 +30,8 @@ public class RequestProcessorImpl implements RequestProcessor {
 	@Override
 	public void processMaxCores() {
 		try {
-			streamNode.controllerConnection.writeObject(new Integer(Runtime.getRuntime().availableProcessors()));
+			streamNode.controllerConnection.writeObject(new Integer(Runtime
+					.getRuntime().availableProcessors()));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

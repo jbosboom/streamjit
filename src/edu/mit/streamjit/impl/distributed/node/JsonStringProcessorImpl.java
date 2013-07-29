@@ -26,7 +26,7 @@ import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.JsonStringProcessor;
+import edu.mit.streamjit.impl.distributed.common.JsonString.JsonStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.json.Jsonifiers;

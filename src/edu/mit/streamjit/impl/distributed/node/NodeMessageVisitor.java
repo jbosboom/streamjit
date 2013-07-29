@@ -5,17 +5,17 @@
 package edu.mit.streamjit.impl.distributed.node;
 
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
-import edu.mit.streamjit.impl.distributed.common.AppStatusProcessor;
+import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 import edu.mit.streamjit.impl.distributed.common.Command;
-import edu.mit.streamjit.impl.distributed.common.CommandProcessor;
+import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 import edu.mit.streamjit.impl.distributed.common.Error;
-import edu.mit.streamjit.impl.distributed.common.ErrorProcessor;
+import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
 import edu.mit.streamjit.impl.distributed.common.JsonString;
-import edu.mit.streamjit.impl.distributed.common.JsonStringProcessor;
+import edu.mit.streamjit.impl.distributed.common.JsonString.JsonStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.MessageVisitor;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
-import edu.mit.streamjit.impl.distributed.common.RequestProcessor;
+import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo;
 
 public class NodeMessageVisitor implements MessageVisitor {
@@ -26,8 +26,8 @@ public class NodeMessageVisitor implements MessageVisitor {
 	private RequestProcessor rp;
 	private JsonStringProcessor jp;
 
-	public NodeMessageVisitor(AppStatusProcessor asp, CommandProcessor cp, ErrorProcessor ep, RequestProcessor rp,
-			JsonStringProcessor jp) {
+	public NodeMessageVisitor(AppStatusProcessor asp, CommandProcessor cp,
+			ErrorProcessor ep, RequestProcessor rp, JsonStringProcessor jp) {
 		this.asp = asp;
 		this.cp = cp;
 		this.ep = ep;
@@ -67,6 +67,7 @@ public class NodeMessageVisitor implements MessageVisitor {
 
 	@Override
 	public void visit(NodeInfo nodeInfo) {
-		throw new AssertionError("NodeInfo doesn't support MessageVisitor for the moment.");
+		throw new AssertionError(
+				"NodeInfo doesn't support MessageVisitor for the moment.");
 	}
 }

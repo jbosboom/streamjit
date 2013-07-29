@@ -4,17 +4,19 @@
  */
 package edu.mit.streamjit.impl.distributed.node;
 
-import edu.mit.streamjit.impl.distributed.common.ErrorProcessor;
+import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
 
 public class ErrorProcessorImpl implements ErrorProcessor {
 
 	@Override
 	public void processFILE_NOT_FOUND() {
-		throw new IllegalArgumentException("FILE_NOT_FOUND error should be informed to Controller");
+		throw new IllegalArgumentException(
+				"FILE_NOT_FOUND error should be informed to Controller");
 	}
 
 	@Override
 	public void processWORKER_NOT_FOUND() {
-		throw new IllegalArgumentException("WORKER_NOT_FOUND error should be informed to Controller");
+		throw new IllegalArgumentException(
+				"WORKER_NOT_FOUND error should be informed to Controller");
 	}
 }

@@ -42,4 +42,17 @@ public enum AppStatus implements MessageElement {
 	}
 
 	public abstract void process(AppStatusProcessor apstatusProcessor);
+
+	public interface AppStatusProcessor {
+
+		public void processRUNNING();
+
+		public void processSTOPPED();
+
+		public void processERROR();
+
+		public void processNOT_STARTED();
+
+		public void processWAITING();
+	}
 }
