@@ -12,7 +12,8 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
+import edu.mit.streamjit.impl.blob.Buffers;
+import java.util.concurrent.ArrayBlockingQueue;
 
 /**
  * A StreamCompiler that uses a BlobFactory to make a Blob for the entire graph.
@@ -45,8 +46,8 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 
 		Token inputToken = Iterables.getOnlyElement(blob.getInputs());
 		Token outputToken = Iterables.getOnlyElement(blob.getOutputs());
-		Buffer inputBuffer = new ConcurrentArrayBuffer(blob.getMinimumBufferCapacity(inputToken));
-		Buffer outputBuffer = new ConcurrentArrayBuffer(blob.getMinimumBufferCapacity(outputToken));
+		Buffer inputBuffer = Buffers.blockingQueueBuffer(new ArrayBlockingQueue<>(blob.getMinimumBufferCapacity(inputToken)), false, false);
+		Buffer outputBuffer = Buffers.blockingQueueBuffer(new ArrayBlockingQueue<>(blob.getMinimumBufferCapacity(outputToken)), false, false);
 		ImmutableMap<Token, Buffer> bufferMap = ImmutableMap.<Token, Buffer>builder()
 				.put(inputToken, inputBuffer)
 				.put(outputToken, outputBuffer)
