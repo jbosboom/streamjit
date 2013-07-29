@@ -99,9 +99,9 @@ public final class StreamFuzzer {
 	private static final com.google.common.base.Joiner ARG_JOINER = com.google.common.base.Joiner.on(", ");
 	private static class FuzzStreamElement<T extends StreamElement<Integer, Integer>> {
 		private final Class<? extends T> filterClass;
-		private final ImmutableList<Object> arguments;
+		private final ImmutableList<? extends Object> arguments;
 		private transient Constructor<? extends T> constructor;
-		protected FuzzStreamElement(Class<? extends T> filterClass, ImmutableList<Object> arguments) {
+		protected FuzzStreamElement(Class<? extends T> filterClass, ImmutableList<? extends Object> arguments) {
 			this.filterClass = filterClass;
 			this.arguments = arguments;
 		}
@@ -162,7 +162,7 @@ public final class StreamFuzzer {
 
 	private static final class FuzzFilter extends FuzzStreamElement<Filter<Integer, Integer>> implements FuzzElement {
 		@SuppressWarnings({"unchecked","rawtypes"})
-		private FuzzFilter(Class<? extends Filter> filterClass, ImmutableList<Object> arguments) {
+		private FuzzFilter(Class<? extends Filter> filterClass, ImmutableList<? extends Object> arguments) {
 			super((Class<Filter<Integer, Integer>>)filterClass, arguments);
 		}
 		@Override
@@ -216,7 +216,7 @@ public final class StreamFuzzer {
 	 */
 	private static final class FuzzSplitter extends FuzzStreamElement<Splitter<Integer, Integer>> {
 		@SuppressWarnings({"unchecked","rawtypes"})
-		private FuzzSplitter(Class<? extends Splitter> filterClass, ImmutableList<Object> arguments) {
+		private FuzzSplitter(Class<? extends Splitter> filterClass, ImmutableList<? extends Object> arguments) {
 			super((Class<Splitter<Integer, Integer>>)filterClass, arguments);
 		}
 		@Override
@@ -231,7 +231,7 @@ public final class StreamFuzzer {
 	 */
 	private static final class FuzzJoiner extends FuzzStreamElement<Joiner<Integer, Integer>> {
 		@SuppressWarnings({"unchecked","rawtypes"})
-		private FuzzJoiner(Class<? extends Joiner> filterClass, ImmutableList<Object> arguments) {
+		private FuzzJoiner(Class<? extends Joiner> filterClass, ImmutableList<? extends Object> arguments) {
 			super((Class<Joiner<Integer, Integer>>)filterClass, arguments);
 		}
 		@Override
