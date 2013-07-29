@@ -317,7 +317,14 @@ public final class StreamFuzzer {
 		while (true) {
 			FuzzElement fuzz = StreamFuzzer.generate();
 			List<Integer> debugOutput = run(fuzz, debugSC);
-			List<Integer> compilerOutput = run(fuzz, compilerSC);
+			List<Integer> compilerOutput = null;
+			try {
+				compilerOutput = run(fuzz, compilerSC);
+			} catch (Throwable ex) {
+				System.out.println("Compiler failed");
+				ex.printStackTrace(System.out);
+				//fall into the if below
+			}
 			if (!debugOutput.equals(compilerOutput)) {
 				fuzz.instantiate().visit(new PrintStreamVisitor(System.out));
 				System.out.println(fuzz.toJava());
