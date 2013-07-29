@@ -92,7 +92,6 @@ public final class Scheduler {
 			else
 				throw ex;
 		}
-		System.out.println(solutionSpace);
 		if (vector.isZero())
 			assert solutionSpace.getInhomogenousPart() == null;
 		assert solutionSpace.getDimension() == 1;
@@ -110,8 +109,6 @@ public final class Scheduler {
 //			if (!d.equals(BigInteger.ONE))
 //				v.multiplyReplace(Rational.FACTORY.get(d));
 //		}
-
-		System.out.println(v);
 
 		ImmutableMap.Builder<T, Integer> retval = ImmutableMap.<T, Integer>builder();
 		for (Map.Entry<T, Integer> e : thingIds.entrySet()) {
