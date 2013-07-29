@@ -4,6 +4,12 @@ package edu.mit.streamjit.impl.blob;
  * AbstractBuffer implements some Buffer methods in terms of read() and write().
  * Custom implementations, when supported by the underlying storage, will
  * generally yield better performance.
+ * <p/>
+ * Note that this class (and any subclass inheriting its methods) assumes at
+ * most one reader and at most one writer are using the buffer at once. If more
+ * readers or writers use an instance at once, the bulk reads and writes may not
+ * be atomic. If reading might fail due to interruption, readAll(Object[], int)
+ * must be overridden to ignore interrupts.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 7/27/2013
  */
