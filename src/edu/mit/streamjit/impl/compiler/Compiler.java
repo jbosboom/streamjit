@@ -20,10 +20,10 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.ArrayDequeBuffer;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
@@ -56,6 +56,7 @@ import java.lang.invoke.MethodHandleProxies;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.SwitchPoint;
 import java.math.RoundingMode;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -143,8 +144,6 @@ public final class Compiler {
 		//We require that all rates of workers in our set are fixed, except for
 		//the output rates of the last worker.
 		for (Worker<?, ?> w : workers) {
-			for (Rate r : w.getPeekRates())
-				checkArgument(r.isFixed());
 			for (Rate r : w.getPopRates())
 				checkArgument(r.isFixed());
 			if (w != lastWorker)
@@ -196,7 +195,7 @@ public final class Compiler {
 		generateCoreCode();
 		generateStaticInit();
 		addBlobPlumbing();
-		blobKlass.dump(new PrintWriter(System.out, true));
+		//blobKlass.dump(new PrintWriter(System.out, true));
 		return instantiateBlob();
 	}
 
@@ -294,13 +293,17 @@ public final class Compiler {
 	 * Computes the initialization schedule using the scheduler.
 	 */
 	private void computeInitSchedule() {
-		ImmutableList.Builder<Scheduler.Channel<Worker<?, ?>>> builder = ImmutableList.<Scheduler.Channel<Worker<?, ?>>>builder();
-		for (IOInfo info : IOInfo.internalEdges(workers))
-			builder.add(new Scheduler.Channel<>(info.upstream(), info.downstream(),
-					info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max(),
-					info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max(),
-					buffers.get(info.token()).initialSize));
-		initSchedule = Scheduler.schedule(builder.build());
+		if (workers.size() == 1)
+			initSchedule = (ImmutableMap<Worker<?, ?>, Integer>)ImmutableMap.of(workers.iterator().next(), 0);
+		else {
+			ImmutableList.Builder<Scheduler.Channel<Worker<?, ?>>> builder = ImmutableList.<Scheduler.Channel<Worker<?, ?>>>builder();
+			for (IOInfo info : IOInfo.internalEdges(workers))
+				builder.add(new Scheduler.Channel<>(info.upstream(), info.downstream(),
+						info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max(),
+						info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max(),
+						buffers.get(info.token()).initialSize));
+			initSchedule = Scheduler.schedule(builder.build());
+		}
 	}
 
 	/**
@@ -319,7 +322,7 @@ public final class Compiler {
 		int numInputs = getNumInputs(worker);
 		int numOutputs = getNumOutputs(worker);
 		Klass workerKlass = module.getKlass(worker.getClass());
-		Method oldWork = workerKlass.getMethod("work", module.types().getMethodType(void.class, worker.getClass()));
+		Method oldWork = workerKlass.getMethodByVirtual("work", module.types().getMethodType(void.class, worker.getClass()));
 		oldWork.resolve();
 
 		//Add a dummy receiver argument so we can clone the user's work method.
@@ -507,6 +510,9 @@ public final class Compiler {
 			BasicBlock block = new BasicBlock(module, "exit");
 			block.instructions().add(new ReturnInst(module.types().getVoidType()));
 			m.basicBlocks().add(block);
+
+			for (int i = 0; i < m.basicBlocks().size()-1; ++i)
+				m.basicBlocks().get(i).instructions().add(new JumpInst(m.basicBlocks().get(i+1)));
 		}
 	}
 
@@ -543,6 +549,9 @@ public final class Compiler {
 		BasicBlock exitBlock = new BasicBlock(module, "exit");
 		clinit.basicBlocks().add(exitBlock);
 		exitBlock.instructions().add(new ReturnInst(module.types().getVoidType()));
+
+		for (int i = 0; i < clinit.basicBlocks().size()-1; ++i)
+				clinit.basicBlocks().get(i).instructions().add(new JumpInst(clinit.basicBlocks().get(i+1)));
 	}
 
 	/**
@@ -586,12 +595,15 @@ public final class Compiler {
 
 	private void externalSchedule() {
 		ImmutableSet<StreamNode> nodes = ImmutableSet.copyOf(streamNodes.values());
-		ImmutableList.Builder<Scheduler.Channel<StreamNode>> channels = ImmutableList.<Scheduler.Channel<StreamNode>>builder();
-		for (StreamNode a : nodes)
-			for (StreamNode b : nodes)
-				channels.addAll(a.findChannels(b));
-		schedule = Scheduler.schedule(channels.build());
-		System.out.println(schedule);
+		if (nodes.size() == 1)
+			schedule = ImmutableMap.of(nodes.iterator().next(), 1);
+		else {
+			ImmutableList.Builder<Scheduler.Channel<StreamNode>> channels = ImmutableList.<Scheduler.Channel<StreamNode>>builder();
+			for (StreamNode a : nodes)
+				for (StreamNode b : nodes)
+					channels.addAll(a.findChannels(b));
+			schedule = Scheduler.schedule(channels.build());
+		}
 	}
 
 	private final class StreamNode {
@@ -702,28 +714,33 @@ public final class Compiler {
 			Klass workerKlass = module.getKlass(worker.getClass());
 
 			//Build the new fields.
-			for (Field f : workerKlass.fields()) {
-				java.lang.reflect.Field rf = f.getBackingField();
-				Set<Modifier> modifiers = EnumSet.of(Modifier.PRIVATE, Modifier.STATIC);
-				//We can make the new field final if the original field is final or
-				//if the worker isn't stateful.
-				if (f.modifiers().contains(Modifier.FINAL) || !(worker instanceof StatefulFilter))
-					modifiers.add(Modifier.FINAL);
+			Klass splitter = module.getKlass(Splitter.class),
+					joiner = module.getKlass(Joiner.class),
+					filter = module.getKlass(Filter.class);
+			for (Klass k = workerKlass; !k.equals(filter) && !k.equals(splitter) && !k.equals(joiner); k = k.getSuperclass()) {
+				for (Field f : k.fields()) {
+					java.lang.reflect.Field rf = f.getBackingField();
+					Set<Modifier> modifiers = EnumSet.of(Modifier.PRIVATE, Modifier.STATIC);
+					//We can make the new field final if the original field is final or
+					//if the worker isn't stateful.
+					if (f.modifiers().contains(Modifier.FINAL) || !(worker instanceof StatefulFilter))
+						modifiers.add(Modifier.FINAL);
 
-				Field nf = new Field(f.getType().getFieldType(),
-						"w" + id + "$" + f.getName(),
-						modifiers,
-						blobKlass);
-				fields.put(worker, f, nf);
+					Field nf = new Field(f.getType().getFieldType(),
+							"w" + id + "$" + f.getName(),
+							modifiers,
+							blobKlass);
+					fields.put(worker, f, nf);
 
-				try {
-					rf.setAccessible(true);
-					Object value = rf.get(worker);
-					fieldValues.put(worker, f, value);
-				} catch (IllegalAccessException ex) {
-					//Either setAccessible will succeed or we'll throw a
-					//SecurityException, so we'll never get here.
-					throw new AssertionError("Can't happen!", ex);
+					try {
+						rf.setAccessible(true);
+						Object value = rf.get(worker);
+						fieldValues.put(worker, f, value);
+					} catch (IllegalAccessException ex) {
+						//Either setAccessible will succeed or we'll throw a
+						//SecurityException, so we'll never get here.
+						throw new AssertionError("Can't happen!", ex);
+					}
 				}
 			}
 		}
@@ -1357,7 +1374,7 @@ public final class Compiler {
 	}
 
 	public static void main(String[] args) throws Throwable {
-		OneToOneElement<Integer, Integer> graph = new Splitjoin<>(new RoundrobinSplitter<Integer>(), new RoundrobinJoiner<Integer>(), new Identity<Integer>(), new Identity<Integer>());
+		OneToOneElement<Integer, Integer> graph = new Identity<>();//new Splitjoin<>(new RoundrobinSplitter<Integer>(), new RoundrobinJoiner<Integer>(), new Identity<Integer>(), new Identity<Integer>());
 		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		graph.visit(cwv);
 		Set<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
@@ -1368,13 +1385,13 @@ public final class Compiler {
 		Blob blob = compiler.compile();
 		Map<Token, Buffer> buffers = new HashMap<>();
 		for (Token t : blob.getInputs()) {
-			ArrayDequeBuffer buf = new ArrayDequeBuffer();
+			Buffer buf = Buffers.queueBuffer(new ArrayDeque<>(), Integer.MAX_VALUE);
 			for (int i = 0; i < 1000; ++i)
 				buf.write(i);
 			buffers.put(t, buf);
 		}
 		for (Token t : blob.getOutputs())
-			buffers.put(t, new ArrayDequeBuffer());
+			buffers.put(t, Buffers.queueBuffer(new ArrayDeque<>(), Integer.MAX_VALUE));
 		blob.installBuffers(buffers);
 
 		final AtomicBoolean drained = new AtomicBoolean();

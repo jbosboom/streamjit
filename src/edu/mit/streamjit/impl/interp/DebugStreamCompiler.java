@@ -15,15 +15,16 @@ import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Rate;
-import edu.mit.streamjit.impl.blob.ArrayDequeBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -50,7 +51,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		stream.visit(cpwv);
 		stream.visit(new VerifyStreamGraph());
 		Worker<I, ?> source = (Worker<I, ?>)cpwv.getSource();
-		
+
 		List<MessageConstraint> constraints = MessageConstraint.findConstraints(source);
 		Set<Portal<?>> portals = new HashSet<>();
 		for (MessageConstraint mc : constraints)
@@ -61,8 +62,10 @@ public class DebugStreamCompiler implements StreamCompiler {
 		DebugInterpreter interpreter = new DebugInterpreter(Workers.getAllWorkersInGraph(source), constraints);
 		Token inputToken = Iterables.getOnlyElement(interpreter.getInputs());
 		Token outputToken = Iterables.getOnlyElement(interpreter.getOutputs());
-		Buffer inputBuffer = new ArrayDequeBuffer(interpreter.getMinimumBufferCapacity(inputToken));
-		Buffer outputBuffer = new ArrayDequeBuffer(interpreter.getMinimumBufferCapacity(outputToken));
+		int inputCapacity = interpreter.getMinimumBufferCapacity(inputToken);
+		int outputCapacity = interpreter.getMinimumBufferCapacity(outputToken);
+		Buffer inputBuffer = Buffers.queueBuffer(new ArrayDeque<>(inputCapacity), Integer.MAX_VALUE);
+		Buffer outputBuffer = Buffers.queueBuffer(new ArrayDeque<>(outputCapacity), Integer.MAX_VALUE);
 		ImmutableMap<Token, Buffer> bufferMap = ImmutableMap.<Token, Buffer>builder()
 				.put(inputToken, inputBuffer)
 				.put(outputToken, outputBuffer)
@@ -85,7 +88,7 @@ public class DebugStreamCompiler implements StreamCompiler {
 		private DebugCompiledStream(Interpreter interpreter, Buffer inputBuffer, Buffer outputBuffer) {
 			super(inputBuffer, outputBuffer);
 			this.interpreter = interpreter;
-			this.inputBuffer = inputBuffer;		
+			this.inputBuffer = inputBuffer;
 		}
 
 		@Override

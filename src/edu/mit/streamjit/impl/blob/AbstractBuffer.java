@@ -1,34 +1,25 @@
 package edu.mit.streamjit.impl.blob;
 
-import java.util.ArrayDeque;
-
 /**
- * An unsynchronized, unbounded Buffer implementation based on an ArrayDeque.
+ * AbstractBuffer implements some Buffer methods in terms of read() and write().
+ * Custom implementations, when supported by the underlying storage, will
+ * generally yield better performance.
+ * <p/>
+ * Note that this class (and any subclass inheriting its methods) assumes at
+ * most one reader and at most one writer are using the buffer at once. If more
+ * readers or writers use an instance at once, the bulk reads and writes may not
+ * be atomic. If reading might fail due to interruption, readAll(Object[], int)
+ * must be overridden to ignore interrupts.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
- * @since 7/18/2013
+ * @since 7/27/2013
  */
-public class ArrayDequeBuffer implements Buffer {
-	private final ArrayDeque<Object> deque;
-	public ArrayDequeBuffer() {
-		this.deque = new ArrayDeque<>();
-	}
-	public ArrayDequeBuffer(int initialCapacityHint) {
-		this.deque = new ArrayDeque<>(initialCapacityHint);
-	}
-
-	@Override
-	public Object read() {
-		return deque.poll();
-	}
-
+public abstract class AbstractBuffer implements Buffer {
 	@Override
 	public int read(Object[] data, int offset, int length) {
 		int read = 0;
 		Object obj;
-		while (read < length && (obj = deque.poll()) != null){
+		while (read < length && (obj = read()) != null)
 			data[offset++] = obj;
-			read++;
-		}
 		return read;
 	}
 
@@ -43,7 +34,7 @@ public class ArrayDequeBuffer implements Buffer {
 		if (required > size())
 			return false;
 		for (; offset < data.length; ++offset) {
-			Object e = deque.poll();
+			Object e = read();
 			//We checked size() above, so we should never fail here, except in
 			//case of concurrent modification by another reader.
 			assert e != null;
@@ -53,25 +44,10 @@ public class ArrayDequeBuffer implements Buffer {
 	}
 
 	@Override
-	public boolean write(Object t) {
-		return deque.offer(t);
-	}
-
-	@Override
 	public int write(Object[] data, int offset, int length) {
 		int written = 0;
-		while (written < length && deque.offer(data[offset++]))
+		while (written < length && write(data[offset++]))
 			++written;
 		return written;
-	}
-
-	@Override
-	public int size() {
-		return deque.size();
-	}
-
-	@Override
-	public int capacity() {
-		return Integer.MAX_VALUE;
 	}
 }
