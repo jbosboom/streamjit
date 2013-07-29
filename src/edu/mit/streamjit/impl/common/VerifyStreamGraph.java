@@ -39,7 +39,7 @@ public class VerifyStreamGraph extends StreamVisitor {
 	 * SplitJoin branches. As there is no any purposely designed pair or tuple representations in Java, we use Map.Entry<?,?> to
 	 * represent a pair.
 	 */
-	Deque<Map.Entry<Splitter<?>, Integer>> unfinishedSpliterStack;
+	Deque<Map.Entry<Splitter<?, ?>, Integer>> unfinishedSpliterStack;
 
 	public VerifyStreamGraph() {
 		visitedWorkers = new LinkedList<>();
@@ -77,14 +77,14 @@ public class VerifyStreamGraph extends StreamVisitor {
 	}
 
 	@Override
-	public void visitSplitter(Splitter<?> splitter) {
+	public void visitSplitter(Splitter<?, ?> splitter) {
 		if (visitedWorkers.contains(splitter))
 			throw new IllegalStreamGraphException(String.format("The splitter instance \"%s\" is added multiple time",
 					splitter.toString()));
 		else
 			visitedWorkers.add(splitter);
 
-		Map.Entry<Splitter<?>, Integer> pair = new AbstractMap.SimpleEntry<Splitter<?>, Integer>(splitter, 0);
+		Map.Entry<Splitter<?, ?>, Integer> pair = new AbstractMap.SimpleEntry<Splitter<?, ?>, Integer>(splitter, 0);
 		unfinishedSpliterStack.push(pair);
 	}
 
@@ -104,9 +104,9 @@ public class VerifyStreamGraph extends StreamVisitor {
 
 	@Override
 	// FIXME: splitter.supportedOutputs() returns Splitter.UNLIMITED. Couldn't get actual numbers of the branches in the splitter.
-	public void visitJoiner(Joiner<?> joiner) {
-		Map.Entry<Splitter<?>, Integer> pair = unfinishedSpliterStack.pop();
-		Splitter<?> splitter = pair.getKey();
+	public void visitJoiner(Joiner<?, ?> joiner) {
+		Map.Entry<Splitter<?, ?>, Integer> pair = unfinishedSpliterStack.pop();
+		Splitter<?, ?> splitter = pair.getKey();
 		int branchCount = pair.getValue();
 
 		/*
