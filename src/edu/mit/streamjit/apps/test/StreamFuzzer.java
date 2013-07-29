@@ -21,10 +21,12 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * Generates random streams.
@@ -314,8 +316,15 @@ public final class StreamFuzzer {
 	public static void main(String[] args) {
 		StreamCompiler debugSC = new DebugStreamCompiler();
 		StreamCompiler compilerSC = new BlobHostStreamCompiler(new CompilerBlobFactory(), 1);
-		while (true) {
+		Set<FuzzElement> completedCases = new HashSet<>();
+		int tries, skips = 0;
+		for (tries = 0; true; ++tries) {
 			FuzzElement fuzz = StreamFuzzer.generate();
+			if (!completedCases.add(fuzz)) {
+				++skips;
+				continue;
+			}
+
 			List<Integer> debugOutput = run(fuzz, debugSC);
 			List<Integer> compilerOutput = null;
 			try {
@@ -335,5 +344,7 @@ public final class StreamFuzzer {
 			}
 			System.out.println(fuzz.hashCode()+" matched");
 		}
+
+		System.out.format("Generated %d cases, skipped %d (%f run rate)%n", tries, skips, ((double)tries-skips)/tries);
 	}
 }
