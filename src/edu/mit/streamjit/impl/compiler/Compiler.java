@@ -322,7 +322,7 @@ public final class Compiler {
 		int numInputs = getNumInputs(worker);
 		int numOutputs = getNumOutputs(worker);
 		Klass workerKlass = module.getKlass(worker.getClass());
-		Method oldWork = workerKlass.getMethod("work", module.types().getMethodType(void.class, worker.getClass()));
+		Method oldWork = workerKlass.getMethodByVirtual("work", module.types().getMethodType(void.class, worker.getClass()));
 		oldWork.resolve();
 
 		//Add a dummy receiver argument so we can clone the user's work method.
