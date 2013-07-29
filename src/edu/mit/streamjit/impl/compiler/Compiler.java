@@ -144,8 +144,6 @@ public final class Compiler {
 		//We require that all rates of workers in our set are fixed, except for
 		//the output rates of the last worker.
 		for (Worker<?, ?> w : workers) {
-			for (Rate r : w.getPeekRates())
-				checkArgument(r.isFixed());
 			for (Rate r : w.getPopRates())
 				checkArgument(r.isFixed());
 			if (w != lastWorker)

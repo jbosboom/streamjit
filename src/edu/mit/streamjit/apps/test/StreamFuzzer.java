@@ -7,6 +7,7 @@ import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
+import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
@@ -73,6 +74,8 @@ public final class StreamFuzzer {
 			.add(new FuzzFilter(Multiplier.class, ImmutableList.of(2)))
 			.add(new FuzzFilter(Multiplier.class, ImmutableList.of(3)))
 			.add(new FuzzFilter(Multiplier.class, ImmutableList.of(100)))
+			.add(new FuzzFilter(Batcher.class, ImmutableList.of(2)))
+			.add(new FuzzFilter(Batcher.class, ImmutableList.of(10)))
 			.build();
 	private static FuzzFilter makeFilter() {
 		return FILTERS.get(rng.nextInt(FILTERS.size()));
@@ -99,6 +102,36 @@ public final class StreamFuzzer {
 		@Override
 		public void work() {
 			push(pop() * multiplier);
+		}
+	}
+
+	private static class Permuter extends Filter<Integer, Integer> {
+		private final int[] permutation;
+		public Permuter(int inputSize, int outputSize, int[] permutation) {
+			super(Rate.create(inputSize), Rate.create(outputSize), Rate.create(0, outputSize));
+			this.permutation = permutation.clone();
+			for (int i : permutation)
+				assert i >= 0 && i < inputSize;
+			assert permutation.length == outputSize;
+		}
+		@Override
+		public void work() {
+			for (int i : permutation)
+				push(peek(i));
+			for (int i = 0; i < permutation.length; ++i)
+				pop();
+		}
+	}
+
+	private static final class Batcher extends Permuter {
+		public Batcher(int batchSize) {
+			super(batchSize, batchSize, makeIdentityPermutation(batchSize));
+		}
+		private static int[] makeIdentityPermutation(int batchSize) {
+			int[] retval = new int[batchSize];
+			for (int i = 0; i < retval.length; ++i)
+				retval[i] = i;
+			return retval;
 		}
 	}
 
