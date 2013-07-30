@@ -8,6 +8,8 @@ import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
+import edu.mit.streamjit.impl.distributed.common.DrainElement;
+import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
@@ -25,14 +27,17 @@ public class NodeMessageVisitor implements MessageVisitor {
 	private ErrorProcessor ep;
 	private RequestProcessor rp;
 	private ConfigurationStringProcessor jp;
+	private DrainProcessor dp;
 
 	public NodeMessageVisitor(AppStatusProcessor asp, CommandProcessor cp,
-			ErrorProcessor ep, RequestProcessor rp, ConfigurationStringProcessor jp) {
+			ErrorProcessor ep, RequestProcessor rp,
+			ConfigurationStringProcessor jp, DrainProcessor dp) {
 		this.asp = asp;
 		this.cp = cp;
 		this.ep = ep;
 		this.rp = rp;
 		this.jp = jp;
+		this.dp = dp;
 	}
 
 	@Override
@@ -69,5 +74,10 @@ public class NodeMessageVisitor implements MessageVisitor {
 	public void visit(NodeInfo nodeInfo) {
 		throw new AssertionError(
 				"NodeInfo doesn't support MessageVisitor for the moment.");
+	}
+
+	@Override
+	public void visit(DrainElement drain) {
+		drain.process(dp);
 	}
 }

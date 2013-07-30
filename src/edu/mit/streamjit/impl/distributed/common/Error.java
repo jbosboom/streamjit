@@ -23,6 +23,12 @@ public enum Error implements MessageElement {
 		public void process(ErrorProcessor errorProcessor) {
 			errorProcessor.processWORKER_NOT_FOUND();
 		}
+	},
+	BLOB_NOT_FOUND {
+		@Override
+		public void process(ErrorProcessor errorProcessor) {
+			errorProcessor.processBLOB_NOT_FOUND();
+		}
 	};
 
 	@Override
@@ -59,6 +65,8 @@ public enum Error implements MessageElement {
 		public void processFILE_NOT_FOUND();
 
 		public void processWORKER_NOT_FOUND();
+		
+		public void processBLOB_NOT_FOUND();
 
 	}
 };

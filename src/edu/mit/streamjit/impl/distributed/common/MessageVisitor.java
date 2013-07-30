@@ -23,4 +23,6 @@ public interface MessageVisitor {
 
 	public void visit(NodeInfo nodeInfo);
 
+	public void visit(DrainElement drain);
+
 }
