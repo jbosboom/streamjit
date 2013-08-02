@@ -4,11 +4,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
@@ -22,6 +20,9 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
+import edu.mit.streamjit.impl.common.BlobGraph;
+import edu.mit.streamjit.impl.common.BlobGraph.Drainer;
+import edu.mit.streamjit.impl.common.BlobThread;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
@@ -29,8 +30,6 @@ import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
-import edu.mit.streamjit.impl.interp.ArrayChannel;
-import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
@@ -40,7 +39,7 @@ import java.util.Collections;
 /**
  * A stream compiler that partitions a streamgraph into multiple blobs and
  * execute it on multiple threads.
- *
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since Apr 8, 2013
  */
@@ -71,10 +70,17 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		stream.visit(verifier);
 
 		Partitioner<I, O> horzPartitioner = new HorizontalPartitioner<>();
-		List<Set<Worker<?, ?>>> partitionList = horzPartitioner
-				.PatririonEqually(stream, source, sink, this.noOfBlobs);
+		List<Set<Worker<?, ?>>> tempList = horzPartitioner.partitionEqually(
+				stream, source, sink, this.noOfBlobs);
 
-		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
+		List<Set<Worker<?, ?>>> partitionList = new ArrayList<>();
+		for (Set<Worker<?, ?>> blob : tempList) {
+			if (!blob.isEmpty())
+				partitionList.add(blob);
+		}
+
+		// TODO: Copied form DebugStreamCompilecollr. Need to be verified for
+		// this
 		// context.
 		List<MessageConstraint> constraints = MessageConstraint
 				.findConstraints(source);
@@ -84,25 +90,27 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 
-		List<Blob> blobList = new LinkedList<>();
+		Set<Blob> blobSet = new HashSet<>();
 		for (Set<Worker<?, ?>> partition : partitionList) {
-			blobList.add(new Interpreter(partition, constraints, makeConfig()));
+			blobSet.add(new Interpreter(partition, constraints, makeConfig()));
 		}
 
-		ImmutableMap<Token, Buffer> bufferMap = createBufferMap(blobList);
+		BlobGraph bg = new BlobGraph(blobSet);
 
-		for (Blob b : blobList) {
+		ImmutableMap<Token, Buffer> bufferMap = createBufferMap(blobSet);
+
+		for (Blob b : blobSet) {
 			b.installBuffers(bufferMap);
 		}
 
-		return new ConcurrentCompiledStream<>(blobList, bufferMap.get(Token
+		return new ConcurrentCompiledStream<>(bg, bufferMap.get(Token
 				.createOverallInputToken(source)), bufferMap.get(Token
 				.createOverallOutputToken(sink)));
 	}
 
 	// TODO: Buffer sizes, including head and tail buffers, must be optimized.
 	// consider adding some tuning factor
-	private ImmutableMap<Token, Buffer> createBufferMap(List<Blob> blobList) {
+	private ImmutableMap<Token, Buffer> createBufferMap(Set<Blob> blobList) {
 		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
 				.<Token, Buffer> builder();
 
@@ -170,41 +178,22 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 	public static class ConcurrentCompiledStream<I, O> extends
 			AbstractCompiledStream<I, O> {
-		List<Blob> blobList;
-		List<Thread> blobThreads;
-		Map<Blob, Set<MyThread>> threadMap = new HashMap<>();
-		DrainerCallback callback;
 
-		public ConcurrentCompiledStream(List<Blob> blobList,
+		private Map<Blob, Set<BlobThread>> threadMap = new HashMap<>();
+		private final Drainer drainer;
+
+		public ConcurrentCompiledStream(BlobGraph blobGraph,
 				Buffer inputBuffer, Buffer outputBuffer) {
 			super(inputBuffer, outputBuffer);
-			this.blobList = blobList;
-			blobThreads = new ArrayList<>(this.blobList.size());
-			for (final Blob b : blobList) {
-				MyThread t = new MyThread(b.getCoreCode(0));
+			Set<Blob> blobSet = blobGraph.getBlobSet();
+			List<Thread> blobThreads = new ArrayList<>(blobSet.size());
+			for (final Blob b : blobSet) {
+				BlobThread t = new BlobThread(b.getCoreCode(0));
 				blobThreads.add(t);
 				threadMap.put(b, Collections.singleton(t));
 			}
-			callback = new DrainerCallback(blobList, threadMap);
-			start();
-		}
-
-		public static class MyThread extends Thread {
-			private volatile boolean stopping = false;
-			private final Runnable coreCode;
-			public MyThread(Runnable coreCode) {
-				this.coreCode = coreCode;
-			}
-
-			@Override
-			public void run() {
-				while (!stopping)
-					coreCode.run();
-			}
-
-			public void requestStop() {
-				stopping = true;
-			}
+			this.drainer = blobGraph.getDrainer();
+			start(blobThreads);
 		}
 
 		/*
@@ -212,7 +201,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		 * public. Currently start() is called inside the
 		 * ConcurrentCompiledStream's constructor.
 		 */
-		private void start() {
+		private void start(List<Thread> blobThreads) {
 			for (Thread t : blobThreads) {
 				t.start();
 			}
@@ -220,28 +209,18 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 		@Override
 		protected void doDrain() {
-			blobList.get(0).drain(callback);
+			drainer.startDraining(threadMap);
 		}
 
 		@Override
 		public boolean isDrained() {
-			boolean isDrained = true;
-			for (Thread t : blobThreads) {
-				if (t.isAlive()) {
-					// System.out.println(t.getName() +
-					// " is still draining...");
-					isDrained = false;
-				}
-			}
-			return isDrained;
+			return drainer.isDrained();
 		}
 	}
 
 	private static Configuration makeConfig() {
 		List<ChannelFactory> universe = Arrays
 				.<ChannelFactory> asList(new ConcurrentChannelFactory());
-		// TODO: add Config modification helpers, modify default interpreter
-		// blob config
 		Configuration config = Configuration
 				.builder()
 				.addParameter(
@@ -249,24 +228,5 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 								ChannelFactory.class, universe.get(0), universe))
 				.build();
 		return config;
-	}
-
-	private static final class ConcurrentChannelFactory implements
-			ChannelFactory {
-		@Override
-		public <E> Channel<E> makeChannel(Worker<?, E> upstream,
-				Worker<E, ?> downstream) {
-			return new ArrayChannel<E>();
-		}
-
-		@Override
-		public boolean equals(Object other) {
-			return other instanceof ConcurrentChannelFactory;
-		}
-
-		@Override
-		public int hashCode() {
-			return 0;
-		}
 	}
 }

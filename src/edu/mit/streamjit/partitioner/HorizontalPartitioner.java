@@ -16,46 +16,54 @@ import edu.mit.streamjit.impl.common.Workers;
 
 /**
  * {@link HorizontalPartitioner} cuts the stream graph with horizontal lines.
- *
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since Apr 2, 2013
  */
 public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 
 	/**
-	 * levelMap is a map that contains set of workers at each level in the stream graph. Key of levelMap is level. level starts from 0,
+	 * levelMap is a map that contains set of workers at each level in the
+	 * stream graph. Key of levelMap is level. level starts from 0,
 	 * (computer scientest's convention).
 	 */
 	private Map<Integer, Set<Worker<?, ?>>> levelMap;
 
-	public List<Set<Worker<?, ?>>> PatririonEquallyImplementation(OneToOneElement<I, O> streamGraph, Worker<I, ?> source,
+	public List<Set<Worker<?, ?>>> PatririonEquallyImplementation(
+			OneToOneElement<I, O> streamGraph, Worker<I, ?> source,
 			Worker<?, O> sink, int noOfPartitions) {
 
 		buildLevelMap(source);
-		int partitionSize = (int) Math.ceil((double) graphDepth / noOfPartitions);
+		int partitionSize = (int) Math.ceil((double) graphDepth
+				/ noOfPartitions);
 		List<Set<Worker<?, ?>>> partitioinList = new ArrayList<>();
 
 		int endLevel;
 		for (int i = 0; i < noOfPartitions; i++) {
-			endLevel = graphDepth > (i + 1) * partitionSize ? (i + 1) * partitionSize : graphDepth;
+			endLevel = graphDepth > (i + 1) * partitionSize ? (i + 1)
+					* partitionSize : graphDepth;
 			partitioinList.add(getWorkers(i * partitionSize, endLevel));
 		}
 		return partitioinList;
 	}
 
 	/**
-	 * Treat the streamgraph as a top to bottom hierarchy and returns workers at the given level range. return all workers those falls
+	 * Treat the streamgraph as a top to bottom hierarchy and returns workers at
+	 * the given level range. return all workers those falls
 	 * in "startLevel<= level < endLevel" range.
-	 *
+	 * 
 	 * @param startLevel
 	 * @param endLevel
-	 * @return set of workers those falls in "startLevel<= level < endLevel" range.
+	 * @return set of workers those falls in "startLevel<= level < endLevel"
+	 *         range.
 	 */
 	private Set<Worker<?, ?>> getWorkers(int startLevel, int endLevel) {
-		assert endLevel >= startLevel : String.format("endLevel = %d, startLevel = %d, endLevel is lesser than startLevel", endLevel,
-				startLevel);
-		assert endLevel <= graphDepth : String.format("endLevel = %d, graphDepth = %d, endLevel is greater than graphDepth", endLevel,
-				graphDepth);
+		assert endLevel >= startLevel : String
+				.format("endLevel = %d, startLevel = %d, endLevel is lesser than startLevel",
+						endLevel, startLevel);
+		assert endLevel <= graphDepth : String
+				.format("endLevel = %d, graphDepth = %d, endLevel is greater than graphDepth",
+						endLevel, graphDepth);
 
 		Set<Worker<?, ?>> workersSubset = new HashSet<>();
 
@@ -70,7 +78,7 @@ public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 
 	/**
 	 * Fill the levelMap by the workers in the streamgraph.
-	 *
+	 * 
 	 * @param source
 	 *            : Source of the stream graph
 	 */
@@ -88,11 +96,13 @@ public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 				levelMap.get(level).add(cur);
 				level++;
 			} else if (cur instanceof Splitter<?, ?>) {
-				buildlevelMapSplitJoin((Splitter<?, ?>) cur, level, this.levelMap);
+				buildlevelMapSplitJoin((Splitter<?, ?>) cur, level,
+						this.levelMap);
 				level += getDepthofSplitJoin((Splitter<?, ?>) cur);
 				cur = getJoiner((Splitter<?, ?>) cur);
 			} else {
-				throw new AssertionError("Either Filter or Splitter needs to come here in the while loop");
+				throw new AssertionError(
+						"Either Filter or Splitter needs to come here in the while loop");
 			}
 
 			if (Workers.getSuccessors(cur).isEmpty())
@@ -104,17 +114,20 @@ public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 	}
 
 	/**
-	 * This builds the level map for a splitjoin entity. This recursive function handles nested splitjoins as well. So just passing top
-	 * level splitjoin is far enough to build the level map. The function buildLevelMap may get help from this function when building
+	 * This builds the level map for a splitjoin entity. This recursive function
+	 * handles nested splitjoins as well. So just passing top
+	 * level splitjoin is far enough to build the level map. The function
+	 * buildLevelMap may get help from this function when building
 	 * the level map.
-	 *
+	 * 
 	 * @param splitter
 	 *            : Top level splitter.
 	 * @param spliterLevel
 	 *            : level where the splitter is located in the stream graph.
 	 * @param levelMap
 	 */
-	private void buildlevelMapSplitJoin(Splitter<?, ?> splitter, int spliterLevel, Map<Integer, Set<Worker<?, ?>>> levelMap) {
+	private void buildlevelMapSplitJoin(Splitter<?, ?> splitter,
+			int spliterLevel, Map<Integer, Set<Worker<?, ?>>> levelMap) {
 		assert graphDepth == levelMap.size();
 
 		int curLevel = spliterLevel;
@@ -133,9 +146,12 @@ public class HorizontalPartitioner<I, O> extends AbstractPartitioner<I, O> {
 					cur = Workers.getSuccessors(cur).get(0);
 					curLevel++;
 				} else if (cur instanceof Splitter<?, ?>) {
-					buildlevelMapSplitJoin((Splitter<?, ?>) cur, curLevel, levelMap);
+					buildlevelMapSplitJoin((Splitter<?, ?>) cur, curLevel,
+							levelMap);
 					curLevel += getDepthofSplitJoin((Splitter<?, ?>) cur);
-					cur = Workers.getSuccessors(getJoiner((Splitter<?, ?>) cur)).get(0);
+					cur = Workers
+							.getSuccessors(getJoiner((Splitter<?, ?>) cur))
+							.get(0);
 				} else if (cur instanceof Joiner<?, ?>) {
 					System.out.println("Joiner Encounted...Check the algo");
 				}

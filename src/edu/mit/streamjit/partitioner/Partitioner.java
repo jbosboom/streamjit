@@ -6,14 +6,15 @@ import java.util.Set;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
-import edu.mit.streamjit.impl.concurrent.BlobVisitor;
 
 /**
- * {@link Partitioner} is to partitions a stream graph (i.e. {@link OneToOneElement}) to multiple non overlapped chunks.
+ * Partitioner partitions a stream graph (i.e. {@link OneToOneElement}) in to
+ * multiple non overlapping chunks.
  * 
- * Note: In prior to get service from {@link BlobVisitor}, all workers in the stream graph should be connected by setting all
- * predecessors, successors. Consider using {@link ConnectWorkersVisitor} to set all predecessors, successors, relationships before
- * start partitioning
+ * Note: In prior to get service from a Partitioner, all workers in the stream
+ * graph should be connected by setting all predecessors, successors. Consider
+ * using {@link ConnectWorkersVisitor} to set all predecessors, successors,
+ * relationships before start partitioning.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Apr 2, 2013
@@ -21,9 +22,21 @@ import edu.mit.streamjit.impl.concurrent.BlobVisitor;
 public interface Partitioner<I, O> {
 
 	/**
-	 * partitions a stream graph (i.e. {@link OneToOneElement}) in to equal non overlapping chunks. If it is not possible to split the
-	 * stream graph in to exactly equal chunks, then the last partition can be the residue.
+	 * Partitions a stream graph (i.e. {@link OneToOneElement}) in to equal non
+	 * overlapping chunks. If it is not possible to split the stream graph in to
+	 * exactly equal chunks, then the last partition can be a residue.
+	 * 
+	 * @param streamGraph
+	 *            : Stream graph that needs to be partitioned.
+	 * @param source
+	 *            : Source {@link Worker} of the stream graph.
+	 * @param sink
+	 *            : Sink {@link Worker} of the stream graph.
+	 * @param noOfPartitions
+	 *            : Number of partitions needed.
+	 * @return A list of set of {@link Worker}s is returned.
 	 */
-	public List<Set<Worker<?, ?>>> PatririonEqually(OneToOneElement<I, O> streamGraph, Worker<I, ?> source, Worker<?, O> sink,
-			int noOfPartitions);
+	public List<Set<Worker<?, ?>>> partitionEqually(
+			OneToOneElement<I, O> streamGraph, Worker<I, ?> source,
+			Worker<?, O> sink, int noOfPartitions);
 }

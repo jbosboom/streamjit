@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
 import java.util.AbstractMap;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -9,17 +10,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
+import com.google.common.collect.ImmutableMap;
+
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.BlobFactory;
+import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
+import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
-import edu.mit.streamjit.impl.distributed.common.BoundaryInputChannel;
-import edu.mit.streamjit.impl.distributed.common.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.JsonString;
@@ -29,6 +35,7 @@ import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
 import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
+import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 
 /**
@@ -66,7 +73,7 @@ public class Controller {
 	 * need to push the {@link CompiledStream}.offer() data to the first
 	 * {@link Worker} of the streamgraph.
 	 */
-	private BoundaryOutputChannel<?> headChannel;
+	private BoundaryOutputChannel headChannel;
 
 	/**
 	 * A {@link BoundaryInputChannel} for the tail of the whole stream graph. If
@@ -74,7 +81,7 @@ public class Controller {
 	 * we need to pull the sink's output in to the {@link Controller} in order
 	 * to make {@link CompiledStream} .pull() to work.
 	 */
-	private BoundaryInputChannel<?> tailChannel;
+	private BoundaryInputChannel tailChannel;
 
 	public Controller() {
 		this.comManager = new CommunicationManagerImpl();
@@ -175,7 +182,8 @@ public class Controller {
 	public void setPartition(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
 			String toplevelclass, List<MessageConstraint> constraints,
-			Worker<?, ?> source, Worker<?, ?> sink) {
+			Worker<?, ?> source, Worker<?, ?> sink,
+			ImmutableMap<Token, Buffer> bufferMap) {
 
 		String jarFilePath = this.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
@@ -197,18 +205,26 @@ public class Controller {
 
 		if (getAssignedMachine(source, partitionsMachineMap) != controllerNodeID) {
 			Token t = Token.createOverallInputToken(source);
-			headChannel = new TCPOutputChannel<>(Workers.getInputChannels(
-					source).get(0), portIdMap.get(t));
+			if (!bufferMap.containsKey(t))
+				throw new IllegalArgumentException(
+						"No head buffer in the passed bufferMap.");
+
+			headChannel = new TCPOutputChannel(bufferMap.get(t),
+					portIdMap.get(t));
 		}
 
 		if (getAssignedMachine(sink, partitionsMachineMap) != controllerNodeID) {
 			Token t = Token.createOverallOutputToken(sink);
+			if (!bufferMap.containsKey(t))
+				throw new IllegalArgumentException(
+						"No tail buffer in the passed bufferMap.");
 
 			int nodeID = tokenMachineMap.get(t).getKey();
 			NodeInfo nodeInfo = nodeInfoMap.get(nodeID);
 			String ipAddress = nodeInfo.getIpAddress().getHostAddress();
-			tailChannel = new TCPInputChannel<>(Workers.getOutputChannels(sink)
-					.get(0), ipAddress, portIdMap.get(t));
+
+			tailChannel = new TCPInputChannel(bufferMap.get(t), ipAddress,
+					portIdMap.get(t));
 		}
 	}
 
@@ -216,8 +232,6 @@ public class Controller {
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
 			String jarFilePath, String topLevelClass, Worker<?, ?> source,
 			Worker<?, ?> sink) {
-
-		Configuration.Builder builder = Configuration.builder();
 
 		Map<Integer, Integer> coresPerMachine = new HashMap<>();
 		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine : partitionsMachineMap
@@ -228,7 +242,6 @@ public class Controller {
 		PartitionParameter.Builder partParam = PartitionParameter.builder(
 				GlobalConstants.PARTITION, coresPerMachine);
 
-		// TODO: need to add correct blob factory.
 		BlobFactory factory = new Interpreter.InterpreterBlobFactory();
 		partParam.addBlobFactory(factory);
 
@@ -241,20 +254,28 @@ public class Controller {
 			}
 		}
 
-		builder.addParameter(partParam.build());
-
 		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = new HashMap<>();
 		Map<Token, Integer> portIdMap = new HashMap<>();
 
 		buildTokenMap(partitionsMachineMap, tokenMachineMap, portIdMap, source,
 				sink);
 
-		builder.putExtraData(GlobalConstants.JARFILE_PATH, jarFilePath);
-		builder.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME,
-				topLevelClass);
-		builder.putExtraData(GlobalConstants.NODE_INFO_MAP, nodeInfoMap);
-		builder.putExtraData(GlobalConstants.TOKEN_MACHINE_MAP, tokenMachineMap);
-		builder.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
+		List<ChannelFactory> universe = Arrays
+				.<ChannelFactory> asList(new ConcurrentChannelFactory());
+		SwitchParameter<ChannelFactory> cfParameter = new SwitchParameter<ChannelFactory>(
+				"channelFactory", ChannelFactory.class, universe.get(0),
+				universe);
+
+		Configuration.Builder builder = Configuration.builder();
+		builder.addParameter(partParam.build())
+				.addParameter(cfParameter)
+				.putExtraData(GlobalConstants.JARFILE_PATH, jarFilePath)
+				.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME,
+						topLevelClass)
+				.putExtraData(GlobalConstants.NODE_INFO_MAP, nodeInfoMap)
+				.putExtraData(GlobalConstants.TOKEN_MACHINE_MAP,
+						tokenMachineMap)
+				.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
 
 		return builder.build();
 	}
