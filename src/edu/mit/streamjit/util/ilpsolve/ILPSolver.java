@@ -86,6 +86,14 @@ public final class ILPSolver {
 			if (lp == null || row == null || column == null)
 				throw new OutOfMemoryError();
 
+			boolean assertionsEnabled = false;
+			assert assertionsEnabled = true; //Intentional side effect.
+			if (assertionsEnabled) {
+				setVerbose(lp, FULL);
+			} else {
+				setVerbose(lp, IMPORTANT);
+			}
+
 			setAddRowmode(lp, (byte)1);
 			storeCoefficientsInRow(objFn.expr, row);
 			setObjFn(lp, row);

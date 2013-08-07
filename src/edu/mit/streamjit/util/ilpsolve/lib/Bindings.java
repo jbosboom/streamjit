@@ -241,4 +241,32 @@ public final class Bindings {
 	@Convention(Convention.Style.StdCall)
 	@Name("get_variables")
 	protected native static byte getVariables(@Ptr long lp, @Ptr long var);
+
+	/** <i>native declaration : lp_lib.h</i> */
+	public static final int NEUTRAL = (int)0;
+	/** <i>native declaration : lp_lib.h</i> */
+	public static final int CRITICAL = (int)1;
+	/** <i>native declaration : lp_lib.h</i> */
+	public static final int SEVERE = (int)2;
+	/** <i>native declaration : lp_lib.h</i> */
+	public static final int IMPORTANT = (int)3;
+	/** <i>native declaration : lp_lib.h</i> */
+	public static final int NORMAL = (int)4;
+	/** <i>native declaration : lp_lib.h</i> */
+	public static final int DETAILED = (int)5;
+	/** <i>native declaration : lp_lib.h</i> */
+	public static final int FULL = (int)6;
+
+	/**
+	 * Original signature : <code>void set_verbose(lprec*, int)</code><br>
+	 * <i>native declaration : lp_lib.h:1655</i>
+	 */
+	@Convention(Convention.Style.StdCall)
+	@Name("set_verbose")
+	public static void setVerbose(Pointer<lprec > lp, int verbose) {
+		setVerbose(Pointer.getPeer(lp), verbose);
+	}
+	@Convention(Convention.Style.StdCall)
+	@Name("set_verbose")
+	protected native static void setVerbose(@Ptr long lp, int verbose);
 }
