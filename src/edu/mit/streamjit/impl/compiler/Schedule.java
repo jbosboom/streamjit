@@ -27,7 +27,7 @@ public final class Schedule<T> {
 		throw new UnsupportedOperationException("TODO: the actual scheduling");
 	}
 
-	public Builder<T> builder() {
+	public static <T> Builder<T> builder() {
 		return new Builder<>();
 	}
 
