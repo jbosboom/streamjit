@@ -184,4 +184,8 @@ public final class Schedule<T> {
 			this.bufferDelta = bufferDelta;
 		}
 	}
+
+	public ImmutableMap<T, Integer> getSchedule() {
+		return schedule;
+	}
 }
