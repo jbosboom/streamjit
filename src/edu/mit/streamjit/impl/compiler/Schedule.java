@@ -188,4 +188,21 @@ public final class Schedule<T> {
 	public ImmutableMap<T, Integer> getSchedule() {
 		return schedule;
 	}
+
+	public int getExecutions(T thing) {
+		return schedule.get(thing);
+	}
+
+	public int getThroughput(T upstream, T downstream) {
+		return getExecutions(upstream) * constraints.get(upstream, downstream).pushRate;
+	}
+
+	/**
+	 * Returns the amount of buffering required on the edge between the given
+	 * upstream and downstream things for them to execute without
+	 * synchronization.
+	 */
+	public int getSteadyStateBufferSize(T upstream, T downstream) {
+		return getThroughput(upstream, downstream) + constraints.get(upstream, downstream).excessPeeks;
+	}
 }
