@@ -2,7 +2,6 @@ package edu.mit.streamjit.util.ilpsolve.lib;
 
 import org.bridj.BridJ;
 import org.bridj.CRuntime;
-import org.bridj.Callback;
 import org.bridj.Platform;
 import org.bridj.Pointer;
 import org.bridj.ann.Convention;
@@ -283,22 +282,4 @@ public final class Bindings {
 	@Convention(Convention.Style.StdCall)
 	@Name("set_outputfile")
 	protected native static byte setOutputfile(@Ptr long lp, @Ptr long filename);
-
-	/** <i>native declaration : lp_lib.h:478</i> */
-	public static abstract class LogFunction extends Callback<LogFunction > {
-		@Convention(Convention.Style.StdCall)
-		abstract public void apply(Pointer<lprec > lp, Pointer<? > userhandle, Pointer<Byte > buf);
-	};
-	/**
-	 * Original signature : <code>void put_logfunc(lprec*, LogFunction, void*)</code><br>
-	 * <i>native declaration : lp_lib.h:1591</i>
-	 */
-	@Convention(Convention.Style.StdCall)
-	@Name("put_logfunc")
-	public static void putLogfunc(Pointer<lprec > lp, LogFunction newlog, Pointer<? > loghandle) {
-		putLogfunc(Pointer.getPeer(lp), newlog, Pointer.getPeer(loghandle));
-	}
-	@Convention(Convention.Style.StdCall)
-	@Name("put_logfunc")
-	protected native static void putLogfunc(@Ptr long lp, LogFunction newlog, @Ptr long loghandle);
 }
