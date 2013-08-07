@@ -95,7 +95,7 @@ public final class Compiler {
 	 */
 	private final Map<Worker<?, ?>, StreamNode> streamNodes = new IdentityHashMap<>();
 	private final Map<Worker<?, ?>, Method> workerWorkMethods = new IdentityHashMap<>();
-	private ImmutableMap<StreamNode, Integer> schedule;
+	private Schedule<StreamNode> schedule;
 	private ImmutableMap<Worker<?, ?>, Integer> initSchedule;
 	private final String packagePrefix;
 	private final Module module = new Module();
@@ -277,11 +277,11 @@ public final class Compiler {
 			int chanIdx = info.getDownstreamChannelIndex();
 			int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
 			excessPeeks = Math.max(peek - pop, 0);
-			capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.get(downstreamNode) * multiplier * pop + excessPeeks;
+			capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.getExecutions(downstreamNode) * multiplier * pop + excessPeeks;
 			initialSize = capacity;
 		} else { //downstream == null
 			int push = upstream.getPushRates().get(info.getUpstreamChannelIndex()).max();
-			capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.get(upstreamNode) * multiplier * push;
+			capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.getExecutions(upstreamNode) * multiplier * push;
 			initialSize = 0;
 			excessPeeks = 0;
 		}
@@ -293,6 +293,9 @@ public final class Compiler {
 	 * Computes the initialization schedule using the scheduler.
 	 */
 	private void computeInitSchedule() {
+//		Schedule.Builder<Worker<?, ?>> builder = Schedule.builder();
+//		builder.addAll(workers);
+//		for (IOInfo info : IOInfo.internalEdges
 		if (workers.size() == 1)
 			initSchedule = (ImmutableMap<Worker<?, ?>, Integer>)ImmutableMap.of(workers.iterator().next(), 0);
 		else {
@@ -486,7 +489,7 @@ public final class Compiler {
 				}
 
 		for (StreamNode sn : nodes) {
-			Integer iterations = schedule.get(sn);
+			Integer iterations = schedule.getExecutions(sn);
 			//TODO: at some point, this division should be config-controlled, so
 			//we can balance well in the presence of stateful (unparallelizable)
 			//filters.  For now just divide evenly.
@@ -599,7 +602,7 @@ public final class Compiler {
 		scheduleBuilder.addAll(nodes);
 		for (StreamNode n : nodes)
 			n.constrainExternalSchedule(scheduleBuilder);
-		schedule = scheduleBuilder.build().getSchedule();
+		schedule = scheduleBuilder.build();
 	}
 
 	private final class StreamNode {
