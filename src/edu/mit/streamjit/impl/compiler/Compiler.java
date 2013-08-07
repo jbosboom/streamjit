@@ -595,15 +595,11 @@ public final class Compiler {
 
 	private void externalSchedule() {
 		ImmutableSet<StreamNode> nodes = ImmutableSet.copyOf(streamNodes.values());
-		if (nodes.size() == 1)
-			schedule = ImmutableMap.of(nodes.iterator().next(), 1);
-		else {
-			ImmutableList.Builder<Scheduler.Channel<StreamNode>> channels = ImmutableList.<Scheduler.Channel<StreamNode>>builder();
-			for (StreamNode a : nodes)
-				for (StreamNode b : nodes)
-					channels.addAll(a.findChannels(b));
-			schedule = Scheduler.schedule(channels.build());
-		}
+		Schedule.Builder<StreamNode> scheduleBuilder = Schedule.builder();
+		scheduleBuilder.addAll(nodes);
+		for (StreamNode n : nodes)
+			n.constrainExternalSchedule(scheduleBuilder);
+		schedule = scheduleBuilder.build().getSchedule();
 	}
 
 	private final class StreamNode {
@@ -688,6 +684,26 @@ public final class Compiler {
 				}
 			}
 			this.execsPerNodeExec = Scheduler.schedule(channels);
+		}
+
+		/**
+		 * Adds constraints for each output edge of this StreamNode, with rates
+		 * corrected for the internal schedule for both nodes.  (Only output
+		 * edges so that we don't get duplicate constraints.)
+		 */
+		public void constrainExternalSchedule(Schedule.Builder<StreamNode> scheduleBuilder) {
+			for (IOInfo info : ioinfo) {
+				if (!info.isOutput() || info.token().isOverallOutput())
+					continue;
+				StreamNode other = streamNodes.get(info.downstream());
+				int upstreamAdjust = execsPerNodeExec.get(info.upstream());
+				int downstreamAdjust = other.execsPerNodeExec.get(info.downstream());
+				scheduleBuilder.connect(this, other)
+						.push(info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max() * upstreamAdjust)
+						.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max() * downstreamAdjust)
+						.peek(info.downstream().getPeekRates().get(info.getDownstreamChannelIndex()).max() * downstreamAdjust)
+						.bufferExactly(0);
+			}
 		}
 
 		/**
