@@ -22,6 +22,13 @@ public final class ILPSolver {
 	private final List<Constraint> constraints = new ArrayList<>();
 	private ObjectiveFunction objFn = null;
 	private boolean solved = false;
+	private final StringBuilder log = new StringBuilder();
+	private final LogFunction logFn = new LogFunction() {
+		@Override
+		public void apply(Pointer<lprec> lp, Pointer<?> userhandle, Pointer<Byte> buf) {
+			log.append(buf.getCString());
+		}
+	};
 	public ILPSolver() {}
 
 	public Variable newVariable() {
@@ -71,6 +78,10 @@ public final class ILPSolver {
 		return objFn;
 	}
 
+	public String output() {
+		return log.toString();
+	}
+
 	public void solve() {
 		checkState(!solved, "system already solved");
 		checkState(objFn != null, "objective function not set");
@@ -98,6 +109,7 @@ public final class ILPSolver {
 			} else {
 				setVerbose(lp, IMPORTANT);
 			}
+			putLogfunc(lp, logFn, Pointer.NULL);
 
 			setAddRowmode(lp, (byte)1);
 			storeCoefficientsInRow(objFn.expr, row);
