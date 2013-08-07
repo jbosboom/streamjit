@@ -6,7 +6,10 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Table;
+import edu.mit.streamjit.util.ilpsolve.ILPSolver;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -24,7 +27,53 @@ public final class Schedule<T> {
 		this.schedule = schedule;
 	}
 	private static <T> Schedule<T> schedule(ImmutableSet<T> things, ImmutableTable<T, T, Constraint<T>> constraints) {
-		throw new UnsupportedOperationException("TODO: the actual scheduling");
+		ILPSolver solver = new ILPSolver();
+		//There's one variable for each thing, which represents the number of
+		//times it fires.  This uses the default bounds.  (TODO: perhaps a bound
+		//at 1 if we're steady-state scheduling, maybe by marking things as
+		//must-fire and marking the bottommost thing?)
+		ImmutableMap.Builder<T, ILPSolver.Variable> variablesBuilder = ImmutableMap.builder();
+		for (T thing : things)
+			variablesBuilder.put(thing, solver.newVariable(thing.toString()));
+		ImmutableMap<T, ILPSolver.Variable> variables = variablesBuilder.build();
+
+		for (Constraint<T> constraint : constraints.values()) {
+			ILPSolver.LinearExpr expr = variables.get(constraint.upstream).asLinearExpr(constraint.pushRate)
+					.minus(constraint.popRate, variables.get(constraint.downstream));
+			switch (constraint.condition) {
+				case LESS_THAN_EQUAL:
+					solver.constrainAtMost(expr, constraint.bufferDelta);
+					break;
+				case EQUAL:
+					solver.constrainEquals(expr, constraint.bufferDelta);
+					break;
+				case GREATER_THAN_EQUAL:
+					solver.constrainAtLeast(expr, constraint.bufferDelta);
+					break;
+				default:
+					throw new AssertionError(constraint.condition);
+			}
+		}
+
+		//Add a special constraint to ensure at least one filter fires.
+		//TODO: in init schedules we might not always need this...
+		Iterator<ILPSolver.Variable> variablesIter = variables.values().iterator();
+		ILPSolver.LinearExpr totalFirings = variablesIter.next().asLinearExpr(1);
+		while (variablesIter.hasNext())
+			totalFirings = totalFirings.plus(1, variablesIter.next());
+		solver.constrainAtLeast(totalFirings, 1);
+
+		//For now, just minimize the total filter firings.
+		//TODO: I think we'll want to minimize buffer sizes, or make some
+		//configurable (autotunable) tradeoff.
+		ILPSolver.ObjectiveFunction objFn = solver.minimize(totalFirings);
+
+		solver.solve();
+
+		ImmutableMap.Builder<T, Integer> schedule = ImmutableMap.builder();
+		for (Map.Entry<T, ILPSolver.Variable> e : variables.entrySet())
+			schedule.put(e.getKey(), e.getValue().value());
+		return new Schedule<>(things, constraints, schedule.build());
 	}
 
 	public static <T> Builder<T> builder() {
