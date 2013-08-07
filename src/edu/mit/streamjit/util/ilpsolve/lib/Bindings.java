@@ -269,4 +269,17 @@ public final class Bindings {
 	@Convention(Convention.Style.StdCall)
 	@Name("set_verbose")
 	protected native static void setVerbose(@Ptr long lp, int verbose);
+
+	/**
+	 * Original signature : <code>char set_outputfile(lprec*, char*)</code><br>
+	 * <i>native declaration : lp_lib.h:1653</i>
+	 */
+	@Convention(Convention.Style.StdCall)
+	@Name("set_outputfile")
+	public static byte setOutputfile(Pointer<lprec > lp, Pointer<Byte > filename) {
+		return setOutputfile(Pointer.getPeer(lp), Pointer.getPeer(filename));
+	}
+	@Convention(Convention.Style.StdCall)
+	@Name("set_outputfile")
+	protected native static byte setOutputfile(@Ptr long lp, @Ptr long filename);
 }

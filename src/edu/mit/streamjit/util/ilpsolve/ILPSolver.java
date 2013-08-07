@@ -86,6 +86,11 @@ public final class ILPSolver {
 			if (lp == null || row == null || column == null)
 				throw new OutOfMemoryError();
 
+			//Don't print to the console.
+			Pointer<Byte> emptyString = Pointer.pointerToCString("");
+			setOutputfile(lp, emptyString);
+			emptyString.release();
+
 			boolean assertionsEnabled = false;
 			assert assertionsEnabled = true; //Intentional side effect.
 			if (assertionsEnabled) {
