@@ -271,22 +271,28 @@ public final class Compiler {
 			if (field != null)
 				new Field(objArrayTy, field, EnumSet.of(Modifier.PUBLIC, Modifier.STATIC), blobKlass);
 
-		int capacity, initialSize, excessPeeks;
-		if (downstream != null) {
-			//If upstream is null, it's the global input, channel 0.
+		int capacity, initialSize, unconsumedItems;
+		if (info.isInternal()) {
+			assert upstreamNode != null && downstreamNode != null;
+			assert !upstreamNode.equals(downstreamNode) : "shouldn't be buffering on intra-node edge";
+			capacity = initialSize = initSchedule.getBufferDelta(upstream, downstream);
+			unconsumedItems = capacity - schedule.getThroughput(upstreamNode, downstreamNode);
+			assert unconsumedItems >= 0;
+		} else if (info.isInput()) {
+			assert downstream != null;
 			int chanIdx = info.getDownstreamChannelIndex();
 			int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
-			excessPeeks = Math.max(peek - pop, 0);
-			capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.getExecutions(downstreamNode)  * pop + excessPeeks;
-			initialSize = capacity;
-		} else { //downstream == null
+			unconsumedItems = Math.max(peek - pop, 0);
+			capacity = initialSize = downstreamNode.execsPerNodeExec.get(downstream) * schedule.getExecutions(downstreamNode)  * pop + unconsumedItems;
+		} else if (info.isOutput()) {
 			int push = upstream.getPushRates().get(info.getUpstreamChannelIndex()).max();
 			capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.getExecutions(upstreamNode)  * push;
 			initialSize = 0;
-			excessPeeks = 0;
-		}
+			unconsumedItems = 0;
+		} else
+			throw new AssertionError(info);
 
-		return new BufferData(token, readerBufferFieldName, writerBufferFieldName, capacity, initialSize, excessPeeks);
+		return new BufferData(token, readerBufferFieldName, writerBufferFieldName, capacity, initialSize, unconsumedItems);
 	}
 
 	/**
