@@ -95,8 +95,8 @@ public final class Compiler {
 	 */
 	private final Map<Worker<?, ?>, StreamNode> streamNodes = new IdentityHashMap<>();
 	private final Map<Worker<?, ?>, Method> workerWorkMethods = new IdentityHashMap<>();
-	private ImmutableMap<StreamNode, Integer> schedule;
-	private ImmutableMap<Worker<?, ?>, Integer> initSchedule;
+	private Schedule<StreamNode> schedule;
+	private Schedule<Worker<?, ?>> initSchedule;
 	private final String packagePrefix;
 	private final Module module = new Module();
 	private final Klass blobKlass;
@@ -181,9 +181,9 @@ public final class Compiler {
 		for (StreamNode n : ImmutableSet.copyOf(streamNodes.values()))
 			n.internalSchedule();
 		externalSchedule();
+		computeInitSchedule();
 		allocateCores();
 		declareBuffers();
-		computeInitSchedule();
 		//We generate a work method for each worker (which may result in
 		//duplicates, but is required in general to handle worker fields), then
 		//generate core code that stitches them together and does any
@@ -271,39 +271,53 @@ public final class Compiler {
 			if (field != null)
 				new Field(objArrayTy, field, EnumSet.of(Modifier.PUBLIC, Modifier.STATIC), blobKlass);
 
-		int capacity, initialSize, excessPeeks;
-		if (downstream != null) {
-			//If upstream is null, it's the global input, channel 0.
+		int capacity, initialSize, unconsumedItems;
+		if (info.isInternal()) {
+			assert upstreamNode != null && downstreamNode != null;
+			assert !upstreamNode.equals(downstreamNode) : "shouldn't be buffering on intra-node edge";
+			capacity = initialSize = initSchedule.getBufferDelta(upstream, downstream);
+			unconsumedItems = capacity - schedule.getThroughput(upstreamNode, downstreamNode);
+			assert unconsumedItems >= 0;
+		} else if (info.isInput()) {
+			assert downstream != null;
 			int chanIdx = info.getDownstreamChannelIndex();
 			int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
-			excessPeeks = Math.max(peek - pop, 0);
-			capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.get(downstreamNode) * multiplier * pop + excessPeeks;
-			initialSize = capacity;
-		} else { //downstream == null
+			unconsumedItems = Math.max(peek - pop, 0);
+			capacity = initialSize = downstreamNode.internalSchedule.getExecutions(downstream) * schedule.getExecutions(downstreamNode)  * pop + unconsumedItems;
+		} else if (info.isOutput()) {
 			int push = upstream.getPushRates().get(info.getUpstreamChannelIndex()).max();
-			capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.get(upstreamNode) * multiplier * push;
+			capacity = upstreamNode.internalSchedule.getExecutions(upstream) * schedule.getExecutions(upstreamNode)  * push;
 			initialSize = 0;
-			excessPeeks = 0;
-		}
+			unconsumedItems = 0;
+		} else
+			throw new AssertionError(info);
 
-		return new BufferData(token, readerBufferFieldName, writerBufferFieldName, capacity, initialSize, excessPeeks);
+		return new BufferData(token, readerBufferFieldName, writerBufferFieldName, capacity, initialSize, unconsumedItems);
 	}
 
 	/**
 	 * Computes the initialization schedule using the scheduler.
 	 */
 	private void computeInitSchedule() {
-		if (workers.size() == 1)
-			initSchedule = (ImmutableMap<Worker<?, ?>, Integer>)ImmutableMap.of(workers.iterator().next(), 0);
-		else {
-			ImmutableList.Builder<Scheduler.Channel<Worker<?, ?>>> builder = ImmutableList.<Scheduler.Channel<Worker<?, ?>>>builder();
-			for (IOInfo info : IOInfo.internalEdges(workers))
-				builder.add(new Scheduler.Channel<>(info.upstream(), info.downstream(),
-						info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max(),
-						info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max(),
-						buffers.get(info.token()).initialSize));
-			initSchedule = Scheduler.schedule(builder.build());
+		Schedule.Builder<Worker<?, ?>> builder = Schedule.builder();
+		builder.addAll(workers);
+		for (IOInfo info : IOInfo.internalEdges(workers)) {
+			Schedule.Builder<Worker<?, ?>>.ConstraintBuilder constraint =
+					builder.connect(info.upstream(), info.downstream())
+					.push(info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max())
+					.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max())
+					.peek(info.downstream().getPeekRates().get(info.getDownstreamChannelIndex()).max());
+			//Inter-node edges require at least a steady-state's worth of
+			//buffering (to avoid synchronization); intra-node edges cannot have
+			//any buffering at all.
+			StreamNode upstreamNode = streamNodes.get(info.upstream());
+			StreamNode downstreamNode = streamNodes.get(info.downstream());
+			if (!upstreamNode.equals(downstreamNode))
+				constraint.bufferAtLeast(schedule.getSteadyStateBufferSize(upstreamNode, downstreamNode));
+			else
+				constraint.bufferExactly(0);
 		}
+		initSchedule = builder.build();
 	}
 
 	/**
@@ -486,7 +500,7 @@ public final class Compiler {
 				}
 
 		for (StreamNode sn : nodes) {
-			Integer iterations = schedule.get(sn);
+			Integer iterations = schedule.getExecutions(sn);
 			//TODO: at some point, this division should be config-controlled, so
 			//we can balance well in the presence of stateful (unparallelizable)
 			//filters.  For now just divide evenly.
@@ -577,7 +591,7 @@ public final class Compiler {
 		try {
 			initFieldHelper(mcl.loadClass(fieldHelperKlass.getName()));
 			Class<?> blobClass = mcl.loadClass(blobKlass.getName());
-			return new CompilerBlobHost(workers, config, blobClass, ImmutableList.copyOf(buffers.values()), initSchedule);
+			return new CompilerBlobHost(workers, config, blobClass, ImmutableList.copyOf(buffers.values()), initSchedule.getSchedule());
 		} catch (ClassNotFoundException ex) {
 			throw new AssertionError(ex);
 		}
@@ -595,15 +609,12 @@ public final class Compiler {
 
 	private void externalSchedule() {
 		ImmutableSet<StreamNode> nodes = ImmutableSet.copyOf(streamNodes.values());
-		if (nodes.size() == 1)
-			schedule = ImmutableMap.of(nodes.iterator().next(), 1);
-		else {
-			ImmutableList.Builder<Scheduler.Channel<StreamNode>> channels = ImmutableList.<Scheduler.Channel<StreamNode>>builder();
-			for (StreamNode a : nodes)
-				for (StreamNode b : nodes)
-					channels.addAll(a.findChannels(b));
-			schedule = Scheduler.schedule(channels.build());
-		}
+		Schedule.Builder<StreamNode> scheduleBuilder = Schedule.builder();
+		scheduleBuilder.addAll(nodes);
+		for (StreamNode n : nodes)
+			n.constrainExternalSchedule(scheduleBuilder);
+		scheduleBuilder.multiply(multiplier);
+		schedule = scheduleBuilder.build();
 	}
 
 	private final class StreamNode {
@@ -615,7 +626,7 @@ public final class Compiler {
 		 * The number of individual worker executions per steady-state execution
 		 * of the StreamNode.
 		 */
-		private ImmutableMap<Worker<?, ?>, Integer> execsPerNodeExec;
+		private Schedule<Worker<?, ?>> internalSchedule;
 		/**
 		 * This node's work method.  May be null if the method hasn't been
 		 * created yet.  TODO: if we put multiplicities inside work methods,
@@ -668,46 +679,35 @@ public final class Compiler {
 		 * for each execution of the node.
 		 */
 		public void internalSchedule() {
-			if (workers.size() == 1) {
-				this.execsPerNodeExec = ImmutableMap.<Worker<?, ?>, Integer>builder().put(workers.iterator().next(), 1).build();
-				return;
-			}
-
-			//Find all the channels within this StreamNode.
-			List<Scheduler.Channel<Worker<?, ?>>> channels = new ArrayList<>();
-			for (Worker<?, ?> w : workers) {
-				@SuppressWarnings("unchecked")
-				List<Worker<?, ?>> succs = (List<Worker<?, ?>>)Workers.getSuccessors(w);
-				for (int i = 0; i < succs.size(); ++i) {
-					Worker<?, ?> s = succs.get(i);
-					if (workers.contains(s)) {
-						int j = Workers.getPredecessors(s).indexOf(w);
-						assert j != -1;
-						channels.add(new Scheduler.Channel<>(w, s, w.getPushRates().get(i).max(), s.getPopRates().get(j).max()));
-					}
-				}
-			}
-			this.execsPerNodeExec = Scheduler.schedule(channels);
+			Schedule.Builder<Worker<?, ?>> scheduleBuilder = Schedule.builder();
+			scheduleBuilder.addAll(workers);
+			for (IOInfo info : IOInfo.internalEdges(workers))
+				scheduleBuilder.connect(info.upstream(), info.downstream())
+						.push(info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max())
+						.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max())
+						.peek(info.downstream().getPeekRates().get(info.getDownstreamChannelIndex()).max())
+						.bufferExactly(0);
+			this.internalSchedule = scheduleBuilder.build();
 		}
 
 		/**
-		 * Returns a list of scheduler channels from this node to the given
-		 * node, with rates corrected for the internal schedule for each node.
+		 * Adds constraints for each output edge of this StreamNode, with rates
+		 * corrected for the internal schedule for both nodes.  (Only output
+		 * edges so that we don't get duplicate constraints.)
 		 */
-		public List<Scheduler.Channel<StreamNode>> findChannels(StreamNode other) {
-			ImmutableList.Builder<Scheduler.Channel<StreamNode>> retval = ImmutableList.<Scheduler.Channel<StreamNode>>builder();
+		public void constrainExternalSchedule(Schedule.Builder<StreamNode> scheduleBuilder) {
 			for (IOInfo info : ioinfo) {
-				if (info.isOutput() && other.workers.contains(info.downstream())) {
-					int i = Workers.getSuccessors(info.upstream()).indexOf(info.downstream());
-					assert i != -1;
-					int j = Workers.getPredecessors(info.downstream()).indexOf(info.upstream());
-					assert j != -1;
-					retval.add(new Scheduler.Channel<>(this, other,
-							info.upstream().getPushRates().get(i).max() * execsPerNodeExec.get(info.upstream()),
-							info.downstream().getPopRates().get(j).max() * other.execsPerNodeExec.get(info.downstream())));
-				}
+				if (!info.isOutput() || info.token().isOverallOutput())
+					continue;
+				StreamNode other = streamNodes.get(info.downstream());
+				int upstreamAdjust = internalSchedule.getExecutions(info.upstream());
+				int downstreamAdjust = other.internalSchedule.getExecutions(info.downstream());
+				scheduleBuilder.connect(this, other)
+						.push(info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max() * upstreamAdjust)
+						.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max() * downstreamAdjust)
+						.peek(info.downstream().getPeekRates().get(info.getDownstreamChannelIndex()).max() * downstreamAdjust)
+						.bufferExactly(0);
 			}
-			return retval.build();
 		}
 
 		private void buildWorkerData(Worker<?, ?> worker) {
@@ -765,7 +765,7 @@ public final class Compiler {
 				List<Value> ioffsets = new ArrayList<>();
 				if (preds.isEmpty()) {
 					ichannels = ImmutableList.<Value>of(getReaderBuffer(Token.createOverallInputToken(w)));
-					int r = w.getPopRates().get(0).max() * execsPerNodeExec.get(w);
+					int r = w.getPopRates().get(0).max() * internalSchedule.getExecutions(w);
 					BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 					offset.setName("ioffset0");
 					entryBlock.instructions().add(offset);
@@ -783,7 +783,7 @@ public final class Compiler {
 							ioffsets.add(module.constants().getConstant(0));
 						} else {
 							ichannels.add(getReaderBuffer(t));
-							int r = w.getPopRates().get(chanIdx).max() * execsPerNodeExec.get(w);
+							int r = w.getPopRates().get(chanIdx).max() * internalSchedule.getExecutions(w);
 							BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 							offset.setName("ioffset"+chanIdx);
 							entryBlock.instructions().add(offset);
@@ -808,7 +808,7 @@ public final class Compiler {
 				List<Value> ooffsets = new ArrayList<>();
 				if (succs.isEmpty()) {
 					ochannels = ImmutableList.<Value>of(getWriterBuffer(Token.createOverallOutputToken(w)));
-					int r = w.getPushRates().get(0).max() * execsPerNodeExec.get(w);
+					int r = w.getPushRates().get(0).max() * internalSchedule.getExecutions(w);
 					BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 					offset.setName("ooffset0");
 					entryBlock.instructions().add(offset);
@@ -826,7 +826,7 @@ public final class Compiler {
 							ooffsets.add(module.constants().getConstant(0));
 						} else {
 							ochannels.add(getWriterBuffer(t));
-							int r = w.getPushRates().get(chanIdx).max() * execsPerNodeExec.get(w);
+							int r = w.getPushRates().get(chanIdx).max() * internalSchedule.getExecutions(w);
 							BinaryInst offset0 = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 							//Leave room to copy the excess peeks in front when
 							//it's time to flip.
@@ -849,7 +849,7 @@ public final class Compiler {
 				oincrementArray.first.setName("oincrements_"+wid);
 				entryBlock.instructions().addAll(oincrementArray.second);
 
-				for (int i = 0; i < execsPerNodeExec.get(w); ++i) {
+				for (int i = 0; i < internalSchedule.getExecutions(w); ++i) {
 					CallInst ci = new CallInst(workerWorkMethods.get(w), ichannelArray.first, ioffsetArray.first, iincrementArray.first, ochannelArray.first, ooffsetArray.first, oincrementArray.first);
 					entryBlock.instructions().add(ci);
 				}

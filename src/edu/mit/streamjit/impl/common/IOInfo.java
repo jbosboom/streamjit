@@ -191,6 +191,10 @@ public class IOInfo {
 		return connectionKind.equals(ConnectionKind.OUTPUT);
 	}
 
+	public boolean isInternal() {
+		return connectionKind.equals(ConnectionKind.INTERNAL);
+	}
+
 	@Override
 	public String toString() {
 		return String.format("%s %s: %s -> %s, %s",
