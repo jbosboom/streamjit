@@ -96,7 +96,7 @@ public final class Compiler {
 	private final Map<Worker<?, ?>, StreamNode> streamNodes = new IdentityHashMap<>();
 	private final Map<Worker<?, ?>, Method> workerWorkMethods = new IdentityHashMap<>();
 	private Schedule<StreamNode> schedule;
-	private ImmutableMap<Worker<?, ?>, Integer> initSchedule;
+	private Schedule<Worker<?, ?>> initSchedule;
 	private final String packagePrefix;
 	private final Module module = new Module();
 	private final Klass blobKlass;
@@ -293,20 +293,25 @@ public final class Compiler {
 	 * Computes the initialization schedule using the scheduler.
 	 */
 	private void computeInitSchedule() {
-//		Schedule.Builder<Worker<?, ?>> builder = Schedule.builder();
-//		builder.addAll(workers);
-//		for (IOInfo info : IOInfo.internalEdges
-		if (workers.size() == 1)
-			initSchedule = (ImmutableMap<Worker<?, ?>, Integer>)ImmutableMap.of(workers.iterator().next(), 0);
-		else {
-			ImmutableList.Builder<Scheduler.Channel<Worker<?, ?>>> builder = ImmutableList.<Scheduler.Channel<Worker<?, ?>>>builder();
-			for (IOInfo info : IOInfo.internalEdges(workers))
-				builder.add(new Scheduler.Channel<>(info.upstream(), info.downstream(),
-						info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max(),
-						info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max(),
-						buffers.get(info.token()).initialSize));
-			initSchedule = Scheduler.schedule(builder.build());
+		Schedule.Builder<Worker<?, ?>> builder = Schedule.builder();
+		builder.addAll(workers);
+		for (IOInfo info : IOInfo.internalEdges(workers)) {
+			Schedule.Builder<Worker<?, ?>>.ConstraintBuilder constraint =
+					builder.connect(info.upstream(), info.downstream())
+					.push(info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max())
+					.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max())
+					.peek(info.downstream().getPeekRates().get(info.getDownstreamChannelIndex()).max());
+			//Inter-node edges require at least a steady-state's worth of
+			//buffering (to avoid synchronization); intra-node edges cannot have
+			//any buffering at all.
+			StreamNode upstreamNode = streamNodes.get(info.upstream());
+			StreamNode downstreamNode = streamNodes.get(info.downstream());
+			if (!upstreamNode.equals(downstreamNode))
+				constraint.bufferAtLeast(schedule.getSteadyStateBufferSize(upstreamNode, downstreamNode));
+			else
+				constraint.bufferExactly(0);
 		}
+		initSchedule = builder.build();
 	}
 
 	/**
@@ -580,7 +585,7 @@ public final class Compiler {
 		try {
 			initFieldHelper(mcl.loadClass(fieldHelperKlass.getName()));
 			Class<?> blobClass = mcl.loadClass(blobKlass.getName());
-			return new CompilerBlobHost(workers, config, blobClass, ImmutableList.copyOf(buffers.values()), initSchedule);
+			return new CompilerBlobHost(workers, config, blobClass, ImmutableList.copyOf(buffers.values()), initSchedule.getSchedule());
 		} catch (ClassNotFoundException ex) {
 			throw new AssertionError(ex);
 		}
