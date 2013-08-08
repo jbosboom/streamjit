@@ -277,11 +277,11 @@ public final class Compiler {
 			int chanIdx = info.getDownstreamChannelIndex();
 			int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
 			excessPeeks = Math.max(peek - pop, 0);
-			capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.getExecutions(downstreamNode) * multiplier * pop + excessPeeks;
+			capacity = downstreamNode.execsPerNodeExec.get(downstream) * schedule.getExecutions(downstreamNode)  * pop + excessPeeks;
 			initialSize = capacity;
 		} else { //downstream == null
 			int push = upstream.getPushRates().get(info.getUpstreamChannelIndex()).max();
-			capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.getExecutions(upstreamNode) * multiplier * push;
+			capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.getExecutions(upstreamNode)  * push;
 			initialSize = 0;
 			excessPeeks = 0;
 		}
@@ -602,6 +602,7 @@ public final class Compiler {
 		scheduleBuilder.addAll(nodes);
 		for (StreamNode n : nodes)
 			n.constrainExternalSchedule(scheduleBuilder);
+		scheduleBuilder.multiply(multiplier);
 		schedule = scheduleBuilder.build();
 	}
 

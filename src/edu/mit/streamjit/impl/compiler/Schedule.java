@@ -26,7 +26,7 @@ public final class Schedule<T> {
 		this.constraints = constraints;
 		this.schedule = schedule;
 	}
-	private static <T> Schedule<T> schedule(ImmutableSet<T> things, ImmutableTable<T, T, Constraint<T>> constraints) {
+	private static <T> Schedule<T> schedule(ImmutableSet<T> things, ImmutableTable<T, T, Constraint<T>> constraints, int multiplier) {
 		ILPSolver solver = new ILPSolver();
 		//There's one variable for each thing, which represents the number of
 		//times it fires.  This uses the default bounds.  (TODO: perhaps a bound
@@ -72,7 +72,7 @@ public final class Schedule<T> {
 
 		ImmutableMap.Builder<T, Integer> schedule = ImmutableMap.builder();
 		for (Map.Entry<T, ILPSolver.Variable> e : variables.entrySet())
-			schedule.put(e.getKey(), e.getValue().value());
+			schedule.put(e.getKey(), e.getValue().value() * multiplier);
 		return new Schedule<>(things, constraints, schedule.build());
 	}
 
@@ -83,6 +83,7 @@ public final class Schedule<T> {
 	public static final class Builder<T> {
 		private final Set<T> things = new HashSet<>();
 		private final Table<T, T, Constraint<T>> constraints = HashBasedTable.create();
+		private int multiplier = 1;
 		private Builder() {}
 
 		public Builder<T> add(T thing) {
@@ -161,8 +162,14 @@ public final class Schedule<T> {
 			checkArgument(old == null, "repeated constraint: %s and %s", old, constraint);
 		}
 
+		public Builder<T> multiply(int multiplier) {
+			checkArgument(multiplier >= 1);
+			this.multiplier *= multiplier;
+			return this;
+		}
+
 		public Schedule<T> build() {
-			return schedule(ImmutableSet.copyOf(things), ImmutableTable.copyOf(constraints));
+			return schedule(ImmutableSet.copyOf(things), ImmutableTable.copyOf(constraints), multiplier);
 		}
 	}
 
