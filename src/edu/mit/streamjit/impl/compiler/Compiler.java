@@ -721,26 +721,6 @@ public final class Compiler {
 			}
 		}
 
-		/**
-		 * Returns a list of scheduler channels from this node to the given
-		 * node, with rates corrected for the internal schedule for each node.
-		 */
-		public List<Scheduler.Channel<StreamNode>> findChannels(StreamNode other) {
-			ImmutableList.Builder<Scheduler.Channel<StreamNode>> retval = ImmutableList.<Scheduler.Channel<StreamNode>>builder();
-			for (IOInfo info : ioinfo) {
-				if (info.isOutput() && other.workers.contains(info.downstream())) {
-					int i = Workers.getSuccessors(info.upstream()).indexOf(info.downstream());
-					assert i != -1;
-					int j = Workers.getPredecessors(info.downstream()).indexOf(info.upstream());
-					assert j != -1;
-					retval.add(new Scheduler.Channel<>(this, other,
-							info.upstream().getPushRates().get(i).max() * execsPerNodeExec.get(info.upstream()),
-							info.downstream().getPopRates().get(j).max() * other.execsPerNodeExec.get(info.downstream())));
-				}
-			}
-			return retval.build();
-		}
-
 		private void buildWorkerData(Worker<?, ?> worker) {
 			Klass workerKlass = module.getKlass(worker.getClass());
 
