@@ -283,10 +283,10 @@ public final class Compiler {
 			int chanIdx = info.getDownstreamChannelIndex();
 			int pop = downstream.getPopRates().get(chanIdx).max(), peek = downstream.getPeekRates().get(chanIdx).max();
 			unconsumedItems = Math.max(peek - pop, 0);
-			capacity = initialSize = downstreamNode.execsPerNodeExec.get(downstream) * schedule.getExecutions(downstreamNode)  * pop + unconsumedItems;
+			capacity = initialSize = downstreamNode.internalSchedule.getExecutions(downstream) * schedule.getExecutions(downstreamNode)  * pop + unconsumedItems;
 		} else if (info.isOutput()) {
 			int push = upstream.getPushRates().get(info.getUpstreamChannelIndex()).max();
-			capacity = upstreamNode.execsPerNodeExec.get(upstream) * schedule.getExecutions(upstreamNode)  * push;
+			capacity = upstreamNode.internalSchedule.getExecutions(upstream) * schedule.getExecutions(upstreamNode)  * push;
 			initialSize = 0;
 			unconsumedItems = 0;
 		} else
@@ -626,7 +626,7 @@ public final class Compiler {
 		 * The number of individual worker executions per steady-state execution
 		 * of the StreamNode.
 		 */
-		private ImmutableMap<Worker<?, ?>, Integer> execsPerNodeExec;
+		private Schedule<Worker<?, ?>> internalSchedule;
 		/**
 		 * This node's work method.  May be null if the method hasn't been
 		 * created yet.  TODO: if we put multiplicities inside work methods,
@@ -679,26 +679,15 @@ public final class Compiler {
 		 * for each execution of the node.
 		 */
 		public void internalSchedule() {
-			if (workers.size() == 1) {
-				this.execsPerNodeExec = ImmutableMap.<Worker<?, ?>, Integer>builder().put(workers.iterator().next(), 1).build();
-				return;
-			}
-
-			//Find all the channels within this StreamNode.
-			List<Scheduler.Channel<Worker<?, ?>>> channels = new ArrayList<>();
-			for (Worker<?, ?> w : workers) {
-				@SuppressWarnings("unchecked")
-				List<Worker<?, ?>> succs = (List<Worker<?, ?>>)Workers.getSuccessors(w);
-				for (int i = 0; i < succs.size(); ++i) {
-					Worker<?, ?> s = succs.get(i);
-					if (workers.contains(s)) {
-						int j = Workers.getPredecessors(s).indexOf(w);
-						assert j != -1;
-						channels.add(new Scheduler.Channel<>(w, s, w.getPushRates().get(i).max(), s.getPopRates().get(j).max()));
-					}
-				}
-			}
-			this.execsPerNodeExec = Scheduler.schedule(channels);
+			Schedule.Builder<Worker<?, ?>> scheduleBuilder = Schedule.builder();
+			scheduleBuilder.addAll(workers);
+			for (IOInfo info : IOInfo.internalEdges(workers))
+				scheduleBuilder.connect(info.upstream(), info.downstream())
+						.push(info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max())
+						.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max())
+						.peek(info.downstream().getPeekRates().get(info.getDownstreamChannelIndex()).max())
+						.bufferExactly(0);
+			this.internalSchedule = scheduleBuilder.build();
 		}
 
 		/**
@@ -711,8 +700,8 @@ public final class Compiler {
 				if (!info.isOutput() || info.token().isOverallOutput())
 					continue;
 				StreamNode other = streamNodes.get(info.downstream());
-				int upstreamAdjust = execsPerNodeExec.get(info.upstream());
-				int downstreamAdjust = other.execsPerNodeExec.get(info.downstream());
+				int upstreamAdjust = internalSchedule.getExecutions(info.upstream());
+				int downstreamAdjust = other.internalSchedule.getExecutions(info.downstream());
 				scheduleBuilder.connect(this, other)
 						.push(info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max() * upstreamAdjust)
 						.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max() * downstreamAdjust)
@@ -776,7 +765,7 @@ public final class Compiler {
 				List<Value> ioffsets = new ArrayList<>();
 				if (preds.isEmpty()) {
 					ichannels = ImmutableList.<Value>of(getReaderBuffer(Token.createOverallInputToken(w)));
-					int r = w.getPopRates().get(0).max() * execsPerNodeExec.get(w);
+					int r = w.getPopRates().get(0).max() * internalSchedule.getExecutions(w);
 					BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 					offset.setName("ioffset0");
 					entryBlock.instructions().add(offset);
@@ -794,7 +783,7 @@ public final class Compiler {
 							ioffsets.add(module.constants().getConstant(0));
 						} else {
 							ichannels.add(getReaderBuffer(t));
-							int r = w.getPopRates().get(chanIdx).max() * execsPerNodeExec.get(w);
+							int r = w.getPopRates().get(chanIdx).max() * internalSchedule.getExecutions(w);
 							BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 							offset.setName("ioffset"+chanIdx);
 							entryBlock.instructions().add(offset);
@@ -819,7 +808,7 @@ public final class Compiler {
 				List<Value> ooffsets = new ArrayList<>();
 				if (succs.isEmpty()) {
 					ochannels = ImmutableList.<Value>of(getWriterBuffer(Token.createOverallOutputToken(w)));
-					int r = w.getPushRates().get(0).max() * execsPerNodeExec.get(w);
+					int r = w.getPushRates().get(0).max() * internalSchedule.getExecutions(w);
 					BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 					offset.setName("ooffset0");
 					entryBlock.instructions().add(offset);
@@ -837,7 +826,7 @@ public final class Compiler {
 							ooffsets.add(module.constants().getConstant(0));
 						} else {
 							ochannels.add(getWriterBuffer(t));
-							int r = w.getPushRates().get(chanIdx).max() * execsPerNodeExec.get(w);
+							int r = w.getPushRates().get(chanIdx).max() * internalSchedule.getExecutions(w);
 							BinaryInst offset0 = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 							//Leave room to copy the excess peeks in front when
 							//it's time to flip.
@@ -860,7 +849,7 @@ public final class Compiler {
 				oincrementArray.first.setName("oincrements_"+wid);
 				entryBlock.instructions().addAll(oincrementArray.second);
 
-				for (int i = 0; i < execsPerNodeExec.get(w); ++i) {
+				for (int i = 0; i < internalSchedule.getExecutions(w); ++i) {
 					CallInst ci = new CallInst(workerWorkMethods.get(w), ichannelArray.first, ioffsetArray.first, iincrementArray.first, ochannelArray.first, ooffsetArray.first, oincrementArray.first);
 					entryBlock.instructions().add(ci);
 				}
