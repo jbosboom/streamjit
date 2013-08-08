@@ -181,9 +181,9 @@ public final class Compiler {
 		for (StreamNode n : ImmutableSet.copyOf(streamNodes.values()))
 			n.internalSchedule();
 		externalSchedule();
+		computeInitSchedule();
 		allocateCores();
 		declareBuffers();
-		computeInitSchedule();
 		//We generate a work method for each worker (which may result in
 		//duplicates, but is required in general to handle worker fields), then
 		//generate core code that stitches them together and does any
