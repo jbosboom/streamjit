@@ -212,4 +212,9 @@ public final class Schedule<T> {
 	public int getSteadyStateBufferSize(T upstream, T downstream) {
 		return getThroughput(upstream, downstream) + constraints.get(upstream, downstream).excessPeeks;
 	}
+
+	public int getBufferDelta(T upstream, T downstream) {
+		Constraint<T> c = constraints.get(upstream, downstream);
+		return getExecutions(upstream) * c.pushRate - getExecutions(downstream) * c.popRate;
+	}
 }
