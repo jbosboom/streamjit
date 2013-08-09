@@ -25,6 +25,7 @@ import java.util.Set;
  * ParallelCompositeStreamVisitor can be used directly by passing visitors to its
  * constructor, or by subclassing it and passing visitors to the superclass
  * constructor.
+ * @see SerialCompositeStreamVisitor
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 8/8/2013
  */
