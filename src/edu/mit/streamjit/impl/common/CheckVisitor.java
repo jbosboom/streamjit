@@ -1,9 +1,11 @@
 package edu.mit.streamjit.impl.common;
 
 import com.google.common.base.Function;
+import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Multiset;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
@@ -23,7 +25,8 @@ import java.util.Map;
  */
 public final class CheckVisitor extends CompositeStreamVisitor {
 	public CheckVisitor() {
-		super(new NoDuplicatesVisitor());
+		super(new NoDuplicatesVisitor(),
+				new SplitterJoinerMatchBranches());
 	}
 
 	private static final class NoDuplicatesVisitor extends StackVisitor {
@@ -109,9 +112,59 @@ public final class CheckVisitor extends CompositeStreamVisitor {
 		}
 	}
 
-	public static void main(String[] args) {
-		Identity<Integer> id = new Identity<>();
-		Pipeline<Integer, Integer> p = new Pipeline<>(id, id);
-		p.visit(new CheckVisitor());
+	private static final class SplitterJoinerMatchBranches extends StackVisitor {
+		private final Multiset<Splitjoin<?, ?>> branchCount = HashMultiset.create();
+		private final Map<Splitjoin<?, ?>, Splitter<?, ?>> splitters = new HashMap<>();
+		private final Map<Splitjoin<?, ?>, Joiner<?, ?>> joiners = new HashMap<>();
+		@Override
+		protected void visitFilter0(Filter<?, ?> filter) {
+		}
+		@Override
+		protected boolean enterPipeline0(Pipeline<?, ?> pipeline) {
+			return true;
+		}
+		@Override
+		protected void exitPipeline0(Pipeline<?, ?> pipeline) {
+		}
+		@Override
+		protected boolean enterSplitjoin0(Splitjoin<?, ?> splitjoin) {
+			return true;
+		}
+		@Override
+		protected void visitSplitter0(Splitter<?, ?> splitter) {
+			splitters.put((Splitjoin<?, ?>)getTrace().get(1).getElement(), splitter);
+		}
+		@Override
+		protected boolean enterSplitjoinBranch0(OneToOneElement<?, ?> element) {
+			branchCount.add((Splitjoin<?, ?>)getTrace().get(1).getElement());
+			return true;
+		}
+		@Override
+		protected void exitSplitjoinBranch0(OneToOneElement<?, ?> element) {
+		}
+		@Override
+		protected void visitJoiner0(Joiner<?, ?> joiner) {
+			joiners.put((Splitjoin<?, ?>)getTrace().get(1).getElement(), joiner);
+		}
+		@Override
+		protected void exitSplitjoin0(Splitjoin<?, ?> splitjoin) {
+			int branches = branchCount.count(splitjoin);
+			Splitter<?, ?> splitter = splitters.get(splitjoin);
+			int supportedOutputs = splitter.supportedOutputs();
+			if (supportedOutputs != Splitter.UNLIMITED && supportedOutputs != branches)
+				throw new IllegalStreamGraphException(
+						String.format("%s supports %d outputs, but %s has %d branches%n%s%n",
+						splitter, supportedOutputs, splitjoin, branches,
+						asTrace(getTrace())),
+						splitter, splitjoin);
+			Joiner<?, ?> joiner = joiners.get(splitjoin);
+			int supportedInputs = joiner.supportedInputs();
+			if (supportedInputs != Joiner.UNLIMITED && supportedInputs != branches)
+				throw new IllegalStreamGraphException(
+						String.format("%s supports %d inputs, but %s has %d branches%n%s%n",
+						joiner, supportedInputs, splitjoin, branches,
+						asTrace(getTrace())),
+						joiner, splitjoin);
+		}
 	}
 }
