@@ -17,18 +17,18 @@ import edu.mit.streamjit.util.Pair;
 import java.util.Set;
 
 /**
- * CompositeStreamVisitor composes multiple visitors into one visitor by
- * interleaving method calls to each visitor.  CompositeStreamVisitor resepects
+ * ParallelCompositeStreamVisitor composes multiple visitors into one visitor by
+ * interleaving method calls to each visitor.  ParallelCompositeStreamVisitor resepects
  * return values from the enterFoo() methods by not forwarding calls after a
  * false return.
  *
- * CompositeStreamVisitor can be used directly by passing visitors to its
+ * ParallelCompositeStreamVisitor can be used directly by passing visitors to its
  * constructor, or by subclassing it and passing visitors to the superclass
  * constructor.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 8/8/2013
  */
-public class CompositeStreamVisitor extends StreamVisitor {
+public class ParallelCompositeStreamVisitor extends StreamVisitor {
 	private final ImmutableSet<StreamVisitor> visitors;
 	/**
 	 * Contains a map of (element, call) pairs to the visitors that should be
@@ -41,11 +41,11 @@ public class CompositeStreamVisitor extends StreamVisitor {
 	 * it.
 	 */
 	private final SetMultimap<Pair<StreamElement<?, ?>, String>, StreamVisitor> disabled;
-	public CompositeStreamVisitor(Set<StreamVisitor> visitors) {
+	public ParallelCompositeStreamVisitor(Set<StreamVisitor> visitors) {
 		this.visitors = ImmutableSet.copyOf(visitors);
 		this.disabled = HashMultimap.create(this.visitors.size(), this.visitors.size());
 	}
-	public CompositeStreamVisitor(StreamVisitor firstVisitor, StreamVisitor... moreVisitors) {
+	public ParallelCompositeStreamVisitor(StreamVisitor firstVisitor, StreamVisitor... moreVisitors) {
 		this(ImmutableSet.copyOf(Lists.asList(firstVisitor, moreVisitors)));
 	}
 

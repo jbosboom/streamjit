@@ -23,7 +23,7 @@ import java.util.Map;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 8/8/2013
  */
-public final class CheckVisitor extends CompositeStreamVisitor {
+public final class CheckVisitor extends ParallelCompositeStreamVisitor {
 	public CheckVisitor() {
 		super(new NoDuplicatesVisitor(),
 				new SplitterJoinerMatchBranches());
