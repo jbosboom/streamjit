@@ -131,7 +131,7 @@ public class CompositeStreamVisitor extends StreamVisitor {
 	@Override
 	public final void endVisit() {
 		for (StreamVisitor v : enabledVisitors())
-			v.beginVisit();
+			v.endVisit();
 	}
 
 	/**
