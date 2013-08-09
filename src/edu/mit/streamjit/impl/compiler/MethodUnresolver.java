@@ -109,7 +109,15 @@ public final class MethodUnresolver {
 				methodNode.instructions.add(emit(b));
 			int maxRegister = registers.values().isEmpty() ? 0 : Collections.max(registers.values());
 			this.methodNode.maxLocals = maxRegister+2;
-			this.methodNode.maxStack = Short.MAX_VALUE;
+			//We'd like to use ClassWriter's COMPUTE_MAXS option to compute this
+			//for us, but we also want to use CheckClassAdapter before
+			//ClassWriter to get useful errors.  But CheckClassAdapter will
+			//raise an error if we get this too low and run out of memory if we
+			//just say Short.MAX_VALUE.  I think any bytecode can push at most
+			//+2 net, so conservatively try 2*instructions.size().  Note that
+			//this counts labels and other pseudo-instructions, as well as
+			//instructions that have obviously no stack increase or a decrease.
+			this.methodNode.maxStack = Math.min(2*methodNode.instructions.size(), Short.MAX_VALUE);
 			buildLocalVariableTable();
 		}
 
