@@ -409,6 +409,10 @@ public final class Compiler {
 			Klass filterKlass = module.getKlass(Filter.class);
 			Klass splitterKlass = module.getKlass(Splitter.class);
 			Klass joinerKlass = module.getKlass(Joiner.class);
+			Method peek1Filter = filterKlass.getMethod("peek", module.types().getMethodType(Object.class, Filter.class, int.class));
+			assert peek1Filter != null;
+			Method peek1Splitter = splitterKlass.getMethod("peek", module.types().getMethodType(Object.class, Splitter.class, int.class));
+			assert peek1Splitter != null;
 			Method pop1Filter = filterKlass.getMethod("pop", module.types().getMethodType(Object.class, Filter.class));
 			assert pop1Filter != null;
 			Method pop1Splitter = splitterKlass.getMethod("pop", module.types().getMethodType(Object.class, Splitter.class));
@@ -417,6 +421,8 @@ public final class Compiler {
 			assert push1Filter != null;
 			Method push1Joiner = joinerKlass.getMethod("push", module.types().getMethodType(void.class, Joiner.class, Object.class));
 			assert push1Joiner != null;
+			Method peek2 = joinerKlass.getMethod("peek", module.types().getMethodType(Object.class, Joiner.class, int.class, int.class));
+			assert peek2 != null;
 			Method pop2 = joinerKlass.getMethod("pop", module.types().getMethodType(Object.class, Joiner.class, int.class));
 			assert pop2 != null;
 			Method push2 = splitterKlass.getMethod("push", module.types().getMethodType(void.class, Splitter.class, int.class, Object.class));
@@ -429,7 +435,18 @@ public final class Compiler {
 			Method channelPush = module.getKlass(Channel.class).getMethod("push", module.types().getMethodType(void.class, Channel.class, Object.class));
 			assert channelPush != null;
 
-			if (method.equals(pop1Filter) || method.equals(pop1Splitter) || method.equals(pop2)) {
+			if (method.equals(peek1Filter) || method.equals(peek1Splitter) || method.equals(peek2)) {
+				Value channelNumber = method.equals(peek2) ? ci.getArgument(1) : module.constants().getSmallestIntConstant(0);
+				Argument ichannels = rwork.getArgument("ichannels");
+				ArrayLoadInst channel = new ArrayLoadInst(ichannels, channelNumber);
+				LoadInst ioffsets = new LoadInst(rwork.getLocalVariable("ioffsetCopy"));
+				ArrayLoadInst offsetBase = new ArrayLoadInst(ioffsets, channelNumber);
+				Value peekIndex = method.equals(peek2) ? ci.getArgument(2) : ci.getArgument(1);
+				BinaryInst offset = new BinaryInst(offsetBase, BinaryInst.Operation.ADD, peekIndex);
+				ArrayLoadInst item = new ArrayLoadInst(channel, offset);
+				item.setName("peekedItem");
+				inst.replaceInstWithInsts(item, channel, ioffsets, offsetBase, offset, item);
+			} else if (method.equals(pop1Filter) || method.equals(pop1Splitter) || method.equals(pop2)) {
 				Value channelNumber = method.equals(pop2) ? ci.getArgument(1) : module.constants().getSmallestIntConstant(0);
 				Argument ichannels = rwork.getArgument("ichannels");
 				ArrayLoadInst channel = new ArrayLoadInst(ichannels, channelNumber);
