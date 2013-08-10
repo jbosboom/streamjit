@@ -1063,7 +1063,7 @@ public final class Compiler {
 				int popRate = worker.getPopRates().get(index).max();
 				int peekRate = worker.getPeekRates().get(index).max();
 				int excessPeeks = Math.max(0, peekRate - popRate);
-				int required = popRate * initSchedule.get(worker) + excessPeeks + this.bufferData.get(info.token()).initialSize;
+				int required = popRate * initSchedule.get(worker) + this.bufferData.get(info.token()).initialSize;
 				initScheduleReqsBuilder.put(info.token(), required);
 			}
 			this.initScheduleReqs = initScheduleReqsBuilder.build();

@@ -33,6 +33,8 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
+import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
@@ -50,9 +52,10 @@ public class DCT2 {
 
 	public static void main(String[] args) throws InterruptedException {
 		DCT2Kernel kernel = new DCT2Kernel();
-		//StreamCompiler sc = new DebugStreamCompiler();
-		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		StreamCompiler sc = new DebugStreamCompiler();
+//		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
 		// StreamCompiler sc = new DistributedStreamCompiler(2);
+//		StreamCompiler sc = new BlobHostStreamCompiler(new CompilerBlobFactory(), 1);
 		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
 		Integer output;
 		for (int i = 0; i < 1000;) {
