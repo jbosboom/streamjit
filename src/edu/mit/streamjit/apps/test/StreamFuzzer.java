@@ -2,6 +2,7 @@ package edu.mit.streamjit.apps.test;
 
 import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.api.CompiledStream;
+import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
@@ -155,8 +156,12 @@ public final class StreamFuzzer {
 		return new FuzzSplitjoin(makeSplitter(), makeJoiner(), branches.build());
 	}
 
+	private static final ImmutableList<FuzzSplitter> SPLITTERS = ImmutableList.<FuzzSplitter>builder()
+			.add(new FuzzSplitter(RoundrobinSplitter.class, ImmutableList.of()))
+			.add(new FuzzSplitter(DuplicateSplitter.class, ImmutableList.of()))
+			.build();
 	private static FuzzSplitter makeSplitter() {
-		return new FuzzSplitter(RoundrobinSplitter.class, ImmutableList.of());
+		return SPLITTERS.get(rng.nextInt(SPLITTERS.size()));
 	}
 
 	private static FuzzJoiner makeJoiner() {
