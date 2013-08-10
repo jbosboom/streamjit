@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
+import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
@@ -15,6 +16,7 @@ import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
+import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.common.PrintStreamVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
@@ -392,6 +394,14 @@ public final class StreamFuzzer {
 			if (!completedCases.add(fuzz)) {
 				++skips;
 				continue;
+			}
+
+			try {
+				fuzz.instantiate().visit(new CheckVisitor());
+			} catch (IllegalStreamGraphException ex) {
+				System.out.println("Fuzzer generated bad test case");
+				ex.printStackTrace(System.out);
+				fuzz.instantiate().visit(new PrintStreamVisitor(System.out));
 			}
 
 			List<Integer> debugOutput = run(fuzz, debugSC);
