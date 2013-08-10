@@ -33,12 +33,14 @@ import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.compiler.insts.ArrayLoadInst;
 import edu.mit.streamjit.impl.compiler.insts.ArrayStoreInst;
 import edu.mit.streamjit.impl.compiler.insts.BinaryInst;
+import edu.mit.streamjit.impl.compiler.insts.BranchInst;
 import edu.mit.streamjit.impl.compiler.insts.CallInst;
 import edu.mit.streamjit.impl.compiler.insts.CastInst;
 import edu.mit.streamjit.impl.compiler.insts.Instruction;
 import edu.mit.streamjit.impl.compiler.insts.JumpInst;
 import edu.mit.streamjit.impl.compiler.insts.LoadInst;
 import edu.mit.streamjit.impl.compiler.insts.NewArrayInst;
+import edu.mit.streamjit.impl.compiler.insts.PhiInst;
 import edu.mit.streamjit.impl.compiler.insts.ReturnInst;
 import edu.mit.streamjit.impl.compiler.insts.StoreInst;
 import edu.mit.streamjit.impl.compiler.types.ArrayType;
@@ -497,6 +499,7 @@ public final class Compiler {
 				if (!coreCodeMethods.containsKey(core)) {
 					Method m = new Method("corework"+core, module.types().getMethodType(void.class), EnumSet.of(Modifier.PUBLIC, Modifier.STATIC), blobKlass);
 					coreCodeMethods.put(core, m);
+					m.basicBlocks().add(new BasicBlock(module, "entry"));
 				}
 
 		for (StreamNode sn : nodes) {
@@ -511,23 +514,54 @@ public final class Compiler {
 			assert remainder >= 0 && remainder < sn.cores.size();
 			int multiple = 0;
 			for (int i = 0; i < sn.cores.size(); ++i) {
-				//Put each node's calls in a separate block for dump readability.
-				BasicBlock block = new BasicBlock(module, "node"+sn.id);
-				for (int j = 0; j < full + (i < remainder ? 1 : 0); ++j)
-					block.instructions().add(new CallInst(sn.workMethod, module.constants().getConstant(multiple++)));
-				coreCodeMethods.get(sn.cores.get(i)).basicBlocks().add(block);
+				Method coreCode = coreCodeMethods.get(sn.cores.get(i));
+				int howMany = full + (i < remainder ? 1 : 0);
+				BasicBlock previousBlock = coreCode.basicBlocks().get(coreCode.basicBlocks().size()-1);
+				BasicBlock loop = makeCallLoop(sn.workMethod, multiple, multiple + howMany, previousBlock, "node"+sn.id);
+				coreCode.basicBlocks().add(loop);
+				if (previousBlock.getTerminator() == null)
+					previousBlock.instructions().add(new JumpInst(loop));
+				else
+					((BranchInst)previousBlock.getTerminator()).setOperand(3, loop);
+				multiple += howMany;
 			}
 			assert multiple == iterations : "Didn't assign all iterations to cores";
 		}
 
 		for (Method m : coreCodeMethods.values()) {
-			BasicBlock block = new BasicBlock(module, "exit");
-			block.instructions().add(new ReturnInst(module.types().getVoidType()));
-			m.basicBlocks().add(block);
-
-			for (int i = 0; i < m.basicBlocks().size()-1; ++i)
-				m.basicBlocks().get(i).instructions().add(new JumpInst(m.basicBlocks().get(i+1)));
+			BasicBlock exitBlock = new BasicBlock(module, "exit");
+			exitBlock.instructions().add(new ReturnInst(module.types().getVoidType()));
+			BasicBlock previousBlock = m.basicBlocks().get(m.basicBlocks().size()-1);
+			m.basicBlocks().add(exitBlock);
+			if (previousBlock.getTerminator() == null)
+				previousBlock.instructions().add(new JumpInst(exitBlock));
+			else
+				((BranchInst)previousBlock.getTerminator()).setOperand(3, exitBlock);
 		}
+	}
+
+	/**
+	 * Creates a block that calls the given method with arguments from begin to
+	 * end.  Block ends in a BranchInst with its false branch not set (to be set
+	 * to the next block by the caller).
+	 */
+	private BasicBlock makeCallLoop(Method method, int begin, int end, BasicBlock previousBlock, String loopName) {
+		BasicBlock body = new BasicBlock(module, loopName+"_loop");
+
+		PhiInst count = new PhiInst(module.types().getRegularType(int.class));
+		count.put(previousBlock, module.constants().getConstant(begin));
+		body.instructions().add(count);
+
+		CallInst call = new CallInst(method, count);
+		body.instructions().add(call);
+
+		BinaryInst increment = new BinaryInst(count, BinaryInst.Operation.ADD, module.constants().getConstant(1));
+		body.instructions().add(increment);
+		count.put(body, increment);
+
+		BranchInst branch = new BranchInst(increment, BranchInst.Sense.LT, module.constants().getConstant(end), body, null);
+		body.instructions().add(branch);
+		return body;
 	}
 
 	private void generateStaticInit() {
