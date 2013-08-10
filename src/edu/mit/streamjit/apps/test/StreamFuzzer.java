@@ -108,11 +108,9 @@ public final class StreamFuzzer {
 	}
 
 	private static class Permuter extends Filter<Integer, Integer> {
-		private final int inputSize;
 		private final int[] permutation;
 		public Permuter(int inputSize, int outputSize, int[] permutation) {
-			super(inputSize, outputSize);
-			this.inputSize = inputSize;
+			super(Rate.create(inputSize), Rate.create(outputSize), Rate.create(0, outputSize));
 			this.permutation = permutation.clone();
 			for (int i : permutation)
 				assert i >= 0 && i < inputSize;
@@ -120,12 +118,10 @@ public final class StreamFuzzer {
 		}
 		@Override
 		public void work() {
-			//TODO: we should use peek here to avoid the temporary array.
-			int[] array = new int[inputSize];
-			for (int i = 0; i < inputSize; ++i)
-				array[i] = pop();
 			for (int i : permutation)
-				push(array[i]);
+				push(peek(i));
+			for (int i = 0; i < permutation.length; ++i)
+				pop();
 		}
 	}
 
