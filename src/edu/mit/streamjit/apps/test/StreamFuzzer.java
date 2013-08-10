@@ -56,7 +56,7 @@ public final class StreamFuzzer {
 	}
 
 	private static final Random rng = new Random();
-	private static final int FILTER_PROB = 50, PIPELINE_PROB = 25, SPLITJOIN_PROB = 0;
+	private static final int FILTER_PROB = 50, PIPELINE_PROB = 25, SPLITJOIN_PROB = 25;
 	private static FuzzElement makeStream(int depthLimit) {
 		int r = rng.nextInt(FILTER_PROB + PIPELINE_PROB + SPLITJOIN_PROB);
 		if (depthLimit == 0 || r < FILTER_PROB) {
