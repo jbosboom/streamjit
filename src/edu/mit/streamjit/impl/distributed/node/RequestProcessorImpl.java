@@ -1,7 +1,3 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since May 27, 2013
- */
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
@@ -9,6 +5,12 @@ import java.io.IOException;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
 
+/**
+ * {@link RequestProcessor} at {@link StreamNode} side.
+ * 
+ * @author Sumanan sumanan@mit.edu
+ * @since May 27, 2013
+ */
 public class RequestProcessorImpl implements RequestProcessor {
 
 	StreamNode streamNode;

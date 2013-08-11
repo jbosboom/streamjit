@@ -1,11 +1,12 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since May 27, 2013
- */
 package edu.mit.streamjit.impl.distributed.node;
 
 import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
 
+/**
+ * {@link ErrorProcessor} at {@link StreamNode} side.
+ * @author Sumanan sumanan@mit.edu
+ * @since May 27, 2013
+ */
 public class ErrorProcessorImpl implements ErrorProcessor {
 
 	@Override

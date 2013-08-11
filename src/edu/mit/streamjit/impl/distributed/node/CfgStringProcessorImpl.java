@@ -32,14 +32,16 @@ import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
+ * {@link ConfigurationStringProcessor} at {@link StreamNode} side.
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class JsonStringProcessorImpl implements ConfigurationStringProcessor {
+public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	StreamNode streamNode;
 
-	public JsonStringProcessorImpl(StreamNode streamNode) {
+	public CfgStringProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
 
@@ -58,7 +60,7 @@ public class JsonStringProcessorImpl implements ConfigurationStringProcessor {
 					.getExtraData(GlobalConstants.NODE_INFO_MAP);
 
 			streamNode.setBlobsManager(new BlobsManagerImpl(blobSet,
-					tokenMachineMap, portIdMap, nodeInfoMap));
+					tokenMachineMap, portIdMap, nodeInfoMap, streamNode));
 		} else
 			System.out.println("Couldn't get the blobset....");
 	}

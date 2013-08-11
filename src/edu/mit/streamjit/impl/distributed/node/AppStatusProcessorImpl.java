@@ -1,11 +1,13 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since May 27, 2013
- */
 package edu.mit.streamjit.impl.distributed.node;
 
 import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 
+/**
+ * {@link AppStatusProcessor} at {@link StreamNode} side.
+ * 
+ * @author Sumanan sumanan@mit.edu
+ * @since May 27, 2013
+ */
 public class AppStatusProcessorImpl implements AppStatusProcessor {
 
 	@Override
