@@ -14,11 +14,11 @@ import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainedDataMap;
  * @author Sumanan sumanan@mit.edu
  * @since Jul 30, 2013
  */
-public class DrainProcessorImpl implements DrainProcessor {
+public class SNDrainProcessorImpl implements DrainProcessor {
 
 	StreamNode streamNode;
 
-	public DrainProcessorImpl(StreamNode streamNode) {
+	public SNDrainProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
 

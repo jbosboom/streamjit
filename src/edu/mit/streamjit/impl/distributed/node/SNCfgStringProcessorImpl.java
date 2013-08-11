@@ -37,11 +37,11 @@ import edu.mit.streamjit.util.json.Jsonifiers;
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
+public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	StreamNode streamNode;
 
-	public CfgStringProcessorImpl(StreamNode streamNode) {
+	public SNCfgStringProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
 

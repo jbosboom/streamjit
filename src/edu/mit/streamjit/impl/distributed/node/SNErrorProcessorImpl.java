@@ -7,7 +7,7 @@ import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class ErrorProcessorImpl implements ErrorProcessor {
+public class SNErrorProcessorImpl implements ErrorProcessor {
 
 	@Override
 	public void processFILE_NOT_FOUND() {

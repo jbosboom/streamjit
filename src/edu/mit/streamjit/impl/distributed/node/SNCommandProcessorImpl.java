@@ -6,13 +6,14 @@ import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 
 /**
+ * {@link CommandProcessor} at {@link StreamNode} side.
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class CommandProcessorImpl implements CommandProcessor {
+public class SNCommandProcessorImpl implements CommandProcessor {
 	StreamNode streamNode;
 
-	public CommandProcessorImpl(StreamNode streamNode) {
+	public SNCommandProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
 

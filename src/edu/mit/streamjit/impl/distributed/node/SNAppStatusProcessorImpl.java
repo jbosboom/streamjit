@@ -8,7 +8,7 @@ import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class AppStatusProcessorImpl implements AppStatusProcessor {
+public class SNAppStatusProcessorImpl implements AppStatusProcessor {
 
 	@Override
 	public void processRUNNING() {

@@ -64,11 +64,11 @@ public class StreamNode extends Thread {
 	private StreamNode(Connection connection) {
 		super("Stream Node");
 		this.controllerConnection = connection;
-		this.mv = new MessageVisitorImpl(new AppStatusProcessorImpl(),
-				new CommandProcessorImpl(this), new ErrorProcessorImpl(),
-				new RequestProcessorImpl(this), new CfgStringProcessorImpl(
-						this), new DrainProcessorImpl(this),
-				new NodeInfoProcessorImpl());
+		this.mv = new MessageVisitorImpl(new SNAppStatusProcessorImpl(),
+				new SNCommandProcessorImpl(this), new SNErrorProcessorImpl(),
+				new SNRequestProcessorImpl(this), new SNCfgStringProcessorImpl(
+						this), new SNDrainProcessorImpl(this),
+				new SNNodeInfoProcessorImpl());
 		this.run = true;
 	}
 
