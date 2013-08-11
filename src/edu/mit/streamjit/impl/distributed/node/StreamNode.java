@@ -66,7 +66,8 @@ public class StreamNode extends Thread {
 		this.mv = new NodeMessageVisitor(new AppStatusProcessorImpl(),
 				new CommandProcessorImpl(this), new ErrorProcessorImpl(),
 				new RequestProcessorImpl(this), new JsonStringProcessorImpl(
-						this), new DrainProcessorImpl(this));
+						this), new DrainProcessorImpl(this),
+				new NodeInfoProcessorImpl());
 		this.run = true;
 	}
 

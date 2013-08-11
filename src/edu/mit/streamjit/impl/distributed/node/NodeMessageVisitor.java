@@ -16,6 +16,7 @@ import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.MessageVisitor;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
+import edu.mit.streamjit.impl.distributed.common.NodeInfo.NodeInfoProcessor;
 import edu.mit.streamjit.impl.distributed.common.Request;
 import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo;
@@ -28,16 +29,19 @@ public class NodeMessageVisitor implements MessageVisitor {
 	private RequestProcessor rp;
 	private ConfigurationStringProcessor jp;
 	private DrainProcessor dp;
+	private NodeInfoProcessor np;
 
 	public NodeMessageVisitor(AppStatusProcessor asp, CommandProcessor cp,
 			ErrorProcessor ep, RequestProcessor rp,
-			ConfigurationStringProcessor jp, DrainProcessor dp) {
+			ConfigurationStringProcessor jp, DrainProcessor dp,
+			NodeInfoProcessor np) {
 		this.asp = asp;
 		this.cp = cp;
 		this.ep = ep;
 		this.rp = rp;
 		this.jp = jp;
 		this.dp = dp;
+		this.np = np;
 	}
 
 	@Override
@@ -72,8 +76,7 @@ public class NodeMessageVisitor implements MessageVisitor {
 
 	@Override
 	public void visit(NodeInfo nodeInfo) {
-		throw new AssertionError(
-				"NodeInfo doesn't support MessageVisitor for the moment.");
+		np.process(nodeInfo);
 	}
 
 	@Override

@@ -19,4 +19,10 @@ public class ErrorProcessorImpl implements ErrorProcessor {
 		throw new IllegalArgumentException(
 				"WORKER_NOT_FOUND error should be informed to Controller");
 	}
+
+	@Override
+	public void processBLOB_NOT_FOUND() {
+		throw new IllegalArgumentException(
+				"BLOB_NOT_FOUND error should be informed to Controller");
+	}
 }
