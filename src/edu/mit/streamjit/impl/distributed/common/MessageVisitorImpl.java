@@ -1,27 +1,18 @@
+package edu.mit.streamjit.impl.distributed.common;
+
+import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
+import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
+import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
+import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
+import edu.mit.streamjit.impl.distributed.common.NodeInfo.NodeInfoProcessor;
+import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
+
 /**
  * @author Sumanan sumanan@mit.edu
  * @since May 20, 2013
  */
-package edu.mit.streamjit.impl.distributed.node;
-
-import edu.mit.streamjit.impl.distributed.common.AppStatus;
-import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
-import edu.mit.streamjit.impl.distributed.common.Command;
-import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
-import edu.mit.streamjit.impl.distributed.common.DrainElement;
-import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
-import edu.mit.streamjit.impl.distributed.common.Error;
-import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
-import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
-import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
-import edu.mit.streamjit.impl.distributed.common.MessageVisitor;
-import edu.mit.streamjit.impl.distributed.common.NodeInfo;
-import edu.mit.streamjit.impl.distributed.common.NodeInfo.NodeInfoProcessor;
-import edu.mit.streamjit.impl.distributed.common.Request;
-import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
-import edu.mit.streamjit.impl.distributed.common.SystemInfo;
-
-public class NodeMessageVisitor implements MessageVisitor {
+public class MessageVisitorImpl implements MessageVisitor {
 
 	private AppStatusProcessor asp;
 	private CommandProcessor cp;
@@ -31,7 +22,7 @@ public class NodeMessageVisitor implements MessageVisitor {
 	private DrainProcessor dp;
 	private NodeInfoProcessor np;
 
-	public NodeMessageVisitor(AppStatusProcessor asp, CommandProcessor cp,
+	public MessageVisitorImpl(AppStatusProcessor asp, CommandProcessor cp,
 			ErrorProcessor ep, RequestProcessor rp,
 			ConfigurationStringProcessor jp, DrainProcessor dp,
 			NodeInfoProcessor np) {

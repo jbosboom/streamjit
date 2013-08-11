@@ -8,6 +8,7 @@ import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
 import edu.mit.streamjit.impl.distributed.common.MessageElement;
 import edu.mit.streamjit.impl.distributed.common.MessageVisitor;
+import edu.mit.streamjit.impl.distributed.common.MessageVisitorImpl;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
@@ -63,7 +64,7 @@ public class StreamNode extends Thread {
 	private StreamNode(Connection connection) {
 		super("Stream Node");
 		this.controllerConnection = connection;
-		this.mv = new NodeMessageVisitor(new AppStatusProcessorImpl(),
+		this.mv = new MessageVisitorImpl(new AppStatusProcessorImpl(),
 				new CommandProcessorImpl(this), new ErrorProcessorImpl(),
 				new RequestProcessorImpl(this), new JsonStringProcessorImpl(
 						this), new DrainProcessorImpl(this),
