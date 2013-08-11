@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
+import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
@@ -15,6 +16,7 @@ import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
+import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.common.PrintStreamVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
@@ -54,7 +56,7 @@ public final class StreamFuzzer {
 	}
 
 	private static final Random rng = new Random();
-	private static final int FILTER_PROB = 50, PIPELINE_PROB = 25, SPLITJOIN_PROB = 0;
+	private static final int FILTER_PROB = 50, PIPELINE_PROB = 25, SPLITJOIN_PROB = 25;
 	private static FuzzElement makeStream(int depthLimit) {
 		int r = rng.nextInt(FILTER_PROB + PIPELINE_PROB + SPLITJOIN_PROB);
 		if (depthLimit == 0 || r < FILTER_PROB) {
@@ -106,11 +108,9 @@ public final class StreamFuzzer {
 	}
 
 	private static class Permuter extends Filter<Integer, Integer> {
-		private final int inputSize;
 		private final int[] permutation;
 		public Permuter(int inputSize, int outputSize, int[] permutation) {
-			super(inputSize, outputSize);
-			this.inputSize = inputSize;
+			super(Rate.create(inputSize), Rate.create(outputSize), Rate.create(0, outputSize));
 			this.permutation = permutation.clone();
 			for (int i : permutation)
 				assert i >= 0 && i < inputSize;
@@ -118,12 +118,10 @@ public final class StreamFuzzer {
 		}
 		@Override
 		public void work() {
-			//TODO: we should use peek here to avoid the temporary array.
-			int[] array = new int[inputSize];
-			for (int i = 0; i < inputSize; ++i)
-				array[i] = pop();
 			for (int i : permutation)
-				push(array[i]);
+				push(peek(i));
+			for (int i = 0; i < permutation.length; ++i)
+				pop();
 		}
 	}
 
@@ -392,6 +390,14 @@ public final class StreamFuzzer {
 			if (!completedCases.add(fuzz)) {
 				++skips;
 				continue;
+			}
+
+			try {
+				fuzz.instantiate().visit(new CheckVisitor());
+			} catch (IllegalStreamGraphException ex) {
+				System.out.println("Fuzzer generated bad test case");
+				ex.printStackTrace(System.out);
+				fuzz.instantiate().visit(new PrintStreamVisitor(System.out));
 			}
 
 			List<Integer> debugOutput = run(fuzz, debugSC);

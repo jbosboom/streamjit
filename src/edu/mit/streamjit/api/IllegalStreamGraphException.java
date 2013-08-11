@@ -21,7 +21,7 @@ import java.util.Arrays;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/20/2012
  */
-public final class IllegalStreamGraphException extends RuntimeException {
+public class IllegalStreamGraphException extends RuntimeException {
 	private static final long serialVersionUID = 1L;
 	/**
 	 * A list of one or more stream elements involved in the malformation, to
