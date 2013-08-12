@@ -34,15 +34,6 @@ public enum Request implements MessageElement {
 		}
 	},
 	/**
-	 * Maximum cores in the system.
-	 */
-	maxCores {
-		@Override
-		public void process(RequestProcessor reqProcessor) {
-			reqProcessor.processMaxCores();
-		}
-	},
-	/**
 	 * Assigned machine id.
 	 */
 	machineID {
@@ -73,7 +64,7 @@ public enum Request implements MessageElement {
 	/**
 	 * {@link StreamNode}s and {@link Controller} should implement this
 	 * interfaces in order to correctly process the {@link Request}. It has
-	 * interface function to each enum in the request. Based on the received
+	 * interface function for each enum in the request. Based on the received
 	 * enum, appropriate function will be called.
 	 */
 	public interface RequestProcessor {
@@ -81,8 +72,6 @@ public enum Request implements MessageElement {
 		public void processAPPStatus();
 
 		public void processSysInfo();
-
-		public void processMaxCores();
 
 		public void processMachineID();
 

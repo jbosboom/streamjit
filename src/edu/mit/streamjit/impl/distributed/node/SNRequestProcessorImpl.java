@@ -30,17 +30,6 @@ public class SNRequestProcessorImpl implements RequestProcessor {
 	}
 
 	@Override
-	public void processMaxCores() {
-		try {
-			streamNode.controllerConnection.writeObject(new Integer(Runtime
-					.getRuntime().availableProcessors()));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
-	@Override
 	public void processMachineID() {
 		try {
 			Integer id = streamNode.controllerConnection.readObject();
