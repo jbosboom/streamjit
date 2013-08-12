@@ -1,5 +1,5 @@
 /**
- * Contains utility classes and interfaces that don't have anything to do with
- * StreamJIT itself but are still useful to have around.
+ * Contains code not directly related to StreamJIT.  Some of this may be
+ * extracted into separate libraries in the future.
  */
 package edu.mit.streamjit.util;
