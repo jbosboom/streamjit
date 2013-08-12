@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Table;
 import edu.mit.streamjit.util.ilpsolve.ILPSolver;
+import edu.mit.streamjit.util.ilpsolve.SolverException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -68,7 +69,11 @@ public final class Schedule<T> {
 		//configurable (autotunable) tradeoff.
 		ILPSolver.ObjectiveFunction objFn = solver.minimize(totalFirings);
 
-		solver.solve();
+		try {
+			solver.solve();
+		} catch (SolverException ex) {
+			throw new ScheduleException(ex);
+		}
 
 		ImmutableMap.Builder<T, Integer> schedule = ImmutableMap.builder();
 		for (Map.Entry<T, ILPSolver.Variable> e : variables.entrySet())
@@ -216,5 +221,20 @@ public final class Schedule<T> {
 	public int getBufferDelta(T upstream, T downstream) {
 		Constraint<T> c = constraints.get(upstream, downstream);
 		return getExecutions(upstream) * c.pushRate - getExecutions(downstream) * c.popRate;
+	}
+
+	public static final class ScheduleException extends RuntimeException {
+		private static final long serialVersionUID = 1L;
+		public ScheduleException() {
+		}
+		public ScheduleException(String message) {
+			super(message);
+		}
+		public ScheduleException(String message, Throwable cause) {
+			super(message, cause);
+		}
+		public ScheduleException(Throwable cause) {
+			super(cause);
+		}
 	}
 }
