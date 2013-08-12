@@ -6,14 +6,16 @@ import java.net.Socket;
 import edu.mit.streamjit.impl.distributed.node.Connection;
 
 /**
- * Returns {@link Connection}s. Ask this {@link ConnectionFactory} for a new connection.
+ * Returns {@link Connection}s. Ask this {@link ConnectionFactory} for a new
+ * connection.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Jun 12, 2013
  */
 public class ConnectionFactory {
 
-	public Connection getConnection(String serverAddress, int portNo) throws IOException {
+	public Connection getConnection(String serverAddress, int portNo)
+			throws IOException {
 		Ipv4Validator validator = Ipv4Validator.getInstance();
 
 		if (!validator.isValid(serverAddress))
@@ -34,7 +36,8 @@ public class ConnectionFactory {
 				System.out.println("Reattempting...." + i);
 			}
 			try {
-				Thread.sleep((i + 1) * 2000); // increase the sleep time by 2S for every iteration.
+				Thread.sleep((i + 1) * 2000); // increase the sleep time by 2S
+												// for every iteration.
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
