@@ -1,6 +1,10 @@
 package edu.mit.streamjit.apps.test;
 
+import com.google.common.base.Throwables;
+import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multiset;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
@@ -21,6 +25,7 @@ import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.common.PrintStreamVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import edu.mit.streamjit.util.ilpsolve.InfeasibleSystemException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -385,15 +390,21 @@ public final class StreamFuzzer {
 		return retval.build();
 	}
 
+	private static final ImmutableSet<Class<?>> ignoredExceptions = ImmutableSet.<Class<?>>of(
+			InfeasibleSystemException.class
+			);
 	public static void main(String[] args) {
 		StreamCompiler debugSC = new DebugStreamCompiler();
 		StreamCompiler compilerSC = new BlobHostStreamCompiler(new CompilerBlobFactory(), 1);
 		Set<FuzzElement> completedCases = new HashSet<>();
-		int tries, skips = 0;
-		for (tries = 0; true; ++tries) {
+		int generated;
+		int duplicatesSkipped = 0;
+		Multiset<Class<?>> ignored = HashMultiset.create(ignoredExceptions.size());
+		int failures = 0, successes = 0;
+		next_case: for (generated = 0; true; ++generated) {
 			FuzzElement fuzz = StreamFuzzer.generate();
 			if (!completedCases.add(fuzz)) {
-				++skips;
+				++duplicatesSkipped;
 				continue;
 			}
 
@@ -410,21 +421,37 @@ public final class StreamFuzzer {
 			try {
 				compilerOutput = run(fuzz, compilerSC);
 			} catch (Throwable ex) {
+				for (Throwable t : Throwables.getCausalChain(ex))
+					if (ignoredExceptions.contains(t.getClass())) {
+						ignored.add(t.getClass());
+						continue next_case;
+					}
 				System.out.println("Compiler failed");
 				ex.printStackTrace(System.out);
 				//fall into the if below
 			}
 			if (!debugOutput.equals(compilerOutput)) {
+				++failures;
 				fuzz.instantiate().visit(new PrintStreamVisitor(System.out));
 				System.out.println(fuzz.toJava());
 				//TODO: show only elements where they differ
 				System.out.println("Debug output: "+debugOutput);
 				System.out.println("Compiler output: "+compilerOutput);
 				break;
-			}
+			} else
+				++successes;
 			System.out.println(fuzz.hashCode()+" matched");
 		}
 
-		System.out.format("Generated %d cases, skipped %d (%f run rate)%n", tries, skips, ((double)tries-skips)/tries);
+		System.out.format("Generated %d cases%n", generated);
+		System.out.format("  skipped %d duplicates (%f%%)%n", duplicatesSkipped, ((double)duplicatesSkipped)*100/generated);
+		for (Class<?> c : ignoredExceptions) {
+			int count = ignored.count(c);
+			if (count > 0)
+				System.out.format("  ignored %d due to %s (%f%%)%n", count, c, ((double)count)*100/generated);
+		}
+		System.out.format("Ran %d cases (%f%% run rate)%n", successes+failures, ((double)successes+failures)*100/generated);
+		System.out.format("  %d succeeded (%f%%)%n", successes, ((double)successes)*100/(successes+failures));
+		System.out.format("  %d failed (%f%%)%n", failures, ((double)failures)*100/(successes+failures));
 	}
 }
