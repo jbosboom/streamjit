@@ -23,7 +23,6 @@ import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
-import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Command;
@@ -35,6 +34,7 @@ import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
 import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
+import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.StreamNodeAgent;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 
@@ -50,15 +50,13 @@ import edu.mit.streamjit.impl.interp.Interpreter;
  */
 public class Controller {
 
-	private CommunicationManager comManager;
-
-	private List<Integer> nodeIDs;
+	CommunicationManager comManager;
 
 	/**
-	 * {@link NodeInfo} of each {@link StreamNode}s. See the {@link NodeInfo}
-	 * for further information.
+	 * {@link StreamNodeAgent}s for all connected {@link StreamNode}s mapped
+	 * with corresponding nodeID.
 	 */
-	private Map<Integer, NodeInfo> nodeInfoMap;
+	private Map<Integer, StreamNodeAgent> StreamNodeMap;
 
 	/**
 	 * NodeID for the {@link Controller}. We need this as Controller need to
@@ -84,7 +82,7 @@ public class Controller {
 	private BoundaryInputChannel tailChannel;
 
 	public Controller() {
-		this.comManager = new CommunicationManagerImpl();
+		this.comManager = new BlockingCommunicationManager();
 		this.controllerNodeID = 0;
 	}
 
@@ -98,29 +96,27 @@ public class Controller {
 	public void connect(Map<CommunicationType, Integer> comTypeCount) {
 		// TODO: Need to handle this exception well.
 		try {
-			comManager.connectMachines(comTypeCount);
+			StreamNodeMap = comManager.connectMachines(comTypeCount);
 		} catch (IOException e) {
 			System.out.println("Connection Error...");
 			e.printStackTrace();
 			System.exit(0);
 		}
+
+		if (StreamNodeMap.keySet().contains(controllerNodeID))
+			throw new AssertionError(
+					"Conflict in nodeID assignment. controllerNodeID has been assigned to a SteamNode");
+
 		setMachineIds();
 		getNodeInfo();
 	}
 
 	private void setMachineIds() {
-		this.nodeIDs = comManager.getConnectedMachineIDs();
-
-		if (nodeIDs.contains(controllerNodeID))
-			throw new AssertionError(
-					String.format(
-							"Same ID (%d) has been assigned to the Controller and another StreamNode",
-							controllerNodeID));
-
-		for (int key : this.nodeIDs) {
+		for (StreamNodeAgent agent : StreamNodeMap.values()) {
 			try {
-				comManager.writeObject(key, Request.machineID);
-				comManager.writeObject(key, new Integer(key));
+				// TODO: Need to send in a single object.
+				agent.writeObject(Request.machineID);
+				agent.writeObject(new Integer(agent.getNodeID()));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -128,19 +124,7 @@ public class Controller {
 	}
 
 	private void getNodeInfo() {
-		nodeInfoMap = new HashMap<>();
 		sendToAll(Request.NodeInfo);
-
-		for (int key : this.nodeIDs) {
-			try {
-				NodeInfo nodeinfo = comManager.readObject(key);
-				nodeInfoMap.put(key, nodeinfo);
-			} catch (IOException | ClassNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		nodeInfoMap.put(controllerNodeID, NodeInfo.getMyinfo());
 	}
 
 	/**
@@ -164,16 +148,11 @@ public class Controller {
 	 */
 	public Map<Integer, Integer> getCoreCount() {
 		Map<Integer, Integer> coreCounts = new HashMap<>();
-		sendToAll(Request.maxCores);
 
-		for (int key : this.nodeIDs) {
-			try {
-				Integer count = comManager.readObject(key);
-				coreCounts.put(key, count);
-			} catch (IOException | ClassNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+		for (StreamNodeAgent agent : StreamNodeMap.values()) {
+			NodeInfo nodeInfo = agent.getNodeInfo();
+			Integer count = nodeInfo.getAvailableCores();
+			coreCounts.put(agent.getNodeID(), count);
 		}
 		return coreCounts;
 	}
@@ -266,6 +245,12 @@ public class Controller {
 				"channelFactory", ChannelFactory.class, universe.get(0),
 				universe);
 
+		Map<Integer, NodeInfo> nodeInfoMap = new HashMap<>();
+		for (StreamNodeAgent agent : StreamNodeMap.values())
+			nodeInfoMap.put(agent.getNodeID(), agent.getNodeInfo());
+
+		nodeInfoMap.put(controllerNodeID, NodeInfo.getMyinfo());
+
 		Configuration.Builder builder = Configuration.builder();
 		builder.addParameter(partParam.build())
 				.addParameter(cfParameter)
@@ -352,9 +337,9 @@ public class Controller {
 	}
 
 	private void sendToAll(Object object) {
-		for (int key : this.nodeIDs) {
+		for (StreamNodeAgent node : StreamNodeMap.values()) {
 			try {
-				comManager.writeObject(key, object);
+				node.writeObject(object);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -377,34 +362,7 @@ public class Controller {
 	// StreamNodes and process them for the isDrained() status. May be we can
 	// keep a Map<machineID, List<ME>>s
 	public boolean isDrained() {
-		for (int nodeID : nodeIDs) {
-			try {
-				AppStatus sts = comManager.readObject(nodeID);
-				if (sts != AppStatus.STOPPED)
-					throw new IllegalStateException(String.format(
-							"Expecting AppStatus.STOPPED message from stream nodes. Received "
-									+ sts + " from StreamNode %s",
-							getName(nodeID)));
-			} catch (ClassNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		sendToAll(Command.EXIT);
-		return true;
-	}
 
-	/**
-	 * @param nodeID
-	 * @return Human readable name of the streamNode.
-	 */
-	private String getName(int nodeID) {
-		if (!nodeInfoMap.containsKey(nodeIDs))
-			throw new IllegalArgumentException(String.format(
-					"No stream node with nodeID %d exists", nodeID));
-		return nodeInfoMap.get(nodeIDs).getHostName();
+		return true;
 	}
 }

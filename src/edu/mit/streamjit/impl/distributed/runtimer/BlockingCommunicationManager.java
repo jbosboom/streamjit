@@ -2,102 +2,109 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
+
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.MessageElement;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection;
 import edu.mit.streamjit.impl.distributed.node.Connection;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
+ * {@link CommunicationManager} that uses blocking java.io package. Since this
+ * is blocking IO, it runs each connection with a {@link StreamNode} on separate
+ * thread.
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since May 13, 2013
  */
-public class CommunicationManagerImpl implements CommunicationManager {
+public class BlockingCommunicationManager implements CommunicationManager {
 
-	private Map<Integer, Connection> connectionMap; // (machineID, TCPConnection)
+	private ImmutableMap<Integer, StreamNodeAgent> SNAgentMap; // (machineID,
+	// StreamNodeAgent)
 	private int listenPort;
 
-	public CommunicationManagerImpl(int listenPort) {
-		connectionMap = new HashMap<Integer, Connection>();
+	public BlockingCommunicationManager(int listenPort) {
 		this.listenPort = listenPort;
 	}
 
-	public CommunicationManagerImpl() {
+	public BlockingCommunicationManager() {
 		this(GlobalConstants.PORTNO);
 	}
 
 	@Override
-	public <T> T readObject(int machineID) throws IOException, ClassNotFoundException {
-		if (!connectionMap.containsKey(machineID))
-			throw new IllegalArgumentException("Invalid machineID. No machine is connected with machineID " + machineID);
-
-		return connectionMap.get(machineID).readObject();
-	}
-
-	@Override
-	public void writeObject(int machineID, Object obj) throws IOException {
-		if (!connectionMap.containsKey(machineID))
-			throw new IllegalArgumentException("Invalid machineID. No machine is connected with machineID " + machineID);
-
-		connectionMap.get(machineID).writeObject(obj);
-	}
-
-	@Override
-	public void connectMachines(Map<CommunicationType, Integer> commTypes) throws IOException {
+	public Map<Integer, StreamNodeAgent> connectMachines(
+			Map<CommunicationType, Integer> commTypes) throws IOException {
 		int totalTcpConnections = 0;
 		if (commTypes.containsKey(CommunicationType.TCP))
 			totalTcpConnections += commTypes.get(CommunicationType.TCP);
 
 		// TODO: Change this later.
-		// For the moment lets communicate with the local StreamNode through TCP port.
+		// For the moment lets communicate with the local StreamNode through TCP
+		// port.
 		if (commTypes.containsKey(CommunicationType.LOCAL)) {
 			totalTcpConnections += 1;
 		}
 
-		ListenerSocket listnerSckt = new ListenerSocket(this.listenPort, totalTcpConnections);
+		ListenerSocket listnerSckt = new ListenerSocket(this.listenPort,
+				totalTcpConnections);
 		listnerSckt.start();
 		if (commTypes.containsKey(CommunicationType.LOCAL))
 			createTcpLocalStreamNode();
-		connectionMap.clear();
-		int nodeID = 1; // nodeID 0 goes to the controller instance. We need this, though it doesn't executes any workers, Controller
+		ImmutableMap.Builder<Integer, StreamNodeAgent> SNAgentMapbuilder = new ImmutableMap.Builder<>();
+		int nodeID = 1; // nodeID 0 goes to the controller instance. We need
+						// this, though it doesn't executes any workers,
+						// Controller
 						// handles the head and tail channels.
+		int establishedConnection = 0;
 		while (true) {
 			List<Socket> acceptedSocketList = listnerSckt.getAcceptedSockets();
 			for (Socket s : acceptedSocketList) {
-				connectionMap.put(nodeID++, new TCPConnection(s));
+				Connection connection = new TCPConnection(s);
+				StreamNodeAgent snAgent = new StreamNodeAgentImpl(nodeID++,
+						connection);
+				SNAgentMapbuilder.put(snAgent.getNodeID(), snAgent);
+				SNAgentRunner runner = new SNAgentRunner(snAgent, connection);
+				runner.start();
 				System.out.println("StreamNode connected: " + s.toString());
-				if (!(connectionMap.size() < totalTcpConnections))
+				establishedConnection++;
+				if (!(establishedConnection < totalTcpConnections))
 					break;
 			}
 
-			if (!(connectionMap.size() < totalTcpConnections))
+			if (!(establishedConnection < totalTcpConnections))
 				break;
 
-			// Rather than continuously polling the listenersocket, lets wait some time before the next poll.
+			// Rather than continuously polling the listenersocket, lets wait
+			// some time before the next poll.
 			try {
 				Thread.sleep(1000);
-				System.out.println("Waiting for required nodes to be connected. Listener is still listening...");
+				System.out
+						.println("Waiting for required nodes to be connected. Listener is still listening...");
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
 		listnerSckt.stopListening();
+		this.SNAgentMap = SNAgentMapbuilder.build();
+		return SNAgentMap;
 	}
 
 	/**
-	 * Creates JVM local {@link StreamNode}. Only one JVM local {@link StreamNode} can exist.
+	 * Creates JVM local {@link StreamNode}. Only one JVM local
+	 * {@link StreamNode} can exist.
 	 */
 	private void createTcpLocalStreamNode() {
 		new Thread() {
 			public void run() {
 				try {
 					ConnectionFactory cf = new ConnectionFactory();
-					Connection connection = cf.getConnection("127.0.0.1", listenPort);
+					Connection connection = cf.getConnection("127.0.0.1",
+							listenPort);
 					StreamNode.getInstance(connection).start();
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
@@ -108,46 +115,76 @@ public class CommunicationManagerImpl implements CommunicationManager {
 	}
 
 	@Override
-	public void connectMachines(long timeOut) throws IOException {
-		// TODO: Implement a timer and call the listnerSckt.stopListening();
-	}
-
-	@Override
 	public void closeAllConnections() throws IOException {
-		for (Connection s : connectionMap.values()) {
-			s.closeConnection();
+		for (StreamNodeAgent s : SNAgentMap.values()) {
+			s.stopRequest();
 		}
 	}
 
-	@Override
-	public void closeConnection(int machineID) throws IOException {
-		if (!connectionMap.containsKey(machineID))
-			throw new IllegalArgumentException("Invalid machineID. No machine is connected with machineID " + machineID);
+	/**
+	 * {@link StreamNodeAgent} for blocking IO context.
+	 * 
+	 * @author Sumanan
+	 * 
+	 */
+	private static class StreamNodeAgentImpl extends StreamNodeAgent {
+		Connection connection;
 
-		connectionMap.get(machineID).closeConnection();
-	}
-
-	@Override
-	public boolean isConnected(int machineID) {
-
-		if (connectionMap.containsKey(machineID)) {
-			Connection ss = connectionMap.get(machineID);
-			return ss.isStillConnected();
+		private StreamNodeAgentImpl(int machineID, Connection connection) {
+			super(machineID);
+			this.connection = connection;
 		}
-		return false;
+
+		@Override
+		public void writeObject(Object obj) throws IOException {
+			connection.writeObject(obj);
+		}
+
+		@Override
+		public boolean isConnected() {
+			return connection.isStillConnected();
+		}
 	}
 
-	@Override
-	public List<Integer> getConnectedMachineIDs() {
+	/**
+	 * IO thread that runs a {@link StreamNodeAgent}. Since this is blocking IO
+	 * context, each {@link StreamNodeAgent} agent will be running on individual
+	 * threaed.
+	 * 
+	 */
+	private static class SNAgentRunner extends Thread {
+		StreamNodeAgent SNAgent;
+		Connection connection;
 
-		List<Integer> connectedMachineIDs = new LinkedList<>();
+		private SNAgentRunner(StreamNodeAgent SNAgent, Connection connection) {
+			this.SNAgent = SNAgent;
+			this.connection = connection;
+		}
 
-		for (int key : connectionMap.keySet()) {
+		public void run() {
+			while (!SNAgent.isStopRequested() && connection.isStillConnected()) {
+				try {
+					MessageElement me = connection.readObject();
+					me.accept(SNAgent.getMv());
+				} catch (ClassNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			close();
+		}
 
-			if (connectionMap.get(key).isStillConnected()) {
-				connectedMachineIDs.add(key);
+		private void close() {
+
+			try {
+				connection.closeConnection();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
-		return connectedMachineIDs;
 	}
 }
