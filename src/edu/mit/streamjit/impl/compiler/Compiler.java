@@ -539,14 +539,16 @@ public final class Compiler {
 			for (int i = 0; i < sn.cores.size(); ++i) {
 				Method coreCode = coreCodeMethods.get(sn.cores.get(i));
 				int howMany = full + (i < remainder ? 1 : 0);
-				BasicBlock previousBlock = coreCode.basicBlocks().get(coreCode.basicBlocks().size()-1);
-				BasicBlock loop = makeCallLoop(sn.workMethod, multiple, multiple + howMany, previousBlock, "node"+sn.id);
-				coreCode.basicBlocks().add(loop);
-				if (previousBlock.getTerminator() == null)
-					previousBlock.instructions().add(new JumpInst(loop));
-				else
-					((BranchInst)previousBlock.getTerminator()).setOperand(3, loop);
-				multiple += howMany;
+				if (howMany > 0) {
+					BasicBlock previousBlock = coreCode.basicBlocks().get(coreCode.basicBlocks().size()-1);
+					BasicBlock loop = makeCallLoop(sn.workMethod, multiple, multiple + howMany, previousBlock, "node"+sn.id);
+					coreCode.basicBlocks().add(loop);
+					if (previousBlock.getTerminator() == null)
+						previousBlock.instructions().add(new JumpInst(loop));
+					else
+						((BranchInst)previousBlock.getTerminator()).setOperand(3, loop);
+					multiple += howMany;
+				}
 			}
 			assert multiple == iterations : "Didn't assign all iterations to cores";
 		}
@@ -569,6 +571,9 @@ public final class Compiler {
 	 * to the next block by the caller).
 	 */
 	private BasicBlock makeCallLoop(Method method, int begin, int end, BasicBlock previousBlock, String loopName) {
+		int tripcount = end-begin;
+		assert tripcount > 0 : String.format("0 tripcount in makeCallLoop: %s, %d, %d, %s, %s", method, begin, end, previousBlock, loopName);
+
 		BasicBlock body = new BasicBlock(module, loopName+"_loop");
 
 		PhiInst count = new PhiInst(module.types().getRegularType(int.class));
