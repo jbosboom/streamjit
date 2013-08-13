@@ -32,24 +32,8 @@ import java.util.concurrent.ArrayBlockingQueue;
  */
 public class BlobHostStreamCompiler implements StreamCompiler {
 	private final BlobFactory blobFactory;
-	private int maxNumCores;
-	public BlobHostStreamCompiler(BlobFactory blobFactory, int maxNumCores) {
+	public BlobHostStreamCompiler(BlobFactory blobFactory) {
 		this.blobFactory = blobFactory;
-		this.maxNumCores = maxNumCores;
-	}
-
-	/**
-	 * Set the maximum number of cores that will be used to compile.
-	 *
-	 * Subclasses exposing other options should override this method to return
-	 * their type.  (Java doesn't have self types, and CRTP doesn't seem right
-	 * here.)
-	 * @param maxNumCores the maximum number of cores to use
-	 * @return this, for chaining
-	 */
-	public BlobHostStreamCompiler maxNumCores(int maxNumCores) {
-		this.maxNumCores = maxNumCores;
-		return this;
 	}
 
 	@Override
@@ -57,7 +41,7 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		stream.visit(cwv);
 		ImmutableSet<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
-		Blob blob = blobFactory.makeBlob(workers, getConfiguration(workers), maxNumCores);
+		Blob blob = blobFactory.makeBlob(workers, getConfiguration(workers), getMaxNumCores());
 
 		Token inputToken = Iterables.getOnlyElement(blob.getInputs());
 		Token outputToken = Iterables.getOnlyElement(blob.getOutputs());
@@ -88,6 +72,10 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 	 */
 	protected Configuration getConfiguration(Set<Worker<?, ?>> workers) {
 		return blobFactory.getDefaultConfiguration(workers);
+	}
+
+	protected int getMaxNumCores() {
+		return 1;
 	}
 
 	private static final class BlobHostCompiledStream<I, O> implements CompiledStream<I, O> {
