@@ -20,10 +20,9 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.StreamElement;
-import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.common.PrintStreamVisitor;
-import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
+import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.util.ilpsolve.InfeasibleSystemException;
 import java.lang.reflect.Constructor;
@@ -395,7 +394,7 @@ public final class StreamFuzzer {
 			);
 	public static void main(String[] args) {
 		StreamCompiler debugSC = new DebugStreamCompiler();
-		StreamCompiler compilerSC = new BlobHostStreamCompiler(new CompilerBlobFactory(), 1);
+		StreamCompiler compilerSC = new CompilerStreamCompiler();
 		Set<FuzzElement> completedCases = new HashSet<>();
 		int generated;
 		int duplicatesSkipped = 0;

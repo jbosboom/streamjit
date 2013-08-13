@@ -5,9 +5,8 @@ import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.apps.Benchmark.Input;
 import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.CheckVisitor;
-import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
+import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -20,7 +19,7 @@ import java.util.concurrent.TimeoutException;
 public final class Benchmarker {
 	private static final long TIMEOUT = TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
 	public static void main(String[] args) throws InterruptedException {
-		StreamCompiler sc = new BlobHostStreamCompiler(new CompilerBlobFactory(), 1);
+		StreamCompiler sc = new CompilerStreamCompiler();
 		ServiceLoader<Benchmark> loader = ServiceLoader.load(Benchmark.class);
 
 		for (Benchmark benchmark : loader) {
