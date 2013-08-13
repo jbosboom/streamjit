@@ -19,6 +19,7 @@ import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import java.util.Collections;
 import java.util.List;
+import org.kohsuke.MetaInfServices;
 
 /**
  *
@@ -58,6 +59,7 @@ public class FMRadio {
 
 	}
 
+	@MetaInfServices
 	public static class FMRadioBenchmark implements Benchmark {
 		@SuppressWarnings("unchecked")
 		@Override

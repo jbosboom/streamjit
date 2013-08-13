@@ -3,11 +3,12 @@ package edu.mit.streamjit.apps;
 import com.google.common.base.Stopwatch;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.StreamCompiler;
-import edu.mit.streamjit.apps.fmradio.FMRadio;
+import edu.mit.streamjit.apps.Benchmark.Input;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
+import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -16,32 +17,48 @@ import java.util.concurrent.TimeUnit;
  * @since 8/12/2013
  */
 public final class Benchmarker {
+	private static final long TIMEOUT = TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
 	public static void main(String[] args) throws InterruptedException {
 		StreamCompiler sc = new BlobHostStreamCompiler(new CompilerBlobFactory(), 1);
-		Benchmark benchmark = new FMRadio.FMRadioBenchmark();
+		ServiceLoader<Benchmark> loader = ServiceLoader.load(Benchmark.class);
 
-		benchmark.instantiate().visit(new CheckVisitor());
+		for (Benchmark benchmark : loader) {
+			benchmark.instantiate().visit(new CheckVisitor());
+			for (Input input : benchmark.inputs())
+				run(benchmark, input, sc);
+		}
+	}
 
-		Benchmark.Input input = benchmark.inputs().get(0);
-		Stopwatch stopwatch = new Stopwatch();
-		stopwatch.start();
-		CompiledStream<Object, Object> stream = sc.compile(benchmark.instantiate());
-		stopwatch.stop();
-		long compileMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
-		stopwatch.reset();
+	private static void run(Benchmark benchmark, Input input, StreamCompiler compiler) {
+		String statusText = null;
+		long compileMillis = -1, runMillis = -1;
+		try {
+			Stopwatch stopwatch = new Stopwatch();
+			stopwatch.start();
+			CompiledStream<Object, Object> stream = compiler.compile(benchmark.instantiate());
+			stopwatch.stop();
+			compileMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+			stopwatch.reset();
 
-		Thread ot = new OutputThread(input.output(), stream);
-		ot.start();
-		Thread it = new InputThread(input.input(), stream);
-		stopwatch.start();
-		it.start();
+			Thread ot = new OutputThread(input.output(), stream);
+			ot.start();
+			Thread it = new InputThread(input.input(), stream);
+			stopwatch.start();
+			it.start();
 
-		it.join();
-		ot.join();
-		stopwatch.stop();
-		long runMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+			it.join(TIMEOUT);
+			ot.join(TIMEOUT);
+			stopwatch.stop();
+			runMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+		} catch (InterruptedException ex) {
+			statusText = "timed out";
+		} catch (Throwable t) {
+			statusText = "failed: "+t;
+		}
+		if (statusText == null)
+			statusText = String.format("%d ms compile, %d ms run", compileMillis, runMillis);
 
-		System.out.format("%d ms compile, %d ms run%n", compileMillis, runMillis);
+		System.out.format("%s / %s / %s: %s%n", compiler, benchmark, input, statusText);
 	}
 
 	private static class InputThread extends Thread {
