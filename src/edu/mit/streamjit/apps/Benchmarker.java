@@ -10,6 +10,7 @@ import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  *
@@ -47,11 +48,17 @@ public final class Benchmarker {
 			it.start();
 
 			it.join(TIMEOUT);
+			if (it.isAlive())
+				throw new TimeoutException();
 			ot.join(TIMEOUT);
+			if (ot.isAlive())
+				throw new TimeoutException();
 			stopwatch.stop();
 			runMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
-		} catch (InterruptedException ex) {
+		} catch (TimeoutException ex) {
 			statusText = "timed out";
+		} catch (InterruptedException ex) {
+			statusText = "interrupted";
 		} catch (Throwable t) {
 			statusText = "failed: "+t;
 		}
