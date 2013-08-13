@@ -533,8 +533,8 @@ public final class Compiler {
 			//Assign full iterations to all cores, then distribute the remainder
 			//evenly.
 			int full = IntMath.divide(iterations, sn.cores.size(), RoundingMode.DOWN);
-			int remainder = iterations - full;
-			assert remainder >= 0 && remainder < sn.cores.size();
+			int remainder = iterations - full*sn.cores.size();
+			assert remainder >= 0 && remainder < sn.cores.size() : String.format("divided %d / %d into %d with rem %d", iterations, sn.cores.size(), full, remainder);
 			int multiple = 0;
 			for (int i = 0; i < sn.cores.size(); ++i) {
 				Method coreCode = coreCodeMethods.get(sn.cores.get(i));
