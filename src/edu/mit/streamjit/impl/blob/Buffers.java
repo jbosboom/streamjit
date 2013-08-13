@@ -236,7 +236,7 @@ public final class Buffers {
 			private int nextIndex = 0;
 			@Override
 			public Object read() {
-				return ilist.get(nextIndex++);
+				return nextIndex < ilist.size() ? ilist.get(nextIndex++) : null;
 			}
 			@Override
 			public boolean write(Object t) {
