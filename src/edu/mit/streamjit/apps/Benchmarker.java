@@ -1,5 +1,6 @@
 package edu.mit.streamjit.apps;
 
+import com.google.common.base.Stopwatch;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.apps.fmradio.FMRadio;
@@ -7,6 +8,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -21,14 +23,25 @@ public final class Benchmarker {
 		benchmark.instantiate().visit(new CheckVisitor());
 
 		Benchmark.Input input = benchmark.inputs().get(0);
+		Stopwatch stopwatch = new Stopwatch();
+		stopwatch.start();
 		CompiledStream<Object, Object> stream = sc.compile(benchmark.instantiate());
+		stopwatch.stop();
+		long compileMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+		stopwatch.reset();
+
 		Thread ot = new OutputThread(input.output(), stream);
 		ot.start();
 		Thread it = new InputThread(input.input(), stream);
+		stopwatch.start();
 		it.start();
 
 		it.join();
 		ot.join();
+		stopwatch.stop();
+		long runMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+
+		System.out.format("%d ms compile, %d ms run%n", compileMillis, runMillis);
 	}
 
 	private static class InputThread extends Thread {
