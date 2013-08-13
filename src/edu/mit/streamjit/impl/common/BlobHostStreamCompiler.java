@@ -13,6 +13,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 
 /**
@@ -31,10 +32,8 @@ import java.util.concurrent.ArrayBlockingQueue;
  */
 public class BlobHostStreamCompiler implements StreamCompiler {
 	private final BlobFactory blobFactory;
-	private final int maxNumCores;
-	public BlobHostStreamCompiler(BlobFactory blobFactory, int maxNumCores) {
+	public BlobHostStreamCompiler(BlobFactory blobFactory) {
 		this.blobFactory = blobFactory;
-		this.maxNumCores = maxNumCores;
 	}
 
 	@Override
@@ -42,7 +41,7 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		stream.visit(cwv);
 		ImmutableSet<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
-		Blob blob = blobFactory.makeBlob(workers, blobFactory.getDefaultConfiguration(workers), maxNumCores);
+		Blob blob = blobFactory.makeBlob(workers, getConfiguration(workers), getMaxNumCores());
 
 		Token inputToken = Iterables.getOnlyElement(blob.getInputs());
 		Token outputToken = Iterables.getOnlyElement(blob.getOutputs());
@@ -62,6 +61,21 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 		}
 
 		return new BlobHostCompiledStream<>(blob, inputBuffer, outputBuffer, threads.build());
+	}
+
+	/**
+	 * Get a configuration for the given worker.  This implementation returns
+	 * the default configuration from the blob factory, but subclasses can
+	 * override this to implement compiler-specific options.
+	 * @param workers the set of workers in the blob
+	 * @return a configuration
+	 */
+	protected Configuration getConfiguration(Set<Worker<?, ?>> workers) {
+		return blobFactory.getDefaultConfiguration(workers);
+	}
+
+	protected int getMaxNumCores() {
+		return 1;
 	}
 
 	private static final class BlobHostCompiledStream<I, O> implements CompiledStream<I, O> {

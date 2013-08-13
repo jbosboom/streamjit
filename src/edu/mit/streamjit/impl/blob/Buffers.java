@@ -1,5 +1,8 @@
 package edu.mit.streamjit.impl.blob;
 
+import static com.google.common.base.Preconditions.*;
+import com.google.common.collect.ImmutableList;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 
@@ -172,5 +175,82 @@ public final class Buffers {
 				}
 			};
 		}
+	}
+
+	/**
+	 * Returns a read-only view of the given buffer.  (Note that reads still
+	 * modify the buffer as usual; this wrapper merely prohibits the write
+	 * methods.)
+	 * @param buffer the buffer to wrap
+	 * @return a read-only view of the given buffer
+	 */
+	public static Buffer readOnlyBuffer(final Buffer buffer) {
+		checkNotNull(buffer);
+		return new Buffer() {
+			@Override
+			public Object read() {
+				return buffer.read();
+			}
+			@Override
+			public int read(Object[] data, int offset, int length) {
+				return buffer.read(data, offset, length);
+			}
+			@Override
+			public boolean readAll(Object[] data) {
+				return buffer.readAll(data);
+			}
+			@Override
+			public boolean readAll(Object[] data, int offset) {
+				return buffer.readAll(data, offset);
+			}
+			@Override
+			public boolean write(Object t) {
+				throw new UnsupportedOperationException("read-only buffer");
+			}
+			@Override
+			public int write(Object[] data, int offset, int length) {
+				throw new UnsupportedOperationException("read-only buffer");
+			}
+			@Override
+			public int size() {
+				return buffer.size();
+			}
+			@Override
+			public int capacity() {
+				return buffer.capacity();
+			}
+		};
+	}
+
+	/**
+	 * Returns a read-only Buffer view of the given List, starting at its first
+	 * element.  This method is intended for generating sample inputs in tests
+	 * and benchmarks; for real use, see queueBuffer or blockingQueueBuffer.
+	 * @param list the list to wrap
+	 * @return a read-only Buffer view of the given list
+	 */
+	public static Buffer fromList(List<?> list) {
+		final ImmutableList<?> ilist = ImmutableList.copyOf(list);
+		//We could copy into a queue and use queueBuffer() instead...
+		return new AbstractBuffer() {
+			private int nextIndex = 0;
+			@Override
+			public Object read() {
+				return nextIndex < ilist.size() ? ilist.get(nextIndex++) : null;
+			}
+			@Override
+			public boolean write(Object t) {
+				throw new UnsupportedOperationException("read-only buffer");
+			}
+			@Override
+			public int size() {
+				return ilist.size()-nextIndex;
+			}
+			@Override
+			public int capacity() {
+				//This shouldn't matter for a read-only buffer...
+				return size();
+			}
+		};
 	}
 }

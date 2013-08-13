@@ -19,6 +19,7 @@ import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StatefulFilter;
+import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
@@ -319,7 +320,12 @@ public final class Compiler {
 			else
 				constraint.bufferExactly(0);
 		}
-		initSchedule = builder.build();
+
+		try {
+			initSchedule = builder.build();
+		} catch (Schedule.ScheduleException ex) {
+			throw new StreamCompilationFailedException("couldn't find initialization schedule", ex);
+		}
 	}
 
 	/**
@@ -665,7 +671,12 @@ public final class Compiler {
 		for (StreamNode n : nodes)
 			n.constrainExternalSchedule(scheduleBuilder);
 		scheduleBuilder.multiply(multiplier);
-		schedule = scheduleBuilder.build();
+
+		try {
+			schedule = scheduleBuilder.build();
+		} catch (Schedule.ScheduleException ex) {
+			throw new StreamCompilationFailedException("couldn't find external schedule", ex);
+		}
 	}
 
 	private final class StreamNode {
@@ -738,7 +749,11 @@ public final class Compiler {
 						.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max())
 						.peek(info.downstream().getPeekRates().get(info.getDownstreamChannelIndex()).max())
 						.bufferExactly(0);
-			this.internalSchedule = scheduleBuilder.build();
+			try {
+				this.internalSchedule = scheduleBuilder.build();
+			} catch (Schedule.ScheduleException ex) {
+				throw new StreamCompilationFailedException("couldn't find internal schedule for node "+id, ex);
+			}
 		}
 
 		/**

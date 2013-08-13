@@ -1,5 +1,6 @@
 package edu.mit.streamjit.apps.fmradio;
 
+import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
@@ -7,11 +8,18 @@ import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.DuplicateSplitter;
+import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.apps.Benchmark;
+import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import java.util.Collections;
+import java.util.List;
+import org.kohsuke.MetaInfServices;
 
 /**
  *
@@ -49,6 +57,36 @@ public class FMRadio {
 		while ((output = stream.poll()) != null)
 			System.out.println(output);
 
+	}
+
+	@MetaInfServices
+	public static class FMRadioBenchmark implements Benchmark {
+		@SuppressWarnings("unchecked")
+		@Override
+		public OneToOneElement<Object, Object> instantiate() {
+			return (OneToOneElement)new FMRadioCore();
+		}
+		@Override
+		public List<Input> inputs() {
+			return ImmutableList.<Input>of(new Input() {
+				@Override
+				public Buffer input() {
+					return Buffers.fromList(Collections.nCopies(1000000, 1f));
+				}
+				@Override
+				public Buffer output() {
+					return null;
+				}
+				@Override
+				public String toString() {
+					return "1M 1.0f";
+				}
+			});
+		}
+		@Override
+		public String toString() {
+			return "FMRadio";
+		}
 	}
 
 	private static class LowPassFilter extends Filter<Float, Float> {

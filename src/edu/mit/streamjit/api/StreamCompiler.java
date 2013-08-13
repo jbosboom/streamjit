@@ -6,5 +6,16 @@ package edu.mit.streamjit.api;
  * @since 11/20/2012
  */
 public interface StreamCompiler {
+	/**
+	 *
+	 * @param <I>
+	 * @param <O>
+	 * @param stream
+	 * @return
+	 * @throws IllegalStreamGraphException if the stream graph is illegal or
+	 * uses features not supported by this compiler
+	 * @throws StreamCompilationFailedException if compilation fails for some
+	 * reason other than a stream graph defect
+	 */
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream);
 }

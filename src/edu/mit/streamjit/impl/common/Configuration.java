@@ -446,7 +446,7 @@ public final class Configuration {
 					&& range.hasUpperBound() && range.upperBoundType() == BoundType.CLOSED
 					&& !range.isEmpty());
 			this.range = range;
-			checkArgument(range.contains(value));
+			checkArgument(range.contains(value), "value %s out of range %s", value, range);
 			this.value = value;
 		}
 

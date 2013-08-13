@@ -138,29 +138,29 @@ public final class ILPSolver {
 				case NOMEMORY:
 					throw new OutOfMemoryError("when solving");
 				case SUBOPTIMAL:
-					throw new RuntimeException("suboptimal");
+					throw new AssertionError("suboptimal; shouldn't happen?");
 				case INFEASIBLE:
-					throw new IllegalArgumentException("system is infeasible");
+					throw new InfeasibleSystemException();
 				case UNBOUNDED:
-					throw new IllegalArgumentException("system is unbounded");
+					throw new SolverException("system is unbounded");
 				case DEGENERATE:
-					throw new IllegalArgumentException("system is degenerate");
+					throw new SolverException("system is degenerate");
 				case NUMFAILURE:
-					throw new RuntimeException("numerical failure");
+					throw new SolverException("numerical failure");
 				case USERABORT:
-					throw new RuntimeException("user abort");
+					throw new AssertionError("can't happen; user abort not used");
 				case TIMEOUT:
-					throw new RuntimeException("timeout");
+					throw new AssertionError("can't happen; timeout not used");
 				case PRESOLVED:
 					throw new AssertionError("can't happen; presolve not used");
 				case PROCFAIL:
-					throw new RuntimeException("B&B failure");
+					throw new SolverException("B&B failure");
 				case PROCBREAK:
 					throw new AssertionError("can't happen; B&B early breaks not used");
 				case FEASFOUND:
-					throw new RuntimeException("feasfound");
+					throw new AssertionError("feasfound");
 				case NOFEASFOUND:
-					throw new RuntimeException("nofeasfound");
+					throw new AssertionError("nofeasfound");
 			}
 
 			//Otherwise we have an optimal solution.

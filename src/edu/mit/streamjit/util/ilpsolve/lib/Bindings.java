@@ -33,7 +33,10 @@ public final class Bindings {
 	@Convention(Convention.Style.StdCall)
 	@Name("make_lp")
 	public static Pointer<lprec > makeLp(int rows, int columns) {
-		return Pointer.pointerToAddress(makeLp$2(rows, columns), lprec.class);
+		Pointer<lprec> p = Pointer.pointerToAddress(makeLp$2(rows, columns), lprec.class);
+		if (p == null)
+			throw new OutOfMemoryError("couldn't allocate lprec");
+		return p;
 	}
 	@Convention(Convention.Style.StdCall)
 	@Name("make_lp")
