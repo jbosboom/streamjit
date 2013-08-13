@@ -24,9 +24,10 @@ import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 
 /**
  * BlobGraph builds predecessor successor relationship for set of partitioned
- * workers, and verifies for cyclic dependencies among the partitions. </p> All
- * {@link BlobNode}s in the graph can be retrieved and used in coupled with
- * {@link AbstractDrainer} to successfully perform draining process.
+ * workers, and verifies for cyclic dependencies among the partitions. Blob
+ * graph doesn't keep blobs. Instead it keeps {@link BlobNode} that represents
+ * blobs. </p> All BlobNodes in the graph can be retrieved and used in coupled
+ * with {@link AbstractDrainer} to successfully perform draining process.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Jul 30, 2013
@@ -278,9 +279,10 @@ public class BlobGraph {
 	}
 
 	/**
-	 * Abstract drainer for both {@link DistributedStreamCompiler} and
-	 * {@link ConcurrentStreamCompiler}. Uses {@link BlobGraph} to keep track of
-	 * draining. Works coupled with {@link BlobNode}.
+	 * Abstract drainer is to perform draining on a stream application. Both
+	 * {@link DistributedStreamCompiler} and {@link ConcurrentStreamCompiler}
+	 * may extends this to implement the draining on their particular context.
+	 * Works coupled with {@link BlobNode} and {@link BlobGraph}.
 	 * 
 	 * @author Sumanan sumanan@mit.edu
 	 * @since Jul 30, 2013
@@ -312,6 +314,13 @@ public class BlobGraph {
 		 */
 		public abstract void drain(BlobNode node);
 
+		/**
+		 * A blob thread ( Only one blob thread, if there are many threads on
+		 * the blob) must call this function through a callback once draining of
+		 * that particular blob is finished.
+		 * 
+		 * @param node
+		 */
 		public abstract void drained(BlobNode node);
 
 		/**
@@ -320,21 +329,22 @@ public class BlobGraph {
 		public abstract void startDraining();
 
 		/**
-		 * @return true iff draining finished.
+		 * @return true iff draining of the stream application is finished.
 		 */
 		public abstract boolean isDrained();
 
 	}
 
 	/**
-	 * Just used to build the input and output tokens of a partitioned workers.
+	 * Just used to build the input and output tokens of a partitioned blob
+	 * workers. imitate a {@link Blob}.
 	 */
 	private final class DummyBlob {
 		private final ImmutableSet<Token> inputs;
 		private final ImmutableSet<Token> outputs;
 		private final Token id;
 
-		DummyBlob(Set<Worker<?, ?>> workers) {
+		private DummyBlob(Set<Worker<?, ?>> workers) {
 			ImmutableSet.Builder<Token> inputBuilder = new ImmutableSet.Builder<>();
 			ImmutableSet.Builder<Token> outputBuilder = new ImmutableSet.Builder<>();
 			for (IOInfo info : IOInfo.externalEdges(workers)) {

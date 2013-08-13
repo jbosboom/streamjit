@@ -86,7 +86,6 @@ public class ConcurrentDrainer extends AbstractDrainer {
 
 	@Override
 	public boolean isDrained() {
-
 		for (BlobNode node : blobMap.keySet())
 			if (!node.isDrained())
 				return false;
