@@ -70,6 +70,7 @@ public final class Benchmarker {
 			statusText = "interrupted";
 		} catch (Throwable t) {
 			statusText = "failed: "+t;
+			t.printStackTrace(System.out);
 		}
 		if (statusText == null)
 			statusText = String.format("%d ms compile, %d ms run", compileMillis, runMillis);
