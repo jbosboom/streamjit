@@ -99,6 +99,14 @@ public class BlobGraph {
 		return blobNodes;
 	}
 
+	public BlobNode getBlobNode(Token blobID) {
+		for (BlobNode bn : blobNodes) {
+			if (bn.getBlobID().equals(blobID))
+				return bn;
+		}
+		return null;
+	}
+
 	/**
 	 * A Drainer can be set to the {@link BlobGraph} to perform draining.
 	 * 
