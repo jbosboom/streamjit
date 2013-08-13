@@ -105,7 +105,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 		Buffer head = bufferMap.get(Token.createOverallInputToken(source));
 		Buffer tail = bufferMap.get(Token.createOverallOutputToken(sink));
-		return new ConcurrentCompiledStream<>(blobSet, bg, head, tail);
+		return new ConcurrentCompiledStream<>(head, tail, bg, blobSet);
 	}
 
 	// TODO: Buffer sizes, including head and tail buffers, must be optimized.
@@ -182,8 +182,8 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		private Map<Blob, Set<BlobThread>> threadMap = new HashMap<>();
 		private final AbstractDrainer drainer;
 
-		public ConcurrentCompiledStream(Set<Blob> blobSet, BlobGraph blobGraph,
-				Buffer inputBuffer, Buffer outputBuffer) {
+		public ConcurrentCompiledStream(Buffer inputBuffer,
+				Buffer outputBuffer, BlobGraph blobGraph, Set<Blob> blobSet) {
 			super(inputBuffer, outputBuffer);
 			List<Thread> blobThreads = new ArrayList<>(blobSet.size());
 			for (final Blob b : blobSet) {
