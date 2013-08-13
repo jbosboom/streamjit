@@ -22,7 +22,11 @@ public final class Benchmarker {
 	public static void main(String[] args) throws InterruptedException {
 		StreamCompiler[] compilers = {
 			new DebugStreamCompiler(),
-			new CompilerStreamCompiler()
+			new CompilerStreamCompiler(),
+			new CompilerStreamCompiler().multiplier(10),
+			new CompilerStreamCompiler().multiplier(100),
+			new CompilerStreamCompiler().multiplier(1000),
+			new CompilerStreamCompiler().multiplier(10000),
 		};
 		ServiceLoader<Benchmark> loader = ServiceLoader.load(Benchmark.class);
 
