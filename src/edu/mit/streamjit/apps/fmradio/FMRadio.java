@@ -77,6 +77,10 @@ public class FMRadio {
 				public Buffer output() {
 					return null;
 				}
+				@Override
+				public String toString() {
+					return "1M 1.0f";
+				}
 			});
 		}
 		@Override
