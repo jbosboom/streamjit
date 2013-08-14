@@ -1,5 +1,6 @@
 package edu.mit.streamjit.apps.bitonicsort;
 
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Pipeline;
@@ -13,7 +14,6 @@ import edu.mit.streamjit.apps.Inputs;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
-import org.kohsuke.MetaInfServices;
 
 /**
  * Moved from StreamIt's asplos06 benchmark. Refer STREAMIT_HOME/apps/benchmarks/asplos06/bitonic-sort/streamit/BitonicSort2.str for
@@ -64,7 +64,7 @@ public class BitonicSort {
 			System.out.println(output);
 	}
 
-	@MetaInfServices(Benchmark.class)
+	@ServiceProvider(Benchmark.class)
 	public static class BitonicSortBenchmark extends AbstractBenchmark {
 		public BitonicSortBenchmark() {
 			//TODO: what's the output?  a sorted sequence?

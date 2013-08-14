@@ -10,6 +10,7 @@ import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.apps.AbstractBenchmark;
+import edu.mit.streamjit.apps.Benchmark;
 import edu.mit.streamjit.apps.Inputs;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
@@ -18,9 +19,9 @@ import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import java.util.Collections;
 import java.util.List;
-import org.kohsuke.MetaInfServices;
 
 /**
  *
@@ -60,7 +61,7 @@ public class FMRadio {
 
 	}
 
-	@MetaInfServices
+	@ServiceProvider(Benchmark.class)
 	public static class FMRadioBenchmark extends AbstractBenchmark {
 		public FMRadioBenchmark() {
 			super("FMRadio", "app", FMRadioCore.class, Inputs.nCopies(1000000, 1.0f));
