@@ -1,8 +1,8 @@
-package edu.mit.streamjit.impl.distributed.node;
+package edu.mit.streamjit.impl.distributed.common;
 
 import java.io.IOException;
 
-import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**

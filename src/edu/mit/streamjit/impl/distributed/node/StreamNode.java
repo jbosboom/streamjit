@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.io.IOException;
 
 import edu.mit.streamjit.impl.distributed.common.Command;
+import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;

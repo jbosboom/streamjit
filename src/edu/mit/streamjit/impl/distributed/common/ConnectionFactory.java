@@ -3,7 +3,6 @@ package edu.mit.streamjit.impl.distributed.common;
 import java.io.IOException;
 import java.net.Socket;
 
-import edu.mit.streamjit.impl.distributed.node.Connection;
 
 /**
  * Returns {@link Connection}s. Ask this {@link ConnectionFactory} for a new
