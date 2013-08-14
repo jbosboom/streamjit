@@ -10,6 +10,7 @@ import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.apps.AbstractBenchmark;
+import edu.mit.streamjit.apps.Inputs;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
@@ -62,20 +63,7 @@ public class FMRadio {
 	@MetaInfServices
 	public static class FMRadioBenchmark extends AbstractBenchmark {
 		public FMRadioBenchmark() {
-			super("FMRadio", "app", FMRadioCore.class, new Input() {
-				@Override
-				public Buffer input() {
-					return Buffers.fromList(Collections.nCopies(1000000, 1f));
-				}
-				@Override
-				public Buffer output() {
-					return null;
-				}
-				@Override
-				public String toString() {
-					return "1M 1.0f";
-				}
-			});
+			super("FMRadio", "app", FMRadioCore.class, Inputs.nCopies(1000000, 1.0f));
 		}
 	}
 
