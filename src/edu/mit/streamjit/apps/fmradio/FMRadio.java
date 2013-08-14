@@ -9,7 +9,7 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.OneToOneElement;
-import edu.mit.streamjit.apps.Benchmark;
+import edu.mit.streamjit.apps.AbstractBenchmark;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
@@ -60,15 +60,9 @@ public class FMRadio {
 	}
 
 	@MetaInfServices
-	public static class FMRadioBenchmark implements Benchmark {
-		@SuppressWarnings("unchecked")
-		@Override
-		public OneToOneElement<Object, Object> instantiate() {
-			return (OneToOneElement)new FMRadioCore();
-		}
-		@Override
-		public List<Input> inputs() {
-			return ImmutableList.<Input>of(new Input() {
+	public static class FMRadioBenchmark extends AbstractBenchmark {
+		public FMRadioBenchmark() {
+			super("FMRadio", "app", FMRadioCore.class, new Input() {
 				@Override
 				public Buffer input() {
 					return Buffers.fromList(Collections.nCopies(1000000, 1f));
@@ -82,10 +76,6 @@ public class FMRadio {
 					return "1M 1.0f";
 				}
 			});
-		}
-		@Override
-		public String toString() {
-			return "FMRadio";
 		}
 	}
 
