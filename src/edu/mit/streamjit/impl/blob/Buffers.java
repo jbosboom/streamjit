@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.blob;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
@@ -241,7 +242,9 @@ public final class Buffers {
 	/**
 	 * Returns a read-only Buffer view of the given Iterator, in the order
 	 * returned by next(). Elements removed from the Buffer are *not* removed
-	 * from the iterator.
+	 * from the iterator. Only size elements will be returned, even if the
+	 * iterator has more elements. (If the iterator has fewer elements, a
+	 * NoSuchElementException will be thrown.)
 	 * <p/>
 	 * This method is intended for generating sample inputs in tests and
 	 * benchmarks; for real use, see queueBuffer or blockingQueueBuffer.
@@ -254,7 +257,7 @@ public final class Buffers {
 			private int remainingSize = size;
 			@Override
 			public Object read() {
-				if (!iterator.hasNext())
+				if (remainingSize <= 0)
 					return null;
 				--remainingSize;
 				return iterator.next();
