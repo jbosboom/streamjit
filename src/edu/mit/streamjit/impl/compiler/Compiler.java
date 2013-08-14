@@ -1228,15 +1228,29 @@ public final class Compiler {
 			return drainData;
 		}
 
+		/**
+		 * Rethrows all exceptions so that the thread dies.
+		 */
 		private void mainLoop(MethodHandle corework) throws Throwable {
-			corework.invoke();
+			try {
+				corework.invoke();
+			} catch (Throwable ex) {
+				//Deliberately break the barrier to release other threads.
+				//Note that reset() does *not* break the barrier for threads not
+				//already waiting at the barrier.
+				Thread.currentThread().interrupt();
+				try {
+					barrier.await();
+				} catch (InterruptedException expected) {}
+				throw ex;
+			}
 			try {
 				barrier.await();
 			} catch (BrokenBarrierException ex) {
-				return;
+				throw ex;
 			} catch (InterruptedException ex) {
 				Thread.currentThread().interrupt();
-				return;
+				throw ex;
 			}
 		}
 
