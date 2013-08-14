@@ -219,11 +219,9 @@ public final class Compiler {
 	 */
 	private void allocateCores() {
 		//TODO
-		//Note that any node containing a splitter or joiner can only go on one
-		//core (as it has to synchronize for its inputs and outputs).
-		//For now, just put everything on core 0.
 		for (StreamNode n : ImmutableSet.copyOf(streamNodes.values()))
-			n.cores.add(0);
+			for (int i = 0; i < maxNumCores; ++i)
+				n.cores.add(i);
 	}
 
 	/**
