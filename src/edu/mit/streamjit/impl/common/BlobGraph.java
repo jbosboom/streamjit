@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.*;
@@ -119,6 +120,8 @@ public class BlobGraph {
 	}
 
 	/**
+	 * TODO: Ensure whether providing this public method is useful.
+	 * 
 	 * @return the sourceBlobNode
 	 */
 	public BlobNode getSourceBlobNode() {
@@ -209,18 +212,17 @@ public class BlobGraph {
 		 * inform its successors as well.
 		 */
 		public void drained() {
-			drainer.drained(this);
+			isDrained = true;
 			for (BlobNode suc : this.successors) {
 				suc.predecessorDrained(this);
 			}
-
-			isDrained = true;
+			drainer.drainingFinished(this);
 		}
 
 		/**
 		 * Drain the blob mapped by this blob node.
 		 */
-		public void drain() {
+		private void drain() {
 			checkNotNull(drainer);
 			drainer.drain(this);
 		}
@@ -296,11 +298,19 @@ public class BlobGraph {
 	 * @since Jul 30, 2013
 	 */
 	public static abstract class AbstractDrainer {
-
 		/**
 		 * Blob graph of the stream application that needs to be drained.
 		 */
 		protected final BlobGraph blobGraph;
+
+		private AtomicInteger unDrainedNodes;
+
+		/**
+		 * We cannot say draining is finished by checking unDrainedNodes ==0.
+		 * Even after unDrainedNodes become zero, all data in the tail buffers
+		 * have to be read by the CompiledStream.pull().
+		 */
+		private AtomicBoolean isDrainingfinished;
 
 		/**
 		 * Whether the {@link StreamCompiler} needs the drain data after
@@ -311,7 +321,31 @@ public class BlobGraph {
 		public AbstractDrainer(BlobGraph blobGraph, boolean needDrainData) {
 			this.blobGraph = blobGraph;
 			this.needDrainData = needDrainData;
+			unDrainedNodes = new AtomicInteger(blobGraph.getBlobNodes().size());
 			blobGraph.setDrainer(this);
+			isDrainingfinished = new AtomicBoolean(false);
+		}
+
+		public void drainingFinished(BlobNode blobNode) {
+			drained(blobNode);
+			if (unDrainedNodes.decrementAndGet() == 0) {
+				drainingFinished();
+				isDrainingfinished.set(true);
+			}
+		}
+
+		/**
+		 * Initiate the draining of the blobgraph.
+		 */
+		public final void startDraining() {
+			blobGraph.getSourceBlobNode().drain();
+		}
+
+		/**
+		 * @return true iff draining of the stream application is finished.
+		 */
+		public final boolean isDrained() {
+			return isDrainingfinished.get();
 		}
 
 		/**
@@ -320,7 +354,7 @@ public class BlobGraph {
 		 * 
 		 * @param node
 		 */
-		public abstract void drain(BlobNode node);
+		protected abstract void drain(BlobNode node);
 
 		/**
 		 * A blob thread ( Only one blob thread, if there are many threads on
@@ -329,17 +363,16 @@ public class BlobGraph {
 		 * 
 		 * @param node
 		 */
-		public abstract void drained(BlobNode node);
+		protected abstract void drained(BlobNode node);
 
 		/**
-		 * Initiate the draining of the blobgraph.
+		 * Once all {@link BlobNode} have been drained, this function will get
+		 * called. This can be used to do the final cleanups ( e.g, All data in
+		 * the tail buffer should be consumed before this function returns.)
+		 * After the return of this function, isDrained() will start to return
+		 * true.
 		 */
-		public abstract void startDraining();
-
-		/**
-		 * @return true iff draining of the stream application is finished.
-		 */
-		public abstract boolean isDrained();
+		protected abstract void drainingFinished();
 
 	}
 

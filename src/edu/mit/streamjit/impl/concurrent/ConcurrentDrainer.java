@@ -21,7 +21,7 @@ import edu.mit.streamjit.impl.distributed.common.Utils;
  * @author Sumanan sumanan@mit.edu
  * @since Jul 30, 2013
  */
-public class ConcurrentDrainer extends AbstractDrainer {
+public final class ConcurrentDrainer extends AbstractDrainer {
 
 	/**
 	 * Each blob is mapped to a blobnode in the blob graph.
@@ -70,7 +70,7 @@ public class ConcurrentDrainer extends AbstractDrainer {
 	}
 
 	@Override
-	public void drain(BlobNode node) {
+	protected void drain(BlobNode node) {
 		checkNotNull(node);
 		Blob blob = blobMap.get(node);
 		checkNotNull(blob);
@@ -80,20 +80,7 @@ public class ConcurrentDrainer extends AbstractDrainer {
 	}
 
 	@Override
-	public void startDraining() {
-		blobGraph.getSourceBlobNode().drain();
-	}
-
-	@Override
-	public boolean isDrained() {
-		for (BlobNode node : blobMap.keySet())
-			if (!node.isDrained())
-				return false;
-		return true;
-	}
-
-	@Override
-	public void drained(BlobNode node) {
+	protected void drained(BlobNode node) {
 		Blob blob = blobMap.get(node);
 		Set<BlobThread> blobThreads = threadMap.get(blob);
 		checkNotNull(blobThreads);
@@ -112,5 +99,10 @@ public class ConcurrentDrainer extends AbstractDrainer {
 		public void run() {
 			node.drained();
 		}
+	}
+
+	@Override
+	protected void drainingFinished() {
+		System.out.println("Draining Finished");
 	}
 }
