@@ -1,10 +1,14 @@
 package edu.mit.streamjit.apps.fft5;
 
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.apps.AbstractBenchmark;
+import edu.mit.streamjit.apps.Benchmark;
+import edu.mit.streamjit.apps.Inputs;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
@@ -39,6 +43,13 @@ public class FFT5 {
 		// Thread.sleep(1000);
 		stream.drain();
 		while (!stream.isDrained());
+	}
+
+	@ServiceProvider(Benchmark.class)
+	public static final class FFT5Benchmark extends AbstractBenchmark {
+		public FFT5Benchmark() {
+			super("FFT5", "app", FFT5Kernel.class, Inputs.nCopies(1000, 0.0f));
+		}
 	}
 
 	/**
