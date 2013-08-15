@@ -3,6 +3,7 @@ package edu.mit.streamjit.apps.fft5;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Pipeline;
+import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
@@ -162,7 +163,7 @@ public class FFT5 {
 		}
 	}
 
-	private static class FFTTestSource extends Filter<Float, Float> {
+	private static class FFTTestSource extends StatefulFilter<Float, Float> {
 
 		float max = 1000.0f;
 		float current = 0.0f;
