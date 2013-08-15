@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.io.EOFException;
 import java.io.IOException;
 
 import edu.mit.streamjit.impl.distributed.common.Command;
@@ -78,7 +79,12 @@ public class StreamNode extends Thread {
 			try {
 				MessageElement me = controllerConnection.readObject();
 				me.accept(mv);
-			} catch (ClassNotFoundException | IOException e) {
+			} catch (ClassNotFoundException e) {
+				// No way. Just ignore.
+			} catch (EOFException e) {
+				// Other side closed
+				run = false;
+			} catch (IOException e) {
 				e.printStackTrace();
 				// TODO: Need to decide what to do here. May be we can re try
 				// couple of time in a time interval before aborting the
