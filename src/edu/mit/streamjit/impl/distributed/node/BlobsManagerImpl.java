@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 import edu.mit.streamjit.impl.blob.Blob;
@@ -15,6 +16,7 @@ import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.BlobThread;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
 import edu.mit.streamjit.impl.distributed.common.DrainElement;
 import edu.mit.streamjit.impl.distributed.common.MessageElement;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
@@ -38,7 +40,7 @@ public class BlobsManagerImpl implements BlobsManager {
 	private Map<Integer, NodeInfo> nodeInfoMap;
 	private final StreamNode streamNode;
 
-	public BlobsManagerImpl(Set<Blob> blobSet,
+	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
 			Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap,
 			Map<Token, Integer> portIdMap, Map<Integer, NodeInfo> nodeInfoMap,
 			StreamNode streamNode) {
@@ -207,6 +209,9 @@ public class BlobsManagerImpl implements BlobsManager {
 		Set<BoundaryInputChannel> inputChannels;
 		Set<BoundaryOutputChannel> outputChannels;
 
+		Set<Thread> inputChannelThreads;
+		Set<Thread> outputChannelThreads;
+
 		private boolean reqDrainData;
 
 		private BlobExecuter(Blob blob,
@@ -218,6 +223,8 @@ public class BlobsManagerImpl implements BlobsManager {
 			assert blob.getOutputs().containsAll(outputChannels.keySet());
 			this.inputChannels = new HashSet<>(inputChannels.values());
 			this.outputChannels = new HashSet<>(outputChannels.values());
+			inputChannelThreads = new HashSet<>(inputChannels.values().size());
+			outputChannelThreads = new HashSet<>(outputChannels.values().size());
 
 			for (int i = 0; i < blob.getCoreCount(); i++) {
 				blobThreads.add(new BlobThread(blob.getCoreCode(i)));
@@ -228,13 +235,16 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		private void start() {
-
 			for (BoundaryInputChannel bc : inputChannels) {
-				new Thread(bc.getRunnable()).start();
+				Thread t = new Thread(bc.getRunnable(), "inputChannel");
+				t.start();
+				inputChannelThreads.add(t);
 			}
 
 			for (BoundaryOutputChannel bc : outputChannels) {
-				new Thread(bc.getRunnable()).start();
+				Thread t = new Thread(bc.getRunnable(), "outputChannel");
+				t.start();
+				outputChannelThreads.add(t);
 			}
 
 			for (Thread t : blobThreads)
@@ -261,6 +271,20 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		private void doDrain(boolean reqDrainData) {
 			this.reqDrainData = reqDrainData;
+
+			for (BoundaryInputChannel bc : inputChannels) {
+				bc.stop();
+			}
+
+			for (Thread t : inputChannelThreads) {
+				try {
+					t.join();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
 			DrainCallback dcb = new DrainCallback(this);
 			this.blob.drain(dcb);
 		}
@@ -268,6 +292,19 @@ public class BlobsManagerImpl implements BlobsManager {
 		private void drained() {
 			for (BlobThread bt : blobThreads) {
 				bt.requestStop();
+			}
+
+			for (BoundaryChannel bc : outputChannels) {
+				bc.stop();
+			}
+
+			for (Thread t : outputChannelThreads) {
+				try {
+					t.join();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 
 			this.isDrained = true;
@@ -315,7 +352,7 @@ public class BlobsManagerImpl implements BlobsManager {
 	@Override
 	public void drain(Token blobID, boolean reqDrainData) {
 		for (BlobExecuter be : blobExecuters) {
-			if (be.getBlobID() == blobID) {
+			if (be.getBlobID().equals(blobID)) {
 				be.doDrain(reqDrainData);
 				break;
 			}

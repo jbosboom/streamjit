@@ -1,5 +1,9 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
+import static com.google.common.base.Preconditions.*;
+
+import edu.mit.streamjit.impl.common.BlobGraph;
+import edu.mit.streamjit.impl.common.BlobGraph.BlobNode;
 import edu.mit.streamjit.impl.distributed.common.DrainElement.DoDrain;
 import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainDataRequest;
 import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
@@ -13,10 +17,11 @@ import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainedDataMap;
  * @since Aug 11, 2013
  */
 public class CNDrainProcessorImpl implements DrainProcessor {
-	
-	public CNDrainProcessorImpl()
-	{
-		
+
+	BlobGraph blobGraph;
+
+	public CNDrainProcessorImpl(BlobGraph blobGraph) {
+		this.blobGraph = blobGraph;
 	}
 
 	@Override
@@ -33,12 +38,13 @@ public class CNDrainProcessorImpl implements DrainProcessor {
 
 	@Override
 	public void process(Drained drained) {
-
+		BlobNode bn = blobGraph.getBlobNode(drained.blobID);
+		checkNotNull(bn);
+		bn.drained();
 	}
 
 	@Override
 	public void process(DrainedDataMap drainedData) {
 
 	}
-
 }
