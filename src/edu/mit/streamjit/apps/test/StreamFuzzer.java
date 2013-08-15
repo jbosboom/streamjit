@@ -24,14 +24,13 @@ import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.common.PrintStreamVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.ilpsolve.InfeasibleSystemException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
@@ -191,22 +190,11 @@ public final class StreamFuzzer {
 			}
 		}
 		private Constructor<? extends T> findConstructor() {
-			@SuppressWarnings("unchecked")
-			Constructor<? extends T>[] constructors = (Constructor<T>[])filterClass.getConstructors();
-			List<Constructor<? extends T>> retvals = new ArrayList<>();
-			Map<Constructor<? extends T>, Throwable> exceptions = new HashMap<>();
-			for (Constructor<? extends T> ctor : constructors)
-				try {
-					ctor.newInstance(arguments.toArray());
-					retvals.add(ctor);
-				} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-					exceptions.put(ctor, ex);
-				}
-			if (retvals.isEmpty())
-				throw new AssertionError("Couldn't create a "+filterClass+" from "+arguments+": exceptions "+exceptions);
-			if (retvals.size() > 1)
-				throw new AssertionError("Creating a "+filterClass+" from "+arguments+" was ambiguous: "+retvals);
-			return retvals.get(0);
+			try {
+				return ReflectionUtils.findConstructor(filterClass, arguments);
+			} catch (NoSuchMethodException ex) {
+				throw new AssertionError(ex);
+			}
 		}
 		public String toJava() {
 			//This will generate unchecked code if the filter is generic.

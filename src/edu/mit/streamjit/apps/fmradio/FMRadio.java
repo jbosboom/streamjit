@@ -9,7 +9,9 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.apps.AbstractBenchmark;
 import edu.mit.streamjit.apps.Benchmark;
+import edu.mit.streamjit.apps.Inputs;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
@@ -17,9 +19,9 @@ import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import java.util.Collections;
 import java.util.List;
-import org.kohsuke.MetaInfServices;
 
 /**
  *
@@ -59,33 +61,10 @@ public class FMRadio {
 
 	}
 
-	@MetaInfServices
-	public static class FMRadioBenchmark implements Benchmark {
-		@SuppressWarnings("unchecked")
-		@Override
-		public OneToOneElement<Object, Object> instantiate() {
-			return (OneToOneElement)new FMRadioCore();
-		}
-		@Override
-		public List<Input> inputs() {
-			return ImmutableList.<Input>of(new Input() {
-				@Override
-				public Buffer input() {
-					return Buffers.fromList(Collections.nCopies(1000000, 1f));
-				}
-				@Override
-				public Buffer output() {
-					return null;
-				}
-				@Override
-				public String toString() {
-					return "1M 1.0f";
-				}
-			});
-		}
-		@Override
-		public String toString() {
-			return "FMRadio";
+	@ServiceProvider(Benchmark.class)
+	public static class FMRadioBenchmark extends AbstractBenchmark {
+		public FMRadioBenchmark() {
+			super("FMRadio", "app", FMRadioCore.class, Inputs.nCopies(1000000, 1.0f));
 		}
 	}
 

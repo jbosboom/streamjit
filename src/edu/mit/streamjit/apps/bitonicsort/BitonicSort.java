@@ -1,5 +1,6 @@
 package edu.mit.streamjit.apps.bitonicsort;
 
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Pipeline;
@@ -7,6 +8,9 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.apps.AbstractBenchmark;
+import edu.mit.streamjit.apps.Benchmark;
+import edu.mit.streamjit.apps.Inputs;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
@@ -58,6 +62,15 @@ public class BitonicSort {
 		
 		while ((output = stream.poll()) != null)
 			System.out.println(output);
+	}
+
+	@ServiceProvider(Benchmark.class)
+	public static class BitonicSortBenchmark extends AbstractBenchmark {
+		public BitonicSortBenchmark() {
+			//TODO: what's the output?  a sorted sequence?
+			//TODO: what size should we use?
+			super("BitonicSort", "app", BitonicSort2.class, Inputs.allIntsInRange(1, 8*8*8*8));
+		}
 	}
 
 	/**

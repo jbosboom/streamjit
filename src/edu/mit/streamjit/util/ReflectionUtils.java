@@ -3,8 +3,14 @@ package edu.mit.streamjit.util;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableSet;
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Contains reflection utilities.
@@ -104,5 +110,38 @@ public final class ReflectionUtils {
 					"Expected caller %s, but was %s",
 					expectedCaller, callerCaller));
 		return true;
+	}
+
+	/**
+	 * Returns the unique applicable constructor for the given class and
+	 * arguments.
+	 *
+	 * TODO: what if the constructor throws some other exception?
+	 * @param <T> the type of the class to find a constructor for
+	 * @param klass the class to find a constructor for
+	 * @param arguments the arguments
+	 * @return the unique applicable constructor for the given class and
+	 * arguments
+	 * @throws NoSuchMethodException if no constructor is applicable, or more
+	 * than one constructor is applicable
+	 */
+	public static <T> Constructor<T> findConstructor(Class<T> klass, List<?> arguments) throws NoSuchMethodException {
+		@SuppressWarnings("unchecked")
+		Constructor<T>[] constructors = (Constructor<T>[])klass.getConstructors();
+		List<Constructor<T>> retvals = new ArrayList<>();
+		Map<Constructor<T>, Throwable> exceptions = new HashMap<>();
+		for (Constructor<T> ctor : constructors)
+			try {
+				ctor.setAccessible(true);
+				ctor.newInstance(arguments.toArray());
+				retvals.add(ctor);
+			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+				exceptions.put(ctor, ex);
+			}
+		if (retvals.isEmpty())
+			throw new NoSuchMethodException("Couldn't create a "+klass+" from "+arguments+": exceptions "+exceptions);
+		if (retvals.size() > 1)
+			throw new NoSuchMethodException("Creating a "+klass+" from "+arguments+" was ambiguous: "+retvals);
+		return retvals.get(0);
 	}
 }

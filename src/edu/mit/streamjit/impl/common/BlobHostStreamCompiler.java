@@ -53,14 +53,17 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 				.build();
 		blob.installBuffers(bufferMap);
 
-		ImmutableList.Builder<PollingCoreThread> threads = ImmutableList.builder();
+		ImmutableList.Builder<PollingCoreThread> threadsBuilder = ImmutableList.builder();
 		for (int i = 0; i < blob.getCoreCount(); ++i) {
 			PollingCoreThread thread = new PollingCoreThread(blob.getCoreCode(i), blob.toString()+"-"+i);
-			threads.add(thread);
-			thread.start();
+			threadsBuilder.add(thread);
 		}
+		ImmutableList<PollingCoreThread> threads = threadsBuilder.build();
 
-		return new BlobHostCompiledStream<>(blob, inputBuffer, outputBuffer, threads.build());
+		BlobHostCompiledStream<I, O> cs = new BlobHostCompiledStream<>(blob, inputBuffer, outputBuffer, threads);
+		for (Thread t : threads)
+			t.start();
+		return cs;
 	}
 
 	/**

@@ -2,6 +2,9 @@ package edu.mit.streamjit.impl.blob;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
@@ -223,20 +226,41 @@ public final class Buffers {
 	}
 
 	/**
-	 * Returns a read-only Buffer view of the given List, starting at its first
-	 * element.  This method is intended for generating sample inputs in tests
-	 * and benchmarks; for real use, see queueBuffer or blockingQueueBuffer.
-	 * @param list the list to wrap
-	 * @return a read-only Buffer view of the given list
+	 * Returns a read-only Buffer view of the given Iterable, in the order
+	 * returned by its iterator. Elements removed from the Buffer are *not*
+	 * removed from the iterable.
+	 * <p/>
+	 * This method is intended for generating sample inputs in tests and
+	 * benchmarks; for real use, see queueBuffer or blockingQueueBuffer.
+	 * @param iterable the iterable to wrap
+	 * @return a read-only Buffer view of the given iterable
 	 */
-	public static Buffer fromList(List<?> list) {
-		final ImmutableList<?> ilist = ImmutableList.copyOf(list);
-		//We could copy into a queue and use queueBuffer() instead...
+	public static Buffer fromIterable(Iterable<?> iterable) {
+		return fromIterator(iterable.iterator(), Iterables.size(iterable));
+	}
+
+	/**
+	 * Returns a read-only Buffer view of the given Iterator, in the order
+	 * returned by next(). Elements removed from the Buffer are *not* removed
+	 * from the iterator. Only size elements will be returned, even if the
+	 * iterator has more elements. (If the iterator has fewer elements, a
+	 * NoSuchElementException will be thrown.)
+	 * <p/>
+	 * This method is intended for generating sample inputs in tests and
+	 * benchmarks; for real use, see queueBuffer or blockingQueueBuffer.
+	 * @param iterator the iterator to wrap
+	 * @param size the number of elements in the iterator
+	 * @return a read-only Buffer view of the given iterator
+	 */
+	public static Buffer fromIterator(final Iterator<?> iterator, final int size) {
 		return new AbstractBuffer() {
-			private int nextIndex = 0;
+			private int remainingSize = size;
 			@Override
 			public Object read() {
-				return nextIndex < ilist.size() ? ilist.get(nextIndex++) : null;
+				if (remainingSize <= 0)
+					return null;
+				--remainingSize;
+				return iterator.next();
 			}
 			@Override
 			public boolean write(Object t) {
@@ -244,7 +268,7 @@ public final class Buffers {
 			}
 			@Override
 			public int size() {
-				return ilist.size()-nextIndex;
+				return remainingSize;
 			}
 			@Override
 			public int capacity() {

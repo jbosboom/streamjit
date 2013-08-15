@@ -42,6 +42,7 @@ public final class Benchmarker {
 	private static void run(Benchmark benchmark, Input input, StreamCompiler compiler) {
 		String statusText = null;
 		long compileMillis = -1, runMillis = -1;
+		Throwable throwable = null;
 		try {
 			Stopwatch stopwatch = new Stopwatch();
 			stopwatch.start();
@@ -70,11 +71,14 @@ public final class Benchmarker {
 			statusText = "interrupted";
 		} catch (Throwable t) {
 			statusText = "failed: "+t;
+			throwable = t;
 		}
 		if (statusText == null)
 			statusText = String.format("%d ms compile, %d ms run", compileMillis, runMillis);
 
 		System.out.format("%s / %s / %s: %s%n", compiler, benchmark, input, statusText);
+		if (throwable != null)
+			throwable.printStackTrace(System.out);
 	}
 
 	private static class InputThread extends Thread {

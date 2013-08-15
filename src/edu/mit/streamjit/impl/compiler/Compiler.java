@@ -219,11 +219,9 @@ public final class Compiler {
 	 */
 	private void allocateCores() {
 		//TODO
-		//Note that any node containing a splitter or joiner can only go on one
-		//core (as it has to synchronize for its inputs and outputs).
-		//For now, just put everything on core 0.
 		for (StreamNode n : ImmutableSet.copyOf(streamNodes.values()))
-			n.cores.add(0);
+			for (int i = 0; i < maxNumCores; ++i)
+				n.cores.add(i);
 	}
 
 	/**
@@ -533,20 +531,22 @@ public final class Compiler {
 			//Assign full iterations to all cores, then distribute the remainder
 			//evenly.
 			int full = IntMath.divide(iterations, sn.cores.size(), RoundingMode.DOWN);
-			int remainder = iterations - full;
-			assert remainder >= 0 && remainder < sn.cores.size();
+			int remainder = iterations - full*sn.cores.size();
+			assert remainder >= 0 && remainder < sn.cores.size() : String.format("divided %d / %d into %d with rem %d", iterations, sn.cores.size(), full, remainder);
 			int multiple = 0;
 			for (int i = 0; i < sn.cores.size(); ++i) {
 				Method coreCode = coreCodeMethods.get(sn.cores.get(i));
 				int howMany = full + (i < remainder ? 1 : 0);
-				BasicBlock previousBlock = coreCode.basicBlocks().get(coreCode.basicBlocks().size()-1);
-				BasicBlock loop = makeCallLoop(sn.workMethod, multiple, multiple + howMany, previousBlock, "node"+sn.id);
-				coreCode.basicBlocks().add(loop);
-				if (previousBlock.getTerminator() == null)
-					previousBlock.instructions().add(new JumpInst(loop));
-				else
-					((BranchInst)previousBlock.getTerminator()).setOperand(3, loop);
-				multiple += howMany;
+				if (howMany > 0) {
+					BasicBlock previousBlock = coreCode.basicBlocks().get(coreCode.basicBlocks().size()-1);
+					BasicBlock loop = makeCallLoop(sn.workMethod, multiple, multiple + howMany, previousBlock, "node"+sn.id);
+					coreCode.basicBlocks().add(loop);
+					if (previousBlock.getTerminator() == null)
+						previousBlock.instructions().add(new JumpInst(loop));
+					else
+						((BranchInst)previousBlock.getTerminator()).setOperand(3, loop);
+					multiple += howMany;
+				}
 			}
 			assert multiple == iterations : "Didn't assign all iterations to cores";
 		}
@@ -569,6 +569,9 @@ public final class Compiler {
 	 * to the next block by the caller).
 	 */
 	private BasicBlock makeCallLoop(Method method, int begin, int end, BasicBlock previousBlock, String loopName) {
+		int tripcount = end-begin;
+		assert tripcount > 0 : String.format("0 tripcount in makeCallLoop: %s, %d, %d, %s, %s", method, begin, end, previousBlock, loopName);
+
 		BasicBlock body = new BasicBlock(module, loopName+"_loop");
 
 		PhiInst count = new PhiInst(module.types().getRegularType(int.class));
@@ -1223,15 +1226,29 @@ public final class Compiler {
 			return drainData;
 		}
 
+		/**
+		 * Rethrows all exceptions so that the thread dies.
+		 */
 		private void mainLoop(MethodHandle corework) throws Throwable {
-			corework.invoke();
+			try {
+				corework.invoke();
+			} catch (Throwable ex) {
+				//Deliberately break the barrier to release other threads.
+				//Note that reset() does *not* break the barrier for threads not
+				//already waiting at the barrier.
+				Thread.currentThread().interrupt();
+				try {
+					barrier.await();
+				} catch (InterruptedException expected) {}
+				throw ex;
+			}
 			try {
 				barrier.await();
 			} catch (BrokenBarrierException ex) {
-				return;
+				throw ex;
 			} catch (InterruptedException ex) {
 				Thread.currentThread().interrupt();
-				return;
+				throw ex;
 			}
 		}
 

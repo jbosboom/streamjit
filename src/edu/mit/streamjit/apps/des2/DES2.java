@@ -3,6 +3,7 @@ package edu.mit.streamjit.apps.des2;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
@@ -245,7 +246,7 @@ public class DES2 {
 	private static class nextR extends Pipeline<Integer, Integer> {
 		nextR(int vector, int round) {
 			add(new Splitjoin<Integer, Integer>(new RoundrobinSplitter<Integer>(32), new RoundrobinJoiner<Integer>(), new f(vector,
-					round)), new Identity());
+					round)), new Identity<>());
 			add(new Xor(2));
 		}
 	}
@@ -438,19 +439,9 @@ public class DES2 {
 
 			if (PRINTINFO && (round == 0)) {
 				// FIXME: join roundrobin(1, 0);
-				add(new Splitjoin<Integer, Integer>(new DuplicateSplitter<Integer>(), new RoundrobinJoiner<Integer>(), new Identity(),
+				add(new Splitjoin<Integer, Integer>(new DuplicateSplitter<Integer>(), new RoundrobinJoiner<Integer>(), new Identity<Integer>(),
 						new KeySchedulePipeline1(96, 2, vector)));
 			}
-		}
-	}
-
-	private static class Identity extends Filter<Integer, Integer> {
-		Identity() {
-			super(1, 1);
-		}
-
-		public void work() {
-			push(pop());
 		}
 	}
 
@@ -490,7 +481,7 @@ public class DES2 {
 			add(new doPC2());
 			if (PRINTINFO && (round == 0)) {
 				// FIXME: join roundrobin(1, 0);
-				add(new Splitjoin<Integer, Integer>(new DuplicateSplitter<Integer>(), new RoundrobinJoiner<Integer>(), new Identity(),
+				add(new Splitjoin<Integer, Integer>(new DuplicateSplitter<Integer>(), new RoundrobinJoiner<Integer>(), new Identity<Integer>(),
 						new KeySchedulePipeline1(48, 2, vector)));
 			}
 		}
@@ -655,7 +646,7 @@ public class DES2 {
 			if (PRINTINFO) {
 				// FIXME join roundrobin(1, 0);
 				add(new Splitjoin<Integer, Integer>(new DuplicateSplitter<Integer>(), new RoundrobinJoiner<Integer>()));
-				add(new Identity());
+				add(new Identity<Integer>());
 				add(new HexPrinter(PLAINTEXT, 64));
 			}
 		}
@@ -751,7 +742,7 @@ public class DES2 {
 			this.w = w;
 			this.b = b;
 			for (int l = 0; l < b; l++) {
-				add(new Identity());
+				add(new Identity<Integer>());
 			}
 		}
 	}
@@ -872,7 +863,7 @@ public class DES2 {
 		ShowIntermediate(int n) {
 			// FIXME join roundrobin(1, 0);
 			super(new DuplicateSplitter<Integer>(), new RoundrobinJoiner<Integer>());
-			add(new Identity());
+			add(new Identity<>());
 			// FIXME: Need to add this. This is not the join roundrobin(1, 0) issue. The issue here is as join roundrobin(1,
 			// 0), the second filter's output type is void. But Joiner's input type is not void and it receives the input from the
 			// first filter.
