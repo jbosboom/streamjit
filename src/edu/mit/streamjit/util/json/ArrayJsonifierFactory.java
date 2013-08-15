@@ -1,6 +1,7 @@
 package edu.mit.streamjit.util.json;
 
 import com.google.common.primitives.Primitives;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import javax.json.Json;
@@ -14,6 +15,7 @@ import javax.json.JsonValue;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/27/2013
  */
+@ServiceProvider(value = JsonifierFactory.class, priority = Integer.MIN_VALUE+1)
 public final class ArrayJsonifierFactory implements JsonifierFactory {
 	@Override
 	@SuppressWarnings({"unchecked","rawtypes"})

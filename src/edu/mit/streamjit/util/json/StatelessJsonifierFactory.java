@@ -1,5 +1,6 @@
 package edu.mit.streamjit.util.json;
 
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -23,6 +24,7 @@ import javax.json.JsonValue;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/26/2013
  */
+@ServiceProvider(value = JsonifierFactory.class, priority = Integer.MAX_VALUE-2)
 public final class StatelessJsonifierFactory implements JsonifierFactory, Jsonifier<Object> {
 	/**
 	 * The eligibility check involves expensive reflective operations, so we use

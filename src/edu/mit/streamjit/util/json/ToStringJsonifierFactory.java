@@ -2,6 +2,7 @@ package edu.mit.streamjit.util.json;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.reflect.Invokable;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -36,6 +37,7 @@ import javax.json.JsonValue;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/29/2013
  */
+@ServiceProvider(value = JsonifierFactory.class, priority = Integer.MAX_VALUE-1)
 public final class ToStringJsonifierFactory implements JsonifierFactory {
 	/**
 	 * Sentinel to indicate that a class is not supported by this factory, so we
