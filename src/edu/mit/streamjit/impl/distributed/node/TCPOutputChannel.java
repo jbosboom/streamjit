@@ -72,6 +72,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 				while (!stopFlag.get())
 					sendData();
 
+				finalSend();
 				try {
 					closeConnection();
 				} catch (IOException e) {
@@ -86,13 +87,25 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 			try {
 				tcpConnection.writeObject(buffer.read());
 			} catch (IOException e) {
-				try {
-					Thread.sleep(2000);
-				} catch (InterruptedException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
+				System.err
+						.println("TCP Output Channel. WriteObject exception.");
 				reConnect();
+			}
+		}
+	}
+
+	/**
+	 * This can be called when running the application with the final scheduling
+	 * configurations. Shouldn't be called when autotuner tunes.
+	 */
+	private void finalSend() {
+		while (this.buffer.size() > 0) {
+			try {
+				// System.out.println(Thread.currentThread().getName() +
+				// " buffer.size()" + this.buffer.size());
+				tcpConnection.writeObject(buffer.read());
+			} catch (IOException e) {
+				System.err.println("TCP Output Channel. finalSend exception.");
 			}
 		}
 	}
