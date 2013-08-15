@@ -128,8 +128,11 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 
+		String jarFilePath = this.getClass().getProtectionDomain()
+				.getCodeSource().getLocation().getPath();
+		
 		controller
-				.setPartition(partitionsMachineMap,
+				.setPartition(partitionsMachineMap, jarFilePath,
 						stream.getClass().getName(), constraints, source, sink,
 						bufferMapBuilder.build());
 

@@ -174,12 +174,9 @@ public class Controller {
 	@SuppressWarnings("unchecked")
 	public void setPartition(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
-			String toplevelclass, List<MessageConstraint> constraints,
-			Worker<?, ?> source, Worker<?, ?> sink,
-			ImmutableMap<Token, Buffer> bufferMap) {
-
-		String jarFilePath = this.getClass().getProtectionDomain()
-				.getCodeSource().getLocation().getPath();
+			String jarFilePath, String toplevelclass,
+			List<MessageConstraint> constraints, Worker<?, ?> source,
+			Worker<?, ?> sink, ImmutableMap<Token, Buffer> bufferMap) {
 
 		Configuration cfg = makeConfiguration(partitionsMachineMap,
 				jarFilePath, toplevelclass, source, sink);
