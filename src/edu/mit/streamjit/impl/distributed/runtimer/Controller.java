@@ -15,6 +15,10 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.api.CompiledStream;
+import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Pipeline;
+import edu.mit.streamjit.api.Splitjoin;
+import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.BlobFactory;
@@ -35,6 +39,7 @@ import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
 import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
@@ -171,7 +176,30 @@ public class Controller {
 		return coreCounts;
 	}
 
-	@SuppressWarnings("unchecked")
+	/**
+	 * Setup a streamJit application on all connected {@link StreamNode}s.
+	 * {@link StreamCompiler} or a tuner can get use of this function to deploy
+	 * an application on the connected stream nodes.
+	 * 
+	 * @param partitionsMachineMap
+	 *            Map that contains NodeID and list of blob workers (set of
+	 *            workers) mapped to that particular streamnode.
+	 * @param jarFilePath
+	 *            path of the streamJit application that streamNodes can find
+	 *            it. All streamNodes should be able to access the jar file of
+	 *            the streamJit application through this path.
+	 * @param toplevelclass
+	 *            name of the top level stream class. {@link OneToOneElement}
+	 *            that has been asked to compile. Should be an unique
+	 *            OneToOneElement. Default subtypes of the
+	 *            {@link OneToOneElement}s such as {@link Pipeline},
+	 *            {@link Splitjoin} and etc shouldn't be passed.
+	 * @param constraints
+	 * @param source
+	 * @param sink
+	 * @param bufferMap
+	 *            buffers for head and tail channels.
+	 */
 	public void setPartition(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
 			String jarFilePath, String toplevelclass,
@@ -183,7 +211,22 @@ public class Controller {
 		ConfigurationString json = new ConfigurationString(cfg.toJson());
 		sendToAll(json);
 
-		// TODO: Change this later.
+		setupHeadTail(cfg, bufferMap, Token.createOverallInputToken(source),
+				Token.createOverallOutputToken(sink));
+	}
+
+	/**
+	 * Setup the headchannel and tailchannel.
+	 * 
+	 * @param cfg
+	 * @param bufferMap
+	 * @param headToken
+	 * @param tailToken
+	 */
+	@SuppressWarnings("unchecked")
+	private void setupHeadTail(Configuration cfg,
+			ImmutableMap<Token, Buffer> bufferMap, Token headToken,
+			Token tailToken) {
 		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = (Map<Token, Map.Entry<Integer, Integer>>) cfg
 				.getExtraData(GlobalConstants.TOKEN_MACHINE_MAP);
 
@@ -193,39 +236,35 @@ public class Controller {
 		Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) cfg
 				.getExtraData(GlobalConstants.NODE_INFO_MAP);
 
-		if (getAssignedMachine(source, partitionsMachineMap) != controllerNodeID) {
-			Token t = Token.createOverallInputToken(source);
-			if (!bufferMap.containsKey(t))
+		Map.Entry<Integer, Integer> headentry = tokenMachineMap.get(headToken);
+		assert headentry != null : "No head token exists in tokenMachineMap";
+		assert headentry.getKey() == controllerNodeID : "Head channel should start from the controller.";
+
+		if (headentry.getValue() != controllerNodeID) {
+			if (!bufferMap.containsKey(headToken))
 				throw new IllegalArgumentException(
 						"No head buffer in the passed bufferMap.");
 
-			headChannel = new TCPOutputChannel(bufferMap.get(t),
-					portIdMap.get(t));
+			headChannel = new TCPOutputChannel(bufferMap.get(headToken),
+					portIdMap.get(headToken));
 		}
 
-		if (getAssignedMachine(sink, partitionsMachineMap) != controllerNodeID) {
-			Token t = Token.createOverallOutputToken(sink);
-			if (!bufferMap.containsKey(t))
+		Map.Entry<Integer, Integer> tailentry = tokenMachineMap.get(tailToken);
+		assert tailentry != null : "No tail token exists in tokenMachineMap";
+		assert tailentry.getValue() == controllerNodeID : "Tail channel should ends at the controller.";
+
+		if (tailentry.getKey() != controllerNodeID) {
+			if (!bufferMap.containsKey(tailToken))
 				throw new IllegalArgumentException(
 						"No tail buffer in the passed bufferMap.");
 
-			int nodeID = tokenMachineMap.get(t).getKey();
+			int nodeID = tokenMachineMap.get(tailToken).getKey();
 			NodeInfo nodeInfo = nodeInfoMap.get(nodeID);
 			String ipAddress = nodeInfo.getIpAddress().getHostAddress();
 
-			tailChannel = new TCPInputChannel(bufferMap.get(t), ipAddress,
-					portIdMap.get(t));
+			tailChannel = new TCPInputChannel(bufferMap.get(tailToken),
+					ipAddress, portIdMap.get(tailToken));
 		}
-	}
-
-	private Token getblobID(Set<Worker<?, ?>> workers) {
-		ImmutableSet.Builder<Token> inputBuilder = new ImmutableSet.Builder<>();
-		for (IOInfo info : IOInfo.externalEdges(workers)) {
-			if (info.isInput())
-				inputBuilder.add(info.token());
-		}
-
-		return Collections.min(inputBuilder.build());
 	}
 
 	private Configuration makeConfiguration(
@@ -255,7 +294,7 @@ public class Controller {
 				partParam.addBlob(machineID, 1, factory, blobWorkers);
 
 				// TODO: Temp fix to build.
-				Token t = getblobID(blobWorkers);
+				Token t = Utils.getblobID(blobWorkers);
 				blobtoMachineMap.put(t, machineID);
 			}
 		}
