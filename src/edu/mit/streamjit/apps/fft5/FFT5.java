@@ -162,16 +162,6 @@ public class FFT5 {
 		}
 	}
 
-	private static class Nothing extends Filter<Float, Float> {
-		Nothing() {
-			super(1, 1);
-		}
-
-		public void work() {
-			push(pop());
-		}
-	}
-
 	private static class FFTTestSource extends Filter<Float, Float> {
 
 		float max = 1000.0f;
