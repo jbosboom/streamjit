@@ -129,7 +129,7 @@ public class Interpreter implements Blob {
 			(info.isInput() ? inputTokens : outputTokens).add(info.token());
 			if (info.isInput()) {
 				Worker<?, ?> w = info.downstream();
-				int chanIdx = info.token().isOverallInput() ? 0 : Workers.getPredecessors(w).indexOf(info.upstream());
+				int chanIdx = info.getDownstreamChannelIndex();
 				int rate = Math.max(w.getPeekRates().get(chanIdx).max(), w.getPopRates().get(chanIdx).max());
 				minimumBufferSize.put(info.token(), rate);
 			}
