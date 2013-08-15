@@ -2,16 +2,19 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
 
+import edu.mit.streamjit.impl.distributed.common.Command;
+import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.MessageElement;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection;
-import edu.mit.streamjit.impl.distributed.node.Connection;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
@@ -28,8 +31,11 @@ public class BlockingCommunicationManager implements CommunicationManager {
 	// StreamNodeAgent)
 	private int listenPort;
 
+	private Set<SNAgentRunner> SNRunners;
+
 	public BlockingCommunicationManager(int listenPort) {
 		this.listenPort = listenPort;
+		SNRunners = new HashSet<>();
 	}
 
 	public BlockingCommunicationManager() {
@@ -70,6 +76,7 @@ public class BlockingCommunicationManager implements CommunicationManager {
 				SNAgentMapbuilder.put(snAgent.getNodeID(), snAgent);
 				SNAgentRunner runner = new SNAgentRunner(snAgent, connection);
 				runner.start();
+				SNRunners.add(runner);
 				System.out.println("StreamNode connected: " + s.toString());
 				establishedConnection++;
 				if (!(establishedConnection < totalTcpConnections))
@@ -116,8 +123,8 @@ public class BlockingCommunicationManager implements CommunicationManager {
 
 	@Override
 	public void closeAllConnections() throws IOException {
-		for (StreamNodeAgent s : SNAgentMap.values()) {
-			s.stopRequest();
+		for (SNAgentRunner runner : SNRunners) {
+			runner.close();
 		}
 	}
 
@@ -170,16 +177,16 @@ public class BlockingCommunicationManager implements CommunicationManager {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					if (!SNAgent.isStopRequested())
+						e.printStackTrace();
 				}
 			}
-			close();
 		}
 
-		private void close() {
-
+		public void close() {
 			try {
+				SNAgent.stopRequest();
+				connection.writeObject(Command.EXIT);
 				connection.closeConnection();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
