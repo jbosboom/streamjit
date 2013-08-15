@@ -26,6 +26,7 @@
 
 package edu.mit.streamjit.apps.dct;
 
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Pipeline;
@@ -33,6 +34,9 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.apps.AbstractBenchmark;
+import edu.mit.streamjit.apps.Benchmark;
+import edu.mit.streamjit.apps.Inputs;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
@@ -77,6 +81,15 @@ public class DCT2 {
 
 		while ((output = stream.poll()) != null)
 			System.out.println(output);
+	}
+
+	@ServiceProvider(Benchmark.class)
+	public static final class DCT2Benchmark extends AbstractBenchmark {
+		public DCT2Benchmark() {
+			//TODO: if we checked in the StreamIt input and output files, we
+			//could add a file-reading Input.
+			super("DCT2", "app", DCT2Kernel.class, Inputs.allIntsInRange(0, 1000));
+		}
 	}
 
 	/**
