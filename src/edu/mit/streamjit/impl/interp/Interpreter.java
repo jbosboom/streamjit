@@ -21,7 +21,6 @@ import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.util.EmptyRunnable;
 import edu.mit.streamjit.util.Pair;
-import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;

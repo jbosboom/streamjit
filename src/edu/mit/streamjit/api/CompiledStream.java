@@ -1,7 +1,5 @@
 package edu.mit.streamjit.api;
 
-import java.util.concurrent.TimeUnit;
-
 /**
  * The interface to a compiled stream.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>

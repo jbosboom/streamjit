@@ -6,7 +6,6 @@ import edu.mit.streamjit.impl.compiler.BasicBlock;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.ReferenceType;
 import edu.mit.streamjit.impl.compiler.types.Type;
-import java.util.Map;
 
 /**
  * A conditional branch.  Compares two values against one another and branches

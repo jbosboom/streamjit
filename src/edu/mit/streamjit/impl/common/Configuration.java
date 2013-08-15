@@ -21,7 +21,6 @@ import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.json.Jsonifier;
 import edu.mit.streamjit.util.json.JsonifierFactory;
 import edu.mit.streamjit.util.json.Jsonifiers;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;

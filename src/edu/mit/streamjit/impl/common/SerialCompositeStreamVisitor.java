@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.common;
 
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import edu.mit.streamjit.api.Filter;
