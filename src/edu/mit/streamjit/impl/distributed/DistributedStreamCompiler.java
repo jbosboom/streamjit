@@ -11,7 +11,11 @@ import com.google.common.collect.ImmutableMap;
 
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Portal;
+import edu.mit.streamjit.api.Splitjoin;
+import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob.Token;
@@ -33,10 +37,16 @@ import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
 
 /**
- * TODO: Now it executes all blobs in a single thread. Need to implement
- * Distributed concurrent blobs soon. TODO: {@link DistributedStreamCompiler}
- * must work with 1 {@link StreamNode} as well. In that case, it should behave
- * like a {@link ConcurrentStreamCompiler}.
+ * 
+ * The OneToOneElement that is asked to compile by this {@link Compiler} must be
+ * unique. Compilation will fail if default subtypes of the
+ * {@link OneToOneElement}s such as {@link Pipeline}, {@link Splitjoin} and etc
+ * are be passed.
+ * <p>
+ * TODO: {@link DistributedStreamCompiler} must work with 1 {@link StreamNode}
+ * as well. In that case, it should behave like a
+ * {@link ConcurrentStreamCompiler}.
+ * </p>
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 6, 2013
@@ -69,6 +79,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 	@Override
 	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
+
+		checkforDefaultOneToOneElement(stream);
 
 		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
 		stream.visit(primitiveConnector);
@@ -130,11 +142,10 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		String jarFilePath = this.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
-		
-		controller
-				.setPartition(partitionsMachineMap, jarFilePath,
-						stream.getClass().getName(), constraints, source, sink,
-						bufferMapBuilder.build());
+
+		controller.setPartition(partitionsMachineMap, jarFilePath, stream
+				.getClass().getName(), constraints, source, sink,
+				bufferMapBuilder.build());
 
 		return new DistributedCompiledStream<>(head, tail, bg, controller);
 	}
@@ -178,6 +189,25 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			}
 		}
 		return partitionsMachineMap;
+	}
+
+	/**
+	 * TODO: Need to check for other default subtypes of {@link OneToOneElement}
+	 * s. Now only checks for first generation children.
+	 * 
+	 * @param stream
+	 * @throws StreamCompilationFailedException
+	 *             if stream is default subtype of OneToOneElement
+	 */
+	private <I, O> void checkforDefaultOneToOneElement(
+			OneToOneElement<I, O> stream) {
+
+		if (stream.getClass() == Pipeline.class
+				|| stream.getClass() == Splitjoin.class
+				|| stream.getClass() == Filter.class) {
+			throw new StreamCompilationFailedException(
+					"Default subtypes of OneToOneElement are not accepted for compilation by this compiler. OneToOneElement that passed should be unique");
+		}
 	}
 
 	private static class DistributedCompiledStream<I, O> extends
