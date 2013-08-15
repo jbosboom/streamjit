@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import edu.mit.streamjit.impl.common.BlobGraph;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
+import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.MessageElement;
 import edu.mit.streamjit.impl.distributed.common.MessageVisitor;
@@ -89,7 +91,7 @@ public interface CommunicationManager {
 		/**
 		 * {@link MessageVisitor} for this streamnode.
 		 */
-		private final MessageVisitor mv;
+		private MessageVisitor mv;
 
 		/**
 		 * Assigned nodeID of the corresponding {@link StreamNode}.
@@ -128,11 +130,12 @@ public interface CommunicationManager {
 		public StreamNodeAgent(int nodeID) {
 			this.nodeID = nodeID;
 			stopFlag = new AtomicBoolean(false);
+			// TODO: Need to handle passing null for DrainProcessor.
 			mv = new MessageVisitorImpl(new CNAppStatusProcessorImpl(this),
 					new CNCommandProcessorImpl(),
 					new CNErrorProcessorImpl(this),
 					new CNRequestProcessorImpl(),
-					new CNCfgStringProcessorImpl(), new CNDrainProcessorImpl(),
+					new CNCfgStringProcessorImpl(), null,
 					new CNNodeInfoProcessorImpl(this));
 		}
 
@@ -264,6 +267,17 @@ public interface CommunicationManager {
 		 */
 		public MessageVisitor getMv() {
 			return mv;
+		}
+
+		// TODO: Temporary fix. Need to come up with a better solution to to set
+		// DrainProcessor to messagevisitor.
+		public void setDrainProcessor(DrainProcessor dp) {
+			mv = new MessageVisitorImpl(new CNAppStatusProcessorImpl(this),
+					new CNCommandProcessorImpl(),
+					new CNErrorProcessorImpl(this),
+					new CNRequestProcessorImpl(),
+					new CNCfgStringProcessorImpl(), dp,
+					new CNNodeInfoProcessorImpl(this));
 		}
 	}
 }
