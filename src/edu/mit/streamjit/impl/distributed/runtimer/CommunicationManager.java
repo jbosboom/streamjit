@@ -56,6 +56,11 @@ public interface CommunicationManager {
 	 *            Map that tells the number of connections need to be
 	 *            established for each {@link CommunicationType}.
 	 * @throws IOException
+	 * 
+	 * @return A map in where the key is assigned nodeID of the connected
+	 *         {@link StreamNode}s and value is {@link StreamNodeAgent}.
+	 *         StreamNodeAgent is representative of streamnode at controller
+	 *         side.
 	 */
 	public Map<Integer, StreamNodeAgent> connectMachines(
 			Map<CommunicationType, Integer> comTypeCount) throws IOException;
