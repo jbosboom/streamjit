@@ -10,18 +10,27 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * {@link ListenerSocket} listens for new TCP connections. It can run on separate thread and keep on listening until the stop condition
- * is full filled.</p> {@link ListenerSocket} can be used in two different ways.
- * <OL>
- * <LI>Caller can ask {@link ListenerSocket} to listen until it asks to stop
- * <LI>Caller can mention expected number of sockets that should be accepted. In this case, listener thread will stop listening once it
- * has accepted the expected count.
- * </OL>
+ * {@link ListenerSocket} listens for new TCP connections. This class can be
+ * used in two different ways.
+ * <ul>
+ * <li>First, It can be made to run on separate thread and keep on listening
+ * until the stop condition is fulfilled. In this separate thread way, again
+ * ListenerSocket can be used in two different ways.
+ * <ol>
+ * <li>Caller can ask {@link ListenerSocket} to listen until it asks to stop.</li>
+ * <li>Caller can mention expected number of sockets that should be accepted. In
+ * this case, listener thread will stop listening once it has accepted the
+ * expected count.</li>
+ * </ol>
+ * </li>
+ * <li>Second, without running this on a separate thread, caller thread may call
+ * {@link #makeConnection(int)} to establish connections.</li>
+ * </ul>
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 14, 2013
  */
-public class ListenerSocket extends Thread {
+public final class ListenerSocket extends Thread {
 
 	private ServerSocket server;
 
@@ -31,28 +40,17 @@ public class ListenerSocket extends Thread {
 
 	private ConcurrentLinkedQueue<Socket> acceptedSockets;
 
-	public void stopListening() {
-		keepOnListen.set(false);
-	}
-
-	// Only returns the sockets those are accepted since this last function call.
-	public List<Socket> getAcceptedSockets() {
-		List<Socket> acceptedSocketslist = new LinkedList<>();
-		while (!acceptedSockets.isEmpty()) {
-			acceptedSocketslist.add(acceptedSockets.poll()); // removes from the acceptedSockets and add it to the acceptedSocketslist.
-		}
-		return acceptedSocketslist;
-	}
-
 	/**
 	 * @param portNo
 	 *            Listening port number.
 	 * @param expectedConnections
-	 *            : ListenerSocket will try to accept at most this amount sockets. Once this limit is reached, {@link ListenerSocket}
+	 *            : ListenerSocket will try to accept at most this amount
+	 *            sockets. Once this limit is reached, {@link ListenerSocket}
 	 *            thread will die itself.
 	 * @throws IOException
 	 */
-	public ListenerSocket(int portNo, int expectedConnections) throws IOException {
+	public ListenerSocket(int portNo, int expectedConnections)
+			throws IOException {
 		super("Listener Socket");
 		try {
 			server = new ServerSocket(portNo);
@@ -63,11 +61,12 @@ public class ListenerSocket extends Thread {
 		}
 
 		acceptedSockets = new ConcurrentLinkedQueue<>();
-		this.keepOnListen = new AtomicBoolean(true);
+		keepOnListen = new AtomicBoolean(true);
 	}
 
 	/**
-	 * {@link ListenerSocket} will accept as much sockets as it can until stopListening() is called.
+	 * {@link ListenerSocket} will accept as much sockets as it can until
+	 * stopListening() is called.
 	 * 
 	 * @param portNo
 	 * @throws IOException
@@ -87,7 +86,8 @@ public class ListenerSocket extends Thread {
 				// TODO What to do if IO exception occurred?
 				// 1. Abort the listening?
 				// 2. Close the socket and recreate new one?
-				// 3. Wait for some time and then keep on listen on the same socket.
+				// 3. Wait for some time and then keep on listen on the same
+				// socket.
 				// Currently case 3 is done.
 				e.printStackTrace();
 				try {
@@ -100,7 +100,17 @@ public class ListenerSocket extends Thread {
 		}
 	}
 
-	public Socket makeConnection(int timeOut) throws SocketTimeoutException, IOException {
+	/**
+	 * This function accept a socket and returns it.
+	 * 
+	 * @param timeOut
+	 *            - socket time out. See {@link ServerSocket}.setSoTimeout().
+	 * @return accepted {@link Socket}
+	 * @throws SocketTimeoutException
+	 * @throws IOException
+	 */
+	public Socket makeConnection(int timeOut) throws SocketTimeoutException,
+			IOException {
 		try {
 			server.setSoTimeout(timeOut);
 			Socket socket = server.accept();
@@ -117,5 +127,24 @@ public class ListenerSocket extends Thread {
 			e.printStackTrace();
 			throw e;
 		}
+	}
+
+	/**
+	 * Stops listening for new connections and stop the thread as well.
+	 */
+	public void stopListening() {
+		keepOnListen.set(false);
+	}
+
+	/**
+	 * @return The sockets those are accepted since last function call. i.e,
+	 *         does not return all accepted socket since started.
+	 */
+	public List<Socket> getAcceptedSockets() {
+		List<Socket> acceptedSocketslist = new LinkedList<>();
+		while (!acceptedSockets.isEmpty()) {
+			acceptedSocketslist.add(acceptedSockets.poll());
+		}
+		return acceptedSocketslist;
 	}
 }

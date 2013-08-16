@@ -20,7 +20,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
  * @author Sumanan sumanan@mit.edu
  * @since May 29, 2013
  */
-public class TCPOutputChannel implements BoundaryOutputChannel {
+public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private int portNo;
 
@@ -45,15 +45,6 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 	public boolean isStillConnected() {
 		return (tcpConnection == null) ? false : tcpConnection
 				.isStillConnected();
-	}
-
-	private void makeConnection() throws IOException {
-		ListenerSocket listnerSckt = new ListenerSocket(this.portNo, 1);
-		// As we need only one connection, lets run the accepting process in
-		// this caller thread rather that spawning a new thread.
-		listnerSckt.run();
-		Socket socket = listnerSckt.getAcceptedSockets().get(0);
-		this.tcpConnection = new TCPConnection(socket);
 	}
 
 	@Override
@@ -94,6 +85,16 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 		}
 	}
 
+	@Override
+	public int getOtherNodeID() {
+		return 0;
+	}
+
+	@Override
+	public void stop() {
+		this.stopFlag.set(true);
+	}
+
 	/**
 	 * This can be called when running the application with the final scheduling
 	 * configurations. Shouldn't be called when autotuner tunes.
@@ -108,6 +109,12 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 				System.err.println("TCP Output Channel. finalSend exception.");
 			}
 		}
+	}
+
+	private void makeConnection() throws IOException {
+		ListenerSocket listnerSckt = new ListenerSocket(portNo);
+		Socket socket = listnerSckt.makeConnection(0);
+		this.tcpConnection = new TCPConnection(socket);
 	}
 
 	private void reConnect() {
@@ -130,15 +137,5 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-	}
-
-	@Override
-	public int getOtherNodeID() {
-		return 0;
-	}
-
-	@Override
-	public void stop() {
-		this.stopFlag.set(true);
 	}
 }

@@ -49,9 +49,9 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		if (commTypes.containsKey(CommunicationType.TCP))
 			totalTcpConnections += commTypes.get(CommunicationType.TCP);
 
-		// TODO: Change this later.
-		// For the moment lets communicate with the local StreamNode through TCP
-		// port.
+		// TODO: Change this later. We can use Java NIO direct buffer for faster
+		// communication. For the moment lets communicate with the local
+		// StreamNode through TCP port.
 		if (commTypes.containsKey(CommunicationType.LOCAL)) {
 			totalTcpConnections += 1;
 		}
