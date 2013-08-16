@@ -1,10 +1,12 @@
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 
 /**
@@ -59,44 +61,78 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						e.printStackTrace();
 					}
 				}
-				receiveData();
+				while (!stopFlag.get()) {
+					receiveData();
+				}
+				finalReceive();
 				try {
 					closeConnection();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
 		};
 	}
 
+	@Override
 	public void receiveData() {
-		while (!stopFlag.get()) {
+		try {
+			Object obj = tcpConnection.readObject();
+			while (!this.buffer.write(obj)) {
+				try {
+					// TODO: Need to tune the sleep time.
+					// System.out.println("InputChannel : Buffer full");
+					Thread.sleep(5);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} catch (EOFException e) {
+			// Other side is closed.
+			stopFlag.set(true);
+		} catch (IOException e) {
+			// TODO: Verify the program quality. Try to reconnect until it
+			// is told to stop.
+			try {
+				Thread.sleep(2000);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
+			reConnect();
+		}
+	}
+
+	/**
+	 * Once this channel is asked to stop, we have to read all data that exists
+	 * in the kernel's TCP buffer. Otherwise those data will be lost forever.
+	 */
+	private void finalReceive() {
+		boolean hasData;
+		do {
 			try {
 				Object obj = tcpConnection.readObject();
+				hasData = true;
 				while (!this.buffer.write(obj)) {
 					try {
 						// TODO: Need to tune the sleep time.
+						// TODO : Need to handle the situation if the buffer
+						// becomes full forever. ( Other worker thread is
+						// stopped and not consuming any data.)
+						// System.out.println("InputChannel : Buffer full");
 						Thread.sleep(5);
 					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}
 			} catch (ClassNotFoundException e) {
+				hasData = true;
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO: Verify the program quality. Try to reconnect until it
-				// is told to stop.
-				try {
-					Thread.sleep(2000);
-				} catch (InterruptedException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				reConnect();
+				hasData = false;
 			}
-		}
+		} while (hasData);
 	}
 
 	private void reConnect() {

@@ -1,11 +1,14 @@
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.util.Set;
+
+import edu.mit.streamjit.impl.blob.Blob.Token;
+
 /**
  * {@link BlobsManager} is the main dispatcher for all blobs. Received commands
  * will call the appropriate BlobsManager's functions and the BlobsManager will
  * take responsibility to execute the command on all assigned {@link Blob}s.
- * </p>
- * TODO: Draining mechanism need to be added.
+ * </p> TODO: Draining mechanism need to be added.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 15, 2013
@@ -23,4 +26,11 @@ public interface BlobsManager {
 	 * stopped.
 	 */
 	public void stop();
+
+	/**
+	 * Drain the blob identified by the token.
+	 */
+	public void drain(Token blobID, boolean reqDrainData);
+	
+	public void reqDrainedData(Set<Token> blobSet);
 }

@@ -3,7 +3,6 @@ package edu.mit.streamjit.impl.distributed.common;
 import java.io.*;
 import java.net.*;
 
-import edu.mit.streamjit.impl.distributed.node.Connection;
 
 public class TCPConnection implements Connection {
 

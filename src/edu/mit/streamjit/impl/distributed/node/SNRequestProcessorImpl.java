@@ -1,21 +1,21 @@
-/**
- * @author Sumanan sumanan@mit.edu
- * @since May 27, 2013
- */
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
-import edu.mit.streamjit.impl.distributed.common.RequestProcessor;
+import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
 
-public class RequestProcessorImpl implements RequestProcessor {
+/**
+ * {@link RequestProcessor} at {@link StreamNode} side.
+ * 
+ * @author Sumanan sumanan@mit.edu
+ * @since May 27, 2013
+ */
+public class SNRequestProcessorImpl implements RequestProcessor {
 
 	StreamNode streamNode;
 
-	RequestProcessorImpl(StreamNode streamNode) {
+	SNRequestProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
 
@@ -27,16 +27,6 @@ public class RequestProcessorImpl implements RequestProcessor {
 	@Override
 	public void processSysInfo() {
 		System.out.println("SysInfo requested");
-	}
-
-	@Override
-	public void processMaxCores() {
-		try {
-			streamNode.controllerConnection.writeObject(new Integer(Runtime.getRuntime().availableProcessors()));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 
 	@Override

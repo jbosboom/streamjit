@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Set;
 import java.util.Map.Entry;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Worker;
@@ -20,21 +22,24 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
+import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
-import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Command;
+import edu.mit.streamjit.impl.distributed.common.DrainElement;
+import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.JsonString;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
 import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
+import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.StreamNodeAgent;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 
@@ -50,15 +55,19 @@ import edu.mit.streamjit.impl.interp.Interpreter;
  */
 public class Controller {
 
-	private CommunicationManager comManager;
-
-	private List<Integer> nodeIDs;
+	CommunicationManager comManager;
 
 	/**
-	 * {@link NodeInfo} of each {@link StreamNode}s. See the {@link NodeInfo}
-	 * for further information.
+	 * {@link StreamNodeAgent}s for all connected {@link StreamNode}s mapped
+	 * with corresponding nodeID.
 	 */
-	private Map<Integer, NodeInfo> nodeInfoMap;
+	private Map<Integer, StreamNodeAgent> StreamNodeMap;
+
+	/**
+	 * Keeps track of assigned machine Ids of each blob. This information is
+	 * need for draining. TODO: If possible use a better solution.
+	 */
+	private Map<Token, Integer> blobtoMachineMap;
 
 	/**
 	 * NodeID for the {@link Controller}. We need this as Controller need to
@@ -83,8 +92,11 @@ public class Controller {
 	 */
 	private BoundaryInputChannel tailChannel;
 
+	private Thread headThread;
+	private Thread tailThread;
+
 	public Controller() {
-		this.comManager = new CommunicationManagerImpl();
+		this.comManager = new BlockingCommunicationManager();
 		this.controllerNodeID = 0;
 	}
 
@@ -98,62 +110,48 @@ public class Controller {
 	public void connect(Map<CommunicationType, Integer> comTypeCount) {
 		// TODO: Need to handle this exception well.
 		try {
-			comManager.connectMachines(comTypeCount);
+			StreamNodeMap = comManager.connectMachines(comTypeCount);
 		} catch (IOException e) {
 			System.out.println("Connection Error...");
 			e.printStackTrace();
 			System.exit(0);
 		}
+
+		if (StreamNodeMap.keySet().contains(controllerNodeID))
+			throw new AssertionError(
+					"Conflict in nodeID assignment. controllerNodeID has been assigned to a SteamNode");
+
 		setMachineIds();
-		getNodeInfo();
+		sendToAll(Request.NodeInfo);
 	}
 
 	private void setMachineIds() {
-		this.nodeIDs = comManager.getConnectedMachineIDs();
-
-		if (nodeIDs.contains(controllerNodeID))
-			throw new AssertionError(
-					String.format(
-							"Same ID (%d) has been assigned to the Controller and another StreamNode",
-							controllerNodeID));
-
-		for (int key : this.nodeIDs) {
+		for (StreamNodeAgent agent : StreamNodeMap.values()) {
 			try {
-				comManager.writeObject(key, Request.machineID);
-				comManager.writeObject(key, new Integer(key));
+				// TODO: Need to send in a single object.
+				agent.writeObject(Request.machineID);
+				agent.writeObject(new Integer(agent.getNodeID()));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
 	}
 
-	private void getNodeInfo() {
-		nodeInfoMap = new HashMap<>();
-		sendToAll(Request.NodeInfo);
-
-		for (int key : this.nodeIDs) {
-			try {
-				NodeInfo nodeinfo = comManager.readObject(key);
-				nodeInfoMap.put(key, nodeinfo);
-			} catch (IOException | ClassNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		nodeInfoMap.put(controllerNodeID, NodeInfo.getMyinfo());
-	}
-
 	/**
 	 * Start the execution of the StreamJit application.
 	 */
 	public void start() {
-		if (headChannel != null)
-			new Thread(headChannel.getRunnable(), "headChannel").start();
+		if (headChannel != null) {
+			headThread = new Thread(headChannel.getRunnable(), "headChannel");
+			headThread.start();
+		}
 
 		sendToAll(Command.START);
 
-		if (tailChannel != null)
-			new Thread(tailChannel.getRunnable(), "tailChannel").start();
+		if (tailChannel != null) {
+			tailThread = new Thread(tailChannel.getRunnable(), "tailChannel");
+			tailThread.start();
+		}
 	}
 
 	/**
@@ -164,16 +162,11 @@ public class Controller {
 	 */
 	public Map<Integer, Integer> getCoreCount() {
 		Map<Integer, Integer> coreCounts = new HashMap<>();
-		sendToAll(Request.maxCores);
 
-		for (int key : this.nodeIDs) {
-			try {
-				Integer count = comManager.readObject(key);
-				coreCounts.put(key, count);
-			} catch (IOException | ClassNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+		for (StreamNodeAgent agent : StreamNodeMap.values()) {
+			NodeInfo nodeInfo = agent.getNodeInfo();
+			Integer count = nodeInfo.getAvailableCores();
+			coreCounts.put(agent.getNodeID(), count);
 		}
 		return coreCounts;
 	}
@@ -190,7 +183,7 @@ public class Controller {
 
 		Configuration cfg = makeConfiguration(partitionsMachineMap,
 				jarFilePath, toplevelclass, source, sink);
-		JsonString json = new JsonString(cfg.toJson());
+		ConfigurationString json = new ConfigurationString(cfg.toJson());
 		sendToAll(json);
 
 		// TODO: Change this later.
@@ -228,6 +221,16 @@ public class Controller {
 		}
 	}
 
+	private Token getblobID(Set<Worker<?, ?>> workers) {
+		ImmutableSet.Builder<Token> inputBuilder = new ImmutableSet.Builder<>();
+		for (IOInfo info : IOInfo.externalEdges(workers)) {
+			if (info.isInput())
+				inputBuilder.add(info.token());
+		}
+
+		return Collections.min(inputBuilder.build());
+	}
+
 	private Configuration makeConfiguration(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
 			String jarFilePath, String topLevelClass, Worker<?, ?> source,
@@ -245,12 +248,18 @@ public class Controller {
 		BlobFactory factory = new Interpreter.InterpreterBlobFactory();
 		partParam.addBlobFactory(factory);
 
+		blobtoMachineMap = new HashMap<>();
+
 		for (Integer machineID : partitionsMachineMap.keySet()) {
 			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap
 					.get(machineID);
 			for (Set<Worker<?, ?>> blobWorkers : blobList) {
 				// TODO: One core per blob. Need to change this.
 				partParam.addBlob(machineID, 1, factory, blobWorkers);
+
+				// TODO: Temp fix to build.
+				Token t = getblobID(blobWorkers);
+				blobtoMachineMap.put(t, machineID);
 			}
 		}
 
@@ -265,6 +274,12 @@ public class Controller {
 		SwitchParameter<ChannelFactory> cfParameter = new SwitchParameter<ChannelFactory>(
 				"channelFactory", ChannelFactory.class, universe.get(0),
 				universe);
+
+		Map<Integer, NodeInfo> nodeInfoMap = new HashMap<>();
+		for (StreamNodeAgent agent : StreamNodeMap.values())
+			nodeInfoMap.put(agent.getNodeID(), agent.getNodeInfo());
+
+		nodeInfoMap.put(controllerNodeID, NodeInfo.getMyinfo());
 
 		Configuration.Builder builder = Configuration.builder();
 		builder.addParameter(partParam.build())
@@ -352,59 +367,68 @@ public class Controller {
 	}
 
 	private void sendToAll(Object object) {
-		for (int key : this.nodeIDs) {
+		for (StreamNodeAgent node : StreamNodeMap.values()) {
 			try {
-				comManager.writeObject(key, object);
+				node.writeObject(object);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
 	}
 
-	public void doDrain() {
-		// TODO: Need to derive a better mechanism to properly drain. We have to
-		// first build a blob graph to perform a ordered draining
-		// across the Stream Graph. Before that, workers should be assigned to
-		// blobs in a way there is no any cyclic data flow in
-		// between the blobs.
-		// Lets Stop all Blob execution now.
-		headChannel.stop();
-		sendToAll(Command.STOP);
-		tailChannel.stop();
+	// Used to identify the first draining call.
+	private boolean drainStarted = false;
+
+	public void drain(Token blobID) {
+		if (!drainStarted) {
+			if (headChannel != null) {
+				headChannel.stop();
+				try {
+					headThread.join();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			drainStarted = true;
+		}
+
+		if (!blobtoMachineMap.containsKey(blobID))
+			throw new IllegalArgumentException(blobID
+					+ " not found in the blobtoMachineMap");
+		int machineID = blobtoMachineMap.get(blobID);
+		StreamNodeAgent agent = StreamNodeMap.get(machineID);
+		try {
+			agent.writeObject(new DrainElement.DoDrain(blobID, false));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
-	// TODO: This is the temporary fix. Need to store the MEs received from the
-	// StreamNodes and process them for the isDrained() status. May be we can
-	// keep a Map<machineID, List<ME>>s
-	public boolean isDrained() {
-		for (int nodeID : nodeIDs) {
+	// TODO: Temporary fix. Need to come up with a better solution to to set
+	// DrainProcessor to StreamnodeAgent's messagevisitor.
+	public void setDrainProcessor(DrainProcessor dp) {
+		for (StreamNodeAgent agent : StreamNodeMap.values()) {
+			agent.setDrainProcessor(dp);
+		}
+	}
+
+	public void drainingFinished() {
+		System.out.println("Controller : Draining Finished...");
+		if (tailChannel != null) {
+			tailChannel.stop();
 			try {
-				AppStatus sts = comManager.readObject(nodeID);
-				if (sts != AppStatus.STOPPED)
-					throw new IllegalStateException(String.format(
-							"Expecting AppStatus.STOPPED message from stream nodes. Received "
-									+ sts + " from StreamNode %s",
-							getName(nodeID)));
-			} catch (ClassNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
+				tailThread.join();
+			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
-		sendToAll(Command.EXIT);
-		return true;
-	}
 
-	/**
-	 * @param nodeID
-	 * @return Human readable name of the streamNode.
-	 */
-	private String getName(int nodeID) {
-		if (!nodeInfoMap.containsKey(nodeIDs))
-			throw new IllegalArgumentException(String.format(
-					"No stream node with nodeID %d exists", nodeID));
-		return nodeInfoMap.get(nodeIDs).getHostName();
+		try {
+			comManager.closeAllConnections();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }

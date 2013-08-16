@@ -26,20 +26,22 @@ import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.JsonStringProcessor;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
+ * {@link ConfigurationStringProcessor} at {@link StreamNode} side.
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class JsonStringProcessorImpl implements JsonStringProcessor {
+public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	StreamNode streamNode;
 
-	public JsonStringProcessorImpl(StreamNode streamNode) {
+	public SNCfgStringProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
 
@@ -58,7 +60,7 @@ public class JsonStringProcessorImpl implements JsonStringProcessor {
 					.getExtraData(GlobalConstants.NODE_INFO_MAP);
 
 			streamNode.setBlobsManager(new BlobsManagerImpl(blobSet,
-					tokenMachineMap, portIdMap, nodeInfoMap));
+					tokenMachineMap, portIdMap, nodeInfoMap, streamNode));
 		} else
 			System.out.println("Couldn't get the blobset....");
 	}

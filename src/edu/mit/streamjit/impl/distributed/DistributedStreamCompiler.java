@@ -6,7 +6,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -18,19 +17,18 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
+import edu.mit.streamjit.impl.common.BlobGraph;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
-import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
+import edu.mit.streamjit.impl.distributed.runtimer.DistributedDrainer;
 import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
-import edu.mit.streamjit.impl.interp.ArrayChannel;
-import edu.mit.streamjit.impl.interp.Channel;
-import edu.mit.streamjit.impl.interp.SynchronizedChannel;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
 
@@ -118,6 +116,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = mapPartitionstoMachines(
 				partitionList, coreCounts);
 
+		BlobGraph bg = new BlobGraph(partitionList);
+
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
 		// context.
 		List<MessageConstraint> constraints = MessageConstraint
@@ -133,7 +133,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 						stream.getClass().getName(), constraints, source, sink,
 						bufferMapBuilder.build());
 
-		return new DistributedCompiledStream<>(head, tail, controller);
+		return new DistributedCompiledStream<>(head, tail, bg, controller);
 	}
 
 	// TODO: Need to do precise mapping. For the moment just mapping in order.
@@ -181,22 +181,24 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			AbstractCompiledStream<I, O> {
 
 		Controller controller;
+		AbstractDrainer drainer;
 
 		public DistributedCompiledStream(Buffer head, Buffer tail,
-				Controller controller) {
+				BlobGraph blobGraph, Controller controller) {
 			super(head, tail);
 			this.controller = controller;
+			this.drainer = new DistributedDrainer(blobGraph, false, controller);
 			this.controller.start();
 		}
 
 		@Override
 		public boolean isDrained() {
-			return controller.isDrained();
+			return drainer.isDrained();
 		}
 
 		@Override
 		protected void doDrain() {
-			controller.doDrain();
+			drainer.startDraining();
 		}
 	}
 }

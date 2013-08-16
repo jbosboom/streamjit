@@ -1,7 +1,8 @@
 package edu.mit.streamjit.impl.distributed.common;
 
 /**
- * Visitor pattern. See the {@link MessageElement}.
+ * Visitor pattern. We have to have overloaded visit method to all sub type of
+ * {@link MessageElement}s. See the {@link MessageElement}.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 20, 2013
@@ -16,10 +17,12 @@ public interface MessageVisitor {
 
 	public void visit(Request request);
 
-	public void visit(JsonString json);
+	public void visit(ConfigurationString json);
 
 	public void visit(SystemInfo systemInfo);
 
 	public void visit(NodeInfo nodeInfo);
+
+	public void visit(DrainElement drain);
 
 }

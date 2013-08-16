@@ -1,23 +1,26 @@
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.io.EOFException;
 import java.io.IOException;
 
 import edu.mit.streamjit.impl.distributed.common.Command;
+import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
 import edu.mit.streamjit.impl.distributed.common.MessageElement;
 import edu.mit.streamjit.impl.distributed.common.MessageVisitor;
+import edu.mit.streamjit.impl.distributed.common.MessageVisitorImpl;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
  * In StreamJit's jargon "Stream node" means a computing node that runs part or
- * full a streamJit application. </p> Here, the class {@link StreamNode} is a
- * StreamJit's run timer for each distributed node. So {@link StreamNode} is
- * singleton pattern as there can be only one {@link StreamNode} instance per
- * computing node. Once it got connected with the {@link Controller}, it will
- * keep on listening and processing the commands from the {@link Controller}.
- * {@link Controller} can issue the {@link Command} EXIT to stop the streamNode.
+ * full a streamJit application. </p> Here, the class StreamNode is a
+ * StreamJit's run timer for each distributed node. So StreamNode is singleton
+ * pattern as there can be only one StreamNode instance per computing node. Once
+ * it got connected with the {@link Controller}, it will keep on listening and
+ * processing the commands from the Controller. Controller can issue the
+ * {@link Command} EXIT to stop the streamNode.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 10, 2013
@@ -63,10 +66,11 @@ public class StreamNode extends Thread {
 	private StreamNode(Connection connection) {
 		super("Stream Node");
 		this.controllerConnection = connection;
-		this.mv = new NodeMessageVisitor(new AppStatusProcessorImpl(),
-				new CommandProcessorImpl(this), new ErrorProcessorImpl(),
-				new RequestProcessorImpl(this), new JsonStringProcessorImpl(
-						this));
+		this.mv = new MessageVisitorImpl(new SNAppStatusProcessorImpl(),
+				new SNCommandProcessorImpl(this), new SNErrorProcessorImpl(),
+				new SNRequestProcessorImpl(this), new SNCfgStringProcessorImpl(
+						this), new SNDrainProcessorImpl(this),
+				new SNNodeInfoProcessorImpl());
 		this.run = true;
 	}
 
@@ -75,7 +79,12 @@ public class StreamNode extends Thread {
 			try {
 				MessageElement me = controllerConnection.readObject();
 				me.accept(mv);
-			} catch (ClassNotFoundException | IOException e) {
+			} catch (ClassNotFoundException e) {
+				// No way. Just ignore.
+			} catch (EOFException e) {
+				// Other side closed
+				run = false;
+			} catch (IOException e) {
 				e.printStackTrace();
 				// TODO: Need to decide what to do here. May be we can re try
 				// couple of time in a time interval before aborting the

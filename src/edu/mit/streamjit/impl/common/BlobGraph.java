@@ -1,51 +1,82 @@
 package edu.mit.streamjit.impl.common;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
+import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
+import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 
 /**
- * BlobGraph builds predecessor successor relationship for set of {@link Blob}s
- * and verifies for cyclic dependencies among the blobs. Further, it gives
- * {@link Drainer} that can be get used perform draining over the blob graph.
+ * BlobGraph builds predecessor successor relationship for set of partitioned
+ * workers, and verifies for cyclic dependencies among the partitions. Blob
+ * graph doesn't keep blobs. Instead it keeps {@link BlobNode} that represents
+ * blobs. </p> All BlobNodes in the graph can be retrieved and used in coupled
+ * with {@link AbstractDrainer} to successfully perform draining process.
  * 
  * @author Sumanan sumanan@mit.edu
- * @since Jul 28, 2013
+ * @since Jul 30, 2013
  */
-public final class BlobGraph {
+public class BlobGraph {
 
-	private final Drainer drainer;
+	/**
+	 * All nodes in the graph.
+	 */
+	private final ImmutableSet<BlobNode> blobNodes;
 
-	private final ImmutableSet<Blob> blobSet;
+	/**
+	 * The blob which has the overall stream input.
+	 */
+	private final BlobNode sourceBlobNode;
 
-	public BlobGraph(Set<Blob> blobSet) {
-		this.blobSet = ImmutableSet.copyOf(blobSet);
-		Set<BlobNode> blobNodes = new HashSet<>(blobSet.size());
-		for (Blob b : blobSet) {
-			blobNodes.add(new BlobNode(b));
+	public BlobGraph(List<Set<Worker<?, ?>>> partitionWorkers) {
+		checkNotNull(partitionWorkers);
+		Set<DummyBlob> blobSet = new HashSet<>();
+		for (Set<Worker<?, ?>> workers : partitionWorkers) {
+			blobSet.add(new DummyBlob(workers));
 		}
 
-		for (BlobNode cur : blobNodes) {
-			for (BlobNode other : blobNodes) {
+		ImmutableSet.Builder<BlobNode> builder = new ImmutableSet.Builder<>();
+		for (DummyBlob b : blobSet) {
+			builder.add(new BlobNode(b.id));
+		}
+
+		this.blobNodes = builder.build();
+
+		Map<Token, BlobNode> blobNodeMap = new HashMap<>();
+		for (BlobNode node : blobNodes) {
+			blobNodeMap.put(node.blobID, node);
+		}
+		for (DummyBlob cur : blobSet) {
+			for (DummyBlob other : blobSet) {
 				if (cur == other)
 					continue;
-				if (Sets.intersection(cur.getBlob().getOutputs(),
-						other.getBlob().getInputs()).size() != 0) {
-					cur.addSuccessor(other);
-					other.addPredecessor(cur);
+				if (Sets.intersection(cur.outputs, other.inputs).size() != 0) {
+					BlobNode curNode = blobNodeMap.get(cur.id);
+					BlobNode otherNode = blobNodeMap.get(other.id);
+
+					curNode.addSuccessor(otherNode);
+					otherNode.addPredecessor(curNode);
 				}
 			}
 		}
+
 		checkCycles(blobNodes);
 
 		BlobNode sourceBlob = null;
@@ -56,15 +87,45 @@ public final class BlobGraph {
 			}
 		}
 
-		drainer = Drainer.getDrainer(blobNodes, sourceBlob);
+		checkNotNull(sourceBlob);
+		this.sourceBlobNode = sourceBlob;
 	}
 
 	/**
-	 * @return The drainer object of this Blobgraph that can be used for
-	 *         draining.
+	 * .
+	 * 
+	 * @return All nodes in the graph.
 	 */
-	public Drainer getDrainer() {
-		return drainer;
+	public ImmutableSet<BlobNode> getBlobNodes() {
+		return blobNodes;
+	}
+
+	public BlobNode getBlobNode(Token blobID) {
+		for (BlobNode bn : blobNodes) {
+			if (bn.getBlobID().equals(blobID))
+				return bn;
+		}
+		return null;
+	}
+
+	/**
+	 * A Drainer can be set to the {@link BlobGraph} to perform draining.
+	 * 
+	 * @param drainer
+	 */
+	public void setDrainer(AbstractDrainer drainer) {
+		for (BlobNode bn : blobNodes) {
+			bn.setDrainer(drainer);
+		}
+	}
+
+	/**
+	 * TODO: Ensure whether providing this public method is useful.
+	 * 
+	 * @return the sourceBlobNode
+	 */
+	public BlobNode getSourceBlobNode() {
+		return sourceBlobNode;
 	}
 
 	/**
@@ -72,7 +133,7 @@ public final class BlobGraph {
 	 * 
 	 * @param blobNodes
 	 */
-	private void checkCycles(Set<BlobNode> blobNodes) {
+	private void checkCycles(Collection<BlobNode> blobNodes) {
 		Map<BlobNode, Color> colorMap = new HashMap<>();
 		for (BlobNode b : blobNodes) {
 			colorMap.put(b, Color.WHITE);
@@ -106,79 +167,17 @@ public final class BlobGraph {
 	}
 
 	/**
-	 * @return Set of blobs in the blob graph.
-	 */
-	public ImmutableSet<Blob> getBlobSet() {
-		return blobSet;
-	}
-
-	/**
-	 * Drainer triggers the draining operation for a blob graph. Once draining
-	 * is started, blobs will be called for draining iff all of their
-	 * predecessor blobs have been drained.
-	 */
-	public static class Drainer {
-
-		/**
-		 * All nodes in the blob graph.
-		 */
-		private final Set<BlobNode> blobNodes;
-
-		/**
-		 * The blob that has overall input token.
-		 */
-		private final BlobNode sourceBlob;
-
-		private static Drainer getDrainer(Set<BlobNode> blobNodes,
-				BlobNode sourceBlob) {
-			return new Drainer(blobNodes, sourceBlob);
-		}
-
-		private Drainer(Set<BlobNode> blobNodes, BlobNode sourceBlob) {
-			this.sourceBlob = sourceBlob;
-			this.blobNodes = blobNodes;
-		}
-
-		/**
-		 * @param threadMap
-		 *            Map that contains blobs and corresponding set of blob
-		 *            threads belong to the blob.
-		 */
-		public void startDraining(Map<Blob, Set<BlobThread>> threadMap) {
-			for (BlobNode bn : blobNodes) {
-				if (!threadMap.containsKey(bn.getBlob()))
-					throw new AssertionError(
-							"threadMap doesn't contain thread information for the blob "
-									+ bn.getBlob());
-
-				bn.setBlobThreads(threadMap.get(bn.getBlob()));
-			}
-			sourceBlob.drain();
-		}
-
-		/**
-		 * @return <code>true</code> iff all blobs in the blob graph has
-		 *         finished the draining.
-		 */
-		public boolean isDrained() {
-			for (BlobNode bn : blobNodes)
-				if (!bn.isDrained())
-					return false;
-			return true;
-		}
-	}
-
-	/**
 	 * BlobNode represents the vertex in the blob graph ({@link BlobGraph}). It
-	 * wraps a {@link Blob} and carry the draining process of that blob.
+	 * represents a {@link Blob} and carry the draining process of that blob.
 	 * 
 	 * @author Sumanan
 	 */
-	private class BlobNode {
+	public static final class BlobNode {
+		private AbstractDrainer drainer;
 		/**
 		 * The blob that wrapped by this blob node.
 		 */
-		private Blob blob;
+		private Token blobID;
 		/**
 		 * Predecessor blob nodes of this blob node.
 		 */
@@ -195,21 +194,52 @@ public final class BlobGraph {
 		private AtomicInteger dependencyCount;
 
 		/**
-		 * Set of threads those belong to the blob.
-		 */
-		private Set<BlobThread> blobThreads;
-
-		/**
-		 * Set to ture iff this blob has been drained.
+		 * Set to true iff this blob has been drained.
 		 */
 		private volatile boolean isDrained;
 
-		private BlobNode(Blob blob) {
-			this.blob = blob;
+		private BlobNode(Token blob) {
+			this.blobID = blob;
 			predecessors = new ArrayList<>();
 			successors = new ArrayList<>();
 			dependencyCount = new AtomicInteger(0);
 			isDrained = false;
+		}
+
+		/**
+		 * Should be called when the draining of the current blob has been
+		 * finished. This function stops all threads belong to the blob and
+		 * inform its successors as well.
+		 */
+		public void drained() {
+			isDrained = true;
+			for (BlobNode suc : this.successors) {
+				suc.predecessorDrained(this);
+			}
+			drainer.drainingFinished(this);
+		}
+
+		/**
+		 * Drain the blob mapped by this blob node.
+		 */
+		private void drain() {
+			checkNotNull(drainer);
+			drainer.drain(this);
+		}
+
+		/**
+		 * @return <code>true</code> iff the blob mapped by this blob node was
+		 *         drained.
+		 */
+		public boolean isDrained() {
+			return isDrained;
+		}
+
+		/**
+		 * @return Identifier of {@link Blob} and blob node.
+		 */
+		public Token getBlobID() {
+			return blobID;
 		}
 
 		private ImmutableList<BlobNode> getSuccessors() {
@@ -229,10 +259,6 @@ public final class BlobGraph {
 					.format("The BlobNode %s has already been set as a successor",
 							succ);
 			successors.add(succ);
-		}
-
-		private Blob getBlob() {
-			return blob;
 		}
 
 		private void predecessorDrained(BlobNode pred) {
@@ -255,45 +281,121 @@ public final class BlobGraph {
 			return dependencyCount.get();
 		}
 
-		/**
-		 * Should be called when the draining of the current blob has been
-		 * finished. This function stops all threads belong to the blob and
-		 * inform its successors as well.
-		 */
-		private void drained() {
-			for (BlobThread bt : blobThreads)
-				bt.requestStop();
-
-			for (BlobNode suc : this.successors) {
-				suc.predecessorDrained(this);
-			}
-
-			isDrained = true;
+		private void setDrainer(AbstractDrainer drainer) {
+			checkNotNull(drainer);
+			this.drainer = drainer;
 		}
 
-		private void drain() {
-			blob.drain(new DrainCallback(this));
-		}
-
-		private void setBlobThreads(Set<BlobThread> blobThreads) {
-			this.blobThreads = blobThreads;
-		}
-
-		private boolean isDrained() {
-			return isDrained;
-		}
 	}
 
-	private class DrainCallback implements Runnable {
-		private final BlobNode myNode;
+	/**
+	 * Abstract drainer is to perform draining on a stream application. Both
+	 * {@link DistributedStreamCompiler} and {@link ConcurrentStreamCompiler}
+	 * may extends this to implement the draining on their particular context.
+	 * Works coupled with {@link BlobNode} and {@link BlobGraph}.
+	 * 
+	 * @author Sumanan sumanan@mit.edu
+	 * @since Jul 30, 2013
+	 */
+	public static abstract class AbstractDrainer {
+		/**
+		 * Blob graph of the stream application that needs to be drained.
+		 */
+		protected final BlobGraph blobGraph;
 
-		private DrainCallback(BlobNode blobNode) {
-			this.myNode = blobNode;
+		private AtomicInteger unDrainedNodes;
+
+		/**
+		 * We cannot say draining is finished by checking unDrainedNodes ==0.
+		 * Even after unDrainedNodes become zero, all data in the tail buffers
+		 * have to be read by the CompiledStream.pull().
+		 */
+		private AtomicBoolean isDrainingfinished;
+
+		/**
+		 * Whether the {@link StreamCompiler} needs the drain data after
+		 * draining.
+		 */
+		protected boolean needDrainData;
+
+		public AbstractDrainer(BlobGraph blobGraph, boolean needDrainData) {
+			this.blobGraph = blobGraph;
+			this.needDrainData = needDrainData;
+			unDrainedNodes = new AtomicInteger(blobGraph.getBlobNodes().size());
+			blobGraph.setDrainer(this);
+			isDrainingfinished = new AtomicBoolean(false);
 		}
 
-		@Override
-		public void run() {
-			myNode.drained();
+		public void drainingFinished(BlobNode blobNode) {
+			drained(blobNode);
+			if (unDrainedNodes.decrementAndGet() == 0) {
+				drainingFinished();
+				isDrainingfinished.set(true);
+			}
+		}
+
+		/**
+		 * Initiate the draining of the blobgraph.
+		 */
+		public final void startDraining() {
+			blobGraph.getSourceBlobNode().drain();
+		}
+
+		/**
+		 * @return true iff draining of the stream application is finished.
+		 */
+		public final boolean isDrained() {
+			return isDrainingfinished.get();
+		}
+
+		/**
+		 * Once a {@link BlobNode}'s all preconditions are satisfied for
+		 * draining, blob node will call this function drain the blob.
+		 * 
+		 * @param node
+		 */
+		protected abstract void drain(BlobNode node);
+
+		/**
+		 * A blob thread ( Only one blob thread, if there are many threads on
+		 * the blob) must call this function through a callback once draining of
+		 * that particular blob is finished.
+		 * 
+		 * @param node
+		 */
+		protected abstract void drained(BlobNode node);
+
+		/**
+		 * Once all {@link BlobNode} have been drained, this function will get
+		 * called. This can be used to do the final cleanups ( e.g, All data in
+		 * the tail buffer should be consumed before this function returns.)
+		 * After the return of this function, isDrained() will start to return
+		 * true.
+		 */
+		protected abstract void drainingFinished();
+
+	}
+
+	/**
+	 * Just used to build the input and output tokens of a partitioned blob
+	 * workers. imitate a {@link Blob}.
+	 */
+	private final class DummyBlob {
+		private final ImmutableSet<Token> inputs;
+		private final ImmutableSet<Token> outputs;
+		private final Token id;
+
+		private DummyBlob(Set<Worker<?, ?>> workers) {
+			ImmutableSet.Builder<Token> inputBuilder = new ImmutableSet.Builder<>();
+			ImmutableSet.Builder<Token> outputBuilder = new ImmutableSet.Builder<>();
+			for (IOInfo info : IOInfo.externalEdges(workers)) {
+				(info.isInput() ? inputBuilder : outputBuilder).add(info
+						.token());
+			}
+
+			inputs = inputBuilder.build();
+			outputs = outputBuilder.build();
+			id = Collections.min(inputs);
 		}
 	}
 

@@ -21,7 +21,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.common.BlobGraph;
-import edu.mit.streamjit.impl.common.BlobGraph.Drainer;
+import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
 import edu.mit.streamjit.impl.common.BlobThread;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
@@ -95,7 +95,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 			blobSet.add(new Interpreter(partition, constraints, makeConfig()));
 		}
 
-		BlobGraph bg = new BlobGraph(blobSet);
+		BlobGraph bg = new BlobGraph(partitionList);
 
 		ImmutableMap<Token, Buffer> bufferMap = createBufferMap(blobSet);
 
@@ -103,9 +103,9 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 			b.installBuffers(bufferMap);
 		}
 
-		return new ConcurrentCompiledStream<>(bg, bufferMap.get(Token
-				.createOverallInputToken(source)), bufferMap.get(Token
-				.createOverallOutputToken(sink)));
+		Buffer head = bufferMap.get(Token.createOverallInputToken(source));
+		Buffer tail = bufferMap.get(Token.createOverallOutputToken(sink));
+		return new ConcurrentCompiledStream<>(head, tail, bg, blobSet);
 	}
 
 	// TODO: Buffer sizes, including head and tail buffers, must be optimized.
@@ -180,19 +180,18 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 			AbstractCompiledStream<I, O> {
 
 		private Map<Blob, Set<BlobThread>> threadMap = new HashMap<>();
-		private final Drainer drainer;
+		private final AbstractDrainer drainer;
 
-		public ConcurrentCompiledStream(BlobGraph blobGraph,
-				Buffer inputBuffer, Buffer outputBuffer) {
+		public ConcurrentCompiledStream(Buffer inputBuffer,
+				Buffer outputBuffer, BlobGraph blobGraph, Set<Blob> blobSet) {
 			super(inputBuffer, outputBuffer);
-			Set<Blob> blobSet = blobGraph.getBlobSet();
 			List<Thread> blobThreads = new ArrayList<>(blobSet.size());
 			for (final Blob b : blobSet) {
 				BlobThread t = new BlobThread(b.getCoreCode(0));
 				blobThreads.add(t);
 				threadMap.put(b, Collections.singleton(t));
 			}
-			this.drainer = blobGraph.getDrainer();
+			this.drainer = new ConcurrentDrainer(blobGraph, false, threadMap);
 			start(blobThreads);
 		}
 
@@ -209,7 +208,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 		@Override
 		protected void doDrain() {
-			drainer.startDraining(threadMap);
+			drainer.startDraining();
 		}
 
 		@Override

@@ -1,23 +1,28 @@
 package edu.mit.streamjit.impl.distributed.node;
 
-import java.util.ArrayList;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.BlobThread;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
+import edu.mit.streamjit.impl.distributed.common.DrainElement;
+import edu.mit.streamjit.impl.distributed.common.MessageElement;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 
 /**
  * {@link BlobsManagerImpl} responsible to run all {@link Blob}s those are
@@ -33,14 +38,17 @@ public class BlobsManagerImpl implements BlobsManager {
 	private Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap;
 	private Map<Token, Integer> portIdMap;
 	private Map<Integer, NodeInfo> nodeInfoMap;
+	private final StreamNode streamNode;
 
-	public BlobsManagerImpl(Set<Blob> blobSet,
+	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
 			Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap,
-			Map<Token, Integer> portIdMap, Map<Integer, NodeInfo> nodeInfoMap) {
+			Map<Token, Integer> portIdMap, Map<Integer, NodeInfo> nodeInfoMap,
+			StreamNode streamNode) {
 
 		this.tokenMachineMap = tokenMachineMap;
 		this.portIdMap = portIdMap;
 		this.nodeInfoMap = nodeInfoMap;
+		this.streamNode = streamNode;
 
 		ImmutableMap<Token, Buffer> bufferMap = createBufferMap(blobSet);
 
@@ -192,35 +200,51 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private class BlobExecuter {
 
+		private volatile boolean isDrained;
+		private final Token blobID;
+
 		private final Blob blob;
-		private List<BlobThread> blobThreads;
+		private Set<BlobThread> blobThreads;
 
 		Set<BoundaryInputChannel> inputChannels;
 		Set<BoundaryOutputChannel> outputChannels;
+
+		Set<Thread> inputChannelThreads;
+		Set<Thread> outputChannelThreads;
+
+		private boolean reqDrainData;
 
 		private BlobExecuter(Blob blob,
 				ImmutableMap<Token, BoundaryInputChannel> inputChannels,
 				ImmutableMap<Token, BoundaryOutputChannel> outputChannels) {
 			this.blob = blob;
-			this.blobThreads = new ArrayList<>();
+			this.blobThreads = new HashSet<>();
 			assert blob.getInputs().containsAll(inputChannels.keySet());
 			assert blob.getOutputs().containsAll(outputChannels.keySet());
 			this.inputChannels = new HashSet<>(inputChannels.values());
 			this.outputChannels = new HashSet<>(outputChannels.values());
+			inputChannelThreads = new HashSet<>(inputChannels.values().size());
+			outputChannelThreads = new HashSet<>(outputChannels.values().size());
 
 			for (int i = 0; i < blob.getCoreCount(); i++) {
 				blobThreads.add(new BlobThread(blob.getCoreCode(i)));
 			}
+
+			isDrained = false;
+			this.blobID = Utils.getBlobID(blob);
 		}
 
 		private void start() {
-
 			for (BoundaryInputChannel bc : inputChannels) {
-				new Thread(bc.getRunnable()).start();
+				Thread t = new Thread(bc.getRunnable(), "inputChannel");
+				t.start();
+				inputChannelThreads.add(t);
 			}
 
 			for (BoundaryOutputChannel bc : outputChannels) {
-				new Thread(bc.getRunnable()).start();
+				Thread t = new Thread(bc.getRunnable(), "outputChannel");
+				t.start();
+				outputChannelThreads.add(t);
 			}
 
 			for (Thread t : blobThreads)
@@ -237,8 +261,6 @@ public class BlobsManagerImpl implements BlobsManager {
 				bc.stop();
 			}
 
-			doDrain();
-
 			for (Thread t : blobThreads)
 				try {
 					t.join();
@@ -247,15 +269,112 @@ public class BlobsManagerImpl implements BlobsManager {
 				}
 		}
 
-		private void doDrain() {
-			// We are passing null callback here as DistributedBlob can handle
-			// the
-			// draining within it's sub singlethreadedblobs. We may
-			// change this later and perform the draining in a global and
-			// ordered
-			// manner.
-			this.blob.drain(null);
+		private void doDrain(boolean reqDrainData) {
+			this.reqDrainData = reqDrainData;
+
+			for (BoundaryInputChannel bc : inputChannels) {
+				bc.stop();
+			}
+
+			for (Thread t : inputChannelThreads) {
+				try {
+					t.join();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
+			DrainCallback dcb = new DrainCallback(this);
+			this.blob.drain(dcb);
 		}
 
+		private void drained() {
+			for (BlobThread bt : blobThreads) {
+				bt.requestStop();
+			}
+
+			for (BoundaryChannel bc : outputChannels) {
+				bc.stop();
+			}
+
+			for (Thread t : outputChannelThreads) {
+				try {
+					t.join();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
+			this.isDrained = true;
+			MessageElement drained = new DrainElement.Drained(blobID);
+			try {
+				streamNode.controllerConnection.writeObject(drained);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+			if (this.reqDrainData) {
+				ImmutableMap.Builder<Token, DrainData> builder = new ImmutableMap.Builder<>();
+				builder.put(blobID, blob.getDrainData());
+				MessageElement me = new DrainElement.DrainedDataMap(
+						builder.build());
+				try {
+					streamNode.controllerConnection.writeObject(me);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+
+		public Token getBlobID() {
+			return Utils.getBlobID(blob);
+		}
+	}
+
+	private static class DrainCallback implements Runnable {
+
+		private final BlobExecuter blobExec;
+
+		DrainCallback(BlobExecuter be) {
+			this.blobExec = be;
+		}
+
+		@Override
+		public void run() {
+			blobExec.drained();
+		}
+	}
+
+	@Override
+	public void drain(Token blobID, boolean reqDrainData) {
+		for (BlobExecuter be : blobExecuters) {
+			if (be.getBlobID().equals(blobID)) {
+				be.doDrain(reqDrainData);
+				break;
+			}
+		}
+	}
+
+	@Override
+	public void reqDrainedData(Set<Token> blobSet) {
+		ImmutableMap.Builder<Token, DrainData> builder = new ImmutableMap.Builder<>();
+		for (BlobExecuter be : blobExecuters) {
+			if (be.isDrained) {
+				builder.put(be.blobID, be.blob.getDrainData());
+			}
+		}
+
+		try {
+			streamNode.controllerConnection
+					.writeObject(new DrainElement.DrainedDataMap(builder
+							.build()));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }

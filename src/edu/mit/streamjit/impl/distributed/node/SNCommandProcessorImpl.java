@@ -3,18 +3,17 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.io.IOException;
 
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
-import edu.mit.streamjit.impl.distributed.common.Command;
-import edu.mit.streamjit.impl.distributed.common.CommandProcessor;
-import edu.mit.streamjit.impl.distributed.runtimer.Controller;
+import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 
 /**
+ * {@link CommandProcessor} at {@link StreamNode} side.
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class CommandProcessorImpl implements CommandProcessor {
+public class SNCommandProcessorImpl implements CommandProcessor {
 	StreamNode streamNode;
 
-	public CommandProcessorImpl(StreamNode streamNode) {
+	public SNCommandProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
 
@@ -52,13 +51,8 @@ public class CommandProcessorImpl implements CommandProcessor {
 	}
 
 	@Override
-	public void processSUSPEND() {
+	public void processDRAIN() {
 		throw new IllegalArgumentException("Suspend feature is not supported");
-	}
-
-	@Override
-	public void processRESUME() {
-		throw new IllegalArgumentException("Resume feature is not supported");
 	}
 
 	@Override
