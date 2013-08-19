@@ -235,7 +235,8 @@ public class Interpreter implements Blob {
 		return new DrainData(dataBuilder.build(), stateBuilder.build());
 	}
 
-	public static final class InterpreterBlobFactory implements BlobFactory {
+	public static class InterpreterBlobFactory implements BlobFactory {
+		public InterpreterBlobFactory() {}
 		@Override
 		public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
 			//TODO: get the constraints!

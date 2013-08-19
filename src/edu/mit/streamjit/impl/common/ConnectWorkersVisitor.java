@@ -229,12 +229,16 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 				Workers.getOutputChannels(cur).add(c);
 		}
 
+		//TODO: these probably belong in CheckVisitor, now that it exists; also,
+		//they should check each worker during traversal rather than calling
+		//getAllFoos() at the very end.
 		//Ensure all but the first worker aren't sources.
 		for (Worker<?, ?> worker : Workers.getAllSuccessors(source))
 			for (Rate rate : worker.getPopRates())
 				if (rate.max() == 0)
 					throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)cur);
 		//Ensure all but the last worker aren't sinks.
+		//TODO: getAllPredecessors(source) is always empty, heh
 		for (Worker<?, ?> worker : Workers.getAllPredecessors(source))
 			for (Rate rate : worker.getPopRates())
 				if (rate.max() == 0)

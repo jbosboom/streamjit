@@ -61,6 +61,8 @@ public abstract class Workers {
 
 	/**
 	 * Returns a set of all predecessors of this worker.
+	 *
+	 * TODO: ImmutableSet.Builder memory issue (creates huge arrays)
 	 * @param worker a worker
 	 * @return a set of all predecessors of this worker
 	 */
@@ -78,6 +80,8 @@ public abstract class Workers {
 
 	/**
 	 * Returns a set of all successors of this worker.
+	 *
+	 * TODO: ImmutableSet.Builder memory issue (creates huge arrays)
 	 * @param worker a worker
 	 * @return a set of all successors of this worker
 	 */

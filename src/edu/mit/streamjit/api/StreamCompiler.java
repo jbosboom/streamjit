@@ -17,5 +17,5 @@ public interface StreamCompiler {
 	 * @throws StreamCompilationFailedException if compilation fails for some
 	 * reason other than a stream graph defect
 	 */
-	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream);
+	public <I, O> CompiledStream compile(OneToOneElement<I, O> stream, Input<I> input, Output<O> output);
 }

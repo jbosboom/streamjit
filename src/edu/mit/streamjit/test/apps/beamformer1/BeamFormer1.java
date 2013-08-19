@@ -18,39 +18,39 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
  * STREAMIT_HOME/apps/benchmarks/asplos06/beamformer/streamit/BeamFormer1.str
  * for original implementations. Each StreamIt's language constructs (i.e.,
  * pipeline, filter and splitjoin) are rewritten as classes in StreamJit.
- * 
+ *
  * FIXME: All FileWriter<?> and FileReader<?> are replaced with ?Source and
  * ?Printer respectively.
- * 
+ *
  * @author Sumanan sumanan@mit.edu
  * @since Mar 8, 2013
  */
 public class BeamFormer1 {
 
-	public static void main(String[] args) throws InterruptedException {
-
-		BeamFormer1Kernel core = new BeamFormer1Kernel();
-		// StreamCompiler sc = new DebugStreamCompiler();
-		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
-		//StreamCompiler sc = new DistributedStreamCompiler(2);
-		CompiledStream<Float, Void> stream = sc.compile(core);
-		
-		for (float i = 0; i < 100000;) {
-			// This offerring value i has no effect in the program. As we can
-			// not call stream.offer(), just sending
-			// garbage value.
-			if (stream.offer(i)) {
-				// System.out.println("Offer success " + i);
-				i++;
-			} else {
-				Thread.sleep(10);
-			}
-		}
-
-		// Thread.sleep(10000);
-		stream.drain();
-		while (!stream.isDrained());
-	}
+//	public static void main(String[] args) throws InterruptedException {
+//
+//		BeamFormer1Kernel core = new BeamFormer1Kernel();
+//		// StreamCompiler sc = new DebugStreamCompiler();
+//		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
+//		//StreamCompiler sc = new DistributedStreamCompiler(2);
+//		CompiledStream<Float, Void> stream = sc.compile(core);
+//
+//		for (float i = 0; i < 100000;) {
+//			// This offerring value i has no effect in the program. As we can
+//			// not call stream.offer(), just sending
+//			// garbage value.
+//			if (stream.offer(i)) {
+//				// System.out.println("Offer success " + i);
+//				i++;
+//			} else {
+//				Thread.sleep(10);
+//			}
+//		}
+//
+//		// Thread.sleep(10000);
+//		stream.drain();
+//		while (!stream.isDrained());
+//	}
 
 	/**
 	 * This class represents "pipeline Beamformer1" in the BeamFormer1.str
@@ -59,7 +59,7 @@ public class BeamFormer1 {
 	 * changed to float->void and filereading is ignored. TODO: Implement the
 	 * file reading and writing filters in StreamJit and modify this application
 	 * to work exactly as the original BeamFormer1.str
-	 * 
+	 *
 	 * @author sumanan
 	 */
 	public static class BeamFormer1Kernel extends Pipeline<Float, Void> {

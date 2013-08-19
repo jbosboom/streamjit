@@ -10,7 +10,7 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.test.AbstractBenchmark;
 import edu.mit.streamjit.test.Benchmark;
-import edu.mit.streamjit.test.Inputs;
+import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
@@ -19,63 +19,63 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
  * Moved from StreamIt's asplos06 benchmark. Refer STREAMIT_HOME/apps/benchmarks/asplos06/bitonic-sort/streamit/BitonicSort2.str for
  * original implementations.
  * @author Sumanan sumanan@mit.edu
- * @since Mar 12, 2013 
+ * @since Mar 12, 2013
  */
 
 /**
  * BitonicSort.java - Batcher's bitonic sort network Implementation works only for power-of-2 sizes starting from 2.
- * 
+ *
  * Note: 1. Each input element is also referred to as a key in the comments in this file. 2. BitonicSort of N keys is done using logN
  * merge stages and each merge stage is made up of lopP steps (P goes like 2, 4, ... N for the logN merge stages)
- * 
+ *
  * See Knuth "The Art of Computer Programming" Section 5.3.4 - "Networks for Sorting" (particularly the diagram titled "A nonstandard
  * sorting network based on bitonic sorting" in the First Set of Exercises - Fig 56 in second edition) Here is an online reference:
  * http://www.iti.fh-flensburg.de/lang/algorithmen/sortieren/bitonic/bitonicen.htm
  */
 public class BitonicSort {
-	public static void main(String[] args) throws InterruptedException {
-
-		/* Make sure N is a power_of_2 */
-		int N = 8;
-
-		BitonicSort2 kernel = new BitonicSort2();
-		// StreamCompiler sc = new DebugStreamCompiler();
-		StreamCompiler sc = new ConcurrentStreamCompiler(6);
-		//StreamCompiler sc = new DistributedStreamCompiler(2);
-		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
-		Integer output;
-		for (int i = N * N * N * N; i > 0;) {
-			if (stream.offer(i)) {
-				// System.out.println("Offer success " + i);
-				i--;
-			} else {
-				Thread.sleep(10);
-			}
-			while ((output = stream.poll()) != null)
-				System.out.println(output);
-		}
-	//	Thread.sleep(10000);
-		stream.drain();
-		while(!stream.isDrained())
-			while ((output = stream.poll()) != null)
-				System.out.println(output);
-		
-		while ((output = stream.poll()) != null)
-			System.out.println(output);
-	}
+//	public static void main(String[] args) throws InterruptedException {
+//
+//		/* Make sure N is a power_of_2 */
+//		int N = 8;
+//
+//		BitonicSort2 kernel = new BitonicSort2();
+//		// StreamCompiler sc = new DebugStreamCompiler();
+//		StreamCompiler sc = new ConcurrentStreamCompiler(6);
+//		//StreamCompiler sc = new DistributedStreamCompiler(2);
+//		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
+//		Integer output;
+//		for (int i = N * N * N * N; i > 0;) {
+//			if (stream.offer(i)) {
+//				// System.out.println("Offer success " + i);
+//				i--;
+//			} else {
+//				Thread.sleep(10);
+//			}
+//			while ((output = stream.poll()) != null)
+//				System.out.println(output);
+//		}
+//	//	Thread.sleep(10000);
+//		stream.drain();
+//		while(!stream.isDrained())
+//			while ((output = stream.poll()) != null)
+//				System.out.println(output);
+//
+//		while ((output = stream.poll()) != null)
+//			System.out.println(output);
+//	}
 
 	@ServiceProvider(Benchmark.class)
 	public static class BitonicSortBenchmark extends AbstractBenchmark {
 		public BitonicSortBenchmark() {
 			//TODO: what's the output?  a sorted sequence?
 			//TODO: what size should we use?
-			super("BitonicSort", "app", BitonicSort2.class, Inputs.allIntsInRange(1, 8*8*8*8));
+			super("BitonicSort", BitonicSort2.class, Datasets.allIntsInRange(1, 8*8*8*8));
 		}
 	}
 
 	/**
 	 * Compares the two input keys and exchanges their order if they are not sorted.
-	 * 
+	 *
 	 * sortdir determines if the sort is nondecreasing (UP) or nonincreasing (DOWN). 'true' indicates UP sort and 'false' indicates
 	 * DOWN sort.
 	 */
@@ -120,7 +120,7 @@ public class BitonicSort {
 	/**
 	 * Partition the input bitonic sequence of length L into two bitonic sequences of length L/2, with all numbers in the first
 	 * sequence <= all numbers in the second sequence if sortdir is UP (similar case for DOWN sortdir)
-	 * 
+	 *
 	 * Graphically, it is a bunch of CompareExchanges with same sortdir, clustered together in the sort network at a particular step
 	 * (of some merge stage).
 	 */
@@ -136,7 +136,7 @@ public class BitonicSort {
 
 	/**
 	 * One step of a particular merge stage (used by all merge stages except the last)
-	 * 
+	 *
 	 * dircnt determines which step we are in the current merge stage (which in turn is determined by <L, numseqp>)
 	 */
 	private static class StepOfMerge extends Splitjoin<Integer, Integer> {
@@ -179,7 +179,7 @@ public class BitonicSort {
 
 	/**
 	 * One step of the last merge stage
-	 * 
+	 *
 	 * Main difference form StepOfMerge is the direction of sort. It is always in the same direction - sortdir.
 	 */
 	private static class StepOfLastMerge extends Splitjoin<Integer, Integer> {
@@ -216,7 +216,7 @@ public class BitonicSort {
 	 * Divide the input sequence of length N into subsequences of length P and sort each of them (either UP or DOWN depending on what
 	 * subsequence number [0 to N/P-1] they get - All even subsequences are sorted UP and all odd subsequences are sorted DOWN) In
 	 * short, a MergeStage is N/P Bitonic Sorters of order P each.
-	 * 
+	 *
 	 * But, this MergeStage is implemented *iteratively* as logP STEPS.
 	 */
 	private static class MergeStage extends Pipeline<Integer, Integer> {
@@ -254,7 +254,7 @@ public class BitonicSort {
 	/**
 	 * The LastMergeStage is basically one Bitonic Sorter of order N i.e., it takes the bitonic sequence produced by the previous merge
 	 * stages and applies a bitonic merge on it to produce the final sorted sequence.
-	 * 
+	 *
 	 * This is implemented iteratively as logN steps
 	 */
 	private static class LastMergeStage extends Pipeline<Integer, Integer> {

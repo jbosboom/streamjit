@@ -14,31 +14,31 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 /**
  * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/filterbank/streamit/FilterBank6.str for
  * original implementations. Each StreamIt's language constructs (i.e., pipeline, filter and splitjoin) are rewritten as classes in
- * StreamJit. 
+ * StreamJit.
  * @author Sumanan sumanan@mit.edu
  * @since Mar 14, 2013
  */
 public class FilterBank6 {
 
-	public static void main(String[] args) throws InterruptedException {
-		FilterBank6Kernel kernel = new FilterBank6Kernel();
-		//StreamCompiler sc = new DebugStreamCompiler();
-		StreamCompiler sc = new ConcurrentStreamCompiler(4);
-		//StreamCompiler sc = new DistributedStreamCompiler(2);
-		CompiledStream<Integer, Void> stream = sc.compile(kernel);
-		for (int i = 0; i < 1000;) {
-			if (stream.offer(i)) {
-				// System.out.println("Offer success " + i);
-				i++;
-			} else {
-				// System.out.println("Offer failed " + i);
-				Thread.sleep(10);
-			}
-		}
-		// Thread.sleep(10000);
-		stream.drain();
-		while(!stream.isDrained());
-	}
+//	public static void main(String[] args) throws InterruptedException {
+//		FilterBank6Kernel kernel = new FilterBank6Kernel();
+//		//StreamCompiler sc = new DebugStreamCompiler();
+//		StreamCompiler sc = new ConcurrentStreamCompiler(4);
+//		//StreamCompiler sc = new DistributedStreamCompiler(2);
+//		CompiledStream<Integer, Void> stream = sc.compile(kernel);
+//		for (int i = 0; i < 1000;) {
+//			if (stream.offer(i)) {
+//				// System.out.println("Offer success " + i);
+//				i++;
+//			} else {
+//				// System.out.println("Offer failed " + i);
+//				Thread.sleep(10);
+//			}
+//		}
+//		// Thread.sleep(10000);
+//		stream.drain();
+//		while(!stream.isDrained());
+//	}
 
 	/**
 	 * FIXME: Actual pipeline is "void->void pipeline FilterBank6".
@@ -177,7 +177,7 @@ public class FilterBank6 {
 	 * are: end of passband=wp and end of stopband=ws, such that 0<=wp<=ws<=pi
 	 * gain of passband and size of window for both filters. Note that the high
 	 * pass and low pass filters currently use a rectangular window.
-	 * 
+	 *
 	 * We take the signal, run both the low and high pass filter separately and
 	 * then add the results back together.
 	 */
@@ -266,15 +266,15 @@ public class FilterBank6 {
 	/**
 	 * Simple FIR high pass filter with gain=g, stopband ws(in radians) and N
 	 * samples.
-	 * 
+	 *
 	 * Eg ^ H(e^jw) | -------- | ------- | | | | | | | | | |
 	 * <-------------------------> w pi-wc pi pi+wc
-	 * 
-	 * 
+	 *
+	 *
 	 * This implementation is a FIR filter is a rectangularly windowed sinc
 	 * function (eg sin(x)/x) multiplied by e^(j*pi*n)=(-1)^n, which is the
 	 * optimal FIR high pass filter in mean square error terms.
-	 * 
+	 *
 	 * Specifically, h[n] has N samples from n=0 to (N-1) such that h[n] =
 	 * (-1)^(n-N/2) * sin(cutoffFreq*pi*(n-N/2))/(pi*(n-N/2)). where cutoffFreq
 	 * is pi-ws and the field h holds h[-n].
@@ -337,11 +337,11 @@ public class FilterBank6 {
 	 * Simple FIR low pass filter with gain=g, wc=cutoffFreq(in radians) and N
 	 * samples. Eg: ^ H(e^jw) | --------------- | | | | | |
 	 * <-------------------------> w -wc wc
-	 * 
+	 *
 	 * This implementation is a FIR filter is a rectangularly windowed sinc
 	 * function (eg sin(x)/x), which is the optimal FIR low pass filter in mean
 	 * square error terms.
-	 * 
+	 *
 	 * Specifically, h[n] has N samples from n=0 to (N-1) such that h[n] =
 	 * sin(cutoffFreq*pi*(n-N/2))/(pi*(n-N/2)). and the field h holds h[-n].
 	 */

@@ -8,7 +8,7 @@ import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.test.AbstractBenchmark;
 import edu.mit.streamjit.test.Benchmark;
-import edu.mit.streamjit.test.Inputs;
+import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
@@ -18,37 +18,37 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
  * STREAMIT_HOME/apps/benchmarks/asplos06/fft/streamit/FFT5.str for original
  * implementations. Each StreamIt's language constructs (i.e., pipeline, filter
  * and splitjoin) are rewritten as classes in StreamJit.
- * 
+ *
  * @author Sumanan sumanan@mit.edu
  * @since Mar 14, 2013
  */
 public class FFT5 {
 
-	public static void main(String[] args) throws InterruptedException {
-		FFT5Kernel kernel = new FFT5Kernel();
-		// StreamCompiler sc = new DebugStreamCompiler();
-		 StreamCompiler sc = new ConcurrentStreamCompiler(2);
-		// StreamCompiler sc = new DistributedStreamCompiler(2);
-		CompiledStream<Float, Void> stream = sc.compile(kernel);
-		// Float output;
-		for (float i = 0; i < 1000;) {
-			if (stream.offer(i)) {
-				// System.out.println("Offer success " + i);
-				i++;
-			} else {
-				// System.out.println("Offer failed " + i);
-				Thread.sleep(10);
-			}
-		}
-		// Thread.sleep(1000);
-		stream.drain();
-		while (!stream.isDrained());
-	}
+//	public static void main(String[] args) throws InterruptedException {
+//		FFT5Kernel kernel = new FFT5Kernel();
+//		// StreamCompiler sc = new DebugStreamCompiler();
+//		 StreamCompiler sc = new ConcurrentStreamCompiler(2);
+//		// StreamCompiler sc = new DistributedStreamCompiler(2);
+//		CompiledStream<Float, Void> stream = sc.compile(kernel);
+//		// Float output;
+//		for (float i = 0; i < 1000;) {
+//			if (stream.offer(i)) {
+//				// System.out.println("Offer success " + i);
+//				i++;
+//			} else {
+//				// System.out.println("Offer failed " + i);
+//				Thread.sleep(10);
+//			}
+//		}
+//		// Thread.sleep(1000);
+//		stream.drain();
+//		while (!stream.isDrained());
+//	}
 
 	@ServiceProvider(Benchmark.class)
 	public static final class FFT5Benchmark extends AbstractBenchmark {
 		public FFT5Benchmark() {
-			super("FFT5", "app", FFT5Kernel.class, Inputs.nCopies(1000, 0.0f));
+			super("FFT5", FFT5Kernel.class, Datasets.nCopies(1000, 0.0f));
 		}
 	}
 

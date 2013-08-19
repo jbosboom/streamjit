@@ -17,48 +17,48 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
  * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/channelvocoder/streamit/ChannelVocoder7.str
  * for original implementations. Each StreamIt's language consturcts (i.e., pipeline, filter and splitjoin) are rewritten as classes in
  * StreamJit.
- * 
+ *
  * @author Sumanan sumanan@mit.edu
  * @since Mar 12, 2013
  */
 public class ChannelVocoder7 {
-	
-	public static void main(String[] args) throws InterruptedException {
-		ChannelVocoder7Kernel kernel = new ChannelVocoder7Kernel();
-		StreamCompiler sc = new DebugStreamCompiler();
-		//StreamCompiler sc = new ConcurrentStreamCompiler(2);
-		//StreamCompiler sc = new DistributedStreamCompiler(2);
-		CompiledStream<Integer, Void> stream = sc.compile(kernel);
-		for (int i = 0; i < 10000;) {
-			if (stream.offer(i))
-			{
-				//System.out.println("Offer success " + i);
-				i++;
-			}
-			else
-			{
-				//System.out.println("Offer failed " + i);
-				Thread.sleep(10);
-			}
-		}
-		//Thread.sleep(20000);
-		stream.drain();
-		while(!stream.isDrained());
-	}
+
+//	public static void main(String[] args) throws InterruptedException {
+//		ChannelVocoder7Kernel kernel = new ChannelVocoder7Kernel();
+//		StreamCompiler sc = new DebugStreamCompiler();
+//		//StreamCompiler sc = new ConcurrentStreamCompiler(2);
+//		//StreamCompiler sc = new DistributedStreamCompiler(2);
+//		CompiledStream<Integer, Void> stream = sc.compile(kernel);
+//		for (int i = 0; i < 10000;) {
+//			if (stream.offer(i))
+//			{
+//				//System.out.println("Offer success " + i);
+//				i++;
+//			}
+//			else
+//			{
+//				//System.out.println("Offer failed " + i);
+//				Thread.sleep(10);
+//			}
+//		}
+//		//Thread.sleep(20000);
+//		stream.drain();
+//		while(!stream.isDrained());
+//	}
 
 	/**
 	 * Represents "void->void pipeline ChannelVocoder7". FIXME: we need void->void pipeline, FileReader<float> and FileWriter<float> to
 	 * represents exact implementation.
 	 */
-	 
+
 	 /** This is a channel vocoder as described in 6.555 Lab 2. It's salient features are a filterbank each of which contains a
 	 * decimator after a bandpass filter.
-	 * 
+	 *
 	 * Sampling Rate is 8000 Hz. First the signal is conditioned using a lowpass filter with cutoff at 5000 Hz. Then the signal is
 	 * "center clipped" which basically means that very high and very low values are removed.
-	 * 
+	 *
 	 * Then, the signal is sent both to a pitch detector and to a filter bank with 200 Hz wide windows (18 overall)
-	 * 
+	 *
 	 * Thus, each output is the combination of 18 band envelope values from the filter bank and a single pitch detector value. This
 	 * value is either the pitch if the sound was voiced or 0 if the sound was unvoiced.
 	 **/
@@ -104,7 +104,7 @@ public class ChannelVocoder7 {
 
 	/**
 	 * FIXME: void->float filter DataSource, but here Integer->Float /
-	 * 
+	 *
 	 * /** a simple data source.
 	 **/
 	private static class DataSource extends StatefulFilter<Integer, Float> {
@@ -289,7 +289,7 @@ public class ChannelVocoder7 {
 	 * This is a bandstop filter with the rather simple implementation of a low pass filter cascaded with a high pass filter. The
 	 * relevant parameters are: end of passband=wp and end of stopband=ws, such that 0<=wp<=ws<=pi gain of passband and size of window
 	 * for both filters. Note that the high pass and low pass filters currently use a rectangular window.
-	 * 
+	 *
 	 * We take the signal, run both the low and high pass filter separately and then add the results back together.
 	 */
 	private static class BandStopFilter extends Pipeline<Float, Float> {
@@ -371,7 +371,7 @@ public class ChannelVocoder7 {
 
 	/**
 	 * Simple FIR high pass filter with gain=g, stopband ws(in radians) and N samples.
-	 * 
+	 *
 	 *  Eg
 	 *                 ^ H(e^jw)
 	 *                 |
@@ -380,10 +380,10 @@ public class ChannelVocoder7 {
 	 *     |      |    |    |     |
 	 *    <-------------------------> w
 	 *                   pi-wc pi pi+wc
-	 * 
+	 *
 	 * This implementation is a FIR filter is a rectangularly windowed sinc function (eg sin(x)/x) multiplied by e^(j*pi*n)=(-1)^n,
 	 * which is the optimal FIR high pass filter in mean square error terms.
-	 * 
+	 *
 	 * Specifically, h[n] has N samples from n=0 to (N-1) such that h[n] = (-1)^(n-N/2) * sin(cutoffFreq*pi*(n-N/2))/(pi*(n-N/2)).
 	 * where cutoffFreq is pi-ws and the field h holds h[-n].
 	 */
@@ -448,10 +448,10 @@ public class ChannelVocoder7 {
 	 *          |      |      |
 	 *    <-------------------------> w
 	 *         -wc            wc
-	 * 
+	 *
 	 * This implementation is a FIR filter is a rectangularly windowed sinc function (eg sin(x)/x), which is the optimal FIR low pass
 	 * filter in mean square error terms.
-	 * 
+	 *
 	 * Specifically, h[n] has N samples from n=0 to (N-1) such that h[n] = sin(cutoffFreq*pi*(n-N/2))/(pi*(n-N/2)). and the field h
 	 * holds h[-n].
 	 */

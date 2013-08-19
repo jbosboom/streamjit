@@ -1,6 +1,8 @@
 package edu.mit.streamjit.test;
 
+import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.impl.blob.Buffer;
 import java.util.List;
 
@@ -23,7 +25,7 @@ public interface Benchmark {
 	 * Returns an unmodifiable list of the inputs available for this benchmark.
 	 * @return an unmodifiable list of the inputs available for this benchmark
 	 */
-	public List<Input> inputs();
+	public List<Dataset> inputs();
 
 	/**
 	 * Returns a human-readable name for this benchmark.
@@ -32,26 +34,65 @@ public interface Benchmark {
 	@Override
 	public String toString();
 
-	public interface Input {
+	/**
+	 * A set of data a benchmark can run with.
+	 *
+	 * This class uses the builder pattern, despite not having many fields to
+	 * initialize, to support future expansion with optional parameters (e.g.,
+	 * the expected values of stateful fields at the end of the benchmark)
+	 * without requiring modifiation of other benchmarks or conflicts between
+	 * overloaded constructors with different sets of optional features.
+	 */
+	public static final class Dataset {
+		private final Input<Object> input;
 		/**
-		 * Returns a Buffer containing input for this benchmark.  Buffers are
-		 * stateful objects, so this method always returns a new Buffer.
-		 * @return a new Buffer containing input for this benchmark.
+		 * An Input that produces Buffers for a verifying Output created by the
+		 * benchmark framework.  May be null.
 		 */
-		public Buffer input();
-		/**
-		 * Returns a Buffer containing reference output for this input, or null
-		 * if reference output is not available.  Buffers are
-		 * stateful objects, so this method always returns a new Buffer.
-		 * @return a new Buffer containing reference output for this input, or
-		 * null
-		 */
-		public Buffer output();
-		/**
-		 * Returns a human-readable name for this input.
-		 * @return a human-readable name for this input
-		 */
+		private final Input<Object> output;
+		private final String name;
+		private Dataset(Input<Object> input, Input<Object> output, String name) {
+			this.input = input;
+			this.output = output;
+			this.name = name;
+		}
+		public static Builder builder() {
+			return new Builder();
+		}
+		public static Builder builder(Dataset dataset) {
+			return new Builder().name(dataset.name).input(dataset.input).output(dataset.output);
+		}
+		public static class Builder {
+			private Input<Object> input;
+			private Input<Object> output;
+			private String name;
+			private Builder() {
+			}
+			public Builder name(String name) {
+				this.name = name;
+				return this;
+			}
+			public Builder input(Input<Object> input) {
+				this.input = input;
+				return this;
+			}
+			public Builder output(Input<Object> output) {
+				this.output = output;
+				return this;
+			}
+			public Dataset build() {
+				return new Dataset(input, output, name);
+			}
+		}
+		public Input<Object> input() {
+			return input;
+		}
+		public Input<Object> output() {
+			return output;
+		}
 		@Override
-		public String toString();
+		public String toString() {
+			return name;
+		}
 	}
 }

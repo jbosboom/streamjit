@@ -10,3 +10,5 @@ bin/
 .classpath
 .settings
 *.bak
+# heap dumps
+*.hprof

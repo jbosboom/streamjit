@@ -16,17 +16,19 @@ import java.util.List;
  * @since 8/13/2013
  */
 public abstract class AbstractBenchmark implements Benchmark {
-	private final String name, kind;
+	private final String name;
 	private final Supplier<? extends OneToOneElement<Object, Object>> supplier;
-	private final ImmutableList<Input> inputs;
-	public AbstractBenchmark(String name, String kind, Class<?> streamClass, Iterable<?> arguments, Input firstInput, Input... moreInputs) {
+	private final ImmutableList<Dataset> inputs;
+	public AbstractBenchmark(String name, Supplier<? extends OneToOneElement<Object, Object>> supplier, Dataset firstInput, Dataset... moreInputs) {
 		this.name = name;
-		this.kind = kind;
-		this.supplier = new ConstructorSupplier(streamClass, arguments);
+		this.supplier = supplier;
 		this.inputs = ImmutableList.copyOf(Lists.asList(firstInput, moreInputs));
 	}
-	public AbstractBenchmark(String name, String kind, Class<?> streamClass, Input firstInput, Input... moreInputs) {
-		this(name, kind, streamClass, ImmutableList.of(), firstInput, moreInputs);
+	public AbstractBenchmark(String name, Class<?> streamClass, Iterable<?> arguments, Dataset firstInput, Dataset... moreInputs) {
+		this(name, new ConstructorSupplier(streamClass, arguments), firstInput, moreInputs);
+	}
+	public AbstractBenchmark(String name, Class<?> streamClass, Dataset firstInput, Dataset... moreInputs) {
+		this(name, streamClass, ImmutableList.of(), firstInput, moreInputs);
 	}
 
 	@Override
@@ -34,7 +36,7 @@ public abstract class AbstractBenchmark implements Benchmark {
 		return supplier.get();
 	}
 	@Override
-	public final List<Input> inputs() {
+	public final List<Dataset> inputs() {
 		return inputs;
 	}
 	@Override

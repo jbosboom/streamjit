@@ -11,7 +11,7 @@ import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.test.AbstractBenchmark;
 import edu.mit.streamjit.test.Benchmark;
-import edu.mit.streamjit.test.Inputs;
+import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
@@ -29,42 +29,42 @@ import java.util.List;
  * @since 11/8/2012
  */
 public class FMRadio {
-	public static void main(String[] args) throws InterruptedException {
-		FMRadioCore core = new FMRadioCore();
-		 StreamCompiler sc = new DebugStreamCompiler();
-//		StreamCompiler sc = new ConcurrentStreamCompiler(4);
-		// StreamCompiler sc = new DistributedStreamCompiler(2);
-//		StreamCompiler sc = new BlobHostStreamCompiler(new CompilerBlobFactory(), 1);
-		CompiledStream<Float, Float> stream = sc.compile(core);
-		Float output;
-		for (int i = 0; i < 1000000;) {
-			if (stream.offer((float) i)) {
-				// System.out.println("Offer success " + i);
-				i++;
-			} else {
-				// System.out.println("Offer failded " + i);
-				 Thread.sleep(10);
-			}
-
-			while ((output = stream.poll()) != null)
-				System.out.println(output);
-		}
-
-		System.out.println("Draining called...");
-		stream.drain();
-		while (!stream.isDrained())
-			while ((output = stream.poll()) != null)
-				System.out.println(output);
-
-		while ((output = stream.poll()) != null)
-			System.out.println(output);
-
-	}
+//	public static void main(String[] args) throws InterruptedException {
+//		FMRadioCore core = new FMRadioCore();
+//		 StreamCompiler sc = new DebugStreamCompiler();
+////		StreamCompiler sc = new ConcurrentStreamCompiler(4);
+//		// StreamCompiler sc = new DistributedStreamCompiler(2);
+////		StreamCompiler sc = new BlobHostStreamCompiler(new CompilerBlobFactory(), 1);
+//		CompiledStream<Float, Float> stream = sc.compile(core);
+//		Float output;
+//		for (int i = 0; i < 1000000;) {
+//			if (stream.offer((float) i)) {
+//				// System.out.println("Offer success " + i);
+//				i++;
+//			} else {
+//				// System.out.println("Offer failded " + i);
+//				 Thread.sleep(10);
+//			}
+//
+//			while ((output = stream.poll()) != null)
+//				System.out.println(output);
+//		}
+//
+//		System.out.println("Draining called...");
+//		stream.drain();
+//		while (!stream.isDrained())
+//			while ((output = stream.poll()) != null)
+//				System.out.println(output);
+//
+//		while ((output = stream.poll()) != null)
+//			System.out.println(output);
+//
+//	}
 
 	@ServiceProvider(Benchmark.class)
 	public static class FMRadioBenchmark extends AbstractBenchmark {
 		public FMRadioBenchmark() {
-			super("FMRadio", "app", FMRadioCore.class, Inputs.nCopies(1000000, 1.0f));
+			super("FMRadio", FMRadioCore.class, Datasets.nCopies(1000000, 1.0f));
 		}
 	}
 

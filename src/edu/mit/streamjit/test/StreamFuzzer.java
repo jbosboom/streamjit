@@ -10,8 +10,10 @@ import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
+import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.RoundrobinJoiner;
@@ -352,31 +354,21 @@ public final class StreamFuzzer {
 	}
 
 	private static final int INPUT_LENGTH = 1000;
-	private static List<Integer> run(FuzzElement element, StreamCompiler compiler) {
+	private static List<Integer> run(FuzzElement element, StreamCompiler compiler) throws InterruptedException {
 		OneToOneElement<Integer, Integer> graph = element.instantiate();
-		CompiledStream<Integer, Integer> stream = compiler.compile(graph);
-		ImmutableList.Builder<Integer> retval = ImmutableList.builder();
-		Integer o;
-		for (int i = 0; i < INPUT_LENGTH;) {
-			if (stream.offer(i))
-				++i;
-			while ((o = stream.poll()) != null)
-				retval.add(o);
-		}
-
-		stream.drain();
-		while (!stream.isDrained())
-			while ((o = stream.poll()) != null)
-				retval.add(o);
-		while ((o = stream.poll()) != null)
-			retval.add(o);
-		return retval.build();
+		Input<Object> input = Datasets.allIntsInRange(0, INPUT_LENGTH).input();
+		List<Integer> retval = new ArrayList<>();
+		Output<Integer> output = Output.toCollection(retval);
+		@SuppressWarnings("unchecked")
+		CompiledStream stream = compiler.compile(graph, (Input)input, output);
+		stream.awaitDrained();
+		return retval;
 	}
 
 	private static final ImmutableSet<Class<?>> ignoredExceptions = ImmutableSet.<Class<?>>of(
 			InfeasibleSystemException.class
 			);
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		StreamCompiler debugSC = new DebugStreamCompiler();
 		StreamCompiler compilerSC = new CompilerStreamCompiler();
 		Set<FuzzElement> completedCases = new HashSet<>();

@@ -21,7 +21,7 @@
  * is refering to the IEEE DCT specification used by both MPEG and JPEG.
  * A definition of what makes an 8x8 DCT conform to the IEEE specification, as well
  * as a pseudocode implementation, can be found in Appendix A of the MPEG-2 specification
- * (ISO/IEC 13818-2) on P. 125. 
+ * (ISO/IEC 13818-2) on P. 125.
  */
 
 package edu.mit.streamjit.test.apps.dct;
@@ -36,7 +36,7 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.test.AbstractBenchmark;
 import edu.mit.streamjit.test.Benchmark;
-import edu.mit.streamjit.test.Inputs;
+import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
@@ -48,47 +48,47 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
  * STREAMIT_HOME/apps/benchmarks/asplos06/dct/streamit/DCT2.str for original
  * implementations. Each StreamIt's language constructs (i.e., pipeline, filter
  * and splitjoin) are rewritten as classes in StreamJit.
- * 
+ *
  * @author Sumanan sumanan@mit.edu
  * @since Mar 13, 2013
  */
 public class DCT2 {
 
-	public static void main(String[] args) throws InterruptedException {
-		DCT2Kernel kernel = new DCT2Kernel();
-		StreamCompiler sc = new DebugStreamCompiler();
-//		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
-		// StreamCompiler sc = new DistributedStreamCompiler(2);
-//		StreamCompiler sc = new BlobHostStreamCompiler(new CompilerBlobFactory(), 1);
-		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
-		Integer output;
-		for (int i = 0; i < 1000;) {
-			if (stream.offer(i)) {
-				// System.out.println("Offer success " + i);
-				i++;
-			} else {
-				// System.out.println("Offer failed " + i);
-				Thread.sleep(10);
-			}
-			while ((output = stream.poll()) != null)
-				System.out.println(output);
-		}
-
-		stream.drain();
-		while (!stream.isDrained())
-			while ((output = stream.poll()) != null)
-				System.out.println(output);
-
-		while ((output = stream.poll()) != null)
-			System.out.println(output);
-	}
+//	public static void main(String[] args) throws InterruptedException {
+//		DCT2Kernel kernel = new DCT2Kernel();
+//		StreamCompiler sc = new DebugStreamCompiler();
+////		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
+//		// StreamCompiler sc = new DistributedStreamCompiler(2);
+////		StreamCompiler sc = new BlobHostStreamCompiler(new CompilerBlobFactory(), 1);
+//		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
+//		Integer output;
+//		for (int i = 0; i < 1000;) {
+//			if (stream.offer(i)) {
+//				// System.out.println("Offer success " + i);
+//				i++;
+//			} else {
+//				// System.out.println("Offer failed " + i);
+//				Thread.sleep(10);
+//			}
+//			while ((output = stream.poll()) != null)
+//				System.out.println(output);
+//		}
+//
+//		stream.drain();
+//		while (!stream.isDrained())
+//			while ((output = stream.poll()) != null)
+//				System.out.println(output);
+//
+//		while ((output = stream.poll()) != null)
+//			System.out.println(output);
+//	}
 
 	@ServiceProvider(Benchmark.class)
 	public static final class DCT2Benchmark extends AbstractBenchmark {
 		public DCT2Benchmark() {
 			//TODO: if we checked in the StreamIt input and output files, we
 			//could add a file-reading Input.
-			super("DCT2", "app", DCT2Kernel.class, Inputs.allIntsInRange(0, 1000));
+			super("DCT2", DCT2Kernel.class, Datasets.allIntsInRange(0, 1000));
 		}
 	}
 
@@ -108,7 +108,7 @@ public class DCT2 {
 	 * Transforms an 8x8 signal from the frequency domain to the signal domain
 	 * using an inverse Discrete Cosine Transform in accordance with the IEEE
 	 * specification for a 2-dimensional 8x8 iDCT.
-	 * 
+	 *
 	 * @input 64 values representing an 8x8 array of values in the frequency
 	 *        domain, ordered by row and then column. Vertical frequency
 	 *        increases along each row and horizontal frequency along each
@@ -131,7 +131,7 @@ public class DCT2 {
 	 * Transforms an 8x8 signal from the signal domain to the frequency domain
 	 * using a Discrete Cosine Transform in accordance with the IEEE
 	 * specification for a 2-dimensional 8x8 DCT.
-	 * 
+	 *
 	 * @input 64 values representing an 8x8 array of values in the signal
 	 *        domain, ordered by row and then column.
 	 * @output 64 values representing an 8x8 array of values in the frequency
@@ -158,7 +158,7 @@ public class DCT2 {
 	/**
 	 * Transforms a 2D signal from the frequency domain to the signal domain
 	 * using an inverse Discrete Cosine Transform.
-	 * 
+	 *
 	 * @param size
 	 *            The number of elements in each dimension of the signal.
 	 * @input size x size values, representing an array of values in the
@@ -215,7 +215,7 @@ public class DCT2 {
 	/**
 	 * Transforms a 2D signal from the frequency domain to the signal domain
 	 * using a FAST inverse Discrete Cosine Transform.
-	 * 
+	 *
 	 * @input size x size values, representing an array of values in the
 	 *        frequency domain, ordered by row and then column. Vertical
 	 *        frequency increases along each row and horizontal frequency along
@@ -234,7 +234,7 @@ public class DCT2 {
 	/**
 	 * Transforms a 2D signal from the frequency domain to the signal domain
 	 * using a FAST inverse Discrete Cosine Transform.
-	 * 
+	 *
 	 * @input size x size values, representing an array of values in the
 	 *        frequency domain, ordered by row and then column. Vertical
 	 *        frequency increases along each row and horizontal frequency along
@@ -253,7 +253,7 @@ public class DCT2 {
 	/**
 	 * Transforms a 2D signal from the signal domain to the frequency domain
 	 * using a Discrete Cosine Transform.
-	 * 
+	 *
 	 * @param size
 	 *            The number of elements in each dimension of the signal.
 	 * @input size x size values, representing an array of values in the signal
@@ -418,7 +418,7 @@ public class DCT2 {
 	/**
 	 * Transforms a 2D signal from the signal domain to the frequency domain
 	 * using a Discrete Cosine Transform.
-	 * 
+	 *
 	 * @param size
 	 *            The number of elements in each dimension of the signal.
 	 * @input size values, representing an array of values in the signal domain,
@@ -480,7 +480,7 @@ public class DCT2 {
 	/**
 	 * Transforms a 1D signal from the frequency domain to the signal domain
 	 * using an inverse Discrete Cosine Transform.
-	 * 
+	 *
 	 * @param size
 	 *            The number of elements in each dimension of the signal.
 	 * @input size values, representing an array of values in the frequency
@@ -530,7 +530,7 @@ public class DCT2 {
 	/**
 	 * Transforms a 1D horizontal signal from the frequency domain to the signal
 	 * domain using a FAST inverse Discrete Cosine Transform.
-	 * 
+	 *
 	 * @input size values, representing an array of values in the frequency
 	 *        domain, ordered by row and then column. Vertical frequency
 	 *        increases along each row and horizontal frequency along each
@@ -619,7 +619,7 @@ public class DCT2 {
 	/**
 	 * Transforms a 1D vertical signal from the frequency domain to the signal
 	 * domain using a FAST inverse Discrete Cosine Transform.
-	 * 
+	 *
 	 * @input size*size values, representing an array of values in the frequency
 	 *        domain, ordered by row and then column. Vertical frequency
 	 *        increases along each row and horizontal frequency along each
@@ -714,7 +714,7 @@ public class DCT2 {
 	/**
 	 * Transforms a 1D vertical signal from the frequency domain to the signal
 	 * domain using a FAST inverse Discrete Cosine Transform.
-	 * 
+	 *
 	 * @param size
 	 *            The number of elements in each dimension of the signal.
 	 * @input size values, representing an array of values in the frequency
@@ -806,7 +806,7 @@ public class DCT2 {
 	/**
 	 * Transforms a 1D signal from the signal domain to the frequency domain
 	 * using a Discrete Cosine Transform.
-	 * 
+	 *
 	 * @param size
 	 *            The number of elements in each dimension of the signal.
 	 * @input size values, representing an array of values in the signal domain,

@@ -14,7 +14,7 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 /**
  * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/des/streamit/DES2.str for original
  * implementations. Each StreamIt's language constructs (i.e., pipeline, filter and splitjoin) are rewritten as classes in StreamJit.
- * 
+ *
  * @author Sumanan sumanan@mit.edu
  * @since Mar 13, 2013
  */
@@ -142,32 +142,32 @@ public class DES2 {
 			{ 1, 15, 13, 8, 10, 3, 7, 4, 12, 5, 6, 11, 0, 14, 9, 2 }, { 7, 11, 4, 1, 9, 12, 14, 2, 0, 6, 10, 13, 15, 3, 5, 8 },
 			{ 2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11 } };
 
-	public static void main(String[] args) throws InterruptedException {
-
-		DES2Kernel kernel = new DES2Kernel();
-		StreamCompiler sc = new DebugStreamCompiler();
-		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
-		Integer output;
-		for (int i = 0; i < 100000;) {
-			if (stream.offer(i)) {
-				// System.out.println("Offer success " + i);
-				i++;
-			} else {
-				// System.out.println("Offer failed " + i);
-				Thread.sleep(10);
-			}
-			while ((output = stream.poll()) != null)
-				System.out.println(output);
-		}
-		stream.drain();
-		
-		while (!stream.isDrained())
-			while ((output = stream.poll()) != null)
-				System.out.println(output);
-
-		while ((output = stream.poll()) != null)
-			System.out.println(output);
-	}
+//	public static void main(String[] args) throws InterruptedException {
+//
+//		DES2Kernel kernel = new DES2Kernel();
+//		StreamCompiler sc = new DebugStreamCompiler();
+//		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
+//		Integer output;
+//		for (int i = 0; i < 100000;) {
+//			if (stream.offer(i)) {
+//				// System.out.println("Offer success " + i);
+//				i++;
+//			} else {
+//				// System.out.println("Offer failed " + i);
+//				Thread.sleep(10);
+//			}
+//			while ((output = stream.poll()) != null)
+//				System.out.println(output);
+//		}
+//		stream.drain();
+//
+//		while (!stream.isDrained())
+//			while ((output = stream.poll()) != null)
+//				System.out.println(output);
+//
+//		while ((output = stream.poll()) != null)
+//			System.out.println(output);
+//	}
 
 	/**
 	 * FIXME: Original implementations is "void->void pipeline DES2". Need to implement file, void supports.

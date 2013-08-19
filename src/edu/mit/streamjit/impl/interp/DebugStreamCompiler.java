@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.interp;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.impl.common.MessageConstraint;
@@ -14,109 +15,84 @@ import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Identity;
+import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Input.ManualInput;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Rate;
+import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
+import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Portals;
+import edu.mit.streamjit.impl.common.InputBufferFactory;
+import edu.mit.streamjit.impl.common.InputBufferFactory.ManualInputDelegate;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 /**
- * A StreamCompiler that interprets the stream graph on the thread that calls
- * CompiledStream.put(). This compiler performs extra checks to verify filters
- * conform to their rate declarations. The CompiledStream returned from the
- * compile() method synchronizes offer() and poll() such that only up to one
- * element is being offered or polled at once. As its name suggests, this
+ * TODO: new comments now that we're running on a separate thread
+ *
+ * As its name suggests, this
  * compiler is intended for debugging purposes; it is unlikely to provide good
  * performance.
  *
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/20/2012
  */
-public class DebugStreamCompiler implements StreamCompiler {
+public class DebugStreamCompiler extends BlobHostStreamCompiler {
+	public DebugStreamCompiler() {
+		super(new DebugInterpreterBlobFactory());
+	}
 	@Override
-	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
-		ConnectWorkersVisitor cpwv = new ConnectWorkersVisitor();
-		stream.visit(cpwv);
-		stream.visit(new VerifyStreamGraph());
-		Worker<I, ?> source = (Worker<I, ?>)cpwv.getSource();
-
-		List<MessageConstraint> constraints = MessageConstraint.findConstraints(source);
-		Set<Portal<?>> portals = new HashSet<>();
-		for (MessageConstraint mc : constraints)
-			portals.add(mc.getPortal());
-		for (Portal<?> portal : portals)
-			Portals.setConstraints(portal, constraints);
-
-		DebugInterpreter interpreter = new DebugInterpreter(Workers.getAllWorkersInGraph(source), constraints);
-		Token inputToken = Iterables.getOnlyElement(interpreter.getInputs());
-		Token outputToken = Iterables.getOnlyElement(interpreter.getOutputs());
-		int inputCapacity = interpreter.getMinimumBufferCapacity(inputToken);
-		int outputCapacity = interpreter.getMinimumBufferCapacity(outputToken);
-		Buffer inputBuffer = Buffers.queueBuffer(new ArrayDeque<>(inputCapacity), Integer.MAX_VALUE);
-		Buffer outputBuffer = Buffers.queueBuffer(new ArrayDeque<>(outputCapacity), Integer.MAX_VALUE);
-		ImmutableMap<Token, Buffer> bufferMap = ImmutableMap.<Token, Buffer>builder()
-				.put(inputToken, inputBuffer)
-				.put(outputToken, outputBuffer)
-				.build();
-		interpreter.installBuffers(bufferMap);
-		return new DebugCompiledStream<>(interpreter, inputBuffer, outputBuffer);
+	public String toString() {
+		return "DebugStreamCompiler";
 	}
 
-	/**
-	 * This CompiledStream synchronizes offer() and poll(), so it can use
-	 * unsynchronized Channels.
-	 *
-	 * TODO: should we use bounded buffers here?
-	 * @param <I> the type of input data elements
-	 * @param <O> the type of output data elements
-	 */
-	private static class DebugCompiledStream<I, O> extends AbstractCompiledStream<I, O> {
-		private final Interpreter interpreter;
-		private final Buffer inputBuffer;
-		private DebugCompiledStream(Interpreter interpreter, Buffer inputBuffer, Buffer outputBuffer) {
-			super(inputBuffer, outputBuffer);
-			this.interpreter = interpreter;
-			this.inputBuffer = inputBuffer;
-		}
-
+	private static final class DebugInterpreterBlobFactory extends Interpreter.InterpreterBlobFactory {
 		@Override
-		public synchronized boolean offer(I input) {
-			boolean ret = super.offer(input);
-			interpreter.interpret();
-			return ret;
+		public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
+			//TODO: find message constraints
+			return new DebugInterpreter(workers, Collections.<MessageConstraint>emptyList(), config);
 		}
-
 		@Override
-		public synchronized O poll() {
-			return super.poll();
+		public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
+			Configuration superConfig = super.getDefaultConfiguration(workers);
+			Configuration.Builder builder = Configuration.builder(superConfig);
+			builder.removeParameter("channelFactory");
+			List<ChannelFactory> universe = ImmutableList.<ChannelFactory>of(new DebugChannelFactory());
+			builder.addParameter(new SwitchParameter<>("channelFactory", ChannelFactory.class, universe.get(0), universe));
+			return builder.build();
 		}
-
-		@Override
-		protected synchronized void doDrain() {
-			//Most implementations of doDrain() hand off to another thread to
-			//avoid blocking in drain(), but we only have one thread.
-			interpreter.interpret();
-			//We need to see if any elements were left undrained.
-			UndrainedVisitor v = new UndrainedVisitor(inputBuffer);
-			finishedDraining(v.isFullyDrained());
+		private static final class DebugChannelFactory implements ChannelFactory {
+			@Override
+			public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
+				return new DebugChannel<>();
+			}
+			@Override
+			public boolean equals(Object other) {
+				return other instanceof DebugChannelFactory;
+			}
+			@Override
+			public int hashCode() {
+				return 0;
+			}
 		}
-
-
 	}
 
 	private static final class DebugInterpreter extends Interpreter {
-		private DebugInterpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter) {
-			super(workersIter, constraintsIter, makeConfig());
+		private DebugInterpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter, Configuration config) {
+			super(workersIter, constraintsIter, config);
 		}
 
 		@Override
@@ -158,28 +134,6 @@ public class DebugStreamCompiler implements StreamCompiler {
 						push.max() != Rate.DYNAMIC && pushCount > push.max())
 					throw new AssertionError(String.format("%s: Push rate %s but pushed %d elements onto channel %d", worker, push, pushCount, i));
 				channel.resetStatistics();
-			}
-		}
-
-		private static Configuration makeConfig() {
-			List<ChannelFactory> universe = Arrays.<ChannelFactory>asList(new DebugChannelFactory());
-			//TODO: add Config modification helpers, modify default interpreter blob config
-			Configuration config = Configuration.builder().addParameter(new SwitchParameter<>("channelFactory", ChannelFactory.class, universe.get(0), universe)).build();
-			return config;
-		}
-
-		private static final class DebugChannelFactory implements ChannelFactory {
-			@Override
-			public <E> Channel<E> makeChannel(Worker<?, E> upstream, Worker<E, ?> downstream) {
-				return new DebugChannel<>();
-			}
-			@Override
-			public boolean equals(Object other) {
-				return other instanceof DebugChannelFactory;
-			}
-			@Override
-			public int hashCode() {
-				return 0;
 			}
 		}
 	}
@@ -254,5 +208,22 @@ public class DebugStreamCompiler implements StreamCompiler {
 		@Override
 		public void endVisit() {
 		}
+	}
+
+	public static void main(String[] args) {
+		DebugStreamCompiler dsc = new DebugStreamCompiler();
+		Input.ManualInput<Integer> input = Input.createManualInput();
+		Output.ManualOutput<Integer> output = Output.createManualOutput();
+		CompiledStream cs = dsc.compile(new Identity<Integer>(), input, output);
+		Object o = null;
+		for (int i = 0; i < 10;) {
+			if (input.offer(i))
+				++i;
+			if ((o = output.poll()) != null)
+				System.out.println(o);
+		}
+		input.drain();
+		for (int i = 0; i < 11; ++i)
+			System.out.println(output.poll());
 	}
 }
