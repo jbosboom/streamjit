@@ -144,4 +144,14 @@ public final class ReflectionUtils {
 			throw new NoSuchMethodException("Creating a "+klass+" from "+arguments+" was ambiguous: "+retvals);
 		return retvals.get(0);
 	}
+
+	public static <T> ImmutableSet<Class<?>> getAllSupertypes(Class<T> klass) {
+		ImmutableSet.Builder<Class<?>> builder = ImmutableSet.builder();
+		builder.add(klass);
+		for (Class<?> c : klass.getInterfaces())
+			builder.add(c);
+		if (klass.getSuperclass() != null)
+			builder.addAll(getAllSupertypes(klass.getSuperclass()));
+		return builder.build();
+	}
 }
