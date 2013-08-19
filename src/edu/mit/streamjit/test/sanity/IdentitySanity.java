@@ -2,8 +2,10 @@ package edu.mit.streamjit.test.sanity;
 
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.Identity;
+import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.AbstractBenchmark;
 import edu.mit.streamjit.test.Benchmark;
+import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.Datasets;
 
 /**
@@ -22,5 +24,9 @@ public class IdentitySanity extends AbstractBenchmark {
 
 	private static Dataset id(Dataset dataset) {
 		return Dataset.builder(dataset).output(dataset.input()).build();
+	}
+
+	public static void main(String[] args) {
+		Benchmarker.runBenchmark(new IdentitySanity(), new DebugStreamCompiler());
 	}
 }

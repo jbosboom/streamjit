@@ -107,9 +107,21 @@ public final class Benchmarker {
 //				new CompilerStreamCompiler().multiplier(10000),
 			};
 			for (StreamCompiler sc : compilers)
-				for (Dataset input : benchmark.inputs())
-					run(benchmark, input, sc);
+				runBenchmark(benchmark, sc);
 		}
+	}
+
+	/**
+	 * Runs all the datasets for the given benchmark on the given compiler.
+	 * This entry point is to make the individual benchmark classes runnable
+	 * (call this from main()) for convenience when debugging an individual
+	 * benchmark.
+	 * @param benchmark the benchmark to run
+	 * @param compiler the compiler to use
+	 */
+	public static void runBenchmark(Benchmark benchmark, StreamCompiler compiler) {
+		for (Dataset input : benchmark.inputs())
+			run(benchmark, input, compiler);
 	}
 
 	private static final long TIMEOUT_DURATION = 1;
