@@ -25,6 +25,9 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.common.PrintStreamVisitor;
+import edu.mit.streamjit.impl.common.TestFilters.Adder;
+import edu.mit.streamjit.impl.common.TestFilters.Batcher;
+import edu.mit.streamjit.impl.common.TestFilters.Multiplier;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.util.ConstructorSupplier;
@@ -85,60 +88,6 @@ public final class StreamFuzzer {
 			.build();
 	private static FuzzFilter makeFilter() {
 		return FILTERS.get(rng.nextInt(FILTERS.size()));
-	}
-
-	private static final class Adder extends Filter<Integer, Integer> {
-		private final int addend;
-		public Adder(int addend) {
-			super(1, 1);
-			this.addend = addend;
-		}
-		@Override
-		public void work() {
-			push(pop() + addend);
-		}
-	}
-
-	private static final class Multiplier extends Filter<Integer, Integer> {
-		private final int multiplier;
-		public Multiplier(int multiplier) {
-			super(1, 1);
-			this.multiplier = multiplier;
-		}
-		@Override
-		public void work() {
-			push(pop() * multiplier);
-		}
-	}
-
-	private static class Permuter extends Filter<Integer, Integer> {
-		private final int[] permutation;
-		public Permuter(int inputSize, int outputSize, int[] permutation) {
-			super(Rate.create(inputSize), Rate.create(outputSize), Rate.create(0, outputSize));
-			this.permutation = permutation.clone();
-			for (int i : permutation)
-				assert i >= 0 && i < inputSize;
-			assert permutation.length == outputSize;
-		}
-		@Override
-		public void work() {
-			for (int i : permutation)
-				push(peek(i));
-			for (int i = 0; i < permutation.length; ++i)
-				pop();
-		}
-	}
-
-	private static final class Batcher extends Permuter {
-		public Batcher(int batchSize) {
-			super(batchSize, batchSize, makeIdentityPermutation(batchSize));
-		}
-		private static int[] makeIdentityPermutation(int batchSize) {
-			int[] retval = new int[batchSize];
-			for (int i = 0; i < retval.length; ++i)
-				retval[i] = i;
-			return retval;
-		}
 	}
 
 	private static final int MAX_PIPELINE_LENGTH = 5;
