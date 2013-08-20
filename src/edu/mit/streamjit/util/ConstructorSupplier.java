@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableList;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.UndeclaredThrowableException;
+import java.util.Arrays;
 
 /**
  * Creates T instances by calling a constructor with the given set of arguments.
@@ -21,6 +22,9 @@ public final class ConstructorSupplier<T> implements Supplier<T> {
 		} catch (NoSuchMethodException ex) {
 			throw new UndeclaredThrowableException(ex);
 		}
+	}
+	public ConstructorSupplier(Class<T> klass, Object... arguments) {
+		this(klass, Arrays.asList(arguments));
 	}
 
 	@Override
