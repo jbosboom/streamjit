@@ -3,7 +3,6 @@ package edu.mit.streamjit.impl.compiler.insts;
 import com.google.common.base.Function;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.Type;
-import java.util.Map;
 
 /**
  *

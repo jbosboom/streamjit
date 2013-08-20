@@ -5,7 +5,6 @@ import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.PrimitiveType;
-import java.util.Map;
 
 /**
  * A binary mathematical operation.

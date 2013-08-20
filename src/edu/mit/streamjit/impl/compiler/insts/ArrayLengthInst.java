@@ -5,7 +5,6 @@ import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.ArrayType;
 import edu.mit.streamjit.impl.compiler.types.NullType;
-import java.util.Map;
 
 /**
  * Pushes the length of an array.

@@ -228,16 +228,5 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 			if (c != null)
 				Workers.getOutputChannels(cur).add(c);
 		}
-
-		//Ensure all but the first worker aren't sources.
-		for (Worker<?, ?> worker : Workers.getAllSuccessors(source))
-			for (Rate rate : worker.getPopRates())
-				if (rate.max() == 0)
-					throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)cur);
-		//Ensure all but the last worker aren't sinks.
-		for (Worker<?, ?> worker : Workers.getAllPredecessors(source))
-			for (Rate rate : worker.getPopRates())
-				if (rate.max() == 0)
-					throw new IllegalStreamGraphException("Source isn't first worker", (StreamElement)cur);
 	}
 }

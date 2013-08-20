@@ -10,7 +10,6 @@ import edu.mit.streamjit.impl.compiler.Value;
 import edu.mit.streamjit.impl.compiler.types.PrimitiveType;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.impl.compiler.types.VoidType;
-import java.util.Map;
 
 /**
  * A method call.  All types of bytecoded calls (i.e., not invokedynamic) use

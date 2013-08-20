@@ -2,6 +2,7 @@ package edu.mit.streamjit.util.json;
 
 import com.google.common.collect.Lists;
 import com.google.common.io.BaseEncoding;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -22,6 +23,7 @@ import javax.json.JsonValue;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/29/2013
  */
+@ServiceProvider(value = JsonifierFactory.class, priority = Integer.MAX_VALUE)
 public final class SerializableJsonifierFactory implements JsonifierFactory {
 	@Override
 	@SuppressWarnings("unchecked")

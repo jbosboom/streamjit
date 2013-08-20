@@ -7,7 +7,6 @@ import edu.mit.streamjit.impl.compiler.types.ArrayType;
 import edu.mit.streamjit.impl.compiler.types.NullType;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.impl.compiler.types.Type;
-import java.util.Map;
 
 /**
  * Stores a value in an array.

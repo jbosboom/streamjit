@@ -8,7 +8,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Range;
 import edu.mit.streamjit.api.Filter;
-import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.OneToOneElement;
@@ -19,6 +18,7 @@ import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.util.Fraction;
+import edu.mit.streamjit.util.Pair;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -39,6 +39,7 @@ import java.util.Map;
 public final class CheckVisitor extends SerialCompositeStreamVisitor {
 	public CheckVisitor() {
 		super(new NoDuplicatesVisitor(),
+				new SourceSinkVisitor(),
 				new SplitterJoinerMatchBranches(),
 				//SplitjoinBranchRateBalanceVisitor depends on connectivity.
 				new ConnectWorkersVisitor(),
@@ -276,6 +277,68 @@ public final class CheckVisitor extends SerialCompositeStreamVisitor {
 				return Range.greaterThan(lowerBound);
 			Fraction upperBound = first.upperEndpoint().mul(second.upperEndpoint());
 			return Range.closed(lowerBound, upperBound);
+		}
+	}
+
+	/**
+	 * Checks that all but the first worker are not sources (pop 0), and that
+	 * all but the last worker are not sinks (push 0).
+	 *
+	 * TODO: This could be more efficient by not storing everything until the
+	 * end.
+	 */
+	private static final class SourceSinkVisitor extends StackVisitor {
+		private ImmutableList.Builder<Pair<Worker<?, ?>, ImmutableList<GraphTraceElement>>> traces = ImmutableList.builder();
+		private SourceSinkVisitor() {
+		}
+		@Override
+		protected void visitFilter0(Filter<?, ?> filter) {
+			visitWorker(filter);
+		}
+		@Override
+		protected boolean enterPipeline0(Pipeline<?, ?> pipeline) {
+			return true;
+		}
+		@Override
+		protected void exitPipeline0(Pipeline<?, ?> pipeline) {
+		}
+		@Override
+		protected boolean enterSplitjoin0(Splitjoin<?, ?> splitjoin) {
+			return true;
+		}
+		@Override
+		protected void visitSplitter0(Splitter<?, ?> splitter) {
+		}
+		@Override
+		protected boolean enterSplitjoinBranch0(OneToOneElement<?, ?> element) {
+			return true;
+		}
+		@Override
+		protected void exitSplitjoinBranch0(OneToOneElement<?, ?> element) {
+		}
+		@Override
+		protected void visitJoiner0(Joiner<?, ?> joiner) {
+		}
+		@Override
+		protected void exitSplitjoin0(Splitjoin<?, ?> splitjoin) {
+		}
+		private void visitWorker(Worker<?, ?> worker) {
+			traces.add(Pair.<Worker<?, ?>, ImmutableList<GraphTraceElement>>make(worker, getTrace()));
+		}
+		@Override
+		public void endVisit() {
+			ImmutableList<Pair<Worker<?, ?>, ImmutableList<GraphTraceElement>>> list = traces.build();
+			for (Pair<Worker<?, ?>, ImmutableList<GraphTraceElement>> p : list.subList(1, list.size()))
+				for (Rate r : p.first.getPopRates())
+					if (r.max() == 0)
+						//TODO: trace
+						throw new IllegalStreamGraphException("source in middle of graph", p.first);
+			for (Pair<Worker<?, ?>, ImmutableList<GraphTraceElement>> p : list.subList(0, list.size()-1))
+				for (Rate r : p.first.getPushRates())
+					if (r.max() == 0)
+						//TODO: trace
+						throw new IllegalStreamGraphException("sink in middle of graph", p.first);
+			super.endVisit();
 		}
 	}
 }

@@ -2,8 +2,6 @@ package edu.mit.streamjit.impl.interp;
 
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.impl.blob.Buffer;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  * A skeletal implementation of CompiledStream that forwards offer() and poll()

@@ -1,6 +1,7 @@
 package edu.mit.streamjit.util.json;
 
 import com.google.common.collect.ImmutableMap;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -17,6 +18,7 @@ import javax.json.JsonValue;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 3/25/2013
  */
+@ServiceProvider(value = JsonifierFactory.class, priority = Integer.MIN_VALUE)
 public final class PrimitiveJsonifierFactory implements JsonifierFactory {
 	/**
 	 * Public constructor provided for ServiceLoader.  Don't instantiate this

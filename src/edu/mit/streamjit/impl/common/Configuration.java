@@ -10,6 +10,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Worker;
@@ -20,7 +21,6 @@ import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.json.Jsonifier;
 import edu.mit.streamjit.util.json.JsonifierFactory;
 import edu.mit.streamjit.util.json.Jsonifiers;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -236,6 +236,7 @@ public final class Configuration {
 	 * This class is protected with a public constructor to allow ServiceLoader
 	 * to instantiate it.
 	 */
+	@ServiceProvider(JsonifierFactory.class)
 	protected static final class ConfigurationJsonifier implements Jsonifier<Configuration>, JsonifierFactory {
 		public ConfigurationJsonifier() {}
 		@Override
@@ -450,6 +451,7 @@ public final class Configuration {
 			this.value = value;
 		}
 
+		@ServiceProvider(JsonifierFactory.class)
 		protected static final class IntParameterJsonifier implements Jsonifier<IntParameter>, JsonifierFactory {
 			public IntParameterJsonifier() {}
 			@Override
@@ -617,6 +619,7 @@ public final class Configuration {
 			return new SwitchParameter<>(name, Boolean.class, value, Arrays.asList(false, true));
 		}
 
+		@ServiceProvider(JsonifierFactory.class)
 		protected static final class SwitchParameterJsonifier implements Jsonifier<SwitchParameter<?>>, JsonifierFactory {
 			public SwitchParameterJsonifier() {}
 			@Override
@@ -852,6 +855,7 @@ public final class Configuration {
 				this.blobFactory = blobFactory;
 			}
 
+			@ServiceProvider(JsonifierFactory.class)
 			protected static final class BlobSpecifierJsonifier implements Jsonifier<BlobSpecifier>, JsonifierFactory {
 				public BlobSpecifierJsonifier() {}
 				@Override
@@ -960,6 +964,7 @@ public final class Configuration {
 			}
 		}
 
+		@ServiceProvider(JsonifierFactory.class)
 		protected static final class PartitionParameterJsonifier implements Jsonifier<PartitionParameter>, JsonifierFactory {
 			public PartitionParameterJsonifier() {}
 			@Override

@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
-import edu.mit.streamjit.apps.streamfilereader.StreamFileReader;
+import edu.mit.streamjit.test.sanity.streamfilereader.StreamFileReader;
 
 /**
  * Writes the stream objects in into a file. Creates a new file and if the file is already available, overwrites it. ( Simply serialize

@@ -11,7 +11,6 @@ import edu.mit.streamjit.impl.compiler.types.Type;
 import edu.mit.streamjit.util.IntrusiveList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 /**
  *

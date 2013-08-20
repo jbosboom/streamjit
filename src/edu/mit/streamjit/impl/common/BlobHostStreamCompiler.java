@@ -5,7 +5,10 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.api.CompiledStream;
+import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
@@ -15,6 +18,9 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * A StreamCompiler that uses a BlobFactory to make a Blob for the entire graph.
@@ -37,7 +43,7 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 	}
 
 	@Override
-	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
+	public <I, O> CompiledStream compile(OneToOneElement<I, O> stream, Input<I> input, Output<O> output) {
 		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		stream.visit(cwv);
 		ImmutableSet<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
@@ -45,8 +51,8 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 
 		Token inputToken = Iterables.getOnlyElement(blob.getInputs());
 		Token outputToken = Iterables.getOnlyElement(blob.getOutputs());
-		Buffer inputBuffer = Buffers.blockingQueueBuffer(new ArrayBlockingQueue<>(blob.getMinimumBufferCapacity(inputToken)), false, false);
-		Buffer outputBuffer = Buffers.blockingQueueBuffer(new ArrayBlockingQueue<>(blob.getMinimumBufferCapacity(outputToken)), false, false);
+		Buffer inputBuffer = InputBufferFactory.unwrap(input).createReadableBuffer(blob.getMinimumBufferCapacity(inputToken));
+		Buffer outputBuffer = OutputBufferFactory.unwrap(output).createWritableBuffer(blob.getMinimumBufferCapacity(outputToken));
 		ImmutableMap<Token, Buffer> bufferMap = ImmutableMap.<Token, Buffer>builder()
 				.put(inputToken, inputBuffer)
 				.put(outputToken, outputBuffer)
@@ -60,7 +66,17 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 		}
 		ImmutableList<PollingCoreThread> threads = threadsBuilder.build();
 
-		BlobHostCompiledStream<I, O> cs = new BlobHostCompiledStream<>(blob, inputBuffer, outputBuffer, threads);
+		final BlobHostCompiledStream cs = new BlobHostCompiledStream(blob, threads);
+		if (input instanceof ManualInput)
+			InputBufferFactory.setManualInputDelegate((ManualInput<I>)input, new InputBufferFactory.AbstractManualInputDelegate<I>(inputBuffer) {
+				@Override
+				public void drain() {
+					cs.drain();
+				}
+			});
+		else //Input provides all input, so immediately begin to drain.
+			cs.drain();
+
 		for (Thread t : threads)
 			t.start();
 		return cs;
@@ -81,30 +97,19 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 		return 1;
 	}
 
-	private static final class BlobHostCompiledStream<I, O> implements CompiledStream<I, O> {
+	private static final class BlobHostCompiledStream implements CompiledStream {
 		private final Blob blob;
-		private final Buffer inputBuffer, outputBuffer;
 		private final ImmutableList<PollingCoreThread> threads;
-		private BlobHostCompiledStream(Blob blob, Buffer inputBuffer, Buffer outputBuffer, ImmutableList<PollingCoreThread> threads) {
+		private final CountDownLatch latch;
+		private BlobHostCompiledStream(Blob blob, ImmutableList<PollingCoreThread> threads) {
 			this.blob = blob;
-			this.inputBuffer = inputBuffer;
-			this.outputBuffer = outputBuffer;
 			this.threads = threads;
+			this.latch = new CountDownLatch(this.threads.size());
+			for (PollingCoreThread t : this.threads)
+				t.latch = this.latch;
 		}
 
-		@Override
-		public boolean offer(I input) {
-			return inputBuffer.write(input);
-		}
-
-		@Override
-		@SuppressWarnings("unchecked")
-		public O poll() {
-			return (O)outputBuffer.read();
-		}
-
-		@Override
-		public void drain() {
+		private void drain() {
 			blob.drain(new Runnable() {
 				@Override
 				public void run() {
@@ -121,19 +126,35 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 					return false;
 			return true;
 		}
+
+		public void awaitDrained() throws InterruptedException {
+			latch.await();
+		}
+
+		public void awaitDrained(long timeout, TimeUnit unit) throws InterruptedException, TimeoutException {
+			if (!latch.await(timeout, unit))
+				throw new TimeoutException();
+		}
 	}
 
 	private static final class PollingCoreThread extends Thread {
 		private final Runnable coreCode;
 		private volatile boolean running = true;
+		private volatile CountDownLatch latch;
 		private PollingCoreThread(Runnable target, String name) {
 			super(name);
 			this.coreCode = target;
 		}
 		@Override
 		public void run() {
-			while (running)
-				coreCode.run();
+			try {
+				while (running)
+					coreCode.run();
+			} finally {
+				//Whether we terminated normally or exceptionally, we need to
+				//count down so waiting threads don't get stuck.
+				latch.countDown();
+			}
 		}
 		public void requestStop() {
 			running = false;

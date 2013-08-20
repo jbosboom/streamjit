@@ -21,7 +21,6 @@ import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.util.EmptyRunnable;
 import edu.mit.streamjit.util.Pair;
-import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
@@ -104,12 +103,10 @@ public class Interpreter implements Blob {
 		//Create channels.
 		SwitchParameter<ChannelFactory> parameter = this.config.getParameter("channelFactory", SwitchParameter.class, ChannelFactory.class);
 		ChannelFactory factory = parameter.getValue();
-		for (Pair<Worker<?, ?>, Worker<?, ?>> p : allWorkerPairsInBlob()) {
-			Channel channel = factory.makeChannel((Worker)p.first, (Worker)p.second);
-			int i = Workers.getSuccessors(p.first).indexOf(p.second);
-			Workers.getOutputChannels(p.first).set(i, channel);
-			int j = Workers.getPredecessors(p.second).indexOf(p.first);
-			Workers.getInputChannels(p.second).set(j, channel);
+		for (IOInfo info : IOInfo.internalEdges(workers)) {
+			Channel channel = factory.makeChannel((Worker)info.upstream(), (Worker)info.downstream());
+			Workers.getOutputChannels(info.upstream()).set(info.getUpstreamChannelIndex(), channel);
+			Workers.getInputChannels(info.downstream()).set(info.getDownstreamChannelIndex(), channel);
 		}
 		ImmutableSet.Builder<Token> inputTokens = ImmutableSet.builder(), outputTokens = ImmutableSet.builder();
 		ImmutableMap.Builder<Token, Integer> minimumBufferSize = ImmutableMap.builder();
@@ -132,7 +129,7 @@ public class Interpreter implements Blob {
 			(info.isInput() ? inputTokens : outputTokens).add(info.token());
 			if (info.isInput()) {
 				Worker<?, ?> w = info.downstream();
-				int chanIdx = info.token().isOverallInput() ? 0 : Workers.getPredecessors(w).indexOf(info.upstream());
+				int chanIdx = info.getDownstreamChannelIndex();
 				int rate = Math.max(w.getPeekRates().get(chanIdx).max(), w.getPopRates().get(chanIdx).max());
 				minimumBufferSize.put(info.token(), rate);
 			}
@@ -142,17 +139,6 @@ public class Interpreter implements Blob {
 		this.outputs = outputTokens.build();
 		this.minimumBufferSizes = minimumBufferSize.build();
 		this.ioinfo = IOInfo.externalEdges(workers);
-	}
-
-	//TODO: copied from Compiler, refactor into static method somewhere
-	@SuppressWarnings({"unchecked", "rawtypes"})
-	private ImmutableList<Pair<Worker<?, ?>, Worker<?, ?>>> allWorkerPairsInBlob() {
-		ImmutableList.Builder<Pair<Worker<?, ?>, Worker<?, ?>>> builder = ImmutableList.<Pair<Worker<?, ?>, Worker<?, ?>>>builder();
-		for (Worker<?, ?> u : workers)
-			for (Worker<?, ?> d : Workers.getSuccessors(u))
-				if (workers.contains(d))
-					builder.add(new Pair(u, d));
-		return builder.build();
 	}
 
 	@Override
@@ -249,7 +235,8 @@ public class Interpreter implements Blob {
 		return new DrainData(dataBuilder.build(), stateBuilder.build());
 	}
 
-	public static final class InterpreterBlobFactory implements BlobFactory {
+	public static class InterpreterBlobFactory implements BlobFactory {
+		public InterpreterBlobFactory() {}
 		@Override
 		public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
 			//TODO: get the constraints!
