@@ -61,40 +61,40 @@ public abstract class Workers {
 
 	/**
 	 * Returns a set of all predecessors of this worker.
-	 *
-	 * TODO: ImmutableSet.Builder memory issue (creates huge arrays)
 	 * @param worker a worker
 	 * @return a set of all predecessors of this worker
 	 */
 	public static ImmutableSet<Worker<?, ?>> getAllPredecessors(Worker<?, ?> worker) {
-		ImmutableSet.Builder<Worker<?, ?>> closed = ImmutableSet.builder();
+		Set<Worker<?, ?>> closed = new HashSet<>();
 		Queue<Worker<?, ?>> frontier = new ArrayDeque<>();
 		frontier.addAll(Workers.getPredecessors(worker));
 		while (!frontier.isEmpty()) {
 			Worker<?, ?> cur = frontier.remove();
 			closed.add(cur);
-			frontier.addAll(Workers.getPredecessors(cur));
+			for (Worker<?, ?> w : Workers.getPredecessors(cur))
+				if (!closed.contains(w))
+					frontier.add(w);
 		}
-		return closed.build();
+		return ImmutableSet.copyOf(closed);
 	}
 
 	/**
 	 * Returns a set of all successors of this worker.
-	 *
-	 * TODO: ImmutableSet.Builder memory issue (creates huge arrays)
 	 * @param worker a worker
 	 * @return a set of all successors of this worker
 	 */
 	public static ImmutableSet<Worker<?, ?>> getAllSuccessors(Worker<?, ?> worker) {
-		ImmutableSet.Builder<Worker<?, ?>> closed = ImmutableSet.builder();
+		Set<Worker<?, ?>> closed = new HashSet<>();
 		Queue<Worker<?, ?>> frontier = new ArrayDeque<>();
 		frontier.addAll(Workers.getSuccessors(worker));
 		while (!frontier.isEmpty()) {
 			Worker<?, ?> cur = frontier.remove();
 			closed.add(cur);
-			frontier.addAll(Workers.getSuccessors(cur));
+			for (Worker<?, ?> w : Workers.getSuccessors(cur))
+				if (!closed.contains(w))
+					frontier.add(w);
 		}
-		return closed.build();
+		return ImmutableSet.copyOf(closed);
 	}
 
 	/**
