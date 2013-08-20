@@ -1,5 +1,6 @@
 package edu.mit.streamjit.test;
 
+import com.google.common.base.Supplier;
 import com.google.common.base.Throwables;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableList;
@@ -26,6 +27,7 @@ import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.common.PrintStreamVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import edu.mit.streamjit.util.ConstructorSupplier;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.ilpsolve.InfeasibleSystemException;
 import java.lang.reflect.Constructor;
@@ -172,33 +174,19 @@ public final class StreamFuzzer {
 	private static final com.google.common.base.Joiner ARG_JOINER = com.google.common.base.Joiner.on(", ");
 	private static class FuzzStreamElement<T extends StreamElement<Integer, Integer>> {
 		private final Class<? extends T> filterClass;
-		private final ImmutableList<? extends Object> arguments;
-		private transient Constructor<? extends T> constructor;
+		private final ImmutableList<?> arguments;
+		private final Supplier<? extends T> supplier;
 		protected FuzzStreamElement(Class<? extends T> filterClass, ImmutableList<? extends Object> arguments) {
 			this.filterClass = filterClass;
 			this.arguments = arguments;
+			this.supplier = new ConstructorSupplier<>(filterClass, arguments);
 		}
 		public T instantiate() {
-			if (constructor == null)
-				constructor = findConstructor();
-			try {
-				return constructor.newInstance(arguments.toArray());
-			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-				throw new AssertionError("Failed to instantiate "+constructor+" with "+arguments, ex);
-			}
-		}
-		private Constructor<? extends T> findConstructor() {
-			try {
-				return ReflectionUtils.findConstructor(filterClass, arguments);
-			} catch (NoSuchMethodException ex) {
-				throw new AssertionError(ex);
-			}
+			return supplier.get();
 		}
 		public String toJava() {
-			//This will generate unchecked code if the filter is generic.
-			return "new " + filterClass.getCanonicalName() + "(" + ARG_JOINER.join(arguments)+")";
+			return supplier.toString();
 		}
-
 		@Override
 		public boolean equals(Object obj) {
 			if (obj == null)
@@ -212,7 +200,6 @@ public final class StreamFuzzer {
 				return false;
 			return true;
 		}
-
 		@Override
 		public int hashCode() {
 			int hash = 7;
