@@ -161,8 +161,6 @@ public class IOInfo {
 		return downstream;
 	}
 
-	//TODO: is this the correct place for these methods?
-	//We often need this for intra-blob checks too.
 	public int getUpstreamChannelIndex() {
 		if (token().isOverallOutput())
 			return 0;
