@@ -242,7 +242,7 @@ public final class TypeFactory implements Iterable<Type> {
 	 * @return an iterator over Types created by this TypeFactory
 	 */
 	@Override
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("unchecked") //TODO: remove when Guava uses @SafeVarargs (Guava issue 1073)
 	public Iterator<Type> iterator() {
 		return Iterables.unmodifiableIterable(Iterables.<Type>concat(
 				typeMap.values(),
