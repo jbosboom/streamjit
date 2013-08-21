@@ -142,7 +142,7 @@ public final class StreamFuzzer {
 				return false;
 			if (getClass() != obj.getClass())
 				return false;
-			final FuzzStreamElement<T> other = (FuzzStreamElement<T>)obj;
+			final FuzzStreamElement<?> other = (FuzzStreamElement<?>)obj;
 			if (!Objects.equals(this.filterClass, other.filterClass))
 				return false;
 			if (!Objects.equals(this.arguments, other.arguments))
