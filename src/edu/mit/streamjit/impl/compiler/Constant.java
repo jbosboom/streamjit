@@ -52,13 +52,26 @@ public final class Constant<T> extends Value implements Parented<Module> {
 		setName(toString());
 	}
 
+	@Override
+	public Module getParent() {
+		return parent;
+	}
+
 	public T getConstant() {
 		return constant;
 	}
 
-	@Override
-	public Module getParent() {
-		return parent;
+	/**
+	 * Casts this Constant to the given Constant<X> if this constant really is
+	 * of that type.
+	 * @param <X> the constant type to cast to
+	 * @param klass the constant type to cast to
+	 * @return this constant, cast to the given type
+	 */
+	@SuppressWarnings("unchecked")
+	public <X> Constant<X> as(Class<X> klass) {
+		checkArgument(klass.isInstance(getConstant()));
+		return (Constant<X>)this;
 	}
 
 	/**
@@ -84,11 +97,5 @@ public final class Constant<T> extends Value implements Parented<Module> {
 		if (constant instanceof Class)
 			return constant.toString() + ".class";
 		return "("+getType().toString()+")"+constant;
-	}
-
-	@SuppressWarnings("unchecked")
-	<X> Constant<X> as(Class<X> klass) {
-		checkArgument(klass.isInstance(getConstant()));
-		return (Constant<X>)this;
 	}
 }
