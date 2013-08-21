@@ -72,7 +72,7 @@ public class IOInfo {
 	 * @param workers a set of workers
 	 * @return a set of IOInfo objects for all edges of the given set
 	 */
-	public static ImmutableSet<IOInfo> allEdges(Set<Worker<?, ?>> workers) {
+	public static ImmutableSet<IOInfo> allEdges(Set<? extends Worker<?, ?>> workers) {
 		//TODO: we'll get most edges twice, once while traversing preds and once
 		//for succs.  Using a sorted set is a total hack.
 		ImmutableSortedSet.Builder<IOInfo> retval = ImmutableSortedSet.orderedBy(IOInfo.TOKEN_SORT);
@@ -126,7 +126,7 @@ public class IOInfo {
 	 * @param workers a set of workers
 	 * @return a set of IOInfo objects for all external edges of the given set
 	 */
-	public static ImmutableSet<IOInfo> externalEdges(Set<Worker<?, ?>> workers) {
+	public static ImmutableSet<IOInfo> externalEdges(Set<? extends Worker<?, ?>> workers) {
 		return FluentIterable.from(allEdges(workers)).filter(new Predicate<IOInfo>() {
 			@Override
 			public boolean apply(IOInfo input) {
@@ -144,7 +144,7 @@ public class IOInfo {
 	 * @param workers a set of workers
 	 * @return a set of IOInfo objects for all internal edges of the given set
 	 */
-	public static ImmutableSet<IOInfo> internalEdges(Set<Worker<?, ?>> workers) {
+	public static ImmutableSet<IOInfo> internalEdges(Set<? extends Worker<?, ?>> workers) {
 		return FluentIterable.from(allEdges(workers)).filter(new Predicate<IOInfo>() {
 			@Override
 			public boolean apply(IOInfo input) {
