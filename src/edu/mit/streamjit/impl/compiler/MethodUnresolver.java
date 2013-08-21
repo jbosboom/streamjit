@@ -611,7 +611,6 @@ public final class MethodUnresolver {
 					f.getType().getFieldType().getDescriptor()));
 		}
 	}
-	@SuppressWarnings({"unchecked", "rawtypes"})
 	private void emit(SwitchInst i, InsnList insns) {
 		load(i.getValue(), insns);
 		LookupSwitchInsnNode insn = new LookupSwitchInsnNode(null, null, null);
