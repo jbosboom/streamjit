@@ -30,7 +30,6 @@ public final class KlassUnresolver {
 		this.classNode = new ClassNode(Opcodes.ASM4);
 	}
 
-	@SuppressWarnings("unchecked")
 	private byte[] unresolve() {
 		this.classNode.version = Opcodes.V1_7;
 		this.classNode.access = Modifier.toBits(klass.modifiers());
