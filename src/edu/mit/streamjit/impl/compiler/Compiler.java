@@ -684,7 +684,7 @@ public final class Compiler {
 
 	private final class StreamNode {
 		private final int id;
-		private final ImmutableSet<Worker<?, ?>> workers;
+		private final ImmutableSet<? extends Worker<?, ?>> workers;
 		private final ImmutableSortedSet<IOInfo> ioinfo;
 		private ImmutableMap<Worker<?, ?>, ImmutableSortedSet<IOInfo>> inputIOs, outputIOs;
 		/**
@@ -712,7 +712,7 @@ public final class Compiler {
 
 		private StreamNode(Worker<?, ?> worker) {
 			this.id = Workers.getIdentifier(worker);
-			this.workers = (ImmutableSet<Worker<?, ?>>)ImmutableSet.of(worker);
+			this.workers = ImmutableSet.of(worker);
 			this.ioinfo = ImmutableSortedSet.copyOf(IOInfo.TOKEN_SORT, IOInfo.externalEdges(workers));
 			buildWorkerData(worker);
 
@@ -825,11 +825,11 @@ public final class Compiler {
 			workMethod.basicBlocks().add(entryBlock);
 
 			Map<Token, Value> localBuffers = new HashMap<>();
-			ImmutableList<Worker<?, ?>> orderedWorkers = Workers.topologicalSort(workers);
+			ImmutableList<? extends Worker<?, ?>> orderedWorkers = Workers.topologicalSort(workers);
 			for (Worker<?, ?> w : orderedWorkers) {
 				int wid = Workers.getIdentifier(w);
 				//Input buffers
-				List<Worker<?, ?>> preds = (List<Worker<?, ?>>)Workers.getPredecessors(w);
+				List<? extends Worker<?, ?>> preds = Workers.getPredecessors(w);
 				List<Value> ichannels;
 				List<Value> ioffsets = new ArrayList<>();
 				if (preds.isEmpty()) {
@@ -872,7 +872,7 @@ public final class Compiler {
 				entryBlock.instructions().addAll(iincrementArray.second);
 
 				//Output buffers
-				List<Worker<?, ?>> succs = (List<Worker<?, ?>>)Workers.getSuccessors(w);
+				List<? extends Worker<?, ?>> succs = Workers.getSuccessors(w);
 				List<Value> ochannels;
 				List<Value> ooffsets = new ArrayList<>();
 				if (succs.isEmpty()) {
