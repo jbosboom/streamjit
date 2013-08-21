@@ -95,7 +95,7 @@ public final class Schedule<T> {
 			things.add(checkNotNull(thing));
 			return this;
 		}
-		public Builder<T> addAll(Iterable<T> things) {
+		public Builder<T> addAll(Iterable<? extends T> things) {
 			for (T thing : things)
 				add(thing);
 			return this;
