@@ -16,7 +16,7 @@ public abstract class OutputBufferFactory {
 	public abstract Buffer createWritableBuffer(int writerMinSize);
 
 	public static MethodHandles.Lookup OUTPUT_LOOKUP;
-	private static final class InputHolder {
+	private static final class OutputHolder {
 		private static final MethodHandle getOutputBufferFactory;
 		private static final MethodHandle newOutput;
 		static {
@@ -33,7 +33,7 @@ public abstract class OutputBufferFactory {
 
 	public static <O> Output<O> wrap(OutputBufferFactory output) {
 		try {
-			return (Output<O>)InputHolder.newOutput.invokeExact(output);
+			return (Output<O>)OutputHolder.newOutput.invokeExact(output);
 		} catch (Throwable ex) {
 			throw new RuntimeException(ex);
 		}
@@ -41,7 +41,7 @@ public abstract class OutputBufferFactory {
 
 	public static OutputBufferFactory unwrap(Output<?> input) {
 		try {
-			return (OutputBufferFactory)InputHolder.getOutputBufferFactory.invokeExact(input);
+			return (OutputBufferFactory)OutputHolder.getOutputBufferFactory.invokeExact(input);
 		} catch (Throwable ex) {
 			throw new RuntimeException(ex);
 		}
