@@ -236,14 +236,14 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 		@Override
 		public void awaitDrained() throws InterruptedException {
-			// TODO Auto-generated method stub
+			drainer.awaitDrained();
 
 		}
 
 		@Override
 		public void awaitDrained(long timeout, TimeUnit unit)
 				throws InterruptedException, TimeoutException {
-			// TODO Auto-generated method stub
+			drainer.awaitDrained(timeout, unit);
 
 		}
 	}
