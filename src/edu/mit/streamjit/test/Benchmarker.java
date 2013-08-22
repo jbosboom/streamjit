@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Output;
@@ -17,13 +18,22 @@ import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.StreamVisitor;
 import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.impl.blob.AbstractWriteOnlyBuffer;
+import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.common.InputBufferFactory;
+import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.Benchmark.Dataset;
+import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -130,12 +140,14 @@ public final class Benchmarker {
 		String statusText = null;
 		long compileMillis = -1, runMillis = -1;
 		Throwable throwable = null;
+		VerifyingOutputBufferFactory verifier = null;
+		if (input.output() != null)
+			verifier = new VerifyingOutputBufferFactory(input.output());
 		try {
-			//TODO: make verify output
-			Output<Object> output = Output.blackHole();
 			Stopwatch stopwatch = new Stopwatch();
 			stopwatch.start();
-			CompiledStream stream = compiler.compile(benchmark.instantiate(), input.input(), output);
+			CompiledStream stream = compiler.compile(benchmark.instantiate(), input.input(),
+					verifier != null ? OutputBufferFactory.wrap(verifier) : Output.blackHole());
 			compileMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 			stream.awaitDrained(TIMEOUT_DURATION, TIMEOUT_UNIT);
 			stopwatch.stop();
@@ -148,12 +160,59 @@ public final class Benchmarker {
 			statusText = "failed: "+t;
 			throwable = t;
 		}
+		if (verifier != null && !verifier.buffer.correct())
+			statusText = "wrong output";
 		if (statusText == null)
 			statusText = String.format("%d ms compile, %d ms run", compileMillis, runMillis);
 
 		System.out.format("%s / %s / %s: %s%n", compiler, benchmark, input, statusText);
 		if (throwable != null)
 			throwable.printStackTrace(System.out);
+		if (verifier != null && !verifier.buffer.correct()) {
+			System.out.println("TODO: generate nice-looking verification output");
+		}
+	}
+
+	private static final class VerifyingOutputBufferFactory extends OutputBufferFactory {
+		private final Input<Object> expectedOutput;
+		private VerifyingBuffer buffer;
+		private VerifyingOutputBufferFactory(Input<Object> expectedOutput) {
+			this.expectedOutput = expectedOutput;
+		}
+
+		@Override
+		public Buffer createWritableBuffer(int writerMinSize) {
+			return (buffer = new VerifyingBuffer());
+		}
+
+		private final class VerifyingBuffer extends AbstractWriteOnlyBuffer {
+			private long index = 0;
+			private final Buffer expected = InputBufferFactory.unwrap(expectedOutput).createReadableBuffer(42);
+			private final List<Object> excessOutput = new ArrayList<>();
+			private final List<Object> missingOutput = new ArrayList<>();
+			//expected, actual
+			//TODO: this is high-overhead.
+			private final Map<Long, Pair<Object, Object>> wrongOutput = new HashMap<>();
+			@Override
+			public boolean write(Object t) {
+				if (expected.size() == 0) {
+					excessOutput.add(t);
+				} else {
+					Object e = expected.read();
+					if (!Objects.equals(e, t))
+						wrongOutput.put(index, Pair.make(e, t));
+				}
+				++index;
+				return true;
+			}
+			public void finish() {
+				while (expected.size() > 0)
+					missingOutput.add(expected.read());
+			}
+			public boolean correct() {
+				return excessOutput.isEmpty() && missingOutput.isEmpty() && wrongOutput.isEmpty();
+			}
+		}
 	}
 
 	private static final class AttributeVisitor extends StreamVisitor {
