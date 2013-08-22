@@ -2,6 +2,8 @@ package edu.mit.streamjit.test.sanity.weightedsplitjoinexample;
 
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
@@ -17,15 +19,19 @@ public class WeightedSplitJoinExample {
 	 */
 	public static void main(String[] args) throws InterruptedException {
 		WeightedSplitJoinKernel kernel = new WeightedSplitJoinKernel();
+
+		Input.ManualInput<Integer> input = Input.createManualInput();
+		Output.ManualOutput<Void> output = Output.createManualOutput();
+
 		StreamCompiler sc = new DebugStreamCompiler();
-		CompiledStream<Integer, Void> stream = sc.compile(kernel);
+		CompiledStream stream = sc.compile(kernel, input, output);
 		for (int i = 0; i < 10;) {
-			if (stream.offer(i)) {
+			if (input.offer(i)) {
 				i++;
 			} else
 				Thread.sleep(10);
 		}
-		stream.drain();
+		input.drain();
 		while (stream.isDrained())
 			;
 	}

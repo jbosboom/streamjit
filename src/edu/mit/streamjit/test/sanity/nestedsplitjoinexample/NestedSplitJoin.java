@@ -7,6 +7,8 @@ package edu.mit.streamjit.test.sanity.nestedsplitjoinexample;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
@@ -28,22 +30,28 @@ public class NestedSplitJoin {
 	public static void main(String[] args) throws InterruptedException {
 		Pipeline<Integer, Void> core = new Pipeline<Integer, Void>(
 				new nestedSplitJoinCore(), new IntPrinter());
-		// StreamCompiler sc = new DebugStreamCompiler();
-		StreamCompiler sc = new ConcurrentStreamCompiler(2);
+
+		Input.ManualInput<Integer> input = Input.createManualInput();
+		Output.ManualOutput<Void> output = Output.createManualOutput();
+
+		StreamCompiler sc = new DebugStreamCompiler();
+		// StreamCompiler sc = new ConcurrentStreamCompiler(2);
 		// StreamCompiler sc = new DistributedStreamCompiler(2);
-		CompiledStream<Integer, Void> stream = sc.compile(core);
-		Integer output;
-		for (int i = 0; i < 100000;) {
-			if (stream.offer(i)) {
+
+		CompiledStream stream = sc.compile(core, input, output);
+		Integer result;
+		for (int i = 0; i < 1000;) {
+			if (input.offer(i)) {
 				// System.out.println("Offer success " + i);
 				i++;
 			} else {
-			//	System.out.println("Offer failed " + i);
+				// System.out.println("Offer failed " + i);
 				Thread.sleep(10);
 			}
 		}
-		stream.drain();
-		while(!stream.isDrained());
+		input.drain();
+		while (!stream.isDrained())
+			;
 		System.out.println("I am exiting..");
 	}
 

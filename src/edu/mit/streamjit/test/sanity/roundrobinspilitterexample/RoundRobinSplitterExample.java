@@ -6,6 +6,8 @@ package edu.mit.streamjit.test.sanity.roundrobinspilitterexample;
 
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
@@ -22,13 +24,17 @@ public class RoundRobinSplitterExample {
 	public static void main(String[] args) throws InterruptedException {
 
 		RoundRobinSplitterMain rbs = new RoundRobinSplitterMain();
-		//StreamCompiler sc = new DebugStreamCompiler();
-		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
-		CompiledStream<Integer, Void> stream = sc.compile(rbs);
-		Float output;
+
+		Input.ManualInput<Integer> input = Input.createManualInput();
+		Output.ManualOutput<Void> output = Output.createManualOutput();
+
+		StreamCompiler sc = new DebugStreamCompiler();
+		// StreamCompiler sc = new ConcurrentStreamCompiler(4);
+
+		CompiledStream stream = sc.compile(rbs, input, output);
 
 		for (int i = 0; i < 10000;) {
-			if (stream.offer(i)) {
+			if (input.offer(i)) {
 				// System.out.println("Offer success " + i);
 				i++;
 			} else {
@@ -36,7 +42,7 @@ public class RoundRobinSplitterExample {
 				Thread.sleep(10);
 			}
 		}
-		stream.drain();
+		input.drain();
 		while (!stream.isDrained())
 			;
 	}
