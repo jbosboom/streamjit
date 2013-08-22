@@ -253,7 +253,7 @@ public final class Buffers {
 	 * @return a read-only Buffer view of the given iterator
 	 */
 	public static Buffer fromIterator(final Iterator<?> iterator, final int size) {
-		return new AbstractBuffer() {
+		return new AbstractReadOnlyBuffer() {
 			private int remainingSize = size;
 			@Override
 			public Object read() {
@@ -263,17 +263,8 @@ public final class Buffers {
 				return iterator.next();
 			}
 			@Override
-			public boolean write(Object t) {
-				throw new UnsupportedOperationException("read-only buffer");
-			}
-			@Override
 			public int size() {
 				return remainingSize;
-			}
-			@Override
-			public int capacity() {
-				//This shouldn't matter for a read-only buffer...
-				return size();
 			}
 		};
 	}

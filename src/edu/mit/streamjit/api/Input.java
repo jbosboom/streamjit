@@ -3,7 +3,7 @@ package edu.mit.streamjit.api;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.primitives.Primitives;
-import edu.mit.streamjit.impl.blob.AbstractBuffer;
+import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
@@ -80,22 +80,14 @@ public class Input<I> {
 		return new Input<>(new InputBufferFactory() {
 			@Override
 			public Buffer createReadableBuffer(int readerMinSize) {
-				return new AbstractBuffer() {
+				return new AbstractReadOnlyBuffer() {
 					@Override
 					public Object read() {
 						return null;
 					}
 					@Override
-					public boolean write(Object t) {
-						throw new UnsupportedOperationException("read-only buffer");
-					}
-					@Override
 					public int size() {
 						return 0;
-					}
-					@Override
-					public int capacity() {
-						return Integer.MAX_VALUE;
 					}
 				};
 			}
@@ -134,22 +126,14 @@ public class Input<I> {
 					throw new RuntimeException(ex);
 				}
 				final IntBuffer file = file0.asIntBuffer();
-				return new AbstractBuffer() {
+				return new AbstractReadOnlyBuffer() {
 					@Override
 					public Object read() {
 						return file.get();
 					}
 					@Override
-					public boolean write(Object t) {
-						throw new UnsupportedOperationException("read-only buffer");
-					}
-					@Override
 					public int size() {
 						return file.remaining();
-					}
-					@Override
-					public int capacity() {
-						return size();
 					}
 				};
 			}
