@@ -3,7 +3,9 @@ package edu.mit.streamjit.test;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Input;
@@ -31,6 +33,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -78,47 +81,69 @@ public final class Benchmarker {
 		EnumSet<Attribute> includedAttrs = options.has(includedAttributes) ? EnumSet.copyOf(includedAttributes.values(options)) : EnumSet.noneOf(Attribute.class);
 		EnumSet<Attribute> excludedAttrs = options.has(excludedAttributes) ? EnumSet.copyOf(excludedAttributes.values(options)) : EnumSet.noneOf(Attribute.class);
 
-		next_benchmark: for (Benchmark benchmark : ServiceLoader.load(Benchmark.class)) {
-			//If we exclude APP, SANITY or REGRESSION, we can eliminate some
-			//benchmarks without instantiating a graph.
-			Attribute packageAttr = getPackageAttr(benchmark.getClass());
-			if (packageAttr != null && excludedAttrs.contains(packageAttr))
-				continue next_benchmark;
-
-			AttributeVisitor visitor = new AttributeVisitor();
-			benchmark.instantiate().visit(visitor);
-			if (packageAttr != null)
-				visitor.attributes.add(packageAttr);
-
-			//Exclusion trumps inclusion, so first check for exclusion.
-			if (!Sets.intersection(visitor.attributes, excludedAttrs).isEmpty())
-				continue next_benchmark;
-			for (Class<?> klass : visitor.classes)
-				if (excludedClasses.contains(klass.getSimpleName()) || excludedClasses.contains(klass.getCanonicalName()))
+		for (BenchmarkProvider provider : ServiceLoader.load(BenchmarkProvider.class)) {
+			//If we exclude APP, SANITY or REGRESSION, we can eliminate all the
+			//provider's benchmarks at once.
+			Attribute providerPackageAttr = getPackageAttr(provider.getClass());
+			if (providerPackageAttr != null && excludedAttrs.contains(providerPackageAttr))
+				continue;
+			next_benchmark: for (Benchmark benchmark : provider) {
+				//If we exclude APP, SANITY or REGRESSION, we can eliminate some
+				//benchmarks without instantiating a graph.
+				Attribute packageAttr = getPackageAttr(benchmark.getClass());
+				if (packageAttr != null && excludedAttrs.contains(packageAttr))
 					continue next_benchmark;
 
-			//Now check inclusion.
-			boolean included = false;
-			if (!Sets.intersection(visitor.attributes, includedAttrs).isEmpty())
-				included = true;
-			if (!included)
-				for (Class<?> klass : visitor.classes)
-					if (includedClasses.contains(klass.getSimpleName()) || includedClasses.contains(klass.getCanonicalName()))
-						included = true;
-			if (!included)
-				continue next_benchmark;
+				AttributeVisitor visitor = new AttributeVisitor();
+				benchmark.instantiate().visit(visitor);
+				if (providerPackageAttr != null)
+					visitor.attributes.add(providerPackageAttr);
+				if (packageAttr != null)
+					visitor.attributes.add(packageAttr);
 
-			StreamCompiler[] compilers = {
-				new DebugStreamCompiler(),
-				new CompilerStreamCompiler(),
-//				new CompilerStreamCompiler().multiplier(10),
-//				new CompilerStreamCompiler().multiplier(100),
-//				new CompilerStreamCompiler().multiplier(1000),
-//				new CompilerStreamCompiler().multiplier(10000),
-			};
-			for (StreamCompiler sc : compilers)
-				runBenchmark(benchmark, sc);
+				//Exclusion trumps inclusion, so first check for exclusion.
+				if (!Sets.intersection(visitor.attributes, excludedAttrs).isEmpty())
+					continue next_benchmark;
+				for (Class<?> klass : visitor.classes)
+					if (excludedClasses.contains(klass.getSimpleName()) || excludedClasses.contains(klass.getCanonicalName()))
+						continue next_benchmark;
+
+				//Now check inclusion.
+				boolean included = false;
+				if (!Sets.intersection(visitor.attributes, includedAttrs).isEmpty())
+					included = true;
+				if (!included)
+					for (Class<?> klass : visitor.classes)
+						if (includedClasses.contains(klass.getSimpleName()) || includedClasses.contains(klass.getCanonicalName()))
+							included = true;
+				if (!included)
+					continue next_benchmark;
+
+				StreamCompiler[] compilers = {
+					new DebugStreamCompiler(),
+					new CompilerStreamCompiler(),
+	//				new CompilerStreamCompiler().multiplier(10),
+	//				new CompilerStreamCompiler().multiplier(100),
+	//				new CompilerStreamCompiler().multiplier(1000),
+	//				new CompilerStreamCompiler().multiplier(10000),
+				};
+				for (StreamCompiler sc : compilers)
+					runBenchmark(benchmark, sc);
+			}
 		}
+	}
+
+	/**
+	 * Runs all the datasets for all the benchmarks in the given provider on the
+	 * given compiler.  This entry point is to make the individual provider
+	 * classes runnable (call this from main()) for convenience when debugging
+	 * an individual benchmark.
+	 * @param provider the provider to run benchmarks of
+	 * @param compiler the compiler to use
+	 */
+	public static void runBenchmarks(BenchmarkProvider provider, StreamCompiler compiler) {
+		for (Benchmark benchmark : provider)
+			runBenchmark(benchmark, compiler);
 	}
 
 	/**
@@ -288,5 +313,21 @@ public final class Benchmarker {
 			if (name.startsWith(entry.getKey()))
 				return entry.getValue();
 		return null;
+	}
+
+	/**
+	 * A BenchmarkProvider providing Benchmarks directly registered with
+	 * @ServiceProvider(Benchmark.class). This is in the test package, not apps,
+	 * sanity or regression, so it does not affect attributes.
+	 * <p/>
+	 * This class is public so ServiceLoader can instantiate it.
+	 */
+	@ServiceProvider(BenchmarkProvider.class)
+	public static final class ServiceBenchmarkProvider implements BenchmarkProvider {
+		private final ServiceLoader<Benchmark> loader = ServiceLoader.load(Benchmark.class);
+		@Override
+		public Iterator<Benchmark> iterator() {
+			return loader.iterator();
+		}
 	}
 }
