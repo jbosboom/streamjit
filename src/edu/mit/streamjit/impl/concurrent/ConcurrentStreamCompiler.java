@@ -8,14 +8,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
-
 import edu.mit.streamjit.api.CompiledStream;
+import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
@@ -25,16 +25,19 @@ import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
 import edu.mit.streamjit.impl.common.BlobThread;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
+import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.impl.common.MessageConstraint;
+import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
-import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * A stream compiler that partitions a streamgraph into multiple blobs and
@@ -59,12 +62,16 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 	}
 
 	@Override
-	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
+	public <I, O> CompiledStream compile(OneToOneElement<I, O> stream,
+			Input<I> input, Output<O> output) {
 
 		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
 		stream.visit(primitiveConnector);
 		Worker<I, ?> source = (Worker<I, ?>) primitiveConnector.getSource();
 		Worker<?, O> sink = (Worker<?, O>) primitiveConnector.getSink();
+
+		Token inputToken = Token.createOverallInputToken(source);
+		Token outputToken = Token.createOverallOutputToken(sink);
 
 		VerifyStreamGraph verifier = new VerifyStreamGraph();
 		stream.visit(verifier);
@@ -80,8 +87,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		}
 
 		// TODO: Copied form DebugStreamCompilecollr. Need to be verified for
-		// this
-		// context.
+		// this context.
 		List<MessageConstraint> constraints = MessageConstraint
 				.findConstraints(source);
 		Set<Portal<?>> portals = new HashSet<>();
@@ -97,22 +103,53 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 		BlobGraph bg = new BlobGraph(partitionList);
 
-		ImmutableMap<Token, Buffer> bufferMap = createBufferMap(blobSet);
+		Map<Token, Buffer> bufferMap = createBufferMap(blobSet);
+
+		// TODO: derive a algorithm to find good buffer size and use here.
+		Buffer inputBuffer = InputBufferFactory.unwrap(input)
+				.createReadableBuffer(1000);
+		Buffer outputBuffer = OutputBufferFactory.unwrap(output)
+				.createWritableBuffer(1000);
+
+		assert !bufferMap.containsKey(inputToken) : "Overall input buffer is already created.";
+		assert !bufferMap.containsKey(outputToken) : "Overall output buffer is already created.";
+
+		bufferMap.put(inputToken, inputBuffer);
+		bufferMap.put(outputToken, outputBuffer);
 
 		for (Blob b : blobSet) {
 			b.installBuffers(bufferMap);
 		}
 
-		Buffer head = bufferMap.get(Token.createOverallInputToken(source));
-		Buffer tail = bufferMap.get(Token.createOverallOutputToken(sink));
-		return new ConcurrentCompiledStream<>(head, tail, bg, blobSet);
+		final ConcurrentCompiledStream cs = new ConcurrentCompiledStream(bg,
+				blobSet);
+
+		if (input instanceof ManualInput)
+			InputBufferFactory.setManualInputDelegate((ManualInput<I>) input,
+					new InputBufferFactory.AbstractManualInputDelegate<I>(
+							inputBuffer) {
+						@Override
+						public void drain() {
+							cs.drain();
+						}
+					});
+		else
+			cs.drain();
+		return cs;
 	}
 
 	// TODO: Buffer sizes, including head and tail buffers, must be optimized.
-	// consider adding some tuning factor
-	private ImmutableMap<Token, Buffer> createBufferMap(Set<Blob> blobList) {
-		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
-				.<Token, Buffer> builder();
+	// consider adding some tuning factor.
+	/**
+	 * Only create buffers for inter worker communication. No global input or
+	 * global output buffer is created.
+	 * 
+	 * @param blobList
+	 * @return
+	 */
+	private Map<Token, Buffer> createBufferMap(Set<Blob> blobList) {
+
+		Map<Token, Buffer> bufferMap = new HashMap<>();
 
 		Map<Token, Integer> minInputBufCapaciy = new HashMap<>();
 		Map<Token, Integer> minOutputBufCapaciy = new HashMap<>();
@@ -131,33 +168,18 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 		for (Token t : minInputBufCapaciy.keySet()) {
 			int bufSize;
-			if (minOutputBufCapaciy.containsKey(t))
+			if (minOutputBufCapaciy.containsKey(t)) {
 				bufSize = lcm(minInputBufCapaciy.get(t),
 						minOutputBufCapaciy.get(t));
-			else
-				bufSize = minInputBufCapaciy.get(t);
 
-			// TODO: Just to increase the performance. Change it later
-			bufSize = Math.max(1000, bufSize);
+				// TODO: Just to increase the performance. Change it later
+				bufSize = Math.max(1000, bufSize);
 
-			Buffer buf = new ConcurrentArrayBuffer(bufSize);
-			bufferMapBuilder.put(t, buf);
-
-			minOutputBufCapaciy.remove(t);
+				Buffer buf = new ConcurrentArrayBuffer(bufSize);
+				bufferMap.put(t, buf);
+			}
 		}
-
-		// Now only overalloutput token should be at minOutputBufCapaciy map
-		assert minOutputBufCapaciy.size() == 1 : "Miss match in total input tokens and the output tokens";
-		Token outputToken = Iterables.getOnlyElement(minOutputBufCapaciy
-				.keySet());
-		int bufSize = minOutputBufCapaciy.get(outputToken);
-
-		// TODO: Just to increase the performance. Change it later
-		bufSize = Math.max(1000, bufSize);
-
-		Buffer buf = new ConcurrentArrayBuffer(bufSize);
-		bufferMapBuilder.put(outputToken, buf);
-		return bufferMapBuilder.build();
+		return bufferMap;
 	}
 
 	private int gcd(int a, int b) {
@@ -176,15 +198,12 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		return val != 0 ? ((a * b) / val) : 0;
 	}
 
-	public static class ConcurrentCompiledStream<I, O> extends
-			AbstractCompiledStream<I, O> {
+	public static class ConcurrentCompiledStream implements CompiledStream {
 
 		private Map<Blob, Set<BlobThread>> threadMap = new HashMap<>();
 		private final AbstractDrainer drainer;
 
-		public ConcurrentCompiledStream(Buffer inputBuffer,
-				Buffer outputBuffer, BlobGraph blobGraph, Set<Blob> blobSet) {
-			super(inputBuffer, outputBuffer);
+		public ConcurrentCompiledStream(BlobGraph blobGraph, Set<Blob> blobSet) {
 			List<Thread> blobThreads = new ArrayList<>(blobSet.size());
 			for (final Blob b : blobSet) {
 				BlobThread t = new BlobThread(b.getCoreCode(0));
@@ -206,14 +225,26 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 			}
 		}
 
-		@Override
-		protected void doDrain() {
+		protected void drain() {
 			drainer.startDraining();
 		}
 
 		@Override
 		public boolean isDrained() {
 			return drainer.isDrained();
+		}
+
+		@Override
+		public void awaitDrained() throws InterruptedException {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void awaitDrained(long timeout, TimeUnit unit)
+				throws InterruptedException, TimeoutException {
+			// TODO Auto-generated method stub
+
 		}
 	}
 
