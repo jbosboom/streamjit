@@ -10,7 +10,10 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
+import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
+import edu.mit.streamjit.api.WeightedRoundrobinSplitter;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.test.AbstractBenchmark;
 import edu.mit.streamjit.test.Benchmark;
@@ -31,6 +34,10 @@ import java.util.Queue;
  */
 @ServiceProvider(BenchmarkProvider.class)
 public final class RoundrobinSanity implements BenchmarkProvider {
+	public static void main(String[] args) {
+		wrr_rr(3, new int[]{3, 3, 3}, 3).instantiate().visit(new CheckVisitor());
+	}
+
 	@Override
 	public Iterator<Benchmark> iterator() {
 		Benchmark[] benchmarks = {
@@ -38,6 +45,19 @@ public final class RoundrobinSanity implements BenchmarkProvider {
 			rr_rr(7, 5, 5),
 			rr_rr(7, 5, 3),
 			rr_rr(7, 3, 5),
+
+			wrr_rr(1, new int[]{1}, 1),
+			wrr_rr(7, new int[]{1, 1, 1, 1, 1, 1, 1}, 1),
+			wrr_rr(7, new int[]{5, 5, 5, 5, 5, 5, 5}, 5),
+
+			rr_wrr(1, 1, new int[]{1}),
+			rr_wrr(7, 1, new int[]{1, 1, 1, 1, 1, 1, 1}),
+			rr_wrr(7, 5, new int[]{5, 5, 5, 5, 5, 5, 5}),
+
+			wrr_wrr(1, new int[]{1}, new int[]{1}),
+			wrr_wrr(7, new int[]{1, 1, 1, 1, 1, 1, 1}, new int[]{1, 1, 1, 1, 1, 1, 1}),
+			wrr_wrr(7, new int[]{5, 5, 5, 5, 5, 5, 5}, new int[]{5, 5, 5, 5, 5, 5, 5}),
+			wrr_wrr(7, new int[]{1, 2, 3, 4, 3, 2, 1}, new int[]{1, 2, 3, 4, 3, 2, 1}),
 		};
 		return Arrays.asList(benchmarks).iterator();
 	}
@@ -47,6 +67,27 @@ public final class RoundrobinSanity implements BenchmarkProvider {
 		return new AbstractBenchmark(name,
 				new SplitjoinSupplier(width, new RoundrobinSplitterSupplier(splitRate), new RoundrobinJoinerSupplier(joinRate)),
 				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRate, joinRate));
+	}
+
+	private static Benchmark wrr_rr(int width, int[] splitRates, int joinRate) {
+		String name = String.format("WRR(%s) x %dw x RR(%d)", Arrays.toString(splitRates), width, joinRate);
+		return new AbstractBenchmark(name,
+				new SplitjoinSupplier(width, new WeightedRoundrobinSplitterSupplier(splitRates), new RoundrobinJoinerSupplier(joinRate)),
+				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRates, joinRate));
+	}
+
+	private static Benchmark rr_wrr(int width, int splitRate, int[] joinRates) {
+		String name = String.format("RR(%d) x %dw x WRR(%s)", splitRate, width, Arrays.toString(joinRates));
+		return new AbstractBenchmark(name,
+				new SplitjoinSupplier(width, new RoundrobinSplitterSupplier(splitRate), new WeightedRoundrobinJoinerSupplier(joinRates)),
+				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRate, joinRates));
+	}
+
+	private static Benchmark wrr_wrr(int width, int[] splitRates, int[] joinRates) {
+		String name = String.format("WRR(%s) x %dw x WRR(%s)", Arrays.toString(splitRates), width, Arrays.toString(joinRates));
+		return new AbstractBenchmark(name,
+				new SplitjoinSupplier(width, new WeightedRoundrobinSplitterSupplier(splitRates), new WeightedRoundrobinJoinerSupplier(joinRates)),
+				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRates, joinRates));
 	}
 
 	private static final class SplitjoinSupplier implements Supplier<Splitjoin<Integer, Integer>> {
@@ -92,6 +133,28 @@ public final class RoundrobinSanity implements BenchmarkProvider {
 		}
 	}
 
+	private static final class WeightedRoundrobinSplitterSupplier implements Supplier<Splitter<Integer, Integer>> {
+		private final int[] rates;
+		private WeightedRoundrobinSplitterSupplier(int[] rates) {
+			this.rates = rates;
+		}
+		@Override
+		public Splitter<Integer, Integer> get() {
+			return new WeightedRoundrobinSplitter<>(rates);
+		}
+	}
+
+	private static final class WeightedRoundrobinJoinerSupplier implements Supplier<Joiner<Integer, Integer>> {
+		private final int[] rates;
+		private WeightedRoundrobinJoinerSupplier(int[] rates) {
+			this.rates = rates;
+		}
+		@Override
+		public Joiner<Integer, Integer> get() {
+			return new WeightedRoundrobinJoiner<>(rates);
+		}
+	}
+
 	/**
 	 * Simulates a roundrobin splitjoin, returning a Dataset with reference
 	 * output.
@@ -100,6 +163,18 @@ public final class RoundrobinSanity implements BenchmarkProvider {
 		int[] splitRates = new int[width], joinRates = new int[width];
 		Arrays.fill(splitRates, splitRate);
 		Arrays.fill(joinRates, joinRate);
+		return simulateRoundrobin(dataset, width, splitRates, joinRates);
+	}
+
+	private static Dataset simulateRoundrobin(Dataset dataset, int width, int[] splitRates, int joinRate) {
+		int[] joinRates = new int[width];
+		Arrays.fill(joinRates, joinRate);
+		return simulateRoundrobin(dataset, width, splitRates, joinRates);
+	}
+
+	private static Dataset simulateRoundrobin(Dataset dataset, int width, int splitRate, int[] joinRates) {
+		int[] splitRates = new int[width];
+		Arrays.fill(splitRates, splitRate);
 		return simulateRoundrobin(dataset, width, splitRates, joinRates);
 	}
 
