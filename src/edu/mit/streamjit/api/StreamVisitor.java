@@ -116,6 +116,9 @@ public abstract class StreamVisitor {
 	/* Any method that might trigger beginVisit or endVisit needs to use
 	 * enter()/exit(); the API classes call these package-private methods to
 	 * use this handling rather than directly calling into client code.
+	 *
+	 * If the enterFoo methods return false, we won't call exitFoo, so we call
+	 * exit() immediately.  Otherwise we wait until exitFoo().
 	 */
 
 	void visitFilter0(Filter<?, ?> filter) {
@@ -126,7 +129,10 @@ public abstract class StreamVisitor {
 
 	boolean enterPipeline0(Pipeline<?, ?> pipeline) {
 		enter();
-		return enterPipeline(pipeline);
+		if (enterPipeline(pipeline))
+			return true;
+		exit();
+		return false;
 	}
 
 	void exitPipeline0(Pipeline<?, ?> pipeline) {
@@ -136,7 +142,10 @@ public abstract class StreamVisitor {
 
 	boolean enterSplitjoin0(Splitjoin<?, ?> splitjoin) {
 		enter();
-		return enterSplitjoin(splitjoin);
+		if (enterSplitjoin(splitjoin))
+			return true;
+		exit();
+		return false;
 	}
 
 	void exitSplitjoin0(Splitjoin<?, ?> splitjoin) {
