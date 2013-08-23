@@ -22,6 +22,7 @@ import edu.mit.streamjit.api.StreamVisitor;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.AbstractWriteOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
@@ -75,6 +76,7 @@ public final class Benchmarker {
 				.withRequiredArg().withValuesSeparatedBy(',').ofType(Attribute.class);
 		ArgumentAcceptingOptionSpec<Attribute> excludedAttributes = parser.accepts("exclude-attribute")
 				.withRequiredArg().withValuesSeparatedBy(',').ofType(Attribute.class);
+		parser.accepts("check");
 
 		OptionSet options = parser.parse(args);
 		ImmutableSet<String> includedClasses = ImmutableSet.copyOf(includedStreamClasses.values(options));
@@ -119,6 +121,9 @@ public final class Benchmarker {
 							included = true;
 				if (!included)
 					continue next_benchmark;
+
+				if (options.has("check"))
+					benchmark.instantiate().visit(new CheckVisitor());
 
 				StreamCompiler[] compilers = {
 					new DebugStreamCompiler(),
