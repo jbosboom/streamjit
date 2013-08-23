@@ -6,11 +6,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import com.google.common.collect.ImmutableMap;
 
 import edu.mit.streamjit.api.CompiledStream;
+import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.Splitjoin;
@@ -18,12 +22,14 @@ import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.common.BlobGraph;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
+import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.impl.common.MessageConstraint;
+import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
@@ -32,7 +38,6 @@ import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 import edu.mit.streamjit.impl.distributed.runtimer.DistributedDrainer;
-import edu.mit.streamjit.impl.interp.AbstractCompiledStream;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
 
@@ -78,7 +83,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	}
 
 	@Override
-	public <I, O> CompiledStream<I, O> compile(OneToOneElement<I, O> stream) {
+	public <I, O> CompiledStream compile(OneToOneElement<I, O> stream,
+			Input<I> input, Output<O> output) {
 
 		checkforDefaultOneToOneElement(stream);
 
@@ -87,9 +93,11 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Worker<I, ?> source = (Worker<I, ?>) primitiveConnector.getSource();
 		Worker<?, O> sink = (Worker<?, O>) primitiveConnector.getSink();
 
-		// TODO: Need to analyze the capacity of the buffers.
-		Buffer head = new ConcurrentArrayBuffer(1000);
-		Buffer tail = new ConcurrentArrayBuffer(1000);
+		// TODO: derive a algorithm to find good buffer size and use here.
+		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
+				1000);
+		Buffer tail = OutputBufferFactory.unwrap(output).createWritableBuffer(
+				1000);
 
 		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
 				.<Token, Buffer> builder();
@@ -147,7 +155,23 @@ public class DistributedStreamCompiler implements StreamCompiler {
 				.getClass().getName(), constraints, source, sink,
 				bufferMapBuilder.build());
 
-		return new DistributedCompiledStream<>(head, tail, bg, controller);
+		final DistributedCompiledStream cs = new DistributedCompiledStream(bg,
+				controller);
+
+		if (input instanceof ManualInput)
+			InputBufferFactory
+					.setManualInputDelegate(
+							(ManualInput<I>) input,
+							new InputBufferFactory.AbstractManualInputDelegate<I>(
+									head) {
+								@Override
+								public void drain() {
+									cs.drain();
+								}
+							});
+		else
+			cs.drain();
+		return cs;
 	}
 
 	// TODO: Need to do precise mapping. For the moment just mapping in order.
@@ -210,15 +234,13 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		}
 	}
 
-	private static class DistributedCompiledStream<I, O> extends
-			AbstractCompiledStream<I, O> {
+	private static class DistributedCompiledStream implements CompiledStream {
 
 		Controller controller;
 		AbstractDrainer drainer;
 
-		public DistributedCompiledStream(Buffer head, Buffer tail,
-				BlobGraph blobGraph, Controller controller) {
-			super(head, tail);
+		public DistributedCompiledStream(BlobGraph blobGraph,
+				Controller controller) {
 			this.controller = controller;
 			this.drainer = new DistributedDrainer(blobGraph, false, controller);
 			this.controller.start();
@@ -229,9 +251,20 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			return drainer.isDrained();
 		}
 
-		@Override
-		protected void doDrain() {
+		private void drain() {
 			drainer.startDraining();
+		}
+
+		@Override
+		public void awaitDrained() throws InterruptedException {
+			drainer.awaitDrained();
+
+		}
+
+		@Override
+		public void awaitDrained(long timeout, TimeUnit unit)
+				throws InterruptedException, TimeoutException {
+			drainer.awaitDrained(timeout, unit);
 		}
 	}
 }
