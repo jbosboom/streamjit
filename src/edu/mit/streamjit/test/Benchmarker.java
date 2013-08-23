@@ -29,6 +29,7 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
+import edu.mit.streamjit.util.SkipMissingServicesIterator;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -327,7 +328,7 @@ public final class Benchmarker {
 		private final ServiceLoader<Benchmark> loader = ServiceLoader.load(Benchmark.class);
 		@Override
 		public Iterator<Benchmark> iterator() {
-			return loader.iterator();
+			return new SkipMissingServicesIterator<>(loader.iterator());
 		}
 	}
 }
