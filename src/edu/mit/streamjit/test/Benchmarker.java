@@ -186,7 +186,7 @@ public final class Benchmarker {
 			statusText = "failed: "+t;
 			throwable = t;
 		}
-		if (verifier != null && !verifier.buffer.correct())
+		if (statusText == null && verifier != null && !verifier.buffer.correct())
 			statusText = "wrong output";
 		if (statusText == null)
 			statusText = String.format("%d ms compile, %d ms run", compileMillis, runMillis);
@@ -194,7 +194,7 @@ public final class Benchmarker {
 		System.out.format("%s / %s / %s: %s%n", compiler, benchmark, input, statusText);
 		if (throwable != null)
 			throwable.printStackTrace(System.out);
-		if (verifier != null && !verifier.buffer.correct()) {
+		if (statusText == null && verifier != null && !verifier.buffer.correct()) {
 			System.out.println("TODO: generate nice-looking verification output");
 		}
 	}
