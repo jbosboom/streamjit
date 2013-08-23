@@ -31,13 +31,13 @@ import java.util.Queue;
  */
 @ServiceProvider(BenchmarkProvider.class)
 public final class RoundrobinSanity implements BenchmarkProvider {
-	//TODO: a split 5 join 3 test (will actually reorder elements)
-
 	@Override
 	public Iterator<Benchmark> iterator() {
 		Benchmark[] benchmarks = {
 			rr_rr(7, 1, 1),
 			rr_rr(7, 5, 5),
+			rr_rr(7, 5, 3),
+			rr_rr(7, 3, 5),
 		};
 		return Arrays.asList(benchmarks).iterator();
 	}
