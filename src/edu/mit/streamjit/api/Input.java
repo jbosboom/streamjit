@@ -8,9 +8,10 @@ import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
+import edu.mit.streamjit.impl.common.NIOBuffers;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.nio.IntBuffer;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
@@ -96,55 +97,34 @@ public class Input<I> {
 		});
 	}
 
-	private static final ImmutableMap<Class<?>, Integer> SIZE_MAP = ImmutableMap.<Class<?>, Integer>builder()
-			.put(Boolean.class, 1)
-			.put(Byte.class, 1)
-			.put(Short.class, 2)
-			.put(Character.class, 2)
-			.put(Integer.class, 4)
-			.put(Long.class, 8)
-			.put(Float.class, 4)
-			.put(Double.class, 8)
-			.build();
-	public static <I> Input<I> fromBinaryFile(Path path, Class<I> type) {
+	public static <I> Input<I> fromBinaryFile(Path path, Class<I> type, ByteOrder byteOrder) {
 		checkArgument(Primitives.isWrapperType(type) && !type.equals(Void.class), "not a wrapper type: %s", type);
-		if (!type.equals(Integer.class))
-			throw new UnsupportedOperationException("TODO: only Integer.class supported for now");
 		class BinaryFileRealInput extends InputBufferFactory {
 			private final Path path;
 			private final Class<?> type;
-			private final int size;
-			private BinaryFileRealInput(Path path, Class<?> type) {
+			private final ByteOrder byteOrder;
+			private BinaryFileRealInput(Path path, Class<?> type, ByteOrder byteOrder) {
 				this.path = path;
 				this.type = type;
-				this.size = SIZE_MAP.get(type);
+				this.byteOrder = byteOrder;
 			}
 			@Override
 			public Buffer createReadableBuffer(int readerMinSize) {
-				MappedByteBuffer file0 = null;
+				MappedByteBuffer file = null;
 				try (FileChannel fc = FileChannel.open(path, StandardOpenOption.READ)) {
-					file0 = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
+					file = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
 				} catch (IOException ex) {
 					throw new RuntimeException(ex);
 				}
-				final IntBuffer file = file0.asIntBuffer();
-				return new AbstractReadOnlyBuffer() {
-					@Override
-					public Object read() {
-						return file.get();
-					}
-					@Override
-					public int size() {
-						return file.remaining();
-					}
-				};
+				file.order(byteOrder);
+				return NIOBuffers.wrap(file, type);
 			}
 			@Override
 			public String toString(){
-				return "Input.fromBinaryFile("+path+", "+type.getSimpleName()+".class)";
+				return "Input.fromBinaryFile("+path+", "+type.getSimpleName()+".class, "+byteOrder+")";
 			}
 		}
-		return new Input<>(new BinaryFileRealInput(path, type));
+		return new Input<>(new BinaryFileRealInput(path, type, byteOrder));
 	}
 
 	/**
