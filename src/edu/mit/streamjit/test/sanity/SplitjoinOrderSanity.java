@@ -3,6 +3,7 @@ package edu.mit.streamjit.test.sanity;
 import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableList;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
+import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.Joiner;
@@ -13,7 +14,6 @@ import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
 import edu.mit.streamjit.api.WeightedRoundrobinSplitter;
 import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.test.AbstractBenchmark;
 import edu.mit.streamjit.test.Benchmark;
@@ -30,16 +30,19 @@ import java.util.Queue;
 /**
  * Tests that splitjoins using the built-in splitters order their elements
  * properly.
+ *
+ * TODO: we run the simulator even if we aren't going to run any of the
+ * benchmarks.  We'll need to do that lazily at some point.
+ *
+ * TODO: the splitjoin simulator should be refactored into a splitter simulator
+ * and joiner simulator, so we can plug any of the splitters with any of the
+ * joiners.  Right now we have a copy for the duplicate splitter.
  * @see SplitjoinComputeSanity
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 8/20/2013
  */
 @ServiceProvider(BenchmarkProvider.class)
 public final class SplitjoinOrderSanity implements BenchmarkProvider {
-	public static void main(String[] args) {
-		wrr_rr(3, new int[]{3, 3, 3}, 3).instantiate().visit(new CheckVisitor());
-	}
-
 	@Override
 	public Iterator<Benchmark> iterator() {
 		Benchmark[] benchmarks = {
@@ -60,6 +63,13 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 			wrr_wrr(7, new int[]{1, 1, 1, 1, 1, 1, 1}, new int[]{1, 1, 1, 1, 1, 1, 1}),
 			wrr_wrr(7, new int[]{5, 5, 5, 5, 5, 5, 5}, new int[]{5, 5, 5, 5, 5, 5, 5}),
 			wrr_wrr(7, new int[]{1, 2, 3, 4, 3, 2, 1}, new int[]{1, 2, 3, 4, 3, 2, 1}),
+
+			dup_rr(7, 1),
+			dup_rr(7, 7),
+
+			dup_wrr(1, new int[]{1}),
+			dup_wrr(7, new int[]{1, 1, 1, 1, 1, 1, 1}),
+			dup_wrr(7, new int[]{5, 5, 5, 5, 5, 5, 5}),
 		};
 		return Arrays.asList(benchmarks).iterator();
 	}
@@ -90,6 +100,20 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 		return new AbstractBenchmark(name,
 				new SplitjoinSupplier(width, new WeightedRoundrobinSplitterSupplier(splitRates), new WeightedRoundrobinJoinerSupplier(joinRates)),
 				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRates, joinRates));
+	}
+
+	private static Benchmark dup_rr(int width, int joinRate) {
+		String name = String.format("dup x %dw x RR(%d)", width, joinRate);
+		return new AbstractBenchmark(name,
+				new SplitjoinSupplier(width, new DuplicateSplitterSupplier(), new RoundrobinJoinerSupplier(joinRate)),
+				simulateDuplicate(Datasets.allIntsInRange(0, 1_000_000), width, joinRate));
+	}
+
+	private static Benchmark dup_wrr(int width, int[] joinRates) {
+		String name = String.format("dup x %dw x WRR(%s)", width, Arrays.toString(joinRates));
+		return new AbstractBenchmark(name,
+				new SplitjoinSupplier(width, new DuplicateSplitterSupplier(), new WeightedRoundrobinJoinerSupplier(joinRates)),
+				simulateDuplicate(Datasets.allIntsInRange(0, 1_000_000), width, joinRates));
 	}
 
 	private static final class SplitjoinSupplier implements Supplier<Splitjoin<Integer, Integer>> {
@@ -157,6 +181,13 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 		}
 	}
 
+	private static final class DuplicateSplitterSupplier implements Supplier<Splitter<Integer, Integer>> {
+		@Override
+		public Splitter<Integer, Integer> get() {
+			return new DuplicateSplitter<>();
+		}
+	}
+
 	/**
 	 * Simulates a roundrobin splitjoin, returning a Dataset with reference
 	 * output.
@@ -198,6 +229,33 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 			for (int i = 0; i < bins.size(); ++i)
 				for (int j = 0; j < splitRates[i]; ++j)
 					bins.get(i).add(buffer.read());
+
+		List<Object> output = new ArrayList<>();
+		while (ready(bins, joinRates)) {
+			for (int i = 0; i < bins.size(); ++i)
+				for (int j = 0; j < joinRates[i]; ++j)
+					output.add(bins.get(i).remove());
+		}
+		return Dataset.builder(dataset).output(Input.fromIterable(output)).build();
+	}
+
+	private static Dataset simulateDuplicate(Dataset dataset, int width, int joinRate) {
+		int[] joinRates = new int[width];
+		Arrays.fill(joinRates, joinRate);
+		return simulateDuplicate(dataset, width, joinRates);
+	}
+
+	private static Dataset simulateDuplicate(Dataset dataset, int width, int[] joinRates) {
+		List<Queue<Object>> bins = new ArrayList<>(width);
+		for (int i = 0; i < width; ++i)
+			bins.add(new ArrayDeque<>());
+
+		Buffer buffer = InputBufferFactory.unwrap(dataset.input()).createReadableBuffer(42);
+		while (buffer.size() > 0) {
+			Object o = buffer.read();
+			for (int i = 0; i < bins.size(); ++i)
+				bins.get(i).add(o);
+		}
 
 		List<Object> output = new ArrayList<>();
 		while (ready(bins, joinRates)) {
