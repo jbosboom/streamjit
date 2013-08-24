@@ -3,6 +3,8 @@ package edu.mit.streamjit.test.apps.fft5;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
@@ -24,26 +26,32 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
  */
 public class FFT5 {
 
-//	public static void main(String[] args) throws InterruptedException {
-//		FFT5Kernel kernel = new FFT5Kernel();
-//		// StreamCompiler sc = new DebugStreamCompiler();
-//		 StreamCompiler sc = new ConcurrentStreamCompiler(2);
-//		// StreamCompiler sc = new DistributedStreamCompiler(2);
-//		CompiledStream<Float, Void> stream = sc.compile(kernel);
-//		// Float output;
-//		for (float i = 0; i < 1000;) {
-//			if (stream.offer(i)) {
-//				// System.out.println("Offer success " + i);
-//				i++;
-//			} else {
-//				// System.out.println("Offer failed " + i);
-//				Thread.sleep(10);
-//			}
-//		}
-//		// Thread.sleep(1000);
-//		stream.drain();
-//		while (!stream.isDrained());
-//	}
+	public static void main(String[] args) throws InterruptedException {
+		FFT5Kernel kernel = new FFT5Kernel();
+
+		Input.ManualInput<Float> input = Input.createManualInput();
+		Output.ManualOutput<Void> output = Output.createManualOutput();
+
+		StreamCompiler sc = new DebugStreamCompiler();
+		// StreamCompiler sc = new ConcurrentStreamCompiler(2);
+		// StreamCompiler sc = new DistributedStreamCompiler(2);
+
+		CompiledStream stream = sc.compile(kernel, input, output);
+		// Float output;
+		for (float i = 0; i < 1000;) {
+			if (input.offer(i)) {
+				// System.out.println("Offer success " + i);
+				i++;
+			} else {
+				// System.out.println("Offer failed " + i);
+				Thread.sleep(10);
+			}
+		}
+		// Thread.sleep(1000);
+		input.drain();
+		while (!stream.isDrained())
+			;
+	}
 
 	@ServiceProvider(Benchmark.class)
 	public static final class FFT5Benchmark extends AbstractBenchmark {

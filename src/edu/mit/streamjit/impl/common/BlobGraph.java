@@ -8,6 +8,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -303,6 +306,8 @@ public class BlobGraph {
 		 */
 		protected final BlobGraph blobGraph;
 
+		private final CountDownLatch latch;
+
 		private AtomicInteger unDrainedNodes;
 
 		/**
@@ -322,6 +327,7 @@ public class BlobGraph {
 			this.blobGraph = blobGraph;
 			this.needDrainData = needDrainData;
 			unDrainedNodes = new AtomicInteger(blobGraph.getBlobNodes().size());
+			latch = new CountDownLatch(1);
 			blobGraph.setDrainer(this);
 			isDrainingfinished = new AtomicBoolean(false);
 		}
@@ -331,6 +337,7 @@ public class BlobGraph {
 			if (unDrainedNodes.decrementAndGet() == 0) {
 				drainingFinished();
 				isDrainingfinished.set(true);
+				latch.countDown();
 			}
 		}
 
@@ -346,6 +353,15 @@ public class BlobGraph {
 		 */
 		public final boolean isDrained() {
 			return isDrainingfinished.get();
+		}
+
+		public final void awaitDrained() throws InterruptedException {
+			latch.await();
+		}
+
+		public final void awaitDrained(long timeout, TimeUnit unit)
+				throws InterruptedException, TimeoutException {
+			latch.await(timeout, unit);
 		}
 
 		/**

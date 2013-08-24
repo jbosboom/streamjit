@@ -29,6 +29,8 @@ package edu.mit.streamjit.test.apps.dct;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
@@ -54,40 +56,46 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
  */
 public class DCT2 {
 
-//	public static void main(String[] args) throws InterruptedException {
-//		DCT2Kernel kernel = new DCT2Kernel();
-//		StreamCompiler sc = new DebugStreamCompiler();
-////		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
-//		// StreamCompiler sc = new DistributedStreamCompiler(2);
-////		StreamCompiler sc = new BlobHostStreamCompiler(new CompilerBlobFactory(), 1);
-//		CompiledStream<Integer, Integer> stream = sc.compile(kernel);
-//		Integer output;
-//		for (int i = 0; i < 1000;) {
-//			if (stream.offer(i)) {
-//				// System.out.println("Offer success " + i);
-//				i++;
-//			} else {
-//				// System.out.println("Offer failed " + i);
-//				Thread.sleep(10);
-//			}
-//			while ((output = stream.poll()) != null)
-//				System.out.println(output);
-//		}
-//
-//		stream.drain();
-//		while (!stream.isDrained())
-//			while ((output = stream.poll()) != null)
-//				System.out.println(output);
-//
-//		while ((output = stream.poll()) != null)
-//			System.out.println(output);
-//	}
+	public static void main(String[] args) throws InterruptedException {
+		DCT2Kernel kernel = new DCT2Kernel();
+
+		Input.ManualInput<Integer> input = Input.createManualInput();
+		Output.ManualOutput<Integer> output = Output.createManualOutput();
+
+		StreamCompiler sc = new DebugStreamCompiler();
+		// StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		// StreamCompiler sc = new DistributedStreamCompiler(2);
+		// StreamCompiler sc = new BlobHostStreamCompiler(new
+		// CompilerBlobFactory(), 1);
+
+		CompiledStream stream = sc.compile(kernel, input, output);
+		Integer result;
+		for (int i = 0; i < 1000;) {
+			if (input.offer(i)) {
+				// System.out.println("Offer success " + i);
+				i++;
+			} else {
+				// System.out.println("Offer failed " + i);
+				Thread.sleep(10);
+			}
+			while ((result = output.poll()) != null)
+				System.out.println(result);
+		}
+
+		input.drain();
+		while (!stream.isDrained())
+			while ((result = output.poll()) != null)
+				System.out.println(result);
+
+		while ((result = output.poll()) != null)
+			System.out.println(result);
+	}
 
 	@ServiceProvider(Benchmark.class)
 	public static final class DCT2Benchmark extends AbstractBenchmark {
 		public DCT2Benchmark() {
-			//TODO: if we checked in the StreamIt input and output files, we
-			//could add a file-reading Input.
+			// TODO: if we checked in the StreamIt input and output files, we
+			// could add a file-reading Input.
 			super("DCT2", DCT2Kernel.class, Datasets.allIntsInRange(0, 1000));
 		}
 	}

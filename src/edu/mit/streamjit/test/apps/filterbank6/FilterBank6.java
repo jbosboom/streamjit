@@ -3,6 +3,8 @@ package edu.mit.streamjit.test.apps.filterbank6;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.Splitjoin;
@@ -12,39 +14,47 @@ import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 
 /**
- * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/filterbank/streamit/FilterBank6.str for
- * original implementations. Each StreamIt's language constructs (i.e., pipeline, filter and splitjoin) are rewritten as classes in
- * StreamJit.
+ * Rewritten StreamIt's asplos06 benchmarks. Refer
+ * STREAMIT_HOME/apps/benchmarks/asplos06/filterbank/streamit/FilterBank6.str
+ * for original implementations. Each StreamIt's language constructs (i.e.,
+ * pipeline, filter and splitjoin) are rewritten as classes in StreamJit.
+ *
  * @author Sumanan sumanan@mit.edu
  * @since Mar 14, 2013
  */
 public class FilterBank6 {
 
-//	public static void main(String[] args) throws InterruptedException {
-//		FilterBank6Kernel kernel = new FilterBank6Kernel();
-//		//StreamCompiler sc = new DebugStreamCompiler();
-//		StreamCompiler sc = new ConcurrentStreamCompiler(4);
-//		//StreamCompiler sc = new DistributedStreamCompiler(2);
-//		CompiledStream<Integer, Void> stream = sc.compile(kernel);
-//		for (int i = 0; i < 1000;) {
-//			if (stream.offer(i)) {
-//				// System.out.println("Offer success " + i);
-//				i++;
-//			} else {
-//				// System.out.println("Offer failed " + i);
-//				Thread.sleep(10);
-//			}
-//		}
-//		// Thread.sleep(10000);
-//		stream.drain();
-//		while(!stream.isDrained());
-//	}
+	public static void main(String[] args) throws InterruptedException {
+		FilterBank6Kernel kernel = new FilterBank6Kernel();
+
+		Input.ManualInput<Integer> input = Input.createManualInput();
+		Output.ManualOutput<Void> output = Output.createManualOutput();
+
+		StreamCompiler sc = new DebugStreamCompiler();
+		//StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		// StreamCompiler sc = new DistributedStreamCompiler(2);
+
+		CompiledStream stream = sc.compile(kernel, input, output);
+		for (int i = 0; i < 1000;) {
+			if (input.offer(i)) {
+				// System.out.println("Offer success " + i);
+				i++;
+			} else {
+				// System.out.println("Offer failed " + i);
+				Thread.sleep(10);
+			}
+		}
+		// Thread.sleep(10000);
+		input.drain();
+		while (!stream.isDrained())
+			;
+	}
 
 	/**
-	 * FIXME: Actual pipeline is "void->void pipeline FilterBank6".
-	 * This is a generic filter bank that decomposes an incoming stream into M
-	 * frequency bands. It then performs some processing on them (the exact
-	 * processing is yet to be determined, and then reconstructs them.
+	 * FIXME: Actual pipeline is "void->void pipeline FilterBank6". This is a
+	 * generic filter bank that decomposes an incoming stream into M frequency
+	 * bands. It then performs some processing on them (the exact processing is
+	 * yet to be determined, and then reconstructs them.
 	 **/
 	public static class FilterBank6Kernel extends Pipeline<Integer, Void> {
 		public FilterBank6Kernel() {
@@ -116,7 +126,7 @@ public class FilterBank6 {
 		float w3 = (float) (Math.PI / 30);
 
 		public void work() {
-			//FIXME:
+			// FIXME:
 			pop(); // As current implementation has no support to fire the
 			// streamgraph with void element, we offer the graph with
 			// random values and just pop out here.
@@ -269,7 +279,6 @@ public class FilterBank6 {
 	 *
 	 * Eg ^ H(e^jw) | -------- | ------- | | | | | | | | | |
 	 * <-------------------------> w pi-wc pi pi+wc
-	 *
 	 *
 	 * This implementation is a FIR filter is a rectangularly windowed sinc
 	 * function (eg sin(x)/x) multiplied by e^(j*pi*n)=(-1)^n, which is the

@@ -3,6 +3,8 @@ package edu.mit.streamjit.test.apps.beamformer1;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
@@ -27,30 +29,34 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
  */
 public class BeamFormer1 {
 
-//	public static void main(String[] args) throws InterruptedException {
-//
-//		BeamFormer1Kernel core = new BeamFormer1Kernel();
-//		// StreamCompiler sc = new DebugStreamCompiler();
-//		 StreamCompiler sc = new ConcurrentStreamCompiler(4);
-//		//StreamCompiler sc = new DistributedStreamCompiler(2);
-//		CompiledStream<Float, Void> stream = sc.compile(core);
-//
-//		for (float i = 0; i < 100000;) {
-//			// This offerring value i has no effect in the program. As we can
-//			// not call stream.offer(), just sending
-//			// garbage value.
-//			if (stream.offer(i)) {
-//				// System.out.println("Offer success " + i);
-//				i++;
-//			} else {
-//				Thread.sleep(10);
-//			}
-//		}
-//
-//		// Thread.sleep(10000);
-//		stream.drain();
-//		while (!stream.isDrained());
-//	}
+	public static void main(String[] args) throws InterruptedException {
+
+		BeamFormer1Kernel core = new BeamFormer1Kernel();
+
+		Input.ManualInput<Float> input = Input.createManualInput();
+		Output.ManualOutput<Void> output = Output.createManualOutput();
+
+		StreamCompiler sc = new DebugStreamCompiler();
+		// StreamCompiler sc = new ConcurrentStreamCompiler(4);
+		// StreamCompiler sc = new DistributedStreamCompiler(2);
+		CompiledStream stream = sc.compile(core, input, output);
+
+		for (float i = 0; i < 1000;) {
+			// This offerring value i has no effect in the program. As we can
+			// not call stream.offer(), just sending
+			// garbage value.
+			if (input.offer(i)) {
+				// System.out.println("Offer success " + i);
+				i++;
+			} else {
+				Thread.sleep(10);
+			}
+		}
+
+		input.drain();
+		while (!stream.isDrained())
+			;
+	}
 
 	/**
 	 * This class represents "pipeline Beamformer1" in the BeamFormer1.str
