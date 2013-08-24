@@ -84,9 +84,8 @@ public final class Benchmarker {
 		EnumSet<Attribute> includedAttrs = options.has(includedAttributes) ? EnumSet.copyOf(includedAttributes.values(options)) : EnumSet.noneOf(Attribute.class);
 		EnumSet<Attribute> excludedAttrs = options.has(excludedAttributes) ? EnumSet.copyOf(excludedAttributes.values(options)) : EnumSet.noneOf(Attribute.class);
 
-		for (BenchmarkProvider provider : ServiceLoader.load(BenchmarkProvider.class)) {
-			//If we exclude APP, SANITY or REGRESSION, we can eliminate all the
-			//provider's benchmarks at once.
+		for (Iterator<BenchmarkProvider> providerIterator = new SkipMissingServicesIterator<>(ServiceLoader.load(BenchmarkProvider.class).iterator()); providerIterator.hasNext();) {
+			BenchmarkProvider provider = providerIterator.next();
 			Attribute providerPackageAttr = getPackageAttr(provider.getClass());
 			if (providerPackageAttr != null && excludedAttrs.contains(providerPackageAttr))
 				continue;
