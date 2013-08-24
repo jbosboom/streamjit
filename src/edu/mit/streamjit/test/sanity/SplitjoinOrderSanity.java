@@ -28,12 +28,14 @@ import java.util.List;
 import java.util.Queue;
 
 /**
- *
+ * Tests that splitjoins using the built-in splitters order their elements
+ * properly.
+ * @see SplitjoinComputeSanity
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 8/20/2013
  */
 @ServiceProvider(BenchmarkProvider.class)
-public final class RoundrobinSanity implements BenchmarkProvider {
+public final class SplitjoinOrderSanity implements BenchmarkProvider {
 	public static void main(String[] args) {
 		wrr_rr(3, new int[]{3, 3, 3}, 3).instantiate().visit(new CheckVisitor());
 	}
