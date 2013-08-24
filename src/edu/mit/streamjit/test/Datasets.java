@@ -3,10 +3,8 @@ package edu.mit.streamjit.test;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
+import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.test.Benchmark.Dataset;
-import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.blob.Buffers;
-import edu.mit.streamjit.impl.common.InputBufferFactory;
 import java.util.Collections;
 
 /**
@@ -18,12 +16,7 @@ public final class Datasets {
 	private Datasets() {}
 
 	public static Dataset fromIterable(String name, final Iterable<?> iterable) {
-		return Dataset.builder().name(name).input(InputBufferFactory.wrap(new InputBufferFactory() {
-			@Override
-			public Buffer createReadableBuffer(int readerMinSize) {
-				return Buffers.fromIterable(iterable);
-			}
-		})).build();
+		return Dataset.builder().name(name).input(Input.fromIterable(iterable)).build();
 	}
 
 	public static Dataset nCopies(int n, Object o) {

@@ -12,7 +12,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 8/13/2013
  */
-public abstract class AbstractBenchmark implements Benchmark {
+public class AbstractBenchmark implements Benchmark {
 	private final String name;
 	private final Supplier<? extends OneToOneElement> supplier;
 	private final ImmutableList<Dataset> inputs;

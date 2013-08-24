@@ -1,6 +1,6 @@
 package edu.mit.streamjit.api;
 
-import edu.mit.streamjit.impl.blob.AbstractBuffer;
+import edu.mit.streamjit.impl.blob.AbstractWriteOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.common.OutputBufferFactory;
@@ -70,22 +70,10 @@ public class Output<O> {
 		return new Output<>(new OutputBufferFactory() {
 			@Override
 			public Buffer createWritableBuffer(final int writerMinSize) {
-				return new AbstractBuffer() {
-					@Override
-					public Object read() {
-						throw new UnsupportedOperationException("write-only buffer");
-					}
+				return new AbstractWriteOnlyBuffer() {
 					@Override
 					public boolean write(Object t) {
 						return true;
-					}
-					@Override
-					public int size() {
-						return 0;
-					}
-					@Override
-					public int capacity() {
-						return Integer.MAX_VALUE;
 					}
 				};
 			}
@@ -101,24 +89,12 @@ public class Output<O> {
 		return new Output<>(new OutputBufferFactory() {
 			@Override
 			public Buffer createWritableBuffer(int writerMinSize) {
-				return new AbstractBuffer() {
-					@Override
-					public Object read() {
-						throw new UnsupportedOperationException("write-only buffer");
-					}
+				return new AbstractWriteOnlyBuffer() {
 					@Override
 					@SuppressWarnings("unchecked")
 					public boolean write(Object t) {
 						coll.add((O)t);
 						return true;
-					}
-					@Override
-					public int size() {
-						return 0;
-					}
-					@Override
-					public int capacity() {
-						return Integer.MAX_VALUE;
 					}
 				};
 			}
@@ -129,23 +105,11 @@ public class Output<O> {
 		return new Output<>(new OutputBufferFactory() {
 			@Override
 			public Buffer createWritableBuffer(int writerMinSize) {
-				return new AbstractBuffer() {
-					@Override
-					public Object read() {
-						throw new UnsupportedOperationException("write-only buffer");
-					}
+				return new AbstractWriteOnlyBuffer() {
 					@Override
 					public boolean write(Object t) {
 						stream.println(t);
 						return true;
-					}
-					@Override
-					public int size() {
-						return 0;
-					}
-					@Override
-					public int capacity() {
-						return Integer.MAX_VALUE;
 					}
 				};
 			}

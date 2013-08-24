@@ -2,18 +2,21 @@ package edu.mit.streamjit.api;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.google.common.primitives.Primitives;
-import edu.mit.streamjit.impl.blob.AbstractBuffer;
+import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
+import edu.mit.streamjit.impl.common.NIOBuffers;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.nio.IntBuffer;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
 
 /**
@@ -80,84 +83,117 @@ public class Input<I> {
 		return new Input<>(new InputBufferFactory() {
 			@Override
 			public Buffer createReadableBuffer(int readerMinSize) {
-				return new AbstractBuffer() {
+				return new AbstractReadOnlyBuffer() {
 					@Override
 					public Object read() {
 						return null;
 					}
 					@Override
-					public boolean write(Object t) {
-						throw new UnsupportedOperationException("read-only buffer");
-					}
-					@Override
 					public int size() {
 						return 0;
-					}
-					@Override
-					public int capacity() {
-						return Integer.MAX_VALUE;
 					}
 				};
 			}
 		});
 	}
 
-	private static final ImmutableMap<Class<?>, Integer> SIZE_MAP = ImmutableMap.<Class<?>, Integer>builder()
-			.put(Boolean.class, 1)
-			.put(Byte.class, 1)
-			.put(Short.class, 2)
-			.put(Character.class, 2)
-			.put(Integer.class, 4)
-			.put(Long.class, 8)
-			.put(Float.class, 4)
-			.put(Double.class, 8)
-			.build();
-	public static <I> Input<I> fromBinaryFile(Path path, Class<I> type) {
+	public static <I> Input<I> fromBinaryFile(Path path, Class<I> type, ByteOrder byteOrder) {
 		checkArgument(Primitives.isWrapperType(type) && !type.equals(Void.class), "not a wrapper type: %s", type);
-		if (!type.equals(Integer.class))
-			throw new UnsupportedOperationException("TODO: only Integer.class supported for now");
 		class BinaryFileRealInput extends InputBufferFactory {
 			private final Path path;
 			private final Class<?> type;
-			private final int size;
-			private BinaryFileRealInput(Path path, Class<?> type) {
+			private final ByteOrder byteOrder;
+			private BinaryFileRealInput(Path path, Class<?> type, ByteOrder byteOrder) {
 				this.path = path;
 				this.type = type;
-				this.size = SIZE_MAP.get(type);
+				this.byteOrder = byteOrder;
 			}
 			@Override
 			public Buffer createReadableBuffer(int readerMinSize) {
-				MappedByteBuffer file0 = null;
+				MappedByteBuffer file = null;
 				try (FileChannel fc = FileChannel.open(path, StandardOpenOption.READ)) {
-					file0 = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
+					file = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
 				} catch (IOException ex) {
 					throw new RuntimeException(ex);
 				}
-				final IntBuffer file = file0.asIntBuffer();
-				return new AbstractBuffer() {
-					@Override
-					public Object read() {
-						return file.get();
-					}
-					@Override
-					public boolean write(Object t) {
-						throw new UnsupportedOperationException("read-only buffer");
-					}
-					@Override
-					public int size() {
-						return file.remaining();
-					}
-					@Override
-					public int capacity() {
-						return size();
-					}
-				};
+				file.order(byteOrder);
+				return NIOBuffers.wrap(file, type);
 			}
 			@Override
 			public String toString(){
-				return "Input.fromBinaryFile("+path+", "+type.getSimpleName()+".class)";
+				return "Input.fromBinaryFile("+path+", "+type.getSimpleName()+".class, "+byteOrder+")";
 			}
 		}
-		return new Input<>(new BinaryFileRealInput(path, type));
+		return new Input<>(new BinaryFileRealInput(path, type, byteOrder));
+	}
+
+	/**
+	 * Creates an Input containing the elements in the given Iterable.
+	 * <p/>
+	 * If the iterable is modified while the Input is alive (even if it is not
+	 * actively being used), the behavior is undefined. (TODO: Iterables that
+	 * modify themselves, e.g., Guava Iterables.consumingIterable?)
+	 * <p/>
+	 * The returned Input does not remove elements from the iterable as they are
+	 * consumed by the stream, so it may be used with multiple streams
+	 * successively. Assuming the iterable permits multiple concurrent
+	 * iterations, it may be used with multiple streams concurrently.
+	 * <p/>
+	 * The Input produced by this method requires the iterable's size. If the
+	 * iterable is a Collection, its size() method will be used; otherwise a
+	 * full iteration will be performed to find the size. (TODO: add an overload
+	 * taking the size as parameter? what about indeterminate iterables possibly
+	 * requiring buffering?)
+	 * @param <I> the type of Input to create
+	 * @param iterable the iterable
+	 * @return an Input containing the elements in the given iterable
+	 */
+	public static <I> Input<I> fromIterable(final Iterable<? extends I> iterable) {
+		return new Input<>(new InputBufferFactory() {
+			private final int size = Iterables.size(iterable);
+			@Override
+			public Buffer createReadableBuffer(int readerMinSize) {
+				return Input.fromIterator(iterable.iterator(), size).input.createReadableBuffer(readerMinSize);
+			}
+		});
+	}
+
+	/**
+	 * Creates an Input containing the elements in the given Iterator.
+	 * <p/>
+	 * Only size elements will be returned, even if the iterator has more
+	 * elements. (If the iterator has fewer elements, a NoSuchElementException
+	 * will be thrown in the stream.)
+	 * <p/>
+	 * The returned Input does not remove elements from the iterator as they are
+	 * consumed.
+	 * <p/>
+	 * Because iterators cannot be reset, the returned Input can only be used
+	 * once.
+	 * @param <I> the type of Input to create
+	 * @param iterator the iterator
+	 * @param size the number of elements in the given iterator
+	 * @return an Input containing the elements in the given iterator
+	 */
+	public static <I> Input<I> fromIterator(final Iterator<? extends I> iterator, final int size) {
+		return new Input<>(new InputBufferFactory() {
+			@Override
+			public Buffer createReadableBuffer(int readerMinSize) {
+				return new AbstractReadOnlyBuffer() {
+					private int remainingSize = size;
+					@Override
+					public Object read() {
+						if (remainingSize <= 0)
+							return null;
+						--remainingSize;
+						return iterator.next();
+					}
+					@Override
+					public int size() {
+						return remainingSize;
+					}
+				};
+			}
+		});
 	}
 }
