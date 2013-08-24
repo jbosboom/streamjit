@@ -30,7 +30,6 @@ public final class ConstructorSupplier<T> implements Supplier<T> {
 	}
 
 	@Override
-    @SuppressWarnings(value = "unchecked")
 	public T get() {
 		try {
 			return ctor.newInstance(arguments.toArray());

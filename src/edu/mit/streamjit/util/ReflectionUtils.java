@@ -126,6 +126,8 @@ public final class ReflectionUtils {
 	 * than one constructor is applicable
 	 */
 	public static <T> Constructor<T> findConstructor(Class<T> klass, List<?> arguments) throws NoSuchMethodException {
+		//This is safe because we never assign into the constructors array.  See
+		//the comments on Class.getConstructors().
 		@SuppressWarnings("unchecked")
 		Constructor<T>[] constructors = (Constructor<T>[])klass.getConstructors();
 		List<Constructor<T>> retvals = new ArrayList<>();

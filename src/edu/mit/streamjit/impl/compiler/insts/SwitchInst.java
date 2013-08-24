@@ -64,7 +64,7 @@ public final class SwitchInst extends TerminatorInst {
 	public SwitchInst clone(Function<Value, Value> operandMap) {
 		SwitchInst i = new SwitchInst(operandMap.apply(getValue()), (BasicBlock)operandMap.apply(getDefault()));
 		for (Constant<Integer> c : cases())
-			i.put((Constant<Integer>)operandMap.apply(c), (BasicBlock)operandMap.apply(get(c)));
+			i.put(((Constant<?>)(operandMap.apply(c))).as(Integer.class), (BasicBlock)operandMap.apply(get(c)));
 		return i;
 	}
 

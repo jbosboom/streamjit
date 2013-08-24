@@ -56,7 +56,7 @@ public final class DisconnectWorkersVisitor extends StreamVisitor {
 	@Override
 	public void endVisit() {
 	}
-	private void visitWorker(Worker worker) {
+	private void visitWorker(Worker<?, ?> worker) {
 		Workers.getPredecessors(worker).clear();
 		Workers.getSuccessors(worker).clear();
 		Workers.getInputChannels(worker).clear();

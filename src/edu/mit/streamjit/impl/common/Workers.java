@@ -117,7 +117,7 @@ public abstract class Workers {
 	 * @param nodes the set of nodes to sort
 	 * @return a topologically-ordered list of the given nodes
 	 */
-	public static ImmutableList<Worker<?, ?>> topologicalSort(Iterable<Worker<?, ?>> workers) {
+	public static <T extends Worker<?, ?>> ImmutableList<T> topologicalSort(Iterable<T> workers) {
 		return TopologicalSort.sort(workers, new TopologicalSort.PartialOrder<Worker<?, ?>>() {
 			@Override
 			public boolean lessThan(Worker<?, ?> a, Worker<?, ?> b) {
