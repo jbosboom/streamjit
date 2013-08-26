@@ -12,3 +12,4 @@ bin/
 *.bak
 # heap dumps
 *.hprof
+.factorypath
