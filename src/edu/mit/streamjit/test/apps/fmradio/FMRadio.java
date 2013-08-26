@@ -182,16 +182,7 @@ public class FMRadio {
 						gains[i])));
 			add(eqSplit);
 
-			// This is as close as we can get to anonymous filters because we
-			// need to use a constructor in copy(). (Not even reflection will
-			// work, because the anonymous class constructor is synthetic and
-			// might have additional parameters to support accessing values from
-			// outside the class scope.
-			class Summer extends Filter<Float, Float> {
-				Summer() {
-					super(bands - 1, 1, 0);
-				}
-
+			add(new Filter<Float, Float>(bands - 1, 1) {
 				@Override
 				public void work() {
 					float sum = 0;
@@ -199,9 +190,7 @@ public class FMRadio {
 						sum += pop();
 					push(sum);
 				}
-			}
-
-			add(new Summer());
+			});
 		}
 	}
 
