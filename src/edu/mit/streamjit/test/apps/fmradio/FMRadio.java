@@ -23,6 +23,7 @@ import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -223,39 +224,43 @@ public class FMRadio {
 																// doesn't FM
 																// freq max at
 																// 108 Mhz?
-		private static final int numberOfTaps = 64;
 		private static final float maxAmplitude = 27000;
 		private static final float bandwidth = 10000;
 		// determine where equalizer cuts. Note that <eqBands> is the
 		// number of CUTS; there are <eqBands>-1 bands, with parameters
 		// held in slots 1..<eqBands> of associated arrays.
-		private static final int eqBands = 11;
-		private static final float[] eqCutoff = new float[eqBands];
-		private static final float[] eqGain = new float[eqBands];
 		private static final float low = 55;
 		private static final float high = 1760;
 
-		static {
-			for (int i = 0; i < eqBands; i++)
+		public FMRadioCore() {
+			this(11, 64);
+		}
+
+		public FMRadioCore(int bands, int taps) {
+			super(makeElements(bands, taps));
+		}
+
+		private static List<OneToOneElement<Float, Float>> makeElements(int bands, int taps) {
+			float[] eqCutoff = new float[bands];
+			float[] eqGain = new float[bands];
+			for (int i = 0; i < bands; i++)
 				// have exponentially spaced cutoffs
 				eqCutoff[i] = (float) Math.exp(i
-						* (Math.log(high) - Math.log(low)) / (eqBands - 1)
+						* (Math.log(high) - Math.log(low)) / (bands - 1)
 						+ Math.log(low));
 
 			// first gain doesn't really correspond to a band
 			eqGain[0] = 0;
-			for (int i = 1; i < eqBands; i++) {
+			for (int i = 1; i < bands; i++) {
 				// the gain grows linearly towards the center bands
-				float val = (((float) (i - 1)) - (((float) (eqBands - 2)) / 2.0f)) / 5.0f;
+				float val = (((float) (i - 1)) - (((float) (bands - 2)) / 2.0f)) / 5.0f;
 				eqGain[i] = val > 0 ? 2.0f - val : 2.0f + val;
 			}
-		}
 
-		public FMRadioCore() {
-			super(new LowPassFilter(samplingRate, cutoffFrequency,
-					numberOfTaps, 4), new FMDemodulator(samplingRate,
-					maxAmplitude, bandwidth), new Equalizer(samplingRate,
-					eqBands, eqCutoff, eqGain, numberOfTaps));
+			return Arrays.asList(
+					new LowPassFilter(samplingRate, cutoffFrequency, taps, 4),
+					new FMDemodulator(samplingRate,	maxAmplitude, bandwidth),
+					new Equalizer(samplingRate, bands, eqCutoff, eqGain, taps));
 		}
 	}
 }
