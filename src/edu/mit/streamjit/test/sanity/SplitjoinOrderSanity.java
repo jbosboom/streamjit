@@ -15,7 +15,7 @@ import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
 import edu.mit.streamjit.api.WeightedRoundrobinSplitter;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
-import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.BenchmarkProvider;
@@ -76,42 +76,42 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 
 	private static Benchmark rr_rr(int width, int splitRate, int joinRate) {
 		String name = String.format("RR(%d) x %dw x RR(%d)", splitRate, width, joinRate);
-		return new AbstractBenchmark(name,
+		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new RoundrobinSplitterSupplier(splitRate), new RoundrobinJoinerSupplier(joinRate)),
 				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRate, joinRate));
 	}
 
 	private static Benchmark wrr_rr(int width, int[] splitRates, int joinRate) {
 		String name = String.format("WRR(%s) x %dw x RR(%d)", Arrays.toString(splitRates), width, joinRate);
-		return new AbstractBenchmark(name,
+		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new WeightedRoundrobinSplitterSupplier(splitRates), new RoundrobinJoinerSupplier(joinRate)),
 				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRates, joinRate));
 	}
 
 	private static Benchmark rr_wrr(int width, int splitRate, int[] joinRates) {
 		String name = String.format("RR(%d) x %dw x WRR(%s)", splitRate, width, Arrays.toString(joinRates));
-		return new AbstractBenchmark(name,
+		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new RoundrobinSplitterSupplier(splitRate), new WeightedRoundrobinJoinerSupplier(joinRates)),
 				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRate, joinRates));
 	}
 
 	private static Benchmark wrr_wrr(int width, int[] splitRates, int[] joinRates) {
 		String name = String.format("WRR(%s) x %dw x WRR(%s)", Arrays.toString(splitRates), width, Arrays.toString(joinRates));
-		return new AbstractBenchmark(name,
+		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new WeightedRoundrobinSplitterSupplier(splitRates), new WeightedRoundrobinJoinerSupplier(joinRates)),
 				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRates, joinRates));
 	}
 
 	private static Benchmark dup_rr(int width, int joinRate) {
 		String name = String.format("dup x %dw x RR(%d)", width, joinRate);
-		return new AbstractBenchmark(name,
+		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new DuplicateSplitterSupplier(), new RoundrobinJoinerSupplier(joinRate)),
 				simulateDuplicate(Datasets.allIntsInRange(0, 1_000_000), width, joinRate));
 	}
 
 	private static Benchmark dup_wrr(int width, int[] joinRates) {
 		String name = String.format("dup x %dw x WRR(%s)", width, Arrays.toString(joinRates));
-		return new AbstractBenchmark(name,
+		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new DuplicateSplitterSupplier(), new WeightedRoundrobinJoinerSupplier(joinRates)),
 				simulateDuplicate(Datasets.allIntsInRange(0, 1_000_000), width, joinRates));
 	}

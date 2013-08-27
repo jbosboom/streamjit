@@ -8,7 +8,7 @@ import com.google.common.primitives.Ints;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Input;
-import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.BenchmarkProvider;
@@ -68,7 +68,7 @@ public class FileInputSanity implements BenchmarkProvider {
 		}
 
 		//TODO: generics fixes here (will change Dataset and StreamCompiler)
-		Benchmark b = new AbstractBenchmark("FileInputSanity", Identity.class,
+		Benchmark b = new SuppliedBenchmark("FileInputSanity", Identity.class,
 				Dataset.builder().name("little-endian ints")
 					.input((Input)Input.fromBinaryFile(littleEndian, Integer.class, ByteOrder.LITTLE_ENDIAN))
 					.output((Input)Input.fromIterable(INPUT)).build(),

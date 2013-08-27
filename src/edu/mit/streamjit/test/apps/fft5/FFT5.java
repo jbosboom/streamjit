@@ -8,7 +8,7 @@ import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
-import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
@@ -54,7 +54,7 @@ public class FFT5 {
 	}
 
 	@ServiceProvider(Benchmark.class)
-	public static final class FFT5Benchmark extends AbstractBenchmark {
+	public static final class FFT5Benchmark extends SuppliedBenchmark {
 		public FFT5Benchmark() {
 			super("FFT5", FFT5Kernel.class, Datasets.nCopies(1000, 0.0f));
 		}

@@ -12,7 +12,7 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.OneToOneElement;
-import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.impl.blob.Buffer;
@@ -64,7 +64,7 @@ public class FMRadio {
 			};
 			ImmutableList.Builder<Benchmark> builder = ImmutableList.builder();
 			for (int[] p : bandsTaps)
-				builder.add(new AbstractBenchmark(String.format("FMRadio %d, %d", p[0], p[1]),
+				builder.add(new SuppliedBenchmark(String.format("FMRadio %d, %d", p[0], p[1]),
 						FMRadioCore.class, ImmutableList.of(p[0], p[1]),
 						dataset));
 			return builder.build().iterator();

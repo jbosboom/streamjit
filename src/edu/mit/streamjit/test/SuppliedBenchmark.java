@@ -8,23 +8,29 @@ import edu.mit.streamjit.api.OneToOneElement;
 import java.util.List;
 
 /**
- *
+ * A Benchmark implementation that instantiates a stream graph from a Supplier
+ * instance. Also includes convenience constructors for common Supplier
+ * implementations, such as constructors.
+ * <p/>
+ * This class is nonfinal to allow subclasses to specify constructor arguments.
+ * The subclasses then have a no-arg constructor required for the ServiceLoader
+ * mechanism. The Benchmark interface methods are final.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 8/13/2013
  */
-public class AbstractBenchmark implements Benchmark {
+public class SuppliedBenchmark implements Benchmark {
 	private final String name;
 	private final Supplier<? extends OneToOneElement> supplier;
 	private final ImmutableList<Dataset> inputs;
-	public AbstractBenchmark(String name, Supplier<? extends OneToOneElement> supplier, Dataset firstInput, Dataset... moreInputs) {
+	public SuppliedBenchmark(String name, Supplier<? extends OneToOneElement> supplier, Dataset firstInput, Dataset... moreInputs) {
 		this.name = name;
 		this.supplier = supplier;
 		this.inputs = ImmutableList.copyOf(Lists.asList(firstInput, moreInputs));
 	}
-	public <T> AbstractBenchmark(String name, Class<? extends OneToOneElement> streamClass, Iterable<?> arguments, Dataset firstInput, Dataset... moreInputs) {
+	public <T> SuppliedBenchmark(String name, Class<? extends OneToOneElement> streamClass, Iterable<?> arguments, Dataset firstInput, Dataset... moreInputs) {
 		this(name, new ConstructorSupplier<>(streamClass, arguments), firstInput, moreInputs);
 	}
-	public AbstractBenchmark(String name, Class<? extends OneToOneElement> streamClass, Dataset firstInput, Dataset... moreInputs) {
+	public SuppliedBenchmark(String name, Class<? extends OneToOneElement> streamClass, Dataset firstInput, Dataset... moreInputs) {
 		this(name, streamClass, ImmutableList.of(), firstInput, moreInputs);
 	}
 

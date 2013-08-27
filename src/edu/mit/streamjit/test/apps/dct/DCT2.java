@@ -36,7 +36,7 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
-import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
@@ -92,7 +92,7 @@ public class DCT2 {
 	}
 
 	@ServiceProvider(Benchmark.class)
-	public static final class DCT2Benchmark extends AbstractBenchmark {
+	public static final class DCT2Benchmark extends SuppliedBenchmark {
 		public DCT2Benchmark() {
 			// TODO: if we checked in the StreamIt input and output files, we
 			// could add a file-reading Input.

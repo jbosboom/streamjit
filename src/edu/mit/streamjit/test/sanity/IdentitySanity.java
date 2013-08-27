@@ -3,7 +3,7 @@ package edu.mit.streamjit.test.sanity;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
-import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.Datasets;
@@ -14,7 +14,7 @@ import edu.mit.streamjit.test.Datasets;
  * @since 8/18/2013
  */
 @ServiceProvider(Benchmark.class)
-public class IdentitySanity extends AbstractBenchmark {
+public class IdentitySanity extends SuppliedBenchmark {
 	public IdentitySanity() {
 		super("IdentitySanity", Identity.class,
 				id(Datasets.allIntsInRange(0, 1_000_000)),
