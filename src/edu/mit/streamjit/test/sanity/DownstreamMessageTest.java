@@ -11,7 +11,7 @@ import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
-import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Datasets;
 
@@ -30,7 +30,7 @@ public class DownstreamMessageTest {
 //	}
 //
 //	@ServiceProvider(Benchmark.class)
-//	public static final class DownstreamMessageTestBenchmark extends AbstractBenchmark {
+//	public static final class DownstreamMessageTestBenchmark extends SuppliedBenchmark {
 //		public DownstreamMessageTestBenchmark() {
 //			super("DownstreamMessageTest", new Supplier<OneToOneElement<Object, Object>>() {
 //				@Override

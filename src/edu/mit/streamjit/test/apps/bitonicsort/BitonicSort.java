@@ -10,7 +10,7 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
-import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
@@ -82,7 +82,7 @@ public class BitonicSort {
 	}
 
 	@ServiceProvider(Benchmark.class)
-	public static class BitonicSortBenchmark extends AbstractBenchmark {
+	public static class BitonicSortBenchmark extends SuppliedBenchmark {
 		public BitonicSortBenchmark() {
 			// TODO: what's the output? a sorted sequence?
 			// TODO: what size should we use?

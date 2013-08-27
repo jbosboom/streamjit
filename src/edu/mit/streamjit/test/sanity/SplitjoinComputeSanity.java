@@ -8,7 +8,7 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.impl.common.TestFilters;
-import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +25,7 @@ public class SplitjoinComputeSanity {
 	 * @since Mar 11, 2013 (as RoundRobinSplitterExample)
 	 */
 	@ServiceProvider(Benchmark.class)
-	public static final class MultiplyBenchmark extends AbstractBenchmark {
+	public static final class MultiplyBenchmark extends SuppliedBenchmark {
 		private static final int[] FACTORS = {1, 2, 3};
 		public MultiplyBenchmark() {
 			super("SplitjoinComputeMultiply", new Supplier<OneToOneElement<Integer, Integer>>() {
