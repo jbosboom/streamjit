@@ -72,12 +72,12 @@ public interface Benchmark {
 				this.name = name;
 				return this;
 			}
-			public Builder input(Input<Object> input) {
-				this.input = input;
+			public Builder input(Input<?> input) {
+				this.input = (Input<Object>)input;
 				return this;
 			}
-			public Builder output(Input<Object> output) {
-				this.output = output;
+			public Builder output(Input<?> output) {
+				this.output = (Input<Object>)output;
 				return this;
 			}
 			public Dataset build() {
