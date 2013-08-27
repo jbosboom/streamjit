@@ -41,9 +41,10 @@ public final class CheckVisitor extends SerialCompositeStreamVisitor {
 		super(new NoDuplicatesVisitor(),
 				new SourceSinkVisitor(),
 				new SplitterJoinerMatchBranches(),
-				//SplitjoinBranchRateBalanceVisitor depends on connectivity.
+				//These visitors depend on connectivity.
 				new ConnectWorkersVisitor(),
 				new SplitjoinBranchRateBalanceVisitor(),
+				new PeekPopCheckVisitor(),
 				new DisconnectWorkersVisitor());
 	}
 
@@ -339,6 +340,63 @@ public final class CheckVisitor extends SerialCompositeStreamVisitor {
 						//TODO: trace
 						throw new IllegalStreamGraphException("sink in middle of graph", p.first);
 			super.endVisit();
+		}
+	}
+
+	/**
+	 * Checks that every worker has the same number of peek and pop rates.  For
+	 * joiners that support a fixed number of inputs, also checks that number
+	 * matches the number of peek and pop rates.
+	 *
+	 * This visitor requires the graph be connected because some splitters and
+	 * joiners provide rates based on how many inputs and outputs they have.
+	 */
+	private static final class PeekPopCheckVisitor extends StackVisitor {
+		@Override
+		protected void visitFilter0(Filter<?, ?> filter) {
+			visitWorker(filter);
+		}
+		@Override
+		protected boolean enterPipeline0(Pipeline<?, ?> pipeline) {
+			return true;
+		}
+		@Override
+		protected void exitPipeline0(Pipeline<?, ?> pipeline) {
+		}
+		@Override
+		protected boolean enterSplitjoin0(Splitjoin<?, ?> splitjoin) {
+			return true;
+		}
+		@Override
+		protected void visitSplitter0(Splitter<?, ?> splitter) {
+			visitWorker(splitter);
+		}
+		@Override
+		protected boolean enterSplitjoinBranch0(OneToOneElement<?, ?> element) {
+			return true;
+		}
+		@Override
+		protected void exitSplitjoinBranch0(OneToOneElement<?, ?> element) {
+		}
+		@Override
+		protected void visitJoiner0(Joiner<?, ?> joiner) {
+			visitWorker(joiner);
+			int supported = joiner.supportedInputs();
+			int peeks = joiner.getPeekRates().size(), pops = joiner.getPopRates().size();
+			if (supported != Joiner.UNLIMITED) {
+				if (peeks != supported)
+					throw new IllegalStreamGraphException(String.format("supports %d inputs, but has %d peek rates", supported, peeks), joiner);
+				if (pops != supported)
+					throw new IllegalStreamGraphException(String.format("supports %d inputs, but has %d pop rates", supported, pops), joiner);
+			}
+		}
+		@Override
+		protected void exitSplitjoin0(Splitjoin<?, ?> splitjoin) {
+		}
+		private void visitWorker(Worker<?, ?> worker) {
+			if (worker.getPeekRates().size() != worker.getPopRates().size())
+				//TODO: trace
+				throw new IllegalStreamGraphException("different number of peek and pop rates", worker);
 		}
 	}
 }
