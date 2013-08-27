@@ -23,8 +23,16 @@ import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
+import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
+import edu.mit.streamjit.test.Benchmark.Dataset;
+import edu.mit.streamjit.test.BenchmarkProvider;
+import edu.mit.streamjit.test.Benchmarker;
+import java.nio.ByteOrder;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -34,44 +42,32 @@ import java.util.List;
  */
 public class FMRadio {
 	public static void main(String[] args) throws InterruptedException {
-		FMRadioCore core = new FMRadioCore();
-
-		Input.ManualInput<Float> input = Input.createManualInput();
-		Output.ManualOutput<Float> output = Output.createManualOutput();
-
-		StreamCompiler sc = new DebugStreamCompiler();
-		// StreamCompiler sc = new ConcurrentStreamCompiler(4);
-		// StreamCompiler sc = new DistributedStreamCompiler(2);
-		CompiledStream stream = sc.compile(core, input, output);
-		Float result;
-		for (int i = 0; i < 1000;) {
-			if (input.offer((float) i)) {
-				// System.out.println("Offer success " + i);
-				i++;
-			} else {
-				// System.out.println("Offer failded " + i);
-				Thread.sleep(10);
-			}
-
-			while ((result = output.poll()) != null)
-				System.out.println(result);
-		}
-
-		System.out.println("Draining called...");
-		input.drain();
-		while (!stream.isDrained())
-			while ((result = output.poll()) != null)
-				System.out.println(result);
-
-		while ((result = output.poll()) != null)
-			System.out.println(result);
-
+		Benchmarker.runBenchmarks(new FMRadioBenchmarkProvider(), new CompilerStreamCompiler());
 	}
 
-	@ServiceProvider(Benchmark.class)
-	public static class FMRadioBenchmark extends AbstractBenchmark {
-		public FMRadioBenchmark() {
-			super("FMRadio", FMRadioCore.class, Datasets.nCopies(1000000, 1.0f));
+	@ServiceProvider(BenchmarkProvider.class)
+	public static class FMRadioBenchmarkProvider implements BenchmarkProvider {
+		@Override
+		public Iterator<Benchmark> iterator() {
+			Path path = Paths.get("data/fmradio.in");
+			Input<Float> input = Input.fromBinaryFile(path, Float.class, ByteOrder.LITTLE_ENDIAN);
+			Input<Float> repeated = Datasets.nCopies(50, input);
+			Dataset dataset = Dataset.builder().name(path.getFileName().toString()).input(repeated).build();
+			int[][] bandsTaps = {
+				{11, 64},
+				{5, 64},
+				{7, 64},
+				{9, 64},
+				{5, 128},
+				{7, 128},
+				{9, 128},
+			};
+			ImmutableList.Builder<Benchmark> builder = ImmutableList.builder();
+			for (int[] p : bandsTaps)
+				builder.add(new AbstractBenchmark(String.format("FMRadio %d, %d", p[0], p[1]),
+						FMRadioCore.class, ImmutableList.of(p[0], p[1]),
+						dataset));
+			return builder.build().iterator();
 		}
 	}
 
