@@ -9,7 +9,7 @@ bin/
 .project
 .classpath
 .settings
+.factorypath
 *.bak
 # heap dumps
-*.hprof
-.factorypath
+*.hprof.factorypath
