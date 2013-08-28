@@ -104,16 +104,20 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 
 	private static Benchmark dup_rr(int width, int joinRate) {
 		String name = String.format("dup x %dw x RR(%d)", width, joinRate);
+		Dataset dataset = Datasets.allIntsInRange(0, 1_000_000);
+		dataset = dataset.withInput(DuplicateSimulator.create(dataset.input(), width, joinRate).get());
 		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new DuplicateSplitterSupplier(), new RoundrobinJoinerSupplier(joinRate)),
-				simulateDuplicate(Datasets.allIntsInRange(0, 1_000_000), width, joinRate));
+				dataset);
 	}
 
 	private static Benchmark dup_wrr(int width, int[] joinRates) {
 		String name = String.format("dup x %dw x WRR(%s)", width, Arrays.toString(joinRates));
+		Dataset dataset = Datasets.allIntsInRange(0, 1_000_000);
+		dataset = dataset.withInput(DuplicateSimulator.create(dataset.input(), width, joinRates).get());
 		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new DuplicateSplitterSupplier(), new WeightedRoundrobinJoinerSupplier(joinRates)),
-				simulateDuplicate(Datasets.allIntsInRange(0, 1_000_000), width, joinRates));
+				dataset);
 	}
 
 	private static final class SplitjoinSupplier implements Supplier<Splitjoin<Integer, Integer>> {
@@ -236,37 +240,51 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 				for (int j = 0; j < joinRates[i]; ++j)
 					output.add(bins.get(i).remove());
 		}
-		return Dataset.builder(dataset).output(Input.fromIterable(output)).build();
+		return dataset.withOutput(Input.fromIterable(output));
 	}
 
-	private static Dataset simulateDuplicate(Dataset dataset, int width, int joinRate) {
-		int[] joinRates = new int[width];
-		Arrays.fill(joinRates, joinRate);
-		return simulateDuplicate(dataset, width, joinRates);
-	}
-
-	private static Dataset simulateDuplicate(Dataset dataset, int width, int[] joinRates) {
-		List<Queue<Object>> bins = new ArrayList<>(width);
-		for (int i = 0; i < width; ++i)
-			bins.add(new ArrayDeque<>());
-
-		Buffer buffer = InputBufferFactory.unwrap(dataset.input()).createReadableBuffer(42);
-		while (buffer.size() > 0) {
-			Object o = buffer.read();
-			for (int i = 0; i < bins.size(); ++i)
-				bins.get(i).add(o);
+	private static final class DuplicateSimulator<T> implements Supplier<Input<T>> {
+		private final Input<T> input;
+		private final int width;
+		private final int[] joinRates;
+		public static <T> DuplicateSimulator<T> create(Input<T> input, int width, int joinRate) {
+			int[] joinRates = new int[width];
+			Arrays.fill(joinRates, joinRate);
+			return create(input, width, joinRates);
 		}
-
-		List<Object> output = new ArrayList<>();
-		while (ready(bins, joinRates)) {
-			for (int i = 0; i < bins.size(); ++i)
-				for (int j = 0; j < joinRates[i]; ++j)
-					output.add(bins.get(i).remove());
+		public static <T> DuplicateSimulator<T> create(Input<T> input, int width, int[] joinRates) {
+			return new DuplicateSimulator<>(input, width, joinRates);
 		}
-		return Dataset.builder(dataset).output(Input.fromIterable(output)).build();
+		private DuplicateSimulator(Input<T> input, int width, int[] joinRates) {
+			this.input = input;
+			this.width = width;
+			this.joinRates = joinRates;
+		}
+		@Override
+		@SuppressWarnings("unchecked")
+		public Input<T> get() {
+			List<Queue<T>> bins = new ArrayList<>(width);
+			for (int i = 0; i < width; ++i)
+				bins.add(new ArrayDeque<T>());
+
+			Buffer buffer = InputBufferFactory.unwrap(input).createReadableBuffer(42);
+			while (buffer.size() > 0) {
+				Object o = buffer.read();
+				for (int i = 0; i < bins.size(); ++i)
+					bins.get(i).add((T)o);
+			}
+
+			List<T> output = new ArrayList<>();
+			while (ready(bins, joinRates)) {
+				for (int i = 0; i < bins.size(); ++i)
+					for (int j = 0; j < joinRates[i]; ++j)
+						output.add(bins.get(i).remove());
+			}
+			return Input.fromIterable(output);
+		}
 	}
 
-	private static boolean ready(List<Queue<Object>> bins, int[] joinRates) {
+	private static <T> boolean ready(List<Queue<T>> bins, int[] joinRates) {
 		for (int i = 0; i < bins.size(); ++i)
 			if (bins.get(i).size() < joinRates[i])
 				return false;

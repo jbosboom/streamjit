@@ -44,7 +44,8 @@ public class SplitjoinComputeSanity {
 				input.add(i);
 				output.add(i * FACTORS[i % FACTORS.length]);
 			}
-			return Dataset.builder().name("0 to 100000").input(Input.<Object>fromIterable(input)).output(Input.<Object>fromIterable(output)).build();
+			//TODO: use a functional Input here
+			return new Dataset("0 to 100000", Input.<Object>fromIterable(input)).withOutput(Input.<Object>fromIterable(output));
 		}
 	}
 }

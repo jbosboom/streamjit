@@ -23,7 +23,7 @@ public class IdentitySanity extends SuppliedBenchmark {
 	}
 
 	private static Dataset id(Dataset dataset) {
-		return Dataset.builder(dataset).output(dataset.input()).build();
+		return dataset.withOutput(dataset.input());
 	}
 
 	public static void main(String[] args) {

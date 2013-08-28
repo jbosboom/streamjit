@@ -69,12 +69,10 @@ public class FileInputSanity implements BenchmarkProvider {
 
 		//TODO: generics fixes here (will change Dataset and StreamCompiler)
 		Benchmark b = new SuppliedBenchmark("FileInputSanity", Identity.class,
-				Dataset.builder().name("little-endian ints")
-					.input((Input)Input.fromBinaryFile(littleEndian, Integer.class, ByteOrder.LITTLE_ENDIAN))
-					.output((Input)Input.fromIterable(INPUT)).build(),
-				Dataset.builder().name("big-endian ints")
-					.input((Input)Input.fromBinaryFile(bigEndian, Integer.class, ByteOrder.BIG_ENDIAN))
-					.output((Input)Input.fromIterable(INPUT)).build());
+				new Dataset("little-endian ints", Input.fromBinaryFile(littleEndian, Integer.class, ByteOrder.LITTLE_ENDIAN))
+					.withOutput(Input.fromIterable(INPUT)),
+				new Dataset("big-endian ints", Input.fromBinaryFile(bigEndian, Integer.class, ByteOrder.BIG_ENDIAN))
+					.withOutput((Input)Input.fromIterable(INPUT)));
 		return ImmutableList.of(b).iterator();
 	}
 }
