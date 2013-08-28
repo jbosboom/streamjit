@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import joptsimple.ArgumentAcceptingOptionSpec;
@@ -198,8 +199,11 @@ public final class Benchmarker {
 		System.out.format("%s / %s / %s: %s%n", compiler, benchmark, input, statusText);
 		if (throwable != null)
 			throwable.printStackTrace(System.out);
-		if (statusText == null && verifier != null && !verifier.buffer.correct()) {
-			System.out.println("TODO: generate nice-looking verification output");
+		if ("wrong output".equals(statusText) && verifier != null && !verifier.buffer.correct()) {
+			//TODO: generate nicer-looking output
+			System.out.println("    wrong: "+new TreeMap<>(verifier.buffer.wrongOutput));
+			System.out.println("   excess: "+verifier.buffer.excessOutput);
+			System.out.println("  missing: "+verifier.buffer.missingOutput);
 		}
 	}
 
