@@ -1,5 +1,8 @@
 package edu.mit.streamjit.test;
 
+import com.google.common.base.Function;
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Output;
@@ -37,62 +40,51 @@ public interface Benchmark {
 	/**
 	 * A set of data a benchmark can run with.
 	 *
-	 * This class uses the builder pattern, despite not having many fields to
-	 * initialize, to support future expansion with optional parameters (e.g.,
-	 * the expected values of stateful fields at the end of the benchmark)
-	 * without requiring modifiation of other benchmarks or conflicts between
-	 * overloaded constructors with different sets of optional features.
+	 * This class uses the "wither" (with-er) pattern.  This is useful for
+	 * attaching custom outputs to template dataset instances, and allows
+	 * expansion with future parameters by providing defaults.
 	 */
 	public static final class Dataset {
+		private final String name;
 		private final Input<Object> input;
 		/**
-		 * An Input that produces Buffers for a verifying Output created by the
-		 * benchmark framework.  May be null.
+		 * Supplies an Input that produces Buffers for a verifying Output
+		 * created by the benchmark framework, or supplies null if reference
+		 * output is not available.
 		 */
-		private final Input<Object> output;
-		private final String name;
-		private Dataset(Input<Object> input, Input<Object> output, String name) {
+		private final Supplier<Input<Object>> output;
+		public Dataset(String name, Input<Object> input, Supplier<Input<Object>> output) {
+			this.name = name;
 			this.input = input;
 			this.output = output;
+		}
+		@SuppressWarnings("unchecked")
+		public Dataset(String name, Input<?> input) {
 			this.name = name;
-		}
-		public static Builder builder() {
-			return new Builder();
-		}
-		public static Builder builder(Dataset dataset) {
-			return new Builder().name(dataset.name).input(dataset.input).output(dataset.output);
-		}
-		public static class Builder {
-			private Input<Object> input;
-			private Input<Object> output;
-			private String name;
-			private Builder() {
-			}
-			public Builder name(String name) {
-				this.name = name;
-				return this;
-			}
-			public Builder input(Input<?> input) {
-				this.input = (Input<Object>)input;
-				return this;
-			}
-			public Builder output(Input<?> output) {
-				this.output = (Input<Object>)output;
-				return this;
-			}
-			public Dataset build() {
-				return new Dataset(input, output, name);
-			}
+			this.input = (Input<Object>)input;
+			this.output = Suppliers.ofInstance(null);
 		}
 		public Input<Object> input() {
 			return input;
 		}
 		public Input<Object> output() {
-			return output;
+			return output.get();
 		}
 		@Override
 		public String toString() {
 			return name;
+		}
+
+		public Dataset withName(String newName) {
+			return new Dataset(newName, input, output);
+		}
+		@SuppressWarnings("unchecked")
+		public Dataset withInput(Input<?> input) {
+			return new Dataset(name, (Input<Object>)input, output);
+		}
+		@SuppressWarnings("unchecked")
+		public Dataset withOutput(Input<?> output) {
+			return new Dataset(name, input, Suppliers.ofInstance((Input<Object>)output));
 		}
 	}
 }

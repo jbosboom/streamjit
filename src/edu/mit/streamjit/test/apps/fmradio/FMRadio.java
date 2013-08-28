@@ -52,7 +52,7 @@ public class FMRadio {
 			Path path = Paths.get("data/fmradio.in");
 			Input<Float> input = Input.fromBinaryFile(path, Float.class, ByteOrder.LITTLE_ENDIAN);
 			Input<Float> repeated = Datasets.nCopies(50, input);
-			Dataset dataset = Dataset.builder().name(path.getFileName().toString()).input(repeated).build();
+			Dataset dataset = new Dataset(path.getFileName().toString(), repeated);
 			int[][] bandsTaps = {
 				{11, 64},
 				{5, 64},

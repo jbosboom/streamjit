@@ -19,7 +19,7 @@ public final class Datasets {
 	private Datasets() {}
 
 	public static Dataset fromIterable(String name, final Iterable<?> iterable) {
-		return Dataset.builder().name(name).input(Input.fromIterable(iterable)).build();
+		return new Dataset(name, Input.fromIterable(iterable));
 	}
 
 	public static Dataset nCopies(int n, Object o) {

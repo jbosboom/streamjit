@@ -236,7 +236,7 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 				for (int j = 0; j < joinRates[i]; ++j)
 					output.add(bins.get(i).remove());
 		}
-		return Dataset.builder(dataset).output(Input.fromIterable(output)).build();
+		return dataset.withOutput(Input.fromIterable(output));
 	}
 
 	private static Dataset simulateDuplicate(Dataset dataset, int width, int joinRate) {
@@ -263,7 +263,7 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 				for (int j = 0; j < joinRates[i]; ++j)
 					output.add(bins.get(i).remove());
 		}
-		return Dataset.builder(dataset).output(Input.fromIterable(output)).build();
+		return dataset.withOutput(Input.fromIterable(output));
 	}
 
 	private static boolean ready(List<Queue<Object>> bins, int[] joinRates) {
