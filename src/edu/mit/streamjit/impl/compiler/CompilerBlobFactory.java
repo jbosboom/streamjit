@@ -4,6 +4,7 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Workers;
 import java.util.Set;
 
 /**
@@ -21,8 +22,10 @@ public final class CompilerBlobFactory implements BlobFactory {
 
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
-		return Configuration.builder()
-				.addParameter(new Configuration.IntParameter("multiplier", 1, 1000000, 1))
+		Configuration.Builder builder = Configuration.builder();
+		for (Worker<?, ?> w : workers)
+			builder.addParameter(Configuration.SwitchParameter.create("fuse"+Workers.getIdentifier(w), true));
+		return builder.addParameter(new Configuration.IntParameter("multiplier", 1, 1000000, 1))
 				.build();
 	}
 

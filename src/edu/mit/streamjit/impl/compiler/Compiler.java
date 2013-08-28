@@ -27,6 +27,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
@@ -66,6 +67,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -206,9 +208,26 @@ public final class Compiler {
 	 * Fuses StreamNodes as directed by the configuration.
 	 */
 	private void fuse() {
-		//TODO: some kind of worklist algorithm that fuses until no more fusion
-		//possible, to handle state, peeking, or attempts to fuse with more than
-		//one predecessor.
+		//TODO: check this works/doesn't work with peeking or state.
+		Set<Integer> eligible = new HashSet<>();
+		for (StreamNode n : streamNodes.values()) {
+			SwitchParameter<Boolean> parameter = config.getParameter("fuse"+n.id, SwitchParameter.class, Boolean.class);
+			if (!n.isPeeking() && parameter.getValue())
+				eligible.add(n.id);
+		}
+
+		boolean fused;
+		do {
+			fused = false;
+			ImmutableSortedSet<StreamNode> nodes = ImmutableSortedSet.copyOf(streamNodes.values());
+			for (StreamNode n : nodes) {
+				Set<StreamNode> preds = n.predecessorNodes();
+				if (eligible.contains(n.id) && preds.size() == 1) {
+					new StreamNode(preds.iterator().next(), n); //adds itself to maps
+					fused = true;
+				}
+			}
+		} while (fused);
 	}
 
 	/**
@@ -218,7 +237,7 @@ public final class Compiler {
 	 * 3 SSEs there)?
 	 */
 	private void allocateCores() {
-		//TODO
+		//TODO: if stateful, can't put on more than one core
 		for (StreamNode n : ImmutableSet.copyOf(streamNodes.values()))
 			for (int i = 0; i < maxNumCores; ++i)
 				n.cores.add(i);
@@ -365,20 +384,25 @@ public final class Compiler {
 
 		//We make copies of the offset arrays.  (int[].clone() returns Object,
 		//so we have to cast.)
-		Method clone = Iterables.getOnlyElement(module.getKlass(Object.class).getMethods("clone"));
-		CallInst ioffsetCloneCall = new CallInst(clone, newWork.arguments().get(2));
-		entryBlock.instructions().add(ioffsetCloneCall);
-		CastInst ioffsetCast = new CastInst(module.types().getArrayType(int[].class), ioffsetCloneCall);
-		entryBlock.instructions().add(ioffsetCast);
+		//Actually, we don't!  We need the updates to carry over to further
+		//iterations within the nodework.  My thinking was that we could
+		//precompute these to avoid repeated allocations, or something.
+//		Method clone = Iterables.getOnlyElement(module.getKlass(Object.class).getMethods("clone"));
+//		CallInst ioffsetCloneCall = new CallInst(clone, newWork.arguments().get(2));
+//		entryBlock.instructions().add(ioffsetCloneCall);
+//		CastInst ioffsetCast = new CastInst(module.types().getArrayType(int[].class), ioffsetCloneCall);
+//		entryBlock.instructions().add(ioffsetCast);
+		Argument ioffsetCast = newWork.arguments().get(2);
 		LocalVariable ioffsetCopy = new LocalVariable((RegularType)ioffsetCast.getType(), "ioffsetCopy", newWork);
 		StoreInst popCountInit = new StoreInst(ioffsetCopy, ioffsetCast);
 		popCountInit.setName("ioffsetInit");
 		entryBlock.instructions().add(popCountInit);
 
-		CallInst ooffsetCloneCall = new CallInst(clone, newWork.arguments().get(5));
-		entryBlock.instructions().add(ooffsetCloneCall);
-		CastInst ooffsetCast = new CastInst(module.types().getArrayType(int[].class), ooffsetCloneCall);
-		entryBlock.instructions().add(ooffsetCast);
+//		CallInst ooffsetCloneCall = new CallInst(clone, newWork.arguments().get(5));
+//		entryBlock.instructions().add(ooffsetCloneCall);
+//		CastInst ooffsetCast = new CastInst(module.types().getArrayType(int[].class), ooffsetCloneCall);
+//		entryBlock.instructions().add(ooffsetCast);
+		Argument ooffsetCast = newWork.arguments().get(5);
 		LocalVariable ooffsetCopy = new LocalVariable((RegularType)ooffsetCast.getType(), "ooffsetCopy", newWork);
 		StoreInst pushCountInit = new StoreInst(ooffsetCopy, ooffsetCast);
 		pushCountInit.setName("ooffsetInit");
@@ -682,7 +706,7 @@ public final class Compiler {
 		}
 	}
 
-	private final class StreamNode {
+	private final class StreamNode implements Comparable<StreamNode> {
 		private final int id;
 		private final ImmutableSet<? extends Worker<?, ?>> workers;
 		private final ImmutableSortedSet<IOInfo> ioinfo;
@@ -725,6 +749,8 @@ public final class Compiler {
 		 * had work functions constructed.
 		 */
 		private StreamNode(StreamNode a, StreamNode b) {
+			assert streamNodes.values().contains(a);
+			assert streamNodes.values().contains(b);
 			this.id = Math.min(a.id, b.id);
 			this.workers = ImmutableSet.<Worker<?, ?>>builder().addAll(a.workers).addAll(b.workers).build();
 			this.ioinfo = ImmutableSortedSet.copyOf(IOInfo.TOKEN_SORT, IOInfo.externalEdges(workers));
@@ -737,6 +763,33 @@ public final class Compiler {
 				streamNodes.put(w, this);
 			for (Worker<?, ?> w : b.workers)
 				streamNodes.put(w, this);
+		}
+
+		public boolean isStateful() {
+			for (Worker<?, ?> w : workers)
+				if (w instanceof StatefulFilter)
+					return true;
+			return false;
+		}
+
+		public boolean isPeeking() {
+			for (Worker<?, ?> w : workers) {
+				for (int i = 0; i < w.getPeekRates().size(); ++i)
+					if (w.getPeekRates().get(i).max() == Rate.DYNAMIC ||
+							w.getPeekRates().get(i).max() > w.getPopRates().get(i).max())
+						return true;
+			}
+			return false;
+		}
+
+		public Set<StreamNode> predecessorNodes() {
+			ImmutableSet.Builder<StreamNode> set = ImmutableSet.builder();
+			for (IOInfo info : ioinfo) {
+				if (!info.isInput() || info.token().isOverallInput())
+					continue;
+				set.add(streamNodes.get(info.upstream()));
+			}
+			return set.build();
 		}
 
 		/**
@@ -888,9 +941,15 @@ public final class Compiler {
 						Worker<?, ?> s = succs.get(chanIdx);
 						Token t = new Token(w, s);
 						if (workers.contains(s)) {
-							assert buffers.containsKey(t) : "BufferData created for internal buffer";
-							Value localBuffer = localBuffers.get(new Token(w, s));
-							assert localBuffer != null : "Local buffer needed before created";
+							assert !buffers.containsKey(t) : "BufferData created for internal buffer";
+							Value localBuffer = localBuffers.get(t);
+							if (localBuffer == null) {
+								int bufferSize = w.getPushRates().get(chanIdx).max() * internalSchedule.getExecutions(w);
+								localBuffer = new NewArrayInst(module.types().getArrayType(Object[].class), module.constants().getConstant(bufferSize));
+								localBuffer.setName(String.format("localbuf_%d_%d", t.getUpstreamIdentifier(), t.getDownstreamIdentifier()));
+								localBuffers.put(t, localBuffer);
+								entryBlock.instructions().add((Instruction)localBuffer);
+							}
 							ochannels.add(localBuffer);
 							ooffsets.add(module.constants().getConstant(0));
 						} else {
@@ -978,6 +1037,11 @@ public final class Compiler {
 			}
 			this.inputIOs = inputIOs.build();
 			this.outputIOs = outputIOs.build();
+		}
+
+		@Override
+		public int compareTo(StreamNode other) {
+			return Integer.compare(id, other.id);
 		}
 	}
 
@@ -1307,6 +1371,10 @@ public final class Compiler {
 				Token token = entry.getKey();
 				Channel<Object> channel = entry.getValue();
 				BufferData data = bufferData.get(token);
+				if (data == null) {
+					assert channel.isEmpty() : "init schedule buffers within StreamNode";
+					continue;
+				}
 				assert channel.size() == data.initialSize : String.format("%s: expected %d, got %d", token, data.initialSize, channel.size());
 				if (data.readerBufferFieldName == null) {
 					assert data.initialSize == 0;
@@ -1337,8 +1405,8 @@ public final class Compiler {
 			}
 
 			//Copy unconsumed peek data, then flip buffers.
-			for (Token t : internalTokens) {
-				BufferData data = bufferData.get(t);
+			for (BufferData data : bufferData.values()) {
+				if (data.readerBufferFieldName == null || data.writerBufferFieldName == null) continue;
 				Object[] reader = (Object[])blobClassFieldGetters.get(data.readerBufferFieldName).invokeExact();
 				Object[] writer = (Object[])blobClassFieldGetters.get(data.writerBufferFieldName).invokeExact();
 				if (data.excessPeeks > 0)
