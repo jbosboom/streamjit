@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.common;
 
+import static com.google.common.base.Preconditions.*;
 import com.google.common.reflect.Reflection;
 import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.impl.blob.Buffer;
@@ -32,6 +33,7 @@ public abstract class OutputBufferFactory {
 	}
 
 	public static <O> Output<O> wrap(OutputBufferFactory output) {
+		checkNotNull(output);
 		try {
 			return (Output<O>)OutputHolder.newOutput.invokeExact(output);
 		} catch (Throwable ex) {
@@ -39,9 +41,10 @@ public abstract class OutputBufferFactory {
 		}
 	}
 
-	public static OutputBufferFactory unwrap(Output<?> input) {
+	public static OutputBufferFactory unwrap(Output<?> output) {
+		checkNotNull(output);
 		try {
-			return (OutputBufferFactory)OutputHolder.getOutputBufferFactory.invokeExact(input);
+			return (OutputBufferFactory)OutputHolder.getOutputBufferFactory.invokeExact(output);
 		} catch (Throwable ex) {
 			throw new RuntimeException(ex);
 		}

@@ -76,6 +76,7 @@ public abstract class InputBufferFactory {
 	}
 
 	public static <I> Input<I> wrap(InputBufferFactory input) {
+		checkNotNull(input);
 		try {
 			return (Input<I>)InputHolder.newInput.invokeExact(input);
 		} catch (Throwable ex) {
@@ -84,6 +85,7 @@ public abstract class InputBufferFactory {
 	}
 
 	public static InputBufferFactory unwrap(Input<?> input) {
+		checkNotNull(input);
 		try {
 			return (InputBufferFactory)InputHolder.getInputBufferFactory.invokeExact(input);
 		} catch (Throwable ex) {
@@ -92,6 +94,8 @@ public abstract class InputBufferFactory {
 	}
 
 	public static <I> void setManualInputDelegate(ManualInput<I> input, ManualInputDelegate<I> delegate) {
+		checkNotNull(input);
+		checkNotNull(delegate);
 		try {
 			ManualInputHolder.setManualInputDelegate.invokeExact(input, delegate);
 		} catch (Throwable ex) {
