@@ -212,11 +212,12 @@ public final class Benchmarker {
 		private VerifyingBuffer buffer;
 		private VerifyingOutputBufferFactory(Input<Object> expectedOutput) {
 			this.expectedOutput = expectedOutput;
+			this.buffer = new VerifyingBuffer();
 		}
 
 		@Override
 		public Buffer createWritableBuffer(int writerMinSize) {
-			return (buffer = new VerifyingBuffer());
+			return buffer;
 		}
 
 		private final class VerifyingBuffer extends AbstractWriteOnlyBuffer {
