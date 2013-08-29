@@ -105,7 +105,7 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 	private static Benchmark dup_rr(int width, int joinRate) {
 		String name = String.format("dup x %dw x RR(%d)", width, joinRate);
 		Dataset dataset = Datasets.allIntsInRange(0, 1_000_000);
-		dataset = dataset.withInput(DuplicateSimulator.create(dataset.input(), width, joinRate).get());
+		dataset = dataset.withInput(Datasets.lazyInput(DuplicateSimulator.create(dataset.input(), width, joinRate)));
 		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new DuplicateSplitterSupplier(), new RoundrobinJoinerSupplier(joinRate)),
 				dataset);
@@ -114,7 +114,7 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 	private static Benchmark dup_wrr(int width, int[] joinRates) {
 		String name = String.format("dup x %dw x WRR(%s)", width, Arrays.toString(joinRates));
 		Dataset dataset = Datasets.allIntsInRange(0, 1_000_000);
-		dataset = dataset.withInput(DuplicateSimulator.create(dataset.input(), width, joinRates).get());
+		dataset = dataset.withInput(Datasets.lazyInput(DuplicateSimulator.create(dataset.input(), width, joinRates)));
 		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new DuplicateSplitterSupplier(), new WeightedRoundrobinJoinerSupplier(joinRates)),
 				dataset);
