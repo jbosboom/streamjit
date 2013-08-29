@@ -61,7 +61,7 @@ public final class TCPTuner implements AutoTuner {
 		if (tuner == null)
 			return;
 		if (connection != null && connection.isStillConnected())
-			connection.writeLine("exit");
+			connection.writeLine("exit\n");
 		else
 			tuner.destroy();
 
@@ -126,6 +126,8 @@ public final class TCPTuner implements AutoTuner {
 			if (isStillConnected()) {
 				try {
 					writter.write(msg);
+					if(msg.toCharArray()[msg.length() - 1] != '\n')
+						writter.write('\n');
 					writter.flush();
 				} catch (IOException ix) {
 					isconnected = false;
@@ -173,7 +175,7 @@ public final class TCPTuner implements AutoTuner {
 
 		AutoTuner tuner = new TCPTuner();
 		try {
-			tuner.startTuner("/home/sumanan/temp/Python/Socket/streamjit.py");
+			tuner.startTuner("/lib/opentuner/streamjit/streamjit.py");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
