@@ -14,8 +14,12 @@ import com.google.common.primitives.Shorts;
 import edu.mit.streamjit.impl.compiler.types.MethodType;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.util.IntrusiveList;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Serializable;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -339,6 +343,14 @@ public final class Klass implements Accessible, Parented<Module> {
 	@Override
 	public String toString() {
 		return getName();
+	}
+
+	public void dump(OutputStream stream) {
+		dump(new PrintWriter(new OutputStreamWriter(stream, StandardCharsets.UTF_8)));
+	}
+
+	public void dump(Writer writer) {
+		dump(new PrintWriter(writer));
 	}
 
 	public void dump(PrintWriter writer) {

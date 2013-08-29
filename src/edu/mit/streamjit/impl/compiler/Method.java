@@ -13,7 +13,11 @@ import edu.mit.streamjit.impl.compiler.insts.Instruction;
 import edu.mit.streamjit.impl.compiler.types.RegularType;
 import edu.mit.streamjit.impl.compiler.types.VoidType;
 import edu.mit.streamjit.util.IntrusiveList;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 
@@ -197,6 +201,14 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 	@Override
 	public String toString() {
 		return modifiers.toString() + " " + getName() + " " +getType();
+	}
+
+	public void dump(OutputStream stream) {
+		dump(new PrintWriter(new OutputStreamWriter(stream, StandardCharsets.UTF_8)));
+	}
+
+	public void dump(Writer writer) {
+		dump(new PrintWriter(writer));
 	}
 
 	public void dump(PrintWriter writer) {
