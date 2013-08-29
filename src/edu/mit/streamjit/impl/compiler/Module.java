@@ -2,8 +2,16 @@ package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Strings;
+import com.google.common.collect.Iterables;
+import edu.mit.streamjit.impl.compiler.types.Type;
 import edu.mit.streamjit.impl.compiler.types.TypeFactory;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.lang.reflect.Array;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +79,56 @@ public final class Module {
 		if (alreadyExists != null)
 			return alreadyExists;
 		return new Klass(componentType, dimensions, this);
+	}
+
+	public void dump(OutputStream stream) {
+		dump(new PrintWriter(new OutputStreamWriter(stream, StandardCharsets.UTF_8)));
+	}
+
+	public void dump(Writer writer) {
+		dump(new PrintWriter(writer));
+	}
+
+	public void dump(PrintWriter writer) {
+		writer.write("module "+toString());
+		writer.println();
+		List<Klass> mutable = new ArrayList<>(), immutable = new ArrayList<>();
+		for (Klass k : klasses)
+			if (k.isMutable())
+				mutable.add(k);
+			else
+				immutable.add(k);
+
+		writer.write(mutable.size()+" mutable klasses");
+		writer.println();
+		for (Klass k : mutable) {
+			k.dump(writer);
+			writer.println();
+		}
+
+		writer.write(immutable.size()+" immutable klasses");
+		writer.println();
+		for (Klass k : immutable) {
+			//For brevity, just print names.
+			writer.write(k.getName());
+			writer.println();
+		}
+		writer.println();
+
+		writer.write(Iterables.size(types())+" types");
+		writer.println();
+		for (Type t : types()) {
+			writer.write(t.toString());
+			writer.println();
+		}
+		writer.println();
+
+		writer.write(Iterables.size(constants())+" constants");
+		writer.println();
+		for (Constant<?> c : constants()) {
+			writer.write(c.toString());
+			writer.println();
+		}
 	}
 
 	/**
