@@ -263,16 +263,18 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 		@Override
 		@SuppressWarnings("unchecked")
 		public Input<T> get() {
-			List<Queue<T>> bins = new ArrayList<>(width);
-			for (int i = 0; i < width; ++i)
-				bins.add(new ArrayDeque<T>());
-
+			ArrayDeque<T> bin = new ArrayDeque<>();
 			Buffer buffer = InputBufferFactory.unwrap(input).createReadableBuffer(42);
 			while (buffer.size() > 0) {
 				Object o = buffer.read();
-				for (int i = 0; i < bins.size(); ++i)
-					bins.get(i).add((T)o);
+				bin.add((T)o);
 			}
+
+			List<Queue<T>> bins = new ArrayList<>(width);
+			//Use the first one, make copies for the rest.
+			bins.add(bin);
+			while (bins.size() < width)
+				bins.add(new ArrayDeque<>(bin));
 
 			List<T> output = new ArrayList<>();
 			while (ready(bins, joinRates)) {
