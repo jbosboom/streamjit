@@ -1,5 +1,7 @@
 package edu.mit.streamjit.test.apps.bitonicsort;
 
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
@@ -10,12 +12,24 @@ import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import edu.mit.streamjit.test.Benchmark.Dataset;
+import edu.mit.streamjit.test.BenchmarkProvider;
+import edu.mit.streamjit.test.Benchmarker;
+import java.nio.ByteOrder;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Moved from StreamIt's asplos06 benchmark. Refer STREAMIT_HOME/apps/benchmarks/asplos06/bitonic-sort/streamit/BitonicSort2.str for
@@ -44,50 +58,48 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
  * http://www.iti.fh-flensburg
  * .de/lang/algorithmen/sortieren/bitonic/bitonicen.htm
  */
-public class BitonicSort {
+@ServiceProvider(BenchmarkProvider.class)
+public class BitonicSort implements BenchmarkProvider {
 	public static void main(String[] args) throws InterruptedException {
-
-		/* Make sure N is a power_of_2 */
-		int N = 8;
-
-		BitonicSort2 kernel = new BitonicSort2();
-
-		Input.ManualInput<Integer> input = Input.createManualInput();
-		Output.ManualOutput<Integer> output = Output.createManualOutput();
-
-		StreamCompiler sc = new DebugStreamCompiler();
-		// StreamCompiler sc = new ConcurrentStreamCompiler(6);
-		// StreamCompiler sc = new DistributedStreamCompiler(2);
-
-		CompiledStream stream = sc.compile(kernel, input, output);
-		Integer result;
-		for (int i = N * N * N * N; i > 0;) {
-			if (input.offer(i)) {
-				// System.out.println("Offer success " + i);
-				i--;
-			} else {
-				Thread.sleep(10);
-			}
-			while ((result = output.poll()) != null)
-				System.out.println(result);
-		}
-
-		input.drain();
-		while (!stream.isDrained())
-			while ((result = output.poll()) != null)
-				System.out.println(result);
-
-		while ((result = output.poll()) != null)
-			System.out.println(result);
+		Benchmarker.runBenchmarks(new BitonicSort(), new DebugStreamCompiler());
 	}
 
-	@ServiceProvider(Benchmark.class)
-	public static class BitonicSortBenchmark extends SuppliedBenchmark {
-		public BitonicSortBenchmark() {
-			// TODO: what's the output? a sorted sequence?
-			// TODO: what size should we use?
-			super("BitonicSort", BitonicSort2.class, Datasets.allIntsInRange(1,
-					8 * 8 * 8 * 8));
+	@Override
+	public Iterator<Benchmark> iterator() {
+		List<Benchmark> benchmarks = new ArrayList<>();
+		for (int n : new int[]{4, 8, 16, 32})
+			for (boolean ascending : new boolean[]{true, false}) {
+				String filename = "BitonicSort"+n+".in";
+				Input<Integer> input = Input.fromBinaryFile(Paths.get("data/"+filename), Integer.class, ByteOrder.LITTLE_ENDIAN);
+				Input<Integer> output = Datasets.transformAll(new GroupSorter(n, ascending), input);
+				Dataset data = new Dataset(filename, input).withOutput(output);
+				String benchmarkName = String.format("BitonicSort (N = %d, %s)", n, ascending ? "asc" : "desc");
+				benchmarks.add(new SuppliedBenchmark(benchmarkName, BitonicSortKernel.class, ImmutableList.of(n, ascending), data));
+			}
+		return benchmarks.iterator();
+	}
+
+	private static final class GroupSorter implements Function<Input<? super Integer>, Input<Integer>> {
+		private final int n;
+		private final boolean ascending;
+		private GroupSorter(int n, boolean ascending) {
+			this.n = n;
+			this.ascending = ascending;
+		}
+		@Override
+		public Input<Integer> apply(Input<? super Integer> input) {
+			Buffer buffer = InputBufferFactory.unwrap(input).createReadableBuffer(n);
+			Object[] items = new Object[n];
+			List<Integer> retval = new ArrayList<>();
+			while (buffer.readAll(items)) {
+				if (ascending)
+					Arrays.sort(items);
+				else
+					Arrays.sort(items, Collections.reverseOrder());
+				for (Object o : items)
+					retval.add((Integer)o);
+			}
+			return Input.fromIterable(retval);
 		}
 	}
 
@@ -341,11 +353,11 @@ public class BitonicSort {
 	 * the resultant bitonic sequence to produce the final sorted sequence
 	 * (sortdir determines if it is UP or DOWN).
 	 */
-	private static class BitonicSortKernel extends Pipeline<Integer, Integer> {
+	public static class BitonicSortKernel extends Pipeline<Integer, Integer> {
 		int N;
 		boolean sortdir;
 
-		BitonicSortKernel(int N, boolean sortdir) {
+		public BitonicSortKernel(int N, boolean sortdir) {
 			this.N = N;
 			this.sortdir = sortdir;
 			addFilter();
