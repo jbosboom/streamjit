@@ -28,7 +28,7 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 public class ChannelVocoder7 {
 
 	public static void main(String[] args) throws InterruptedException {
-		ChannelVocoder7Kernel kernel = new ChannelVocoder7Kernel();
+		ChannelVocoder7Kernel kernel = new ChannelVocoder7Kernel(16, 64);
 
 		Input.ManualInput<Integer> input = Input.createManualInput();
 		Output.ManualOutput<Void> output = Output.createManualOutput();
@@ -77,12 +77,12 @@ public class ChannelVocoder7 {
 	 **/
 	public static class ChannelVocoder7Kernel extends Pipeline<Integer, Void> {
 
-		public ChannelVocoder7Kernel() {
+		public ChannelVocoder7Kernel(int numFilters, int numTaps) {
 			add(new DataSource());
 			// add FileReader<float>("../input/input");
 			// low pass filter to filter out high freq noise
 			add(new LowPassFilter(1, (float) ((2 * Math.PI * 5000) / 8000), 64));
-			add(new MainSplitjoin());
+			add(new MainSplitjoin(numFilters, numTaps));
 			add(new FloatPrinter());
 			// add FileWriter<float>("ChannelVocoder7.out");
 		}
@@ -96,23 +96,12 @@ public class ChannelVocoder7 {
 		int PITCH_WINDOW = 100; // the number of samples to base the pitch
 								// detection on
 		int DECIMATION = 50; // decimation factor
-		int NUM_FILTERS = 16; // 18;
 
-		MainSplitjoin() {
+		MainSplitjoin(int numFilters, int numTaps) {
 			super(new DuplicateSplitter<Float>(),
-					new WeightedRoundrobinJoiner<Float>(1, 16)); // FIXME
-																	// ,
-																	// RoundrobinJoiner
-																	// can't
-																	// be
-																	// NUM_FILTERS
-																	// b/c
-																	// const
-																	// prop
-																	// didn't
-																	// work
+					new WeightedRoundrobinJoiner<Float>(1, numFilters));
 			add(new PitchDetector(PITCH_WINDOW, DECIMATION));
-			add(new VocoderFilterBank(NUM_FILTERS, DECIMATION));
+			add(new VocoderFilterBank(numFilters, DECIMATION, numTaps));
 		}
 
 	}
@@ -173,10 +162,10 @@ public class ChannelVocoder7 {
 
 	/** The channel vocoder filterbank. **/
 	private static class VocoderFilterBank extends Splitjoin<Float, Float> {
-		VocoderFilterBank(int N, int decimation) {
+		VocoderFilterBank(int N, int decimation, int numTaps) {
 			super(new DuplicateSplitter<Float>(), new RoundrobinJoiner<Float>());
 			for (int i = 0; i < N; i++) {
-				add(new FilterDecimate(i, decimation));
+				add(new FilterDecimate(i, decimation, numTaps));
 			}
 		}
 	}
@@ -186,9 +175,9 @@ public class ChannelVocoder7 {
 	 * at i*200 Hz followed by a decimator with decimation rate of decimation.
 	 **/
 	private static class FilterDecimate extends Pipeline<Float, Float> {
-		FilterDecimate(int i, int decimation) {
+		FilterDecimate(int i, int decimation, int numTaps) {
 			// add VocoderBandPassFilter(i, 64); // 64 tap filter
-			add(new BandPassFilter(2, 400 * i, 400 * (i + 1), 64));
+			add(new BandPassFilter(2, 400 * i, 400 * (i + 1), numTaps));
 			add(new Compressor(decimation));
 		}
 	}
