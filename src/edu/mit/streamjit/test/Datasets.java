@@ -84,7 +84,7 @@ public final class Datasets {
 		});
 	}
 
-	public static <I, J> Input<J> transformAll(Function<Input<? super I>, Input<? extends J>> function, Input<I> input) {
+	public static <I, J> Input<J> transformAll(Function<? super Input<? super I>, Input<J>> function, Input<I> input) {
 		return lazyInput(Suppliers.compose(function, Suppliers.ofInstance(input)));
 	}
 
