@@ -65,15 +65,16 @@ public abstract class Workers {
 	 * @return a set of all predecessors of this worker
 	 */
 	public static ImmutableSet<Worker<?, ?>> getAllPredecessors(Worker<?, ?> worker) {
-		Set<Worker<?, ?>> closed = new HashSet<>();
 		Queue<Worker<?, ?>> frontier = new ArrayDeque<>();
 		frontier.addAll(Workers.getPredecessors(worker));
+		Set<Worker<?, ?>> closed = new HashSet<>(frontier);
 		while (!frontier.isEmpty()) {
 			Worker<?, ?> cur = frontier.remove();
-			closed.add(cur);
 			for (Worker<?, ?> w : Workers.getPredecessors(cur))
-				if (!closed.contains(w))
+				if (!closed.contains(w)) {
 					frontier.add(w);
+					closed.add(w);
+				}
 		}
 		return ImmutableSet.copyOf(closed);
 	}
@@ -84,15 +85,16 @@ public abstract class Workers {
 	 * @return a set of all successors of this worker
 	 */
 	public static ImmutableSet<Worker<?, ?>> getAllSuccessors(Worker<?, ?> worker) {
-		Set<Worker<?, ?>> closed = new HashSet<>();
 		Queue<Worker<?, ?>> frontier = new ArrayDeque<>();
 		frontier.addAll(Workers.getSuccessors(worker));
+		Set<Worker<?, ?>> closed = new HashSet<>(frontier);
 		while (!frontier.isEmpty()) {
 			Worker<?, ?> cur = frontier.remove();
-			closed.add(cur);
 			for (Worker<?, ?> w : Workers.getSuccessors(cur))
-				if (!closed.contains(w))
+				if (!closed.contains(w)) {
 					frontier.add(w);
+					closed.add(w);
+				}
 		}
 		return ImmutableSet.copyOf(closed);
 	}
