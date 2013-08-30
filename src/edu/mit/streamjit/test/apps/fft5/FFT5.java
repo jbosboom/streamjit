@@ -8,12 +8,14 @@ import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import edu.mit.streamjit.test.Benchmarker;
 
 /**
  * Rewritten StreamIt's asplos06 benchmarks. Refer
@@ -27,30 +29,7 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 public class FFT5 {
 
 	public static void main(String[] args) throws InterruptedException {
-		FFT5Kernel kernel = new FFT5Kernel();
-
-		Input.ManualInput<Float> input = Input.createManualInput();
-		Output.ManualOutput<Void> output = Output.createManualOutput();
-
-		StreamCompiler sc = new DebugStreamCompiler();
-		// StreamCompiler sc = new ConcurrentStreamCompiler(2);
-		// StreamCompiler sc = new DistributedStreamCompiler(2);
-
-		CompiledStream stream = sc.compile(kernel, input, output);
-		// Float output;
-		for (float i = 0; i < 1000;) {
-			if (input.offer(i)) {
-				// System.out.println("Offer success " + i);
-				i++;
-			} else {
-				// System.out.println("Offer failed " + i);
-				Thread.sleep(10);
-			}
-		}
-		// Thread.sleep(1000);
-		input.drain();
-		while (!stream.isDrained())
-			;
+		Benchmarker.runBenchmark(new FFT5Benchmark(), new CompilerStreamCompiler());
 	}
 
 	@ServiceProvider(Benchmark.class)
@@ -64,17 +43,15 @@ public class FFT5 {
 	 * This represents "void->void pipeline FFT5()". FIXME: actual pipeline is
 	 * void->void. Need to support void input, filereading, and file writing.
 	 */
-	public static class FFT5Kernel extends Pipeline<Float, Void> {
+	public static class FFT5Kernel extends Pipeline<Float, Float> {
 		public FFT5Kernel() {
 			int N = 256;
-			add(new FFTTestSource(N));
 			// add FileReader<float>("../input/FFT5.in");
 			add(new FFTReorder(N));
 			for (int j = 2; j <= N; j *= 2) {
 				add(new CombineDFT(j));
 			}
 			// add FileWriter<float>("FFT5.out");
-			add(new FloatPrinter());
 		}
 	}
 
