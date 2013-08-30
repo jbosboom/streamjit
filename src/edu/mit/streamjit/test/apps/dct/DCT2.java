@@ -94,9 +94,7 @@ public class DCT2 {
 	@ServiceProvider(Benchmark.class)
 	public static final class DCT2Benchmark extends SuppliedBenchmark {
 		public DCT2Benchmark() {
-			// TODO: if we checked in the StreamIt input and output files, we
-			// could add a file-reading Input.
-			super("DCT2", DCT2Kernel.class, Datasets.allIntsInRange(0, 1000));
+			super("DCT2", DCT2Kernel.class, new Dataset("idct-input-small.bin", Input.fromBinaryFile(Paths.get("data/idct-input-small.bin"), Integer.class, ByteOrder.LITTLE_ENDIAN)));
 		}
 	}
 
