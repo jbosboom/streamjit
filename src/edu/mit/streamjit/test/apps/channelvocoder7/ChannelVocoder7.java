@@ -1,5 +1,7 @@
 package edu.mit.streamjit.test.apps.channelvocoder7;
 
+import com.google.common.collect.ImmutableList;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
@@ -14,6 +16,14 @@ import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import edu.mit.streamjit.test.Benchmark;
+import edu.mit.streamjit.test.Benchmark.Dataset;
+import edu.mit.streamjit.test.BenchmarkProvider;
+import edu.mit.streamjit.test.Benchmarker;
+import edu.mit.streamjit.test.SuppliedBenchmark;
+import java.nio.ByteOrder;
+import java.nio.file.Paths;
+import java.util.Iterator;
 
 /**
  * Rewritten StreamIt's asplos06 benchmarks. Refer
@@ -25,39 +35,37 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
  * @author Sumanan sumanan@mit.edu
  * @since Mar 12, 2013
  */
-public class ChannelVocoder7 {
+@ServiceProvider(BenchmarkProvider.class)
+public class ChannelVocoder7 implements BenchmarkProvider {
 
 	public static void main(String[] args) throws InterruptedException {
-		ChannelVocoder7Kernel kernel = new ChannelVocoder7Kernel(16, 64);
-
-		Input.ManualInput<Integer> input = Input.createManualInput();
-		Output.ManualOutput<Void> output = Output.createManualOutput();
-
-		StreamCompiler sc = new DebugStreamCompiler();
-		// StreamCompiler sc = new ConcurrentStreamCompiler(2);
-		// StreamCompiler sc = new DistributedStreamCompiler(2);
-
-		CompiledStream stream = sc.compile(kernel, input, output);
-		for (int i = 0; i < 1000;) {
-			if (input.offer(i)) {
-				// System.out.println("Offer success " + i);
-				i++;
-			} else {
-				// System.out.println("Offer failed " + i);
-				Thread.sleep(10);
-			}
-		}
-		// Thread.sleep(20000);
-		input.drain();
-		while (!stream.isDrained())
-			;
+		Benchmarker.runBenchmarks(new ChannelVocoder7(), new DebugStreamCompiler());
 	}
 
-	/**
-	 * Represents "void->void pipeline ChannelVocoder7". FIXME: we need
-	 * void->void pipeline, FileReader<float> and FileWriter<float> to
-	 * represents exact implementation.
-	 */
+	@Override
+	public Iterator<Benchmark> iterator() {
+		Dataset dataset = new Dataset("vocoder.in", Input.fromBinaryFile(Paths.get("data/vocoder.in"), Float.class, ByteOrder.LITTLE_ENDIAN));
+		int[][] filtersTaps = {
+			{4, 64},
+			{8, 64},
+			{12, 64},
+			{4, 128},
+			{8, 128},
+			{12, 128},
+			{16, 64},
+			{16, 128},
+			{20, 64},
+			{20, 128},
+			{24, 64},
+			{24, 128},
+		};
+		ImmutableList.Builder<Benchmark> builder = ImmutableList.builder();
+		for (int[] p : filtersTaps)
+			builder.add(new SuppliedBenchmark(String.format("ChannelVocoder %d, %d", p[0], p[1]),
+					ChannelVocoder7Kernel.class, ImmutableList.of(p[0], p[1]),
+					dataset));
+		return builder.build().iterator();
+	}
 
 	/**
 	 * This is a channel vocoder as described in 6.555 Lab 2. It's salient
@@ -75,16 +83,12 @@ public class ChannelVocoder7 {
 	 * filter bank and a single pitch detector value. This value is either the
 	 * pitch if the sound was voiced or 0 if the sound was unvoiced.
 	 **/
-	public static class ChannelVocoder7Kernel extends Pipeline<Integer, Void> {
+	public static class ChannelVocoder7Kernel extends Pipeline<Float, Float> {
 
 		public ChannelVocoder7Kernel(int numFilters, int numTaps) {
-			add(new DataSource());
-			// add FileReader<float>("../input/input");
 			// low pass filter to filter out high freq noise
 			add(new LowPassFilter(1, (float) ((2 * Math.PI * 5000) / 8000), 64));
 			add(new MainSplitjoin(numFilters, numTaps));
-			add(new FloatPrinter());
-			// add FileWriter<float>("ChannelVocoder7.out");
 		}
 	}
 
