@@ -44,6 +44,9 @@ import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import edu.mit.streamjit.test.Benchmarker;
+import java.nio.ByteOrder;
+import java.nio.file.Paths;
 
 /**
  * Rewritten StreamIt's asplos06 benchmarks. Refer
@@ -57,38 +60,7 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 public class DCT2 {
 
 	public static void main(String[] args) throws InterruptedException {
-		DCT2Kernel kernel = new DCT2Kernel();
-
-		Input.ManualInput<Integer> input = Input.createManualInput();
-		Output.ManualOutput<Integer> output = Output.createManualOutput();
-
-		StreamCompiler sc = new DebugStreamCompiler();
-		// StreamCompiler sc = new ConcurrentStreamCompiler(4);
-		// StreamCompiler sc = new DistributedStreamCompiler(2);
-		// StreamCompiler sc = new BlobHostStreamCompiler(new
-		// CompilerBlobFactory(), 1);
-
-		CompiledStream stream = sc.compile(kernel, input, output);
-		Integer result;
-		for (int i = 0; i < 1000;) {
-			if (input.offer(i)) {
-				// System.out.println("Offer success " + i);
-				i++;
-			} else {
-				// System.out.println("Offer failed " + i);
-				Thread.sleep(10);
-			}
-			while ((result = output.poll()) != null)
-				System.out.println(result);
-		}
-
-		input.drain();
-		while (!stream.isDrained())
-			while ((result = output.poll()) != null)
-				System.out.println(result);
-
-		while ((result = output.poll()) != null)
-			System.out.println(result);
+		Benchmarker.runBenchmark(new DCT2Benchmark(), new DebugStreamCompiler());
 	}
 
 	@ServiceProvider(Benchmark.class)
