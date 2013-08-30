@@ -37,7 +37,6 @@ import java.util.Iterator;
  */
 @ServiceProvider(BenchmarkProvider.class)
 public class ChannelVocoder7 implements BenchmarkProvider {
-
 	public static void main(String[] args) throws InterruptedException {
 		Benchmarker.runBenchmarks(new ChannelVocoder7(), new DebugStreamCompiler());
 	}
@@ -84,7 +83,6 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * pitch if the sound was voiced or 0 if the sound was unvoiced.
 	 **/
 	public static class ChannelVocoder7Kernel extends Pipeline<Float, Float> {
-
 		public ChannelVocoder7Kernel(int numFilters, int numTaps) {
 			// low pass filter to filter out high freq noise
 			add(new LowPassFilter(1, (float) ((2 * Math.PI * 5000) / 8000), 64));
@@ -111,53 +109,9 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	}
 
 	/**
-	 * FIXME: void->float filter DataSource, but here Integer->Float /
-	 *
-	 * /** a simple data source.
-	 **/
-	private static class DataSource extends StatefulFilter<Integer, Float> {
-		int SIZE = 11;
-		int index;
-		float[] x;
-
-		DataSource() {
-			super(1, 1);
-			this.x = new float[SIZE];
-			init();
-		}
-
-		private void init() {
-			index = 0;
-			x[0] = -0.70867825f;
-			x[1] = 0.9750938f;
-			x[2] = -0.009129746f;
-			x[3] = 0.28532153f;
-			x[4] = -0.42127264f;
-			x[5] = -0.95795095f;
-			x[6] = 0.68976873f;
-			x[7] = 0.99901736f;
-			x[8] = -0.8581795f;
-			x[9] = 0.9863592f;
-			x[10] = 0.909825f;
-		}
-
-		public void work() {
-			/**
-			 * TODO: Remove this pop() once void->float fix is done.
-			 */
-			pop(); // As current implementation has no support to fire the
-			// streamgraph with void element, we offer the graph with
-			// random values and just pop out here.
-			push(this.x[this.index]);
-			this.index = (this.index + 1) % this.SIZE;
-		}
-	}
-
-	/**
 	 * Pitch detector.
 	 **/
 	private static class PitchDetector extends Pipeline<Float, Float> {
-
 		PitchDetector(int winsize, int decimation) {
 			add(new CenterClip());
 			add(new CorrPeak(winsize, decimation));
@@ -360,33 +314,6 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 			for (int i = 0; i < (L - 1); i++) {
 				push(0f);
 			}
-		}
-	}
-
-	/**
-	 * Simple sink that just prints the data that is fed to it.
-	 **/
-	private static class FloatPrinter extends Filter<Float, Void> {
-		public FloatPrinter() {
-			super(1, 0);
-		}
-
-		public void work() {
-			System.out.println(pop());
-		}
-	}
-
-	/**
-	 * Simple StreamIt filter that simply absorbs floating point numbers without
-	 * printing them.
-	 **/
-	private static class FloatSink extends Filter<Float, Void> {
-		public FloatSink() {
-			super(1, 0);
-		}
-
-		public void work() {
-			pop();
 		}
 	}
 
