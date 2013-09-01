@@ -28,12 +28,10 @@ import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.Benchmark.Dataset;
-import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.SkipMissingServicesIterator;
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -41,7 +39,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import joptsimple.ArgumentAcceptingOptionSpec;
@@ -200,10 +197,39 @@ public final class Benchmarker {
 		if (throwable != null)
 			throwable.printStackTrace(System.out);
 		if ("wrong output".equals(statusText) && verifier != null && !verifier.buffer.correct()) {
-			//TODO: generate nicer-looking output
-			System.out.println("    wrong: "+new TreeMap<>(verifier.buffer.wrongOutput));
-			System.out.println("   excess: "+verifier.buffer.excessOutput);
-			System.out.println("  missing: "+verifier.buffer.missingOutput);
+			for (Extent e : verifier.buffer.extents) {
+				System.out.format("wrong output at index %d for %d items%n", e.startIndex, e.size());
+				//TODO: work item by item to line these up?
+				System.out.println("  expected: "+e.expected);
+				System.out.println("    actual: "+e.actual);
+			}
+			List<Object> missing = verifier.buffer.missingOutput, excess = verifier.buffer.excessOutput;
+			if (!missing.isEmpty()) {
+				System.out.format("output ended %d items early%n", missing.size());
+				System.out.println("  expected: "+missing);
+			}
+			if (!excess.isEmpty()) {
+				System.out.format("output contained %d excess items%n", excess.size());
+				System.out.println("  actual: "+excess);
+			}
+		}
+	}
+
+	/**
+	 * An Extent represents a range of wrong output starting at a specified
+	 * index.  (The name comes from filesystems.)
+	 */
+	private static final class Extent {
+		private final long startIndex;
+		private final List<Object> expected, actual;
+		private Extent(long startIndex, List<Object> expected, List<Object> actual) {
+			this.startIndex = startIndex;
+			this.expected = expected;
+			this.actual = actual;
+		}
+		public int size() {
+			assert expected.size() == actual.size() : expected.size() + " " + actual.size();
+			return expected.size();
 		}
 	}
 
@@ -221,21 +247,26 @@ public final class Benchmarker {
 		}
 
 		private final class VerifyingBuffer extends AbstractWriteOnlyBuffer {
-			private long index = 0;
 			private final Buffer expected = InputBufferFactory.unwrap(expectedOutput).createReadableBuffer(42);
+			private final List<Extent> extents = new ArrayList<>();
 			private final List<Object> excessOutput = new ArrayList<>();
 			private final List<Object> missingOutput = new ArrayList<>();
-			//expected, actual
-			//TODO: this is high-overhead.
-			private final Map<Long, Pair<Object, Object>> wrongOutput = new HashMap<>();
+			private long index = 0;
+			private Extent current = null;
 			@Override
 			public boolean write(Object t) {
 				if (expected.size() == 0) {
 					excessOutput.add(t);
 				} else {
 					Object e = expected.read();
-					if (!Objects.equals(e, t))
-						wrongOutput.put(index, Pair.make(e, t));
+					if (!Objects.equals(e, t)) {
+						if (current == null) {
+							current = new Extent(index, new ArrayList<>(), new ArrayList<>());
+							extents.add(current);
+						}
+						current.expected.add(e);
+						current.actual.add(t);
+					}
 				}
 				++index;
 				return true;
@@ -245,7 +276,7 @@ public final class Benchmarker {
 					missingOutput.add(expected.read());
 			}
 			public boolean correct() {
-				return excessOutput.isEmpty() && missingOutput.isEmpty() && wrongOutput.isEmpty();
+				return excessOutput.isEmpty() && missingOutput.isEmpty() && extents.isEmpty();
 			}
 		}
 	}
