@@ -46,6 +46,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import joptsimple.ArgumentAcceptingOptionSpec;
@@ -69,7 +74,7 @@ public final class Benchmarker {
 			"edu.mit.streamjit.test.regression", Attribute.REGRESSION
 			);
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException, ExecutionException {
 		OptionParser parser = new OptionParser();
 //		ArgumentAcceptingOptionSpec<String> requiredTestClasses = parser.accepts("require-test-class")
 //				.withRequiredArg().withValuesSeparatedBy(',').ofType(String.class);
@@ -89,6 +94,7 @@ public final class Benchmarker {
 		EnumSet<Attribute> includedAttrs = options.has(includedAttributes) ? EnumSet.copyOf(includedAttributes.values(options)) : EnumSet.noneOf(Attribute.class);
 		EnumSet<Attribute> excludedAttrs = options.has(excludedAttributes) ? EnumSet.copyOf(excludedAttributes.values(options)) : EnumSet.noneOf(Attribute.class);
 
+		List<Callable<Result>> tasks = new ArrayList<>();
 		for (Iterator<BenchmarkProvider> providerIterator = new SkipMissingServicesIterator<>(ServiceLoader.load(BenchmarkProvider.class).iterator()); providerIterator.hasNext();) {
 			BenchmarkProvider provider = providerIterator.next();
 			Attribute providerPackageAttr = getPackageAttr(provider.getClass());
@@ -139,8 +145,30 @@ public final class Benchmarker {
 				};
 				for (StreamCompiler sc : compilers)
 					for (Dataset input : benchmark.inputs())
-						run(benchmark, input, sc).print(System.out);
+						tasks.add(new RunTask(benchmark, input, sc));
 			}
+		}
+
+		ExecutorService executor = Executors.newFixedThreadPool(8);
+		List<Future<Result>> results = executor.invokeAll(tasks);
+		executor.shutdown();
+		for (Future<Result> result : results)
+			result.get().print(System.out);
+		executor.awaitTermination(1, TimeUnit.DAYS);
+	}
+
+	private static final class RunTask implements Callable<Result> {
+		private final Benchmark benchmark;
+		private final Dataset dataset;
+		private final StreamCompiler compiler;
+		private RunTask(Benchmark benchmark, Dataset dataset, StreamCompiler compiler) {
+			this.benchmark = benchmark;
+			this.dataset = dataset;
+			this.compiler = compiler;
+		}
+		@Override
+		public Result call() {
+			return run(benchmark, dataset, compiler);
 		}
 	}
 
