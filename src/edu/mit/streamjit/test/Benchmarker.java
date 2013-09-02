@@ -1,6 +1,7 @@
 package edu.mit.streamjit.test;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
@@ -212,6 +213,44 @@ public final class Benchmarker {
 				System.out.format("output contained %d excess items%n", excess.size());
 				System.out.println("  actual: "+excess);
 			}
+		}
+	}
+
+	public static final class Result {
+		public static enum Kind {
+			OK, WRONG_OUTPUT, EXCEPTION, TIMEOUT;
+		}
+		private final Kind kind;
+		private final Benchmark benchmark;
+		private final Dataset dataset;
+		private final StreamCompiler compiler;
+		private final ImmutableList<Extent> wrongOutput;
+		private final ImmutableList<Object> missingOutput, excessOutput;
+		private final Throwable throwable;
+		private final long compileMillis, runMillis;
+		private Result(Kind kind, Benchmark benchmark, Dataset dataset, StreamCompiler compiler, List<Extent> wrongOutput, List<Object> missingOutput, List<Object> excessOutput, Throwable throwable, long compileMillis, long runMillis) {
+			this.kind = kind;
+			this.benchmark = benchmark;
+			this.dataset = dataset;
+			this.compiler = compiler;
+			this.wrongOutput = ImmutableList.copyOf(wrongOutput);
+			this.missingOutput = ImmutableList.copyOf(missingOutput);
+			this.excessOutput = ImmutableList.copyOf(excessOutput);
+			this.throwable = throwable;
+			this.compileMillis = compileMillis;
+			this.runMillis = runMillis;
+		}
+		private static Result ok(Benchmark benchmark, Dataset dataset, StreamCompiler compiler, long compileMillis, long runMillis) {
+			return new Result(Kind.OK, benchmark, dataset, compiler, null, null, null, null, compileMillis, runMillis);
+		}
+		private static Result wrongOutput(Benchmark benchmark, Dataset dataset, StreamCompiler compiler, long compileMillis, long runMillis, List<Extent> wrongOutput, List<Object> missingOutput, List<Object> excessOutput) {
+			return new Result(Kind.WRONG_OUTPUT, benchmark, dataset, compiler, wrongOutput, missingOutput, excessOutput, null, compileMillis, runMillis);
+		}
+		private static Result exception(Benchmark benchmark, Dataset dataset, StreamCompiler compiler, Throwable throwable) {
+			return new Result(Kind.EXCEPTION, benchmark, dataset, compiler, null, null, null, throwable, -1, -1);
+		}
+		private static Result timeout(Benchmark benchmark, Dataset dataset, StreamCompiler compiler) {
+			return new Result(Kind.TIMEOUT, benchmark, dataset, compiler, null, null, null, null, -1, -1);
 		}
 	}
 
