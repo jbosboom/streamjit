@@ -87,6 +87,8 @@ public final class Benchmarker {
 				.withRequiredArg().withValuesSeparatedBy(',').ofType(Attribute.class);
 		ArgumentAcceptingOptionSpec<Attribute> excludedAttributes = parser.accepts("exclude-attribute")
 				.withRequiredArg().withValuesSeparatedBy(',').ofType(Attribute.class);
+		ArgumentAcceptingOptionSpec<Integer> threadsOpt = parser.accepts("threads")
+				.withOptionalArg().ofType(Integer.class).defaultsTo(Runtime.getRuntime().availableProcessors());
 		parser.accepts("check");
 
 		OptionSet options = parser.parse(args);
@@ -94,8 +96,9 @@ public final class Benchmarker {
 		ImmutableSet<String> excludedClasses = ImmutableSet.copyOf(excludedStreamClasses.values(options));
 		EnumSet<Attribute> includedAttrs = options.has(includedAttributes) ? EnumSet.copyOf(includedAttributes.values(options)) : EnumSet.noneOf(Attribute.class);
 		EnumSet<Attribute> excludedAttrs = options.has(excludedAttributes) ? EnumSet.copyOf(excludedAttributes.values(options)) : EnumSet.noneOf(Attribute.class);
+		int threads = !options.has(threadsOpt) ? 1 : options.valueOf(threadsOpt);
 
-		ExecutorService executor = Executors.newFixedThreadPool(8);
+		ExecutorService executor = Executors.newFixedThreadPool(threads);
 		CountingExecutorCompletionService<Result> completionService = new CountingExecutorCompletionService<>(executor);
 		for (Iterator<BenchmarkProvider> providerIterator = new SkipMissingServicesIterator<>(ServiceLoader.load(BenchmarkProvider.class).iterator()); providerIterator.hasNext();)
 			completionService.submit(new BenchmarkProviderFilterTask(providerIterator.next(),
