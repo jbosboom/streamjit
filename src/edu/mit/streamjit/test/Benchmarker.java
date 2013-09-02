@@ -1,6 +1,7 @@
 package edu.mit.streamjit.test;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -31,6 +32,11 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.SkipMissingServicesIterator;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -132,7 +138,8 @@ public final class Benchmarker {
 	//				new CompilerStreamCompiler().multiplier(10000),
 				};
 				for (StreamCompiler sc : compilers)
-					runBenchmark(benchmark, sc);
+					for (Dataset input : benchmark.inputs())
+						run(benchmark, input, sc).print(System.out);
 			}
 		}
 	}
@@ -145,9 +152,11 @@ public final class Benchmarker {
 	 * @param provider the provider to run benchmarks of
 	 * @param compiler the compiler to use
 	 */
-	public static void runBenchmarks(BenchmarkProvider provider, StreamCompiler compiler) {
+	public static List<Result> runBenchmarks(BenchmarkProvider provider, StreamCompiler compiler) {
+		ImmutableList.Builder<Result> results = ImmutableList.builder();
 		for (Benchmark benchmark : provider)
-			runBenchmark(benchmark, compiler);
+			results.addAll(runBenchmark(benchmark, compiler));
+		return results.build();
 	}
 
 	/**
@@ -158,17 +167,17 @@ public final class Benchmarker {
 	 * @param benchmark the benchmark to run
 	 * @param compiler the compiler to use
 	 */
-	public static void runBenchmark(Benchmark benchmark, StreamCompiler compiler) {
+	public static List<Result> runBenchmark(Benchmark benchmark, StreamCompiler compiler) {
+		ImmutableList.Builder<Result> results = ImmutableList.builder();
 		for (Dataset input : benchmark.inputs())
-			run(benchmark, input, compiler);
+			results.add(run(benchmark, input, compiler));
+		return results.build();
 	}
 
 	private static final long TIMEOUT_DURATION = 1;
 	private static final TimeUnit TIMEOUT_UNIT = TimeUnit.MINUTES;
-	private static void run(Benchmark benchmark, Dataset input, StreamCompiler compiler) {
-		String statusText = null;
-		long compileMillis = -1, runMillis = -1;
-		Throwable throwable = null;
+	private static Result run(Benchmark benchmark, Dataset input, StreamCompiler compiler) {
+		long compileMillis, runMillis;
 		VerifyingOutputBufferFactory verifier = null;
 		if (input.output() != null)
 			verifier = new VerifyingOutputBufferFactory(input.output());
@@ -182,38 +191,16 @@ public final class Benchmarker {
 			stopwatch.stop();
 			runMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 		} catch (TimeoutException ex) {
-			statusText = "timed out";
+			return Result.timeout(benchmark, input, compiler);
 		} catch (InterruptedException ex) {
-			statusText = "interrupted";
+			return Result.exception(benchmark, input, compiler, ex);
 		} catch (Throwable t) {
-			statusText = "failed: "+t;
-			throwable = t;
+			return Result.exception(benchmark, input, compiler, t);
 		}
-		if (statusText == null && verifier != null && !verifier.buffer.correct())
-			statusText = "wrong output";
-		if (statusText == null)
-			statusText = String.format("%d ms compile, %d ms run", compileMillis, runMillis);
-
-		System.out.format("%s / %s / %s: %s%n", compiler, benchmark, input, statusText);
-		if (throwable != null)
-			throwable.printStackTrace(System.out);
-		if ("wrong output".equals(statusText) && verifier != null && !verifier.buffer.correct()) {
-			for (Extent e : verifier.buffer.extents) {
-				System.out.format("wrong output at index %d for %d items%n", e.startIndex, e.size());
-				//TODO: work item by item to line these up?
-				System.out.println("  expected: "+e.expected);
-				System.out.println("    actual: "+e.actual);
-			}
-			List<Object> missing = verifier.buffer.missingOutput, excess = verifier.buffer.excessOutput;
-			if (!missing.isEmpty()) {
-				System.out.format("output ended %d items early%n", missing.size());
-				System.out.println("  expected: "+missing);
-			}
-			if (!excess.isEmpty()) {
-				System.out.format("output contained %d excess items%n", excess.size());
-				System.out.println("  actual: "+excess);
-			}
-		}
+		if (verifier != null && !verifier.buffer.correct())
+			return Result.wrongOutput(benchmark, input, compiler, compileMillis, runMillis,
+					verifier.buffer.extents, verifier.buffer.missingOutput, verifier.buffer.excessOutput);
+		return Result.ok(benchmark, input, compiler, compileMillis, runMillis);
 	}
 
 	public static final class Result {
@@ -233,9 +220,9 @@ public final class Benchmarker {
 			this.benchmark = benchmark;
 			this.dataset = dataset;
 			this.compiler = compiler;
-			this.wrongOutput = ImmutableList.copyOf(wrongOutput);
-			this.missingOutput = ImmutableList.copyOf(missingOutput);
-			this.excessOutput = ImmutableList.copyOf(excessOutput);
+			this.wrongOutput = wrongOutput == null ? null : ImmutableList.copyOf(wrongOutput);
+			this.missingOutput = missingOutput == null ? null : ImmutableList.copyOf(missingOutput);
+			this.excessOutput = excessOutput == null ? null : ImmutableList.copyOf(excessOutput);
 			this.throwable = throwable;
 			this.compileMillis = compileMillis;
 			this.runMillis = runMillis;
@@ -251,6 +238,75 @@ public final class Benchmarker {
 		}
 		private static Result timeout(Benchmark benchmark, Dataset dataset, StreamCompiler compiler) {
 			return new Result(Kind.TIMEOUT, benchmark, dataset, compiler, null, null, null, null, -1, -1);
+		}
+		public void print(OutputStream stream) {
+			print(stream, new HumanResultFormatter());
+		}
+		public void print(Writer writer) {
+			print(writer, new HumanResultFormatter());
+		}
+		public void print(OutputStream stream, ResultFormatter formatter) {
+			print(new OutputStreamWriter(stream, StandardCharsets.UTF_8), formatter);
+		}
+		public void print(Writer writer, ResultFormatter formatter) {
+			print(new PrintWriter(writer), formatter);
+		}
+		private void print(PrintWriter writer, ResultFormatter formatter) {
+			writer.write(formatter.format(this));
+			writer.flush();
+		}
+		@Override
+		public String toString() {
+			return new HumanResultFormatter().format(this);
+		}
+	}
+
+	/**
+	 * Formats (stringifies) Result objects.
+	 */
+	public static interface ResultFormatter {
+		public String format(Result result);
+	}
+
+	/**
+	 * Stringifies Result objects in human-readable form.
+	 */
+	public static final class HumanResultFormatter implements ResultFormatter {
+		@Override
+		public String format(Result result) {
+			StringBuilder sb = new StringBuilder();
+			String statusText = "BUG";
+			if (result.kind == Result.Kind.OK)
+				statusText = String.format("%d ms compile, %d ms run", result.compileMillis, result.runMillis);
+			else if (result.kind == Result.Kind.WRONG_OUTPUT)
+				statusText = "wrong output";
+			else if (result.kind == Result.Kind.EXCEPTION)
+				statusText = "failed";
+			else if (result.kind == Result.Kind.TIMEOUT)
+				statusText = "timed out";
+			sb.append(String.format("%s / %s / %s: %s%n", result.compiler, result.benchmark, result.dataset, statusText));
+
+			if (result.kind == Result.Kind.EXCEPTION)
+				sb.append(Throwables.getStackTraceAsString(result.throwable));
+
+			if (result.kind == Result.Kind.WRONG_OUTPUT) {
+				for (Extent e : result.wrongOutput) {
+					sb.append(String.format("wrong output at index %d for %d items%n", e.startIndex, e.size()));
+					//TODO: work item by item to line these up?
+					sb.append(String.format("  expected: "+e.expected));
+					sb.append(String.format("    actual: "+e.actual));
+				}
+				if (!result.missingOutput.isEmpty()) {
+					sb.append(String.format("output ended %d items early%n", result.missingOutput.size()));
+					sb.append(String.format("  expected: "+result.missingOutput));
+				}
+				if (!result.excessOutput.isEmpty()) {
+					sb.append(String.format("output contained %d excess items%n", result.excessOutput.size()));
+					sb.append(String.format("  actual: "+result.excessOutput));
+				}
+			}
+
+			return sb.toString();
 		}
 	}
 
