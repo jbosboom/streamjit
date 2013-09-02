@@ -30,6 +30,7 @@ import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.Benchmark.Dataset;
+import edu.mit.streamjit.util.CountingExecutorCompletionService;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.SkipMissingServicesIterator;
 import java.io.OutputStream;
@@ -48,9 +49,9 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import joptsimple.ArgumentAcceptingOptionSpec;
@@ -94,69 +95,122 @@ public final class Benchmarker {
 		EnumSet<Attribute> includedAttrs = options.has(includedAttributes) ? EnumSet.copyOf(includedAttributes.values(options)) : EnumSet.noneOf(Attribute.class);
 		EnumSet<Attribute> excludedAttrs = options.has(excludedAttributes) ? EnumSet.copyOf(excludedAttributes.values(options)) : EnumSet.noneOf(Attribute.class);
 
-		List<Callable<Result>> tasks = new ArrayList<>();
-		for (Iterator<BenchmarkProvider> providerIterator = new SkipMissingServicesIterator<>(ServiceLoader.load(BenchmarkProvider.class).iterator()); providerIterator.hasNext();) {
-			BenchmarkProvider provider = providerIterator.next();
-			Attribute providerPackageAttr = getPackageAttr(provider.getClass());
-			if (providerPackageAttr != null && excludedAttrs.contains(providerPackageAttr))
-				continue;
-			next_benchmark: for (Benchmark benchmark : provider) {
-				//If we exclude APP, SANITY or REGRESSION, we can eliminate some
-				//benchmarks without instantiating a graph.
-				Attribute packageAttr = getPackageAttr(benchmark.getClass());
-				if (packageAttr != null && excludedAttrs.contains(packageAttr))
-					continue next_benchmark;
-
-				AttributeVisitor visitor = new AttributeVisitor();
-				benchmark.instantiate().visit(visitor);
-				if (providerPackageAttr != null)
-					visitor.attributes.add(providerPackageAttr);
-				if (packageAttr != null)
-					visitor.attributes.add(packageAttr);
-
-				//Exclusion trumps inclusion, so first check for exclusion.
-				if (!Sets.intersection(visitor.attributes, excludedAttrs).isEmpty())
-					continue next_benchmark;
-				for (Class<?> klass : visitor.classes)
-					if (excludedClasses.contains(klass.getSimpleName()) || excludedClasses.contains(klass.getCanonicalName()))
-						continue next_benchmark;
-
-				//Now check inclusion.
-				boolean included = false;
-				if (!Sets.intersection(visitor.attributes, includedAttrs).isEmpty())
-					included = true;
-				if (!included)
-					for (Class<?> klass : visitor.classes)
-						if (includedClasses.contains(klass.getSimpleName()) || includedClasses.contains(klass.getCanonicalName()))
-							included = true;
-				if (!included)
-					continue next_benchmark;
-
-				if (options.has("check"))
-					benchmark.instantiate().visit(new CheckVisitor());
-
-				StreamCompiler[] compilers = {
-					new DebugStreamCompiler(),
-					new CompilerStreamCompiler(),
-	//				new CompilerStreamCompiler().multiplier(10),
-	//				new CompilerStreamCompiler().multiplier(100),
-	//				new CompilerStreamCompiler().multiplier(1000),
-	//				new CompilerStreamCompiler().multiplier(10000),
-				};
-				for (StreamCompiler sc : compilers)
-					for (Dataset input : benchmark.inputs())
-						tasks.add(new RunTask(benchmark, input, sc));
-			}
-		}
-
 		ExecutorService executor = Executors.newFixedThreadPool(8);
-		List<Future<Result>> results = executor.invokeAll(tasks);
+		CountingExecutorCompletionService<Result> completionService = new CountingExecutorCompletionService<>(executor);
+		for (Iterator<BenchmarkProvider> providerIterator = new SkipMissingServicesIterator<>(ServiceLoader.load(BenchmarkProvider.class).iterator()); providerIterator.hasNext();)
+			completionService.submit(new BenchmarkProviderFilterTask(providerIterator.next(),
+					includedClasses, excludedClasses, includedAttrs, excludedAttrs, completionService), null);
+
+		while (completionService.pendingTasks() > 0) {
+			Result r = completionService.take().get();
+			if (r != null)
+				r.print(System.out);
+		}
 		executor.shutdown();
-		for (Future<Result> result : results)
-			result.get().print(System.out);
-		executor.awaitTermination(1, TimeUnit.DAYS);
+		executor.awaitTermination(5, TimeUnit.SECONDS);
+		//Even if we didn't shut down cleanly, we're done.
+		System.exit(0);
 	}
 
+	private static final class BenchmarkProviderFilterTask implements Runnable {
+		private final BenchmarkProvider provider;
+		private final Set<String> includedClasses, excludedClasses;
+		private final Set<Attribute> includedAttrs, excludedAttrs;
+		private final ExecutorCompletionService<Result> executor;
+		private BenchmarkProviderFilterTask(BenchmarkProvider provider, Set<String> includedClasses, Set<String> excludedClasses, Set<Attribute> includedAttrs, Set<Attribute> excludedAttrs, ExecutorCompletionService<Result> executor) {
+			this.provider = provider;
+			this.includedClasses = includedClasses;
+			this.excludedClasses = excludedClasses;
+			this.includedAttrs = includedAttrs;
+			this.excludedAttrs = excludedAttrs;
+			this.executor = executor;
+		}
+		@Override
+		public void run() {
+			Attribute providerPackageAttr = getPackageAttr(provider.getClass());
+			if (providerPackageAttr != null && excludedAttrs.contains(providerPackageAttr))
+				return;
+			for (Benchmark benchmark : provider) {
+				executor.submit(new BenchmarkFilterTask(benchmark, providerPackageAttr,
+						includedClasses, excludedClasses, includedAttrs, excludedAttrs, executor), null);
+			}
+		}
+	}
+
+	/**
+	 * Filters a benchmark based on the command-line options, optionally
+	 * submitting RunTasks.
+	 */
+	private static final class BenchmarkFilterTask implements Runnable {
+		private final Benchmark benchmark;
+		private final Attribute providerPackageAttr;
+		private final Set<String> includedClasses, excludedClasses;
+		private final Set<Attribute> includedAttrs, excludedAttrs;
+		private final ExecutorCompletionService<Result> executor;
+		private BenchmarkFilterTask(Benchmark benchmark, Attribute providerPackageAttr, Set<String> includedClasses, Set<String> excludedClasses, Set<Attribute> includedAttrs, Set<Attribute> excludedAttrs, ExecutorCompletionService<Result> executor) {
+			this.benchmark = benchmark;
+			this.providerPackageAttr = providerPackageAttr;
+			this.includedClasses = includedClasses;
+			this.excludedClasses = excludedClasses;
+			this.includedAttrs = includedAttrs;
+			this.excludedAttrs = excludedAttrs;
+			this.executor = executor;
+		}
+		@Override
+		public void run() {
+			//If we exclude APP, SANITY or REGRESSION, we can eliminate some
+			//benchmarks without instantiating a graph.
+			Attribute packageAttr = getPackageAttr(benchmark.getClass());
+			if (packageAttr != null && excludedAttrs.contains(packageAttr))
+				return;
+
+			AttributeVisitor visitor = new AttributeVisitor();
+			benchmark.instantiate().visit(visitor);
+			if (providerPackageAttr != null)
+				visitor.attributes.add(providerPackageAttr);
+			if (packageAttr != null)
+				visitor.attributes.add(packageAttr);
+
+			//Exclusion trumps inclusion, so first check for exclusion.
+			if (!Sets.intersection(visitor.attributes, excludedAttrs).isEmpty())
+				return;
+			for (Class<?> klass : visitor.classes)
+				if (excludedClasses.contains(klass.getSimpleName()) || excludedClasses.contains(klass.getCanonicalName()))
+					return;
+
+			//Now check inclusion.
+			boolean included = false;
+			if (!Sets.intersection(visitor.attributes, includedAttrs).isEmpty())
+				included = true;
+			if (!included)
+				for (Class<?> klass : visitor.classes)
+					if (includedClasses.contains(klass.getSimpleName()) || includedClasses.contains(klass.getCanonicalName()))
+						included = true;
+			if (!included)
+				return;
+
+			//TODO: checking here isn't great because it's hard to report the
+			//exception.
+//			if (options.has("check"))
+//				benchmark.instantiate().visit(new CheckVisitor());
+
+			StreamCompiler[] compilers = {
+				new DebugStreamCompiler(),
+				new CompilerStreamCompiler(),
+//				new CompilerStreamCompiler().multiplier(10),
+//				new CompilerStreamCompiler().multiplier(100),
+//				new CompilerStreamCompiler().multiplier(1000),
+//				new CompilerStreamCompiler().multiplier(10000),
+			};
+			for (StreamCompiler sc : compilers)
+				for (Dataset input : benchmark.inputs())
+					executor.submit(new RunTask(benchmark, input, sc));
+		}
+	}
+
+	/**
+	 * Runs a benchmark with a given dataset and compiler.
+	 */
 	private static final class RunTask implements Callable<Result> {
 		private final Benchmark benchmark;
 		private final Dataset dataset;
