@@ -31,6 +31,7 @@ import edu.mit.streamjit.impl.common.TestFilters.Batcher;
 import edu.mit.streamjit.impl.common.TestFilters.Multiplier;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import edu.mit.streamjit.impl.interp.InterpreterStreamCompiler;
 import edu.mit.streamjit.util.ConstructorSupplier;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.ilpsolve.InfeasibleSystemException;
@@ -313,7 +314,7 @@ public final class StreamFuzzer {
 			InfeasibleSystemException.class
 			);
 	public static void main(String[] args) throws InterruptedException {
-		StreamCompiler debugSC = new DebugStreamCompiler();
+		StreamCompiler debugSC = new InterpreterStreamCompiler();
 		StreamCompiler compilerSC = new CompilerStreamCompiler();
 		Set<FuzzElement> completedCases = new HashSet<>();
 		int generated;
