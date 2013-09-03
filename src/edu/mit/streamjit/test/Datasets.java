@@ -7,7 +7,11 @@ import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
+import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Output;
+import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
@@ -21,7 +25,9 @@ import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * Factories for Benchmark.Dataset instances.
@@ -147,6 +153,26 @@ public final class Datasets {
 				}
 
 				return input;
+			}
+		});
+	}
+
+	/**
+	 * Returns an Input containing the output of the given graph on the given
+	 * input when compiled with the given compiler.
+	 */
+	public static <I, J> Input<J> outputOf(final StreamCompiler sc, final OneToOneElement<I, J> graph, final Input<I> input) {
+		return lazyInput(new Supplier<Input<J>>() {
+			@Override
+			public Input<J> get() {
+				List<J> output = new ArrayList<>();
+				CompiledStream stream = sc.compile(graph, input, Output.toCollection(output));
+				try {
+					stream.awaitDrained();
+				} catch (InterruptedException ex) {
+					throw new RuntimeException(ex);
+				}
+				return Input.fromIterable(output);
 			}
 		});
 	}
