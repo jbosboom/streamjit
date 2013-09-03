@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.common;
 import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.util.Template;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -25,12 +26,12 @@ public final class NIOBuffers {
 
 	//<editor-fold defaultstate="collapsed" desc="Code generator">
 	private static final class CodeGenRecord {
-		private final Class<?> buffer, wrapper;
-		private final String byteBufferToTypeBuffer;
+		private final String buffer, wrapper;
+		private final String toTypeBuffer;
 		private CodeGenRecord(Class<?> buffer, Class<?> wrapper) {
-			this.buffer = buffer;
-			this.wrapper = wrapper;
-			this.byteBufferToTypeBuffer = buffer == ByteBuffer.class ? "" : ".as"+buffer.getSimpleName()+"()";
+			this.buffer = buffer.getSimpleName();
+			this.wrapper = wrapper.getSimpleName();
+			this.toTypeBuffer = buffer == ByteBuffer.class ? "" : ".as"+buffer.getSimpleName()+"()";
 		}
 	}
 
@@ -45,9 +46,9 @@ public final class NIOBuffers {
 			);
 
 	private static final String BUFFER_TEMPLATE =
-			"	private static final class $BUFFER$Buffer extends AbstractReadOnlyBuffer {\n"+
-			"		private final $BUFFER$ buffer;\n"+
-			"		private $BUFFER$Buffer($BUFFER$ buffer) {\n"+
+			"	private static final class ${buffer}Buffer extends AbstractReadOnlyBuffer {\n"+
+			"		private final ${buffer} buffer;\n"+
+			"		private ${buffer}Buffer(${buffer} buffer) {\n"+
 			"			this.buffer = buffer;\n"+
 			"		}\n"+
 			"		@Override\n"+
@@ -62,30 +63,26 @@ public final class NIOBuffers {
 			"		public int size() {\n"+
 			"			return buffer.remaining();\n"+
 			"		}\n"+
-			"	}";
+			"	}\n";
 	private static final String WRAP_HEADER =
 			"	public static Buffer wrap(ByteBuffer buffer, Class<?> type) {\n";
 	private static final String WRAP_PER_RECORD =
-			"		if (type == $WRAPPER$.class) return new $BUFFER$Buffer(buffer$TOTYPEBUFFER$);\n";
+			"		if (type == ${wrapper}.class) return new ${buffer}Buffer(buffer${toTypeBuffer});\n";
 	private static final String WRAP_FOOTER =
 			"		throw new AssertionError(\"not a wrapper type: \"+type);\n"+
-			"	}";
-
-	private static String replace(String string, CodeGenRecord record) {
-		return string.replace("$BUFFER$", record.buffer.getSimpleName())
-				.replace("$WRAPPER$", record.wrapper.getSimpleName())
-				.replace("$TOTYPEBUFFER$", record.byteBufferToTypeBuffer);
-	}
+			"	}\n";
 
 	public static void main(String[] args) {
-		System.out.println("	//<editor-fold defaultstate=\"collapsed\" desc=\"Generated code\">");
-		System.out.print(WRAP_HEADER);
-		for (CodeGenRecord r : RECORDS)
-			System.out.print(replace(WRAP_PER_RECORD, r));
-		System.out.println(WRAP_FOOTER);
-		for (CodeGenRecord r : RECORDS)
-			System.out.println(replace(BUFFER_TEMPLATE, r));
-		System.out.println("	//</editor-fold>");
+		StringBuffer sb = new StringBuffer();
+		sb.append("	//<editor-fold defaultstate=\"collapsed\" desc=\"Generated code\">\n");
+		sb.append(WRAP_HEADER);
+		Template ifReturn = new Template(WRAP_PER_RECORD);
+		ifReturn.replaceReflect(RECORDS, sb);
+		sb.append(WRAP_FOOTER);
+		Template bufferClass = new Template(BUFFER_TEMPLATE);
+		bufferClass.replaceReflect(RECORDS, sb);
+		sb.append("	//</editor-fold>\n");
+		System.out.println(sb.toString());
 		System.out.flush();
 	}
 	//</editor-fold>
