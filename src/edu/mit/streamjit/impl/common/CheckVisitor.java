@@ -16,6 +16,7 @@ import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamElement;
+import edu.mit.streamjit.api.UnbalancedSplitjoinException;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.util.Fraction;
 import edu.mit.streamjit.util.Pair;
@@ -251,7 +252,7 @@ public final class CheckVisitor extends SerialCompositeStreamVisitor {
 				Range<Fraction> branchRate = ctx.branchRates.get(i);
 				if (!splitjoinRate.isConnected(branchRate) ||
 						(splitjoinRate = splitjoinRate.intersection(branchRate)).isEmpty())
-					throw new IllegalStreamGraphException("unbalanced splitjoin", splitjoin);
+					throw new UnbalancedSplitjoinException(splitjoin, ctx.branchRates);
 			}
 			currentRate = multiply(ctx.rateAtEntry, splitjoinRate);
 		}
