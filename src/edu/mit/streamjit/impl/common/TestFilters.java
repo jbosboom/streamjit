@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Rate;
+import java.util.Arrays;
 
 /**
  * Some filters for tests.  Some of these may graduate to the API package in a
@@ -20,6 +21,10 @@ public final class TestFilters {
 		public void work() {
 			push(pop() + addend);
 		}
+		@Override
+		public String toString() {
+			return String.format("Adder(%d)", addend);
+		}
 	}
 
 	public static final class Multiplier extends Filter<Integer, Integer> {
@@ -31,6 +36,10 @@ public final class TestFilters {
 		@Override
 		public void work() {
 			push(pop() * multiplier);
+		}
+		@Override
+		public String toString() {
+			return String.format("Multiplier(%d)", multiplier);
 		}
 	}
 
@@ -51,17 +60,27 @@ public final class TestFilters {
 			for (int i = 0; i < permutation.length; ++i)
 				pop();
 		}
+		@Override
+		public String toString() {
+			return String.format("Permuter(%s)", Arrays.toString(permutation));
+		}
 	}
 
 	public static final class Batcher extends Permuter {
+		private final int batchSize;
 		public Batcher(int batchSize) {
 			super(batchSize, batchSize, makeIdentityPermutation(batchSize));
+			this.batchSize = batchSize;
 		}
 		private static int[] makeIdentityPermutation(int batchSize) {
 			int[] retval = new int[batchSize];
 			for (int i = 0; i < retval.length; ++i)
 				retval[i] = i;
 			return retval;
+		}
+		@Override
+		public String toString() {
+			return String.format("Batcher(%d)", batchSize);
 		}
 	}
 }
