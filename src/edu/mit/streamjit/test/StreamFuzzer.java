@@ -23,6 +23,7 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.StreamElement;
+import edu.mit.streamjit.api.UnbalancedSplitjoinException;
 import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.common.PrintStreamVisitor;
 import edu.mit.streamjit.impl.common.TestFilters.Adder;
@@ -101,11 +102,18 @@ public final class StreamFuzzer {
 
 	private static final int MAX_SPLITJOIN_BRANCHES = 5;
 	private static FuzzSplitjoin makeSplitjoin(int depthLimit) {
-		int numBranches = rng.nextInt(MAX_SPLITJOIN_BRANCHES) + 1;
-		ImmutableList.Builder<FuzzElement> branches = ImmutableList.builder();
-		for (int i = 0; i < numBranches; ++i)
-			branches.add(makeStream(depthLimit - 1));
-		return new FuzzSplitjoin(makeSplitter(), makeJoiner(), branches.build());
+		CheckVisitor cv = new CheckVisitor();
+		while (true) {
+			try {
+				int numBranches = rng.nextInt(MAX_SPLITJOIN_BRANCHES) + 1;
+				ImmutableList.Builder<FuzzElement> branches = ImmutableList.builder();
+				for (int i = 0; i < numBranches; ++i)
+					branches.add(makeStream(depthLimit - 1));
+				FuzzSplitjoin sj = new FuzzSplitjoin(makeSplitter(), makeJoiner(), branches.build());
+				sj.instantiate().visit(cv);
+				return sj;
+			} catch (UnbalancedSplitjoinException ex) {}
+		}
 	}
 
 	private static final ImmutableList<FuzzSplitter> SPLITTERS = ImmutableList.<FuzzSplitter>builder()
