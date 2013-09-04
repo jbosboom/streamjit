@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Range;
 import com.google.common.collect.Table;
 import com.google.common.math.IntMath;
 import edu.mit.streamjit.api.Filter;
@@ -27,6 +28,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.IOInfo;
@@ -192,7 +194,6 @@ public final class Compiler {
 			n.internalSchedule();
 		externalSchedule();
 		computeInitSchedule();
-		allocateCores();
 		declareBuffers();
 		//We generate a work method for each worker (which may result in
 		//duplicates, but is required in general to handle worker fields), then
@@ -243,19 +244,6 @@ public final class Compiler {
 				}
 			}
 		} while (fused);
-	}
-
-	/**
-	 * Allocates StreamNodes to cores as directed by the configuration, possibly
-	 * fissing them (if assigning one node to multiple cores).
-	 * TODO: do we want to permit unequal fiss allocations (e.g., 6 SSEs here,
-	 * 3 SSEs there)?
-	 */
-	private void allocateCores() {
-		//TODO: if stateful, can't put on more than one core
-		for (StreamNode n : ImmutableSet.copyOf(streamNodes.values()))
-			for (int i = 0; i < maxNumCores; ++i)
-				n.cores.add(i);
 	}
 
 	/**
@@ -545,7 +533,6 @@ public final class Compiler {
 	 * each core.  (The buffers are assumed to be already prepared.)
 	 */
 	private void generateCoreCode() {
-		Map<Integer, Method> coreCodeMethods = new HashMap<>();
 		List<StreamNode> nodes = new ArrayList<>(ImmutableSet.copyOf(streamNodes.values()));
 		Collections.sort(nodes, new Comparator<StreamNode>() {
 			@Override
@@ -554,51 +541,60 @@ public final class Compiler {
 			}
 		});
 
-		for (StreamNode sn : nodes)
-			for (int core : sn.cores)
-				if (!coreCodeMethods.containsKey(core)) {
-					Method m = new Method("corework"+core, module.types().getMethodType(void.class), EnumSet.of(Modifier.PUBLIC, Modifier.STATIC), blobKlass);
-					coreCodeMethods.put(core, m);
-					m.basicBlocks().add(new BasicBlock(module, "entry"));
-				}
+		//For each core, a list of the nodework-iteration pairs allocated to
+		//that core.
+		List<List<Pair<Method, Range<Integer>>>> allocations = new ArrayList<>(maxNumCores);
+		for (int i = 0; i < maxNumCores; ++i)
+			allocations.add(new ArrayList<Pair<Method, Range<Integer>>>());
 
-		for (StreamNode sn : nodes) {
-			Integer iterations = schedule.getExecutions(sn);
-			//TODO: at some point, this division should be config-controlled, so
-			//we can balance well in the presence of stateful (unparallelizable)
-			//filters.  For now just divide evenly.
-			//Assign full iterations to all cores, then distribute the remainder
-			//evenly.
-			int full = IntMath.divide(iterations, sn.cores.size(), RoundingMode.DOWN);
-			int remainder = iterations - full*sn.cores.size();
-			assert remainder >= 0 && remainder < sn.cores.size() : String.format("divided %d / %d into %d with rem %d", iterations, sn.cores.size(), full, remainder);
-			int multiple = 0;
-			for (int i = 0; i < sn.cores.size(); ++i) {
-				Method coreCode = coreCodeMethods.get(sn.cores.get(i));
-				int howMany = full + (i < remainder ? 1 : 0);
-				if (howMany > 0) {
-					BasicBlock previousBlock = coreCode.basicBlocks().get(coreCode.basicBlocks().size()-1);
-					BasicBlock loop = makeCallLoop(sn.workMethod, multiple, multiple + howMany, previousBlock, "node"+sn.id);
-					coreCode.basicBlocks().add(loop);
-					if (previousBlock.getTerminator() == null)
-						previousBlock.instructions().add(new JumpInst(loop));
-					else
-						((BranchInst)previousBlock.getTerminator()).setOperand(3, loop);
-					multiple += howMany;
-				}
+		for (StreamNode node : nodes) {
+			int iterations = schedule.getExecutions(node);
+			int i = 0;
+			for (int core = 0; core < allocations.size() && i < iterations; ++core) {
+				String name = String.format("node%dcore%diter", node.id, core);
+				IntParameter parameter = config.getParameter(name, IntParameter.class);
+				if (parameter == null || parameter.getValue() == 0) continue;
+
+				//If the node is stateful, we must put all allocations on the
+				//same core. Arbitrarily pick the first core with an allocation.
+				//If no cores have an allocation,
+				int allocation = node.isStateful() ? iterations :
+						Math.min(parameter.getValue(), iterations - i);
+				allocations.get(core).add(new Pair<>(node.workMethod, Range.closedOpen(i, i+allocation)));
+				i += allocation;
 			}
-			assert multiple == iterations : "Didn't assign all iterations to cores";
+
+			//If we have iterations left over not assigned to a core,
+			//arbitrarily put them on core 0.
+			if (i < iterations)
+				allocations.get(0).add(new Pair<>(node.workMethod, Range.closedOpen(i, iterations)));
 		}
 
-		for (Method m : coreCodeMethods.values()) {
-			BasicBlock exitBlock = new BasicBlock(module, "exit");
-			exitBlock.instructions().add(new ReturnInst(module.types().getVoidType()));
-			BasicBlock previousBlock = m.basicBlocks().get(m.basicBlocks().size()-1);
-			m.basicBlocks().add(exitBlock);
-			if (previousBlock.getTerminator() == null)
-				previousBlock.instructions().add(new JumpInst(exitBlock));
-			else
-				((BranchInst)previousBlock.getTerminator()).setOperand(3, exitBlock);
+		//For each core with allocations, make a corework method.
+		for (int core = 0; core < allocations.size(); ++core) {
+			List<Pair<Method, Range<Integer>>> stuff = allocations.get(core);
+			if (stuff.isEmpty()) continue;
+
+			Method coreCode = new Method("corework"+core, module.types().getMethodType(void.class), EnumSet.of(Modifier.PUBLIC, Modifier.STATIC), blobKlass);
+			BasicBlock previousBlock = new BasicBlock(module, "entry");
+			coreCode.basicBlocks().add(previousBlock);
+			for (Pair<Method, Range<Integer>> allocation : stuff) {
+				BasicBlock loop = makeCallLoop(allocation.first, allocation.second.lowerEndpoint(), allocation.second.upperEndpoint(), previousBlock, allocation.first.getName());
+				coreCode.basicBlocks().add(loop);
+				if (previousBlock.getTerminator() == null)
+					previousBlock.instructions().add(new JumpInst(loop));
+				else
+					((BranchInst)previousBlock.getTerminator()).setOperand(3, loop);
+				previousBlock = loop;
+			}
+
+			BasicBlock exit = new BasicBlock(module, "exit");
+			exit.instructions().add(new ReturnInst(module.types().getVoidType()));
+			coreCode.basicBlocks().add(exit);
+			//We only generate corework for cores with allocations, so we should
+			//always have an allocation above us.
+			assert previousBlock.getTerminator() instanceof BranchInst : previousBlock.getTerminator();
+			((BranchInst)previousBlock.getTerminator()).setOperand(3, exit);
 		}
 	}
 
@@ -747,7 +743,6 @@ public final class Compiler {
 		 * Maps each worker's fields to the actual values of those fields.
 		 */
 		private final Table<Worker<?, ?>, Field, Object> fieldValues = HashBasedTable.create();
-		private final List<Integer> cores = new ArrayList<>();
 
 		private StreamNode(Worker<?, ?> worker) {
 			this.id = Workers.getIdentifier(worker);
