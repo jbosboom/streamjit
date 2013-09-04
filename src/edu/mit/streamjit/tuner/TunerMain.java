@@ -10,6 +10,7 @@ import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
+import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.Benchmark;
@@ -45,13 +46,21 @@ public class TunerMain {
 	private double runApp(Benchmark app, Configuration cfg)
 			throws InterruptedException {
 		StreamCompiler sc;
-		IntParameter CompilerType = cfg.getParameter("compiler",
+		/*
+		 * IntParameter compilerType = cfg.getParameter("compiler",
+		 * IntParameter.class);
+		 */
+
+		IntParameter multiplier = cfg.getParameter("multiplier",
 				IntParameter.class);
-		int val = CompilerType.getValue();
-		if (val == 0)
-			sc = new DebugStreamCompiler();
-		else
-			sc = new ConcurrentStreamCompiler(val);
+		// int val = compilerType.getValue();
+		/*
+		 * if (val == 0) sc = new DebugStreamCompiler(); else sc = new
+		 * ConcurrentStreamCompiler(val);
+		 */
+
+		int mul = multiplier.getValue();
+		sc = new CompilerStreamCompiler().multiplier(mul);
 
 		long startTime = System.nanoTime();
 
@@ -70,8 +79,10 @@ public class TunerMain {
 			throws InterruptedException {
 		int tryCount = 1;
 		try {
-			autoTuner
-					.startTuner("lib/opentuner/streamjit/streamjit.py");
+			autoTuner.startTuner(String.format(
+					"lib%sopentuner%sstreamjit%sstreamjit.py", File.separator,
+					File.separator, File.separator));
+			// autoTuner.startTuner("/home/sumanan/opentuner/NewOT-30-8-13/opentuner/streamjit/streamjit.py");
 			autoTuner.writeLine("program");
 			autoTuner.writeLine("FMRadio");
 
@@ -83,7 +94,7 @@ public class TunerMain {
 				String pythonDict = autoTuner.readLine();
 				System.out
 						.println("----------------------------------------------");
-				System.out.println("Try Count = " + tryCount++);
+				System.out.println(tryCount++);
 				Configuration config = rebuildConfiguraion(pythonDict, cfg);
 				double time = runApp(app, config);
 				System.out.println("Execution time is " + time
@@ -97,8 +108,25 @@ public class TunerMain {
 
 	}
 
+	/**
+	 * Creates a new {@link Configuration} from the received python dictionary
+	 * string. This is not a good way to do.
+	 * <p>
+	 * TODO: Need to add a method to {@link Configuration} so that the
+	 * configuration object can be updated from the python dict string. Now we
+	 * are destructing the old confg object and recreating a new one every time.
+	 * Not a appreciatable way.
+	 * 
+	 * @param pythonDict
+	 *            Python dictionary string. Autotuner gives a dictionary of
+	 *            features with trial values.
+	 * @param config
+	 *            Old configuration object.
+	 * @return New configuration object with updated values from the pythonDict.
+	 */
 	private Configuration rebuildConfiguraion(String pythonDict,
 			Configuration config) {
+		checkNotNull(pythonDict, "Received Python dictionary is null");
 		pythonDict = pythonDict.replaceAll("u'", "");
 		pythonDict = pythonDict.replaceAll("':", "");
 		pythonDict = pythonDict.replaceAll("\\{", "");
@@ -106,7 +134,7 @@ public class TunerMain {
 		Splitter dictSplitter = Splitter.on(", ").omitEmptyStrings()
 				.trimResults();
 		Configuration.Builder builder = Configuration.builder();
-		System.out.println("New parameters...");
+		System.out.println("New parameter values from Opentuner...");
 		for (String s : dictSplitter.split(pythonDict)) {
 			String[] str = s.split(" ");
 			if (str.length != 2)
@@ -145,9 +173,9 @@ public class TunerMain {
 
 		Benchmark fmBench = new FMRadio.FMRadioBenchmark();
 		Configuration.Builder builder = Configuration.builder();
-		IntParameter ip = new IntParameter("compiler", 0, 10, 8);
-		builder.addParameter(ip);
-		builder.addParameter(new IntParameter("multiplier", 1, 1000000, 10));
+		// IntParameter ip = new IntParameter("compiler", 0, 10, 8);
+		// builder.addParameter(ip);
+		builder.addParameter(new IntParameter("multiplier", 1, 1000, 10));
 		Configuration cfg = builder.build();
 
 		TunerMain tuner = new TunerMain();
