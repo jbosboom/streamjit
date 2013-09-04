@@ -1,7 +1,12 @@
 package edu.mit.streamjit.util;
 
 import com.google.common.collect.ImmutableSet;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -22,6 +27,25 @@ public final class Template {
 	private final String template;
 	public Template(String template) {
 		this.template = template;
+	}
+
+	/**
+	 * Reads a template from an InputStream.
+	 * @see java.lang.Class#getResourceAsStream(java.lang.String)
+	 * @param stream the stream to read from; closed if successfully read
+	 * @return a template
+	 */
+	public static Template from(InputStream stream) {
+		try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+			StringBuilder sb = new StringBuilder();
+			char[] buffer = new char[4096];
+			int read;
+			while ((read = reader.read(buffer)) != -1)
+				sb.append(buffer, 0, read);
+			return new Template(sb.toString());
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
+		}
 	}
 
 	public void replace(Map<String, ?> values, StringBuffer sb) {
