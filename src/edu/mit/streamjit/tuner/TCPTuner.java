@@ -91,11 +91,10 @@ public final class TCPTuner implements AutoTuner {
 
 		void connect(int port) throws IOException {
 			Socket socket;
-			System.out.println("Going to make a connection with the server...");
 			while (true) {
 				try {
 					socket = new Socket("localhost", port);
-					System.out.println("Client connected...");
+					System.out.println("Autotuner is connected...");
 					this.socket = socket;
 
 					InputStream is = socket.getInputStream();
