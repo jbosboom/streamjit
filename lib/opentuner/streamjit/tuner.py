@@ -24,23 +24,32 @@ class StreamJitMI(MeasurementInterface):
 
 	def run(self, desired_result, input, limit):
 		self.trycount = self.trycount + 1
-		print "Try count = %d"%self.trycount
 		cfg = desired_result.configuration.data
-		print cfg
+		self.niceprint(cfg)
 		self.sdk.sendmsg("%s\n"%cfg)
 		msg = self.sdk.recvmsg()
 		exetime = float(msg)
-		print "Execution time is %f"%exetime
-		return opentuner.resultsdb.models.Result(time=exetime)
+		if exetime < 0:
+			print "Error in execution"
+			return opentuner.resultsdb.models.Result(state='ERROR', time=float('inf'))
+		else:	
+			print "Execution time is %f"%exetime
+			return opentuner.resultsdb.models.Result(time=exetime)
+
+	def niceprint(self, cfg):
+		print "\n--------------------------------------------------"
+		print self.trycount
+		for key in cfg.keys():
+			print "%s - %s"%(key, cfg[key])
 
 def main(args, cfg, con, ss):
 	logging.basicConfig(level=logging.INFO)
 	manipulator = ConfigurationManipulator()
 
-	print cfg
 	params = cfg.getAllParameters()
-	print params
+	print "\nFeature variables...."
 	for key in params.keys():
+		print "\t", key
   		manipulator.add_parameter(cfg.getParameter(key))
 	
 	m = TuningRunMain(manipulator,
