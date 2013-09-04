@@ -4,13 +4,13 @@ import argparse
 import traceback
 import configuration
 import tuner
+import sys
 
 
 class streamJit:
 	def __init__(self, port):
 		self.port = port
 		self.program = "streamApp"
-		print self.port
 
 	def listen(self):
 		try:
@@ -18,9 +18,9 @@ class streamJit:
 			server_socket.bind(("localhost", self.port))
 			server_socket.listen(1)
 			client_socket, address = server_socket.accept()
-			print "I got a connection from ", address
+			print "Got a connection from ", address
 			self.socket = client_socket
-			self.file = client_socket.makefile("rb")	# map the socket to file for higher performance and convienence.
+			self.file = client_socket.makefile("rb")	# map the socket to file for high performance and convienence.
 			server_socket.close()
 		except Exception, e:
 			print "Exception occured : %s"%e
@@ -28,12 +28,10 @@ class streamJit:
 			data = raw_input ( "Press Keyboard to exit..." )
 			
 	def run(self):
-		print "Going to listen from socket and react"
 		while 1:
-		        data = self.file.readline()
+		        data = self.recvmsg()
 		        if ( data == 'exit\n'):
 				print data, "I have received exit. I am gonna exit."
-				self.socket.close()
 				break;
 			elif ( data == 'program\n'):
 				self.program = self.file.readline()
@@ -49,6 +47,8 @@ class streamJit:
 					print "Exception occured : %s"%e
 					traceback.print_exc()
 					data = raw_input ( "Press Keyboard to exit..." )
+					break;
+					
 			else:
 				print "###Invalid data received. Please check...:" , data
 
@@ -59,8 +59,18 @@ class streamJit:
 
 	def recvmsg(self):
 		data = self.file.readline()
-		return data		
+		if not data:
+			print "Socket closed...."
+			data = raw_input ( "Press Keyboard to exit..." )
+			self.close()
+			sys.exit(1)
+		else:
+			return data
 
+	def close(self):
+		self.socket.close()
+		print "Socket has been closed successfully"
+		
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('port', help='TCP port number', type=int)
@@ -68,4 +78,5 @@ if __name__ == '__main__':
 	s = streamJit(args.port)
 	s.listen()
 	s.run()
+	s.close()
 		
