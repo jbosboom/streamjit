@@ -378,16 +378,16 @@ public final class Benchmarker {
 				for (Extent e : result.wrongOutput) {
 					sb.append(String.format("wrong output at index %d for %d items%n", e.startIndex, e.size()));
 					//TODO: work item by item to line these up?
-					sb.append(String.format("  expected: "+e.expected));
-					sb.append(String.format("    actual: "+e.actual));
+					sb.append(String.format("  expected: %s%n", e.expected));
+					sb.append(String.format("    actual: %s%n", e.actual));
 				}
 				if (!result.missingOutput.isEmpty()) {
 					sb.append(String.format("output ended %d items early%n", result.missingOutput.size()));
-					sb.append(String.format("  expected: "+result.missingOutput));
+					sb.append(String.format("  expected: %s%n", result.missingOutput));
 				}
 				if (!result.excessOutput.isEmpty()) {
 					sb.append(String.format("output contained %d excess items%n", result.excessOutput.size()));
-					sb.append(String.format("  actual: "+result.excessOutput));
+					sb.append(String.format("  actual: %s%n", result.excessOutput));
 				}
 			}
 
