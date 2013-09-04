@@ -423,6 +423,10 @@ public final class MethodUnresolver {
 		//TODO: accessor methods on BranchInst
 		Value left = i.getOperand(0), right = i.getOperand(1);
 		BasicBlock target = (BasicBlock)i.getOperand(2), fallthrough = (BasicBlock)i.getOperand(3);
+		if (!method.basicBlocks().contains(target))
+			throw new IllegalArgumentException("Branch targets block not in method: "+i);
+		if (!method.basicBlocks().contains(fallthrough))
+			throw new IllegalArgumentException("Branch falls through to block not in method: "+i);
 		load(i.getOperand(0), insns);
 		load(i.getOperand(1), insns);
 		//TODO: long, float, doubles need to go through CMP inst first
@@ -523,7 +527,10 @@ public final class MethodUnresolver {
 		store(i, insns);
 	}
 	private void emit(JumpInst i, InsnList insns) {
-		insns.add(new JumpInsnNode(Opcodes.GOTO, labels.get((BasicBlock)i.getOperand(0))));
+		BasicBlock target = (BasicBlock)i.getOperand(0);
+		if (!method.basicBlocks().contains(target))
+			throw new IllegalArgumentException("Jump to block not in method: "+i);
+		insns.add(new JumpInsnNode(Opcodes.GOTO, labels.get(target)));
 	}
 	private void emit(LoadInst i, InsnList insns) {
 		Value location = i.getLocation();
