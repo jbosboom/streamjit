@@ -54,12 +54,17 @@ import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.Pair;
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandleProxies;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.SwitchPoint;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -200,7 +205,17 @@ public final class Compiler {
 		generateCoreCode();
 		generateStaticInit();
 		addBlobPlumbing();
-		//blobKlass.dump(new PrintWriter(System.out, true));
+
+		Path path = (Path)config.getExtraData("dumpFile");
+		if (path != null) {
+			try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
+				module.dump(writer);
+			} catch (IOException ex) {
+				//Don't fail just because we couldn't dump, but do complain.
+				ex.printStackTrace();
+			}
+		}
+
 		return instantiateBlob();
 	}
 

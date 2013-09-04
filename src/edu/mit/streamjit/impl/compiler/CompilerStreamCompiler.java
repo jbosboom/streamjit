@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.compiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
+import java.nio.file.Path;
 import java.util.Set;
 
 /**
@@ -13,6 +14,7 @@ import java.util.Set;
 public final class CompilerStreamCompiler extends BlobHostStreamCompiler {
 	private int maxNumCores = 1;
 	private int multiplier = 1;
+	private Path dumpFile;
 	public CompilerStreamCompiler() {
 		super(new CompilerBlobFactory());
 	}
@@ -27,6 +29,11 @@ public final class CompilerStreamCompiler extends BlobHostStreamCompiler {
 		return this;
 	}
 
+	public CompilerStreamCompiler dumpFile(Path path) {
+		this.dumpFile = path;
+		return this;
+	}
+
 	@Override
 	protected final int getMaxNumCores() {
 		return maxNumCores;
@@ -37,6 +44,8 @@ public final class CompilerStreamCompiler extends BlobHostStreamCompiler {
 		Configuration.Builder builder = Configuration.builder(super.getConfiguration(workers));
 		Configuration.IntParameter multiplierParam = (Configuration.IntParameter)builder.removeParameter("multiplier");
 		builder.addParameter(new Configuration.IntParameter("multiplier", multiplierParam.getRange(), this.multiplier));
+		if (dumpFile != null)
+			builder.putExtraData("dumpFile", dumpFile);
 		return builder.build();
 	}
 
