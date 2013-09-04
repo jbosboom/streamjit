@@ -51,7 +51,10 @@ public final class Template {
 	public void replace(Map<String, ?> values, StringBuffer sb) {
 		Matcher m = VAR_REF.matcher(template);
 		while (m.find()) {
-			String replacement = String.valueOf(values.get(m.group(1)));
+			String var = m.group(1);
+			if (!values.containsKey(var))
+				throw new IllegalArgumentException(String.format("No replacement for %s; replacements are: %s", var, values));
+			String replacement = String.valueOf(values.get(var));
 			m.appendReplacement(sb, replacement);
 		}
 		m.appendTail(sb);
