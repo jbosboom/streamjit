@@ -15,6 +15,7 @@ import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmark.Dataset;
+import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
@@ -171,7 +172,9 @@ public class TunerMain {
 	public static void main(String[] args) throws InterruptedException,
 			IOException {
 
-		Benchmark fmBench = new FMRadio.FMRadioBenchmark();
+		BenchmarkProvider fmradioProvider = new FMRadio.FMRadioBenchmarkProvider();
+
+		Benchmark fmBench = fmradioProvider.iterator().next();
 		Configuration.Builder builder = Configuration.builder();
 		// IntParameter ip = new IntParameter("compiler", 0, 10, 8);
 		// builder.addParameter(ip);
