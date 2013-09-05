@@ -1,0 +1,35 @@
+package edu.mit.streamjit.test.regression;
+
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
+import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Pipeline;
+import edu.mit.streamjit.api.Splitjoin;
+import edu.mit.streamjit.test.Benchmark;
+import edu.mit.streamjit.test.Benchmarker;
+import edu.mit.streamjit.test.Datasets;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * @since ${since}
+ */
+@ServiceProvider(Benchmark.class)
+public class ${name} implements Benchmark {
+	@Override
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public OneToOneElement<Object, Object> instantiate() {
+		return ${instantiate};
+	}
+	@Override
+	public List<Dataset> inputs() {
+		Dataset ds = ${dataset};
+		return Collections.singletonList(ds.withOutput(Datasets.outputOf(${referenceCompiler}, instantiate(), ds.input())));
+	}
+	@Override
+	public String toString() {
+		return getClass().getSimpleName();
+	}
+	public static void main(String[] args) {
+		Benchmarker.runBenchmark(new ${name}(), ${testCompiler}).get(0).print(System.out);
+	}
+}

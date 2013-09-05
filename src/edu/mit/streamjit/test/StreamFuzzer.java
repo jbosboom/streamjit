@@ -34,12 +34,24 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.impl.interp.InterpreterStreamCompiler;
 import edu.mit.streamjit.util.ConstructorSupplier;
 import edu.mit.streamjit.util.ReflectionUtils;
+import edu.mit.streamjit.util.Template;
 import edu.mit.streamjit.util.ilpsolve.InfeasibleSystemException;
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
@@ -313,7 +325,7 @@ public final class StreamFuzzer {
 	private static final ImmutableSet<Class<?>> ignoredExceptions = ImmutableSet.<Class<?>>of(
 			InfeasibleSystemException.class
 			);
-	public static void main(String[] args) throws InterruptedException {
+	public static void main(String[] args) throws InterruptedException, IOException {
 		StreamCompiler debugSC = new InterpreterStreamCompiler();
 		StreamCompiler compilerSC = new CompilerStreamCompiler();
 		Set<FuzzElement> completedCases = new HashSet<>();
@@ -357,6 +369,7 @@ public final class StreamFuzzer {
 				//TODO: show only elements where they differ
 				System.out.println("Debug output: "+debugOutput);
 				System.out.println("Compiler output: "+compilerOutput);
+				writeRegressionTest(fuzz);
 				break;
 			} else
 				++successes;
@@ -373,5 +386,24 @@ public final class StreamFuzzer {
 		System.out.format("Ran %d cases (%f%% run rate)%n", successes+failures, ((double)successes+failures)*100/generated);
 		System.out.format("  %d succeeded (%f%%)%n", successes, ((double)successes)*100/(successes+failures));
 		System.out.format("  %d failed (%f%%)%n", failures, ((double)failures)*100/(successes+failures));
+	}
+
+	private static final DateFormat SINCE_FORMAT = new SimpleDateFormat("M/d/yyyy h:mma z");
+	private static final DateFormat NAME_FORMAT = new SimpleDateFormat("yyyyMMdd_hhmmss_SSS");
+	private static void writeRegressionTest(FuzzElement fuzzTest) throws IOException {
+		Template template = Template.from(StreamFuzzer.class.getResourceAsStream("RegressionBenchmark.template"));
+		Date now = new Date();
+		Map<String, Object> values = new HashMap<>();
+		values.put("name", "Reg"+NAME_FORMAT.format(now));
+		values.put("since", SINCE_FORMAT.format(now));
+		values.put("dataset", "Datasets.allIntsInRange(0, 1000)");
+		values.put("instantiate", fuzzTest.toJava());
+		values.put("referenceCompiler", "new "+InterpreterStreamCompiler.class.getCanonicalName()+"()");
+		values.put("testCompiler", "new "+CompilerStreamCompiler.class.getCanonicalName()+"()");
+		StringBuffer sb = new StringBuffer();
+		template.replace(values, sb);
+
+		Path path = Paths.get("src/edu/mit/streamjit/test/regression", values.get("name")+".java");
+		Files.write(path, ImmutableList.of(sb.toString()), StandardCharsets.UTF_8, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
 	}
 }
