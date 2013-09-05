@@ -20,6 +20,7 @@ public final class Cloning {
 		//recording the mapping in the value map.
 		for (Instruction i : source.instructions()) {
 			Instruction ic = i.clone(Functions.<Value>identity());
+			ic.setName(i.getName()+"_clone");
 			dest.instructions().add(ic);
 			vmap.put(i, ic);
 		}
@@ -52,5 +53,12 @@ public final class Cloning {
 				for (int i = 0; i < newInst.getNumOperands(); ++i)
 					if (vmap.containsKey(newInst.getOperand(i)))
 						newInst.setOperand(i, vmap.get(newInst.getOperand(i)));
+
+		//If the old args map to new args, give the new args nice names.
+		for (Argument a : source.arguments()) {
+			Value v = vmap.get(a);
+			if (v instanceof Argument)
+				v.setName(a.getName()+"_clone");
+		}
 	}
 }
