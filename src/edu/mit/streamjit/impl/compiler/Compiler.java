@@ -14,6 +14,7 @@ import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
@@ -887,10 +888,19 @@ public final class Compiler {
 			BasicBlock entryBlock = new BasicBlock(module, "entry");
 			workMethod.basicBlocks().add(entryBlock);
 
+			BasicBlock previousBlock = entryBlock;
 			Map<Token, Value> localBuffers = new HashMap<>();
 			ImmutableList<? extends Worker<?, ?>> orderedWorkers = Workers.topologicalSort(workers);
 			for (Worker<?, ?> w : orderedWorkers) {
 				int wid = Workers.getIdentifier(w);
+				BasicBlock bufferBlock = new BasicBlock(module, "buffer"+wid);
+				workMethod.basicBlocks().add(bufferBlock);
+				if (previousBlock.getTerminator() == null)
+					previousBlock.instructions().add(new JumpInst(bufferBlock));
+				else
+					((BranchInst)previousBlock.getTerminator()).setOperand(3, bufferBlock);
+				previousBlock = bufferBlock;
+
 				//Input buffers
 				List<? extends Worker<?, ?>> preds = Workers.getPredecessors(w);
 				List<Value> ichannels;
@@ -900,7 +910,7 @@ public final class Compiler {
 					int r = w.getPopRates().get(0).max() * internalSchedule.getExecutions(w);
 					BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 					offset.setName("ioffset0");
-					entryBlock.instructions().add(offset);
+					previousBlock.instructions().add(offset);
 					ioffsets.add(offset);
 				} else {
 					ichannels = new ArrayList<>(preds.size());
@@ -918,7 +928,7 @@ public final class Compiler {
 							int r = w.getPopRates().get(chanIdx).max() * internalSchedule.getExecutions(w);
 							BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 							offset.setName("ioffset"+chanIdx);
-							entryBlock.instructions().add(offset);
+							previousBlock.instructions().add(offset);
 							ioffsets.add(offset);
 						}
 					}
@@ -926,13 +936,13 @@ public final class Compiler {
 
 				Pair<Value, List<Instruction>> ichannelArray = createChannelArray(ichannels);
 				ichannelArray.first.setName("ichannels_"+wid);
-				entryBlock.instructions().addAll(ichannelArray.second);
+				previousBlock.instructions().addAll(ichannelArray.second);
 				Pair<Value, List<Instruction>> ioffsetArray = createIntArray(ioffsets);
 				ioffsetArray.first.setName("ioffsets_"+wid);
-				entryBlock.instructions().addAll(ioffsetArray.second);
+				previousBlock.instructions().addAll(ioffsetArray.second);
 				Pair<Value, List<Instruction>> iincrementArray = createIntArray(Collections.<Value>nCopies(ioffsets.size(), module.constants().getConstant(1)));
 				iincrementArray.first.setName("iincrements_"+wid);
-				entryBlock.instructions().addAll(iincrementArray.second);
+				previousBlock.instructions().addAll(iincrementArray.second);
 
 				//Output buffers
 				List<? extends Worker<?, ?>> succs = Workers.getSuccessors(w);
@@ -943,7 +953,7 @@ public final class Compiler {
 					int r = w.getPushRates().get(0).max() * internalSchedule.getExecutions(w);
 					BinaryInst offset = new BinaryInst(multiple, BinaryInst.Operation.MUL, module.constants().getConstant(r));
 					offset.setName("ooffset0");
-					entryBlock.instructions().add(offset);
+					previousBlock.instructions().add(offset);
 					ooffsets.add(offset);
 				} else {
 					ochannels = new ArrayList<>(preds.size());
@@ -958,7 +968,7 @@ public final class Compiler {
 								localBuffer = new NewArrayInst(module.types().getArrayType(Object[].class), module.constants().getConstant(bufferSize));
 								localBuffer.setName(String.format("localbuf_%d_%d", t.getUpstreamIdentifier(), t.getDownstreamIdentifier()));
 								localBuffers.put(t, localBuffer);
-								entryBlock.instructions().add((Instruction)localBuffer);
+								previousBlock.instructions().add((Instruction)localBuffer);
 							}
 							ochannels.add(localBuffer);
 							ooffsets.add(module.constants().getConstant(0));
@@ -970,8 +980,8 @@ public final class Compiler {
 							//it's time to flip.
 							BinaryInst offset = new BinaryInst(offset0, BinaryInst.Operation.ADD, module.constants().getConstant(buffers.get(t).excessPeeks));
 							offset.setName("ooffset"+chanIdx);
-							entryBlock.instructions().add(offset0);
-							entryBlock.instructions().add(offset);
+							previousBlock.instructions().add(offset0);
+							previousBlock.instructions().add(offset);
 							ooffsets.add(offset);
 						}
 					}
@@ -979,20 +989,52 @@ public final class Compiler {
 
 				Pair<Value, List<Instruction>> ochannelArray = createChannelArray(ochannels);
 				ochannelArray.first.setName("ochannels_"+wid);
-				entryBlock.instructions().addAll(ochannelArray.second);
+				previousBlock.instructions().addAll(ochannelArray.second);
 				Pair<Value, List<Instruction>> ooffsetArray = createIntArray(ooffsets);
 				ooffsetArray.first.setName("ooffsets_"+wid);
-				entryBlock.instructions().addAll(ooffsetArray.second);
+				previousBlock.instructions().addAll(ooffsetArray.second);
 				Pair<Value, List<Instruction>> oincrementArray = createIntArray(Collections.<Value>nCopies(ooffsets.size(), module.constants().getConstant(1)));
 				oincrementArray.first.setName("oincrements_"+wid);
-				entryBlock.instructions().addAll(oincrementArray.second);
+				previousBlock.instructions().addAll(oincrementArray.second);
 
-				for (int i = 0; i < internalSchedule.getExecutions(w); ++i) {
-					CallInst ci = new CallInst(workerWorkMethods.get(w), ichannelArray.first, ioffsetArray.first, iincrementArray.first, ochannelArray.first, ooffsetArray.first, oincrementArray.first);
-					entryBlock.instructions().add(ci);
-				}
+				CallInst ci = new CallInst(workerWorkMethods.get(w), ichannelArray.first, ioffsetArray.first, iincrementArray.first, ochannelArray.first, ooffsetArray.first, oincrementArray.first);
+				BasicBlock loop = makeCallLoop(ci, 0, internalSchedule.getExecutions(w), previousBlock, "work"+wid);
+				workMethod.basicBlocks().add(loop);
+				if (previousBlock.getTerminator() == null)
+					previousBlock.instructions().add(new JumpInst(loop));
+				else
+					((BranchInst)previousBlock.getTerminator()).setOperand(3, loop);
+				previousBlock = loop;
 			}
-			entryBlock.instructions().add(new ReturnInst(module.types().getVoidType()));
+
+			BasicBlock exitBlock = new BasicBlock(module, "exit");
+			workMethod.basicBlocks().add(exitBlock);
+			exitBlock.instructions().add(new ReturnInst(module.types().getVoidType()));
+			if (previousBlock.getTerminator() == null)
+				previousBlock.instructions().add(new JumpInst(exitBlock));
+			else
+				((BranchInst)previousBlock.getTerminator()).setOperand(3, exitBlock);
+		}
+
+		private BasicBlock makeCallLoop(CallInst call, int begin, int end, BasicBlock previousBlock, String loopName) {
+			int tripcount = end-begin;
+			assert tripcount > 0 : String.format("0 tripcount in makeCallLoop: %s, %d, %d, %s, %s", call, begin, end, previousBlock, loopName);
+
+			BasicBlock body = new BasicBlock(module, loopName+"_loop");
+
+			PhiInst count = new PhiInst(module.types().getRegularType(int.class));
+			count.put(previousBlock, module.constants().getConstant(begin));
+			body.instructions().add(count);
+
+			body.instructions().add(call);
+
+			BinaryInst increment = new BinaryInst(count, BinaryInst.Operation.ADD, module.constants().getConstant(1));
+			body.instructions().add(increment);
+			count.put(body, increment);
+
+			BranchInst branch = new BranchInst(increment, BranchInst.Sense.LT, module.constants().getConstant(end), body, null);
+			body.instructions().add(branch);
+			return body;
 		}
 
 		private Field getReaderBuffer(Token t) {
@@ -1535,7 +1577,7 @@ public final class Compiler {
 	}
 
 	public static void main(String[] args) throws Throwable {
-		OneToOneElement<Integer, Integer> graph = new Identity<>();//new Splitjoin<>(new RoundrobinSplitter<Integer>(), new RoundrobinJoiner<Integer>(), new Identity<Integer>(), new Identity<Integer>());
+		OneToOneElement<Integer, Integer> graph = new Pipeline(new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Adder(20), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)), new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new Pipeline(new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Multiplier(2), new edu.mit.streamjit.impl.common.TestFilters.Multiplier(2)), new Pipeline(new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new edu.mit.streamjit.impl.common.TestFilters.Batcher(10), new edu.mit.streamjit.api.Identity(), new edu.mit.streamjit.impl.common.TestFilters.Batcher(10)), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2), new edu.mit.streamjit.impl.common.TestFilters.Batcher(10), new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new edu.mit.streamjit.impl.common.TestFilters.Adder(1), new edu.mit.streamjit.api.Identity(), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2), new edu.mit.streamjit.impl.common.TestFilters.Batcher(10), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)), new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Batcher(2), new edu.mit.streamjit.api.Identity(), new edu.mit.streamjit.impl.common.TestFilters.Adder(1), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)))), new edu.mit.streamjit.impl.common.TestFilters.Adder(20), new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Multiplier(3)), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)));
 		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		graph.visit(cwv);
 		Set<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
