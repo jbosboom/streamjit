@@ -24,7 +24,7 @@ public final class DeadCodeElimination {
 		boolean changed = false, makingProgress;
 		do {
 			makingProgress = false;
-			changed |= makingProgress |= eliminateTriviallyDeadInsts(method);
+//			changed |= makingProgress |= eliminateTriviallyDeadInsts(method);
 			changed |= makingProgress |= eliminateUselessPhis(method);
 		} while (makingProgress);
 		return changed;
@@ -34,34 +34,35 @@ public final class DeadCodeElimination {
 		boolean changed = false, makingProgress;
 		do {
 			makingProgress = false;
-			changed |= makingProgress |= eliminateTriviallyDeadInsts(block);
+//			changed |= makingProgress |= eliminateTriviallyDeadInsts(block);
 			changed |= makingProgress |= eliminateUselessPhis(block);
 		} while (makingProgress);
 		return changed;
 	}
 
-	public static boolean eliminateTriviallyDeadInsts(Method method) {
-		boolean changed = false, makingProgress;
-		do {
-			makingProgress = false;
-			for (BasicBlock block : method.basicBlocks())
-				changed |= makingProgress |= eliminateTriviallyDeadInsts(block);
-		} while (makingProgress);
-		return changed;
-	}
-
-	public static boolean eliminateTriviallyDeadInsts(BasicBlock block) {
-		boolean changed = false, makingProgress;
-		do {
-			makingProgress = false;
-			for (Instruction i : ImmutableList.copyOf(block.instructions()))
-				if (!(i.getType() instanceof VoidType) && i.uses().isEmpty()) {
-					i.eraseFromParent();
-					changed = makingProgress = true;
-				}
-		} while (makingProgress);
-		return changed;
-	}
+	//TODO: these need a much more nuanced understanding of side effects to be safe.
+//	public static boolean eliminateTriviallyDeadInsts(Method method) {
+//		boolean changed = false, makingProgress;
+//		do {
+//			makingProgress = false;
+//			for (BasicBlock block : method.basicBlocks())
+//				changed |= makingProgress |= eliminateTriviallyDeadInsts(block);
+//		} while (makingProgress);
+//		return changed;
+//	}
+//
+//	public static boolean eliminateTriviallyDeadInsts(BasicBlock block) {
+//		boolean changed = false, makingProgress;
+//		do {
+//			makingProgress = false;
+//			for (Instruction i : ImmutableList.copyOf(block.instructions()))
+//				if (!(i.getType() instanceof VoidType) && i.uses().isEmpty()) {
+//					i.eraseFromParent();
+//					changed = makingProgress = true;
+//				}
+//		} while (makingProgress);
+//		return changed;
+//	}
 
 	public static boolean eliminateUselessPhis(Method method) {
 		boolean changed = false, makingProgress;
