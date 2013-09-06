@@ -123,4 +123,24 @@ public final class TestFilters {
 			return String.format("ArrayHasher(%d)", n);
 		}
 	}
+
+	public static final class PeekingAdder extends Filter<Integer, Integer> {
+		private final int n;
+		public PeekingAdder(int n) {
+			super(1, 1, n);
+			this.n = n;
+		}
+		@Override
+		public void work() {
+			int sum = 0;
+			for (int i = 0; i < n; ++i)
+				sum += peek(i);
+			push(sum);
+			pop();
+		}
+		@Override
+		public String toString() {
+			return String.format("PeekingAdder(%d)", n);
+		}
+	}
 }
