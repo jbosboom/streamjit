@@ -2,7 +2,9 @@ package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Rate;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Some filters for tests.  Some of these may graduate to the API package in a
@@ -81,6 +83,44 @@ public final class TestFilters {
 		@Override
 		public String toString() {
 			return String.format("Batcher(%d)", batchSize);
+		}
+	}
+
+	public static final class ArrayHasher extends Filter<Object, Integer> {
+		private final int n;
+		public ArrayHasher(int n) {
+			super(n, 1);
+			this.n = n;
+		}
+		@Override
+		public void work() {
+			Object[] obj = new Object[n];
+			for (int i = 0; i < n; ++i)
+				obj[i] = pop();
+			push(Arrays.hashCode(obj));
+		}
+		@Override
+		public String toString() {
+			return String.format("ArrayHasher(%d)", n);
+		}
+	}
+
+	public static final class ArrayListHasher extends Filter<Object, Integer> {
+		private final int n;
+		public ArrayListHasher(int n) {
+			super(n, 1);
+			this.n = n;
+		}
+		@Override
+		public void work() {
+			List<Object> list = new ArrayList<>(n);
+			for (int i = 0; i < n; ++i)
+				list.add(pop());
+			push(list.hashCode());
+		}
+		@Override
+		public String toString() {
+			return String.format("ArrayHasher(%d)", n);
 		}
 	}
 }
