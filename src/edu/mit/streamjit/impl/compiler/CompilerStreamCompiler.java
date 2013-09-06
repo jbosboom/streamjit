@@ -1,11 +1,12 @@
 package edu.mit.streamjit.impl.compiler;
 
-import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
-import edu.mit.streamjit.impl.common.Configuration;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Set;
+
+import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
+import edu.mit.streamjit.impl.common.Configuration;
 
 /**
  *
@@ -40,8 +41,17 @@ public final class CompilerStreamCompiler extends BlobHostStreamCompiler {
 		return maxNumCores;
 	}
 
+
+	Configuration cfg;
+
+	public void setConfig(Configuration config)
+	{
+		this.cfg = config;
+	}
+
 	@Override
 	protected final Configuration getConfiguration(Set<Worker<?, ?>> workers) {
+	if(cfg == null){		
 		Configuration defaultConfiguration = super.getConfiguration(workers);
 		Configuration.Builder builder = Configuration.builder(defaultConfiguration);
 		Configuration.IntParameter multiplierParam = (Configuration.IntParameter)builder.removeParameter("multiplier");
@@ -58,6 +68,8 @@ public final class CompilerStreamCompiler extends BlobHostStreamCompiler {
 		if (dumpFile != null)
 			builder.putExtraData("dumpFile", dumpFile);
 		return builder.build();
+		}
+		return cfg;
 	}
 
 	@Override
