@@ -14,4 +14,4 @@ bin/
 # heap dumps
 *.hprof.factorypath
 # python bytecode
-.pyc
+*.pyc
