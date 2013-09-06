@@ -1,13 +1,15 @@
 package edu.mit.streamjit.tuner;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
-import static com.google.common.base.Preconditions.*;
+import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableSet;
+
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.OneToOneElement;
@@ -16,37 +18,24 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.Configuration.Builder;
+import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
-import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
-import edu.mit.streamjit.impl.interp.ChannelFactory;
-import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.test.apps.bitonicsort.BitonicSort;
-import edu.mit.streamjit.test.apps.channelvocoder7.ChannelVocoder7;
-import edu.mit.streamjit.test.apps.dct.DCT2;
-import edu.mit.streamjit.test.apps.fmradio.FMRadio;
-import edu.mit.streamjit.test.sanity.FileInputSanity;
-import edu.mit.streamjit.test.sanity.HelperFunctionSanity;
-import edu.mit.streamjit.test.sanity.SplitjoinOrderSanity;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
-import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableSet;
-
 /**
- * 
+ *
  * Tuner path /home/sumanan/opentuner/opentuner/examples/streamjit/tuner.py
- * 
+ *
  * @author Sumanan sumanan@mit.edu
  * @since Aug 20, 2013
  */
@@ -100,11 +89,10 @@ public class TunerMain {
 	public void tune(Benchmark app) throws InterruptedException {
 		int tryCount = 0;
 		try {
-			// autoTuner.startTuner(String.format(
-			// "lib%sopentuner%sstreamjit%sstreamjit.py", File.separator,
-			// File.separator, File.separator));
-			autoTuner
-					.startTuner("/home/sumanan/opentuner/NewOT-30-8-13/opentuner/streamjit/streamjit.py");
+			autoTuner.startTuner(String.format(
+					"lib%sopentuner%sstreamjit%sstreamjit.py", File.separator,
+					File.separator, File.separator));
+
 			autoTuner.writeLine("program");
 			autoTuner.writeLine(app.toString());
 			File file = new File(app.toString() + ".txt");
@@ -205,6 +193,7 @@ public class TunerMain {
 			bw.write(String.format("\t%s = %s\n", str[0], str[1]));
 		}
 	}
+
 	/**
 	 * Creates a new {@link Configuration} from the received python dictionary
 	 * string. This is not a good way to do.
@@ -213,7 +202,7 @@ public class TunerMain {
 	 * configuration object can be updated from the python dict string. Now we
 	 * are destructing the old confg object and recreating a new one every time.
 	 * Not a appreciatable way.
-	 * 
+	 *
 	 * @param pythonDict
 	 *            Python dictionary string. Autotuner gives a dictionary of
 	 *            features with trial values.
@@ -260,6 +249,7 @@ public class TunerMain {
 		}
 		return builder.build();
 	}
+
 	private void run(StreamCompiler compiler,
 			OneToOneElement<Object, Object> streamGraph, Input<Object> input,
 			Output<Object> output) {
@@ -282,8 +272,8 @@ public class TunerMain {
 			IOException {
 
 		// BenchmarkProvider provider = new ChannelVocoder7();
-		BenchmarkProvider provider = new FMRadio.FMRadioBenchmarkProvider();
-		// BenchmarkProvider provider = new BitonicSort();
+		// BenchmarkProvider provider = new FMRadio.FMRadioBenchmarkProvider();
+		BenchmarkProvider provider = new BitonicSort();
 		// BenchmarkProvider provider = new FileInputSanity();
 		// BenchmarkProvider provider = new SplitjoinOrderSanity();
 		// BenchmarkProvider provider = new HelperFunctionSanity();
