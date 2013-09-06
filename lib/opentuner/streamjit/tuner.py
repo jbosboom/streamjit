@@ -4,7 +4,8 @@ import logging
 import json
 import sjparameters
 import configuration
-from streamjit import streamJit
+import streamjit
+import sys
 
 import deps #fix sys.path
 import opentuner
@@ -16,9 +17,8 @@ from opentuner.search.objective import MinimizeTime
 
 class StreamJitMI(MeasurementInterface):
 	''' Measurement Interface for tunning a StreamJit application'''
-	def __init__(self, args, con, ss):
-		super(StreamJitMI, self).__init__(args = args, program = args.program)
-		self.connection = con
+	def __init__(self, args, ss, manipulator, inputmanager, objective):
+		super(StreamJitMI, self).__init__(args = args, program_name = args.program, manipulator = manipulator, input_manager = inputmanager, objective = objective)
 		self.sdk = ss
 		self.trycount = 0
 
@@ -42,6 +42,22 @@ class StreamJitMI(MeasurementInterface):
 		for key in cfg.keys():
 			print "%s - %s"%(key, cfg[key])
 
+	def program_name(self):
+		return self.args.program
+
+	def program_version(self):
+		return "1.0"
+
+	def save_final_config(self, configuration):
+		'''called at the end of autotuning with the best resultsdb.models.Configuration'''
+		cfg = configuration.data
+		print "Final configuration", cfg
+		self.sdk.sendmsg("Completed")
+		self.sdk.sendmsg("%s\n"%cfg)
+		self.sdk.close()
+		sys.exit(0)
+
+
 def main(args, cfg, con, ss):
 	logging.basicConfig(level=logging.INFO)
 	manipulator = ConfigurationManipulator()
@@ -52,11 +68,10 @@ def main(args, cfg, con, ss):
 		print "\t", key
   		manipulator.add_parameter(cfg.getParameter(key))
 	
-	m = TuningRunMain(manipulator,
-                    StreamJitMI(args, con, ss),
-                    FixedInputManager(),
-                    MinimizeTime(),
-                    args)
+	mi = StreamJitMI(args, ss, manipulator, FixedInputManager(),
+                    MinimizeTime())
+
+	m = TuningRunMain(mi, args)
 	m.main()
 
 def start(argv, cfg, con, ss):
@@ -65,7 +80,7 @@ def start(argv, cfg, con, ss):
 
 	parser.add_argument('--program', help='Name of the StreamJit application')
 	
-	args = parser.parse_args(argv)	
+	args = parser.parse_args(argv)
 
 	if not args.database:
     		args.database = 'sqlite:///' + args.program + '.db'
