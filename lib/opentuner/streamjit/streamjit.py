@@ -1,4 +1,4 @@
-# TCP server example
+#!../../venv/bin/python
 import socket
 import argparse
 import traceback
@@ -14,6 +14,7 @@ class streamJit:
 
 	def listen(self):
 		try:
+			print 'listening for client at local prot %d'%self.port
 			server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			server_socket.bind(("localhost", self.port))
 			server_socket.listen(1)
@@ -41,7 +42,7 @@ class streamJit:
 				cfgString = self.file.readline()
 				try:
 					cfg = configuration.getConfiguration(cfgString)
-					argv = ['--program', self.program]
+					argv = ['--program', self.program,  '--test-limit', '500']
 					tuner.start(argv, cfg, self.socket, self)
 				except Exception, e:
 					print "Exception occured : %s"%e
