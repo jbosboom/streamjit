@@ -1,11 +1,8 @@
 package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
-import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableTable;
-import com.google.common.collect.Table;
 import edu.mit.streamjit.util.ilpsolve.ILPSolver;
 import edu.mit.streamjit.util.ilpsolve.SolverException;
 import java.util.HashSet;
@@ -20,14 +17,14 @@ import java.util.Set;
  */
 public final class Schedule<T> {
 	private final ImmutableSet<T> things;
-	private final ImmutableTable<T, T, Constraint<T>> constraints;
+	private final ImmutableSet<Constraint<T>> constraints;
 	private final ImmutableMap<T, Integer> schedule;
-	private Schedule(ImmutableSet<T> things, ImmutableTable<T, T, Constraint<T>> constraints, ImmutableMap<T, Integer> schedule) {
+	private Schedule(ImmutableSet<T> things, ImmutableSet<Constraint<T>> constraints, ImmutableMap<T, Integer> schedule) {
 		this.things = things;
 		this.constraints = constraints;
 		this.schedule = schedule;
 	}
-	private static <T> Schedule<T> schedule(ImmutableSet<T> things, ImmutableTable<T, T, Constraint<T>> constraints, int multiplier) {
+	private static <T> Schedule<T> schedule(ImmutableSet<T> things, ImmutableSet<Constraint<T>> constraints, int multiplier) {
 		ILPSolver solver = new ILPSolver();
 		//There's one variable for each thing, which represents the number of
 		//times it fires.  This uses the default bounds.  (TODO: perhaps a bound
@@ -38,7 +35,7 @@ public final class Schedule<T> {
 			variablesBuilder.put(thing, solver.newVariable(thing.toString()));
 		ImmutableMap<T, ILPSolver.Variable> variables = variablesBuilder.build();
 
-		for (Constraint<T> constraint : constraints.values()) {
+		for (Constraint<T> constraint : constraints) {
 			ILPSolver.LinearExpr expr = variables.get(constraint.upstream).asLinearExpr(constraint.pushRate)
 					.minus(constraint.popRate, variables.get(constraint.downstream));
 			switch (constraint.condition) {
@@ -87,7 +84,7 @@ public final class Schedule<T> {
 
 	public static final class Builder<T> {
 		private final Set<T> things = new HashSet<>();
-		private final Table<T, T, Constraint<T>> constraints = HashBasedTable.create();
+		private final Set<Constraint<T>> constraints = new HashSet<>();
 		private int multiplier = 1;
 		private Builder() {}
 
@@ -158,13 +155,11 @@ public final class Schedule<T> {
 		public ConstraintBuilder connect(T upstream, T downstream) {
 			checkArgument(things.contains(upstream), "upstream %s not in %s", upstream, this);
 			checkArgument(things.contains(downstream), "downstream %s not in %s", downstream, this);
-			checkArgument(!constraints.contains(upstream, downstream), "repeated constraint between %s and %s", upstream, downstream);
 			return new ConstraintBuilder(upstream, downstream);
 		}
 
 		private void addConstraint(Constraint<T> constraint) {
-			Constraint<T> old = constraints.put(constraint.upstream, constraint.downstream, constraint);
-			checkArgument(old == null, "repeated constraint: %s and %s", old, constraint);
+			constraints.add(constraint);
 		}
 
 		public Builder<T> multiply(int multiplier) {
@@ -174,7 +169,7 @@ public final class Schedule<T> {
 		}
 
 		public Schedule<T> build() {
-			return schedule(ImmutableSet.copyOf(things), ImmutableTable.copyOf(constraints), multiplier);
+			return schedule(ImmutableSet.copyOf(things), ImmutableSet.copyOf(constraints), multiplier);
 		}
 	}
 
@@ -203,24 +198,6 @@ public final class Schedule<T> {
 
 	public int getExecutions(T thing) {
 		return schedule.get(thing);
-	}
-
-	public int getThroughput(T upstream, T downstream) {
-		return getExecutions(upstream) * constraints.get(upstream, downstream).pushRate;
-	}
-
-	/**
-	 * Returns the amount of buffering required on the edge between the given
-	 * upstream and downstream things for them to execute without
-	 * synchronization.
-	 */
-	public int getSteadyStateBufferSize(T upstream, T downstream) {
-		return getThroughput(upstream, downstream) + constraints.get(upstream, downstream).excessPeeks;
-	}
-
-	public int getBufferDelta(T upstream, T downstream) {
-		Constraint<T> c = constraints.get(upstream, downstream);
-		return getExecutions(upstream) * c.pushRate - getExecutions(downstream) * c.popRate;
 	}
 
 	public static final class ScheduleException extends RuntimeException {

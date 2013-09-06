@@ -299,9 +299,9 @@ public final class Compiler {
 		if (info.isInternal()) {
 			assert upstreamNode != null && downstreamNode != null;
 			assert !upstreamNode.equals(downstreamNode) : "shouldn't be buffering on intra-node edge";
-			capacity = initialSize = initSchedule.getBufferDelta(upstream, downstream);
-			unconsumedItems = capacity - schedule.getThroughput(upstreamNode, downstreamNode);
-			assert unconsumedItems >= 0;
+			capacity = initialSize = getInitBufferDelta(info);
+			unconsumedItems = capacity - getThroughput(info);
+			assert unconsumedItems >= 0 : unconsumedItems;
 		} else if (info.isInput()) {
 			assert downstream != null;
 			int chanIdx = info.getDownstreamChannelIndex();
@@ -337,7 +337,7 @@ public final class Compiler {
 			StreamNode upstreamNode = streamNodes.get(info.upstream());
 			StreamNode downstreamNode = streamNodes.get(info.downstream());
 			if (!upstreamNode.equals(downstreamNode))
-				constraint.bufferAtLeast(schedule.getSteadyStateBufferSize(upstreamNode, downstreamNode));
+				constraint.bufferAtLeast(getSteadyStateBufferSize(info));
 			else
 				constraint.bufferExactly(0);
 		}
@@ -347,6 +347,25 @@ public final class Compiler {
 		} catch (Schedule.ScheduleException ex) {
 			throw new StreamCompilationFailedException("couldn't find initialization schedule", ex);
 		}
+	}
+
+	private int getInitBufferDelta(IOInfo info) {
+		int pushRate = info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max();
+		int popRate = info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max();
+		return initSchedule.getExecutions(info.upstream()) * pushRate
+				- initSchedule.getExecutions(info.downstream()) * popRate;
+	}
+
+	private int getThroughput(IOInfo info) {
+		int pushRate = info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max();
+		StreamNode node = streamNodes.get(info.upstream());
+		return schedule.getExecutions(node) * node.internalSchedule.getExecutions(info.upstream()) * pushRate;
+	}
+
+	private int getSteadyStateBufferSize(IOInfo info) {
+		//TODO: factor out excessPeeks computation into its own function
+		int excessPeeks = Math.max(0, info.downstream().getPeekRates().get(info.getDownstreamChannelIndex()).max() - info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max());
+		return getThroughput(info) + excessPeeks;
 	}
 
 	/**
