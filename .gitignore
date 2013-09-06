@@ -16,4 +16,4 @@ bin/
 *.hprof
 .factorypath
 # python bytecode
-.pyc
+*.pyc
