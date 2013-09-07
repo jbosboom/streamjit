@@ -1490,20 +1490,22 @@ public final class Compiler {
 			ImmutableList<Token> inputList = getInputs().asList();
 			for (int i = 0; i < inputList.size(); ++i) {
 				Token t = inputList.get(i);
-				Object[] data = (Object[])blobClassFieldGetters.get(bufferData.get(t).readerBufferFieldName).invokeExact();
+				BufferData data = bufferData.get(t);
+				Object[] array = (Object[])blobClassFieldGetters.get(bufferData.get(t).readerBufferFieldName).invokeExact();
+				System.arraycopy(array, array.length - data.excessPeeks, array, 0, data.excessPeeks);
 				Buffer buffer = buffers.get(t);
 				if (isDraining()) {
 					//While draining, we can trust size() exactly, so we can
 					//check before proceeding to avoid wasting the interrupt.
-					if (buffer.size() >= data.length) {
-						boolean mustSucceed = buffer.readAll(data);
+					if (buffer.size() >= array.length - data.excessPeeks) {
+						boolean mustSucceed = buffer.readAll(array, data.excessPeeks);
 						assert mustSucceed : "size() lies";
 					} else {
 						doDrain(true, inputList.subList(0, i));
 						return;
 					}
 				} else
-					while (!buffer.readAll(data))
+					while (!buffer.readAll(array, data.excessPeeks))
 						if (isDraining()) {
 							doDrain(true, inputList.subList(0, i));
 							return;
