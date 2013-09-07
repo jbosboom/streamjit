@@ -282,9 +282,12 @@ public final class Benchmarker {
 		} catch (Throwable t) {
 			return Result.exception(benchmark, input, compiler, t);
 		}
-		if (verifier != null && !verifier.buffer.correct())
-			return Result.wrongOutput(benchmark, input, compiler, compileMillis, runMillis,
-					verifier.buffer.extents, verifier.buffer.missingOutput, verifier.buffer.excessOutput);
+		if (verifier != null) {
+			verifier.buffer.finish();
+			if (!verifier.buffer.correct())
+				return Result.wrongOutput(benchmark, input, compiler, compileMillis, runMillis,
+						verifier.buffer.extents, verifier.buffer.missingOutput, verifier.buffer.excessOutput);
+		}
 		return Result.ok(benchmark, input, compiler, compileMillis, runMillis);
 	}
 
