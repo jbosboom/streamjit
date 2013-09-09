@@ -159,7 +159,7 @@ public class TunerMain {
 					bw.flush();
 
 				} catch (Exception ex) {
-					System.out
+					System.err
 							.println("Couldn't compile the stream graph with this configuration");
 					autoTuner.writeLine(new Double(Double.POSITIVE_INFINITY)
 							.toString());
