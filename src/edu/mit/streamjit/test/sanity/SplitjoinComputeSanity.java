@@ -40,9 +40,13 @@ public class SplitjoinComputeSanity {
 		}
 		private static Dataset dataset() {
 			List<Integer> input = new ArrayList<>(), output = new ArrayList<>();
-			for (int i = 0; i < 100000; ++i) {
+			for (int i = 0; i+2 < 100000; i += 3) {
 				input.add(i);
 				output.add(i * FACTORS[i % FACTORS.length]);
+				input.add(i+1);
+				output.add((i+1) * FACTORS[(i+1) % FACTORS.length]);
+				input.add(i+2);
+				output.add((i+2) * FACTORS[(i+2) % FACTORS.length]);
 			}
 			//TODO: use a functional Input here
 			return new Dataset("0 to 100000", Input.<Object>fromIterable(input)).withOutput(Input.<Object>fromIterable(output));
