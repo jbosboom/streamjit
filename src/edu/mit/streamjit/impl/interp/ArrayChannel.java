@@ -61,7 +61,7 @@ public class ArrayChannel<E> implements Channel<E> {
 		if (capacity < 0)
 			throw new IllegalArgumentException();
 		capacity = Math.min(capacity, DEFAULT_CAPACITY);
-		buffer = (E[])new Object[capacity];
+		buffer = (E[])new Object[capacity+1];
 	}
 
 	/**
@@ -99,10 +99,10 @@ public class ArrayChannel<E> implements Channel<E> {
 
 	@Override
 	public void push(E element) {
+		if (head == increment(tail))
+			expandCapacity();
 		buffer[tail] = element;
 		tail = increment(tail);
-		if (head == tail)
-			expandCapacity();
 	}
 
 	@Override
@@ -138,6 +138,22 @@ public class ArrayChannel<E> implements Channel<E> {
 	 */
 	public int getCapacity() {
 		return buffer.length - 1;
+	}
+
+	public void ensureCapacity(int capacity) {
+		if (capacity > getCapacity())
+			setLength(capacity+1);
+	}
+
+	/**
+	 * Trims the capacity of this channel to its current size, to reduce memory
+	 * consumption.
+	 */
+	public void trimToSize() {
+		if (isEmpty())
+			setLength(2);
+		else
+			setLength(size()+1);
 	}
 
 	@Override
@@ -188,25 +204,38 @@ public class ArrayChannel<E> implements Channel<E> {
 	}
 
 	/**
-	 * Expand the buffer, copying over the existing elements.  Assumes (and
-	 * asserts) head == tail, so you can't call it as an "ensure capacity"
-	 * method.
+	 * Grow the buffer based on the growth factor.
 	 */
 	private void expandCapacity() {
-		assert head == tail;
 		int oldLength = buffer.length;
 		int newLength = (int)Math.ceil(oldLength * GROWTH_FACTOR);
 		if (newLength <= 0)
 			newLength = Integer.MAX_VALUE; //Good luck allocating that much...
 		assert newLength >= buffer.length;
+		setLength(newLength);
+	}
+
+	/**
+	 * Sets the circular buffer's length.  Note that capacity is one less than
+	 * the length.
+	 * @param newLength the new buffer length
+	 */
+	private void setLength(int newLength) {
+		int size = size();
+		assert newLength >= size + 1;
+		int oldLength = buffer.length;
 		@SuppressWarnings("unchecked")
 		E[] newBuffer = (E[])new Object[newLength];
-
 		//Copy over the elements in the correct order.
-		System.arraycopy(buffer, head, newBuffer, 0, oldLength-head);
-		System.arraycopy(buffer, 0, newBuffer, oldLength-head, head);
+		if (tail >= head)
+			System.arraycopy(buffer, head, newBuffer, 0, size);
+		else {
+			System.arraycopy(buffer, head, newBuffer, 0, oldLength-head);
+			System.arraycopy(buffer, 0, newBuffer, oldLength-head, tail);
+		}
 		head = 0;
-		tail = oldLength;
+		tail = size;
 		buffer = newBuffer;
+		assert size() == size;
 	}
 }

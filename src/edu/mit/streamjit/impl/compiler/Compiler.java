@@ -1387,14 +1387,19 @@ public final class Compiler {
 			}
 		}
 
+		//TODO: to minimize memory usage during initialization, we should use
+		//the interpreter to run a semi-pull schedule, or at least not allocate
+		//channels until we need them.
 		private void doInit() throws Throwable {
 			//Create channels.
 			ImmutableSet<IOInfo> allEdges = IOInfo.allEdges(workers);
 			ImmutableMap.Builder<Token, Channel<Object>> channelMapBuilder = ImmutableMap.builder();
 			for (IOInfo i : allEdges) {
-				Channel<Object> c = new ArrayChannel<>();
-				if (i.upstream() != null && !i.isInput())
+				ArrayChannel<Object> c = new ArrayChannel<>();
+				if (i.upstream() != null && !i.isInput()) {
 					addOrSet(Workers.getOutputChannels(i.upstream()), i.getUpstreamChannelIndex(), c);
+					c.ensureCapacity(initSchedule.get(i.upstream()) * i.upstream().getPushRates().get(i.getUpstreamChannelIndex()).max());
+				}
 				if (i.downstream() != null && !i.isOutput())
 					addOrSet(Workers.getInputChannels(i.downstream()), i.getDownstreamChannelIndex(), c);
 				channelMapBuilder.put(i.token(), c);
@@ -1424,6 +1429,9 @@ public final class Compiler {
 				int iterations = initSchedule.get(worker);
 				for (int i = 0; i < iterations; ++i)
 					Workers.doWork(worker);
+				//We can trim this worker's input channels.
+				for (Worker<?, ?> p : Workers.getPredecessors(worker))
+					((ArrayChannel<Object>)channelMap.get(new Token(p, worker))).trimToSize();
 			}
 
 			//Flush output (if any was generated?).
