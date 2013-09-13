@@ -17,3 +17,5 @@ bin/
 .factorypath
 # python bytecode
 *.pyc
+venv/
+*~
