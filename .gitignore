@@ -15,3 +15,5 @@ bin/
 *.hprof.factorypath
 # python bytecode
 *.pyc
+venv/
+*~
