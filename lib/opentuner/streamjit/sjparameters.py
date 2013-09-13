@@ -36,7 +36,7 @@ class sjSwitchParameter(SwitchParameter):
 		super(sjSwitchParameter, self).__init__(name, len(universe), **kwargs)
 
 	def getValue(self):
-		return self.value
+		return self.universe[self.value]
 
 	def getJavaClassPath(self):
 		return self.javaClassPath
@@ -50,6 +50,7 @@ class sjSwitchParameter(SwitchParameter):
 if __name__ == '__main__':
 	ip = IntegerParameter("suman", 2, 7)
 	sjip = sjIntegerParameter("ss", 3, 56, 45)
-	sjsw = sjSwitchParameter('sjswtch', 'java.lang.Integer', [1, 2, 3, 4], 2, 'edu.mit.streamjit.impl.common.Configuration$SwitchParameter')
+	sjsw = sjSwitchParameter('sjswtch', 'java.lang.Integer', ['AAA', 'BBB', 'CCC', 'DDD'], 2, 'edu.mit.streamjit.impl.common.Configuration$SwitchParameter')
+	print sjsw.getName()
 	print sjsw.getUniverse()
-	print sjip.getValue()
+	print sjsw.getValue()
