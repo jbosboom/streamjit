@@ -259,6 +259,9 @@ class Parameter(object):
   def search_space_size(self):
     return 1
 
+  def getName(self):
+    return self.name
+
 class PrimitiveParameter(Parameter):
   '''
   a single dimension in a cartesian space, with a minimum and a maximum value
