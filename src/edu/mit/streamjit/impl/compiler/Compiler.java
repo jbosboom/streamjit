@@ -333,15 +333,23 @@ public final class Compiler {
 					.push(info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max())
 					.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max())
 					.peek(info.downstream().getPeekRates().get(info.getDownstreamChannelIndex()).max());
+
+			int initialBufferSize = 0;
+			if (initialState != null) {
+				ImmutableList<Object> data = initialState.getData(info.token());
+				if (data != null)
+					initialBufferSize = data.size();
+			}
+
 			//Inter-node edges require at least a steady-state's worth of
 			//buffering (to avoid synchronization); intra-node edges cannot have
 			//any buffering at all.
 			StreamNode upstreamNode = streamNodes.get(info.upstream());
 			StreamNode downstreamNode = streamNodes.get(info.downstream());
 			if (!upstreamNode.equals(downstreamNode))
-				constraint.bufferAtLeast(getSteadyStateBufferSize(info));
+				constraint.bufferAtLeast(getSteadyStateBufferSize(info) - initialBufferSize);
 			else
-				constraint.bufferExactly(0);
+				constraint.bufferExactly(-initialBufferSize);
 		}
 
 		try {
@@ -713,7 +721,7 @@ public final class Compiler {
 		try {
 			initFieldHelper(mcl.loadClass(fieldHelperKlass.getName()));
 			Class<?> blobClass = mcl.loadClass(blobKlass.getName());
-			return new CompilerBlobHost(workers, config, blobClass, ImmutableList.copyOf(buffers.values()), initSchedule.getSchedule());
+			return new CompilerBlobHost(workers, config, initialState, blobClass, ImmutableList.copyOf(buffers.values()), initSchedule.getSchedule());
 		} catch (ClassNotFoundException ex) {
 			throw new AssertionError(ex);
 		}
@@ -1188,6 +1196,7 @@ public final class Compiler {
 	private static final class CompilerBlobHost implements Blob {
 		private final ImmutableSet<Worker<?, ?>> workers;
 		private final Configuration configuration;
+		private final DrainData initialState;
 		private final ImmutableMap<Token, BufferData> bufferData;
 		private final ImmutableMap<Worker<?, ?>, Integer> initSchedule;
 		private final ImmutableMap<Token, Integer> initScheduleReqs;
@@ -1203,9 +1212,10 @@ public final class Compiler {
 		private volatile Runnable drainCallback;
 		private volatile DrainData drainData;
 
-		public CompilerBlobHost(Set<Worker<?, ?>> workers, Configuration configuration, Class<?> blobClass, List<BufferData> bufferData, Map<Worker<?, ?>, Integer> initSchedule) {
+		public CompilerBlobHost(Set<Worker<?, ?>> workers, Configuration configuration, DrainData initialState, Class<?> blobClass, List<BufferData> bufferData, Map<Worker<?, ?>, Integer> initSchedule) {
 			this.workers = ImmutableSet.copyOf(workers);
 			this.configuration = configuration;
+			this.initialState = initialState;
 			this.initSchedule = ImmutableMap.copyOf(initSchedule);
 			this.blobClass = blobClass;
 
@@ -1394,6 +1404,15 @@ public final class Compiler {
 			}
 		}
 
+		private List<Object> getInitialData(Token token) {
+			if (initialState != null) {
+				ImmutableList<Object> data = initialState.getData(token);
+				if (data != null)
+					return data;
+			}
+			return ImmutableList.of();
+		}
+
 		//TODO: to minimize memory usage during initialization, we should use
 		//the interpreter to run a semi-pull schedule, or at least not allocate
 		//channels until we need them.
@@ -1409,6 +1428,10 @@ public final class Compiler {
 				}
 				if (i.downstream() != null && !i.isOutput())
 					addOrSet(Workers.getInputChannels(i.downstream()), i.getDownstreamChannelIndex(), c);
+
+				for (Object o : getInitialData(i.token()))
+					c.push(o);
+
 				channelMapBuilder.put(i.token(), c);
 			}
 			this.channelMap = channelMapBuilder.build();
@@ -1416,7 +1439,7 @@ public final class Compiler {
 			//Fill input channels.
 			for (IOInfo i : allEdges) {
 				if (!i.isInput()) continue;
-				int required = initScheduleReqs.get(i.token());
+				int required = initScheduleReqs.get(i.token()) - getInitialData(i.token()).size();
 				Channel<Object> channel = channelMap.get(i.token());
 				Buffer buffer = buffers.get(i.token());
 				Object[] data = new Object[required];
@@ -1558,6 +1581,7 @@ public final class Compiler {
 
 			//Create an interpreter and use it to drain stuff.
 			//TODO: hack.  Make a proper Interpreter interface for this use case.
+			//Obviously, we should make a DrainData for the interpreter!
 			List<ChannelFactory> universe = Arrays.<ChannelFactory>asList(new ChannelFactory() {
 				@Override
 				@SuppressWarnings("unchecked")
