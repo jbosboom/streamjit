@@ -6,6 +6,7 @@ import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.StatefulFilter;
+import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.AbstractBenchmark;
 import edu.mit.streamjit.test.Benchmark;
@@ -76,6 +77,6 @@ public class StatefulSanity {
 	}
 
 	public static void main(String[] args) {
-		Benchmarker.runBenchmark(new Plus3Times2Plus7(), new DebugStreamCompiler());
+		Benchmarker.runBenchmark(new Plus3Times2Plus7(), new CompilerStreamCompiler()).get(0).print(System.out);
 	}
 }
