@@ -536,6 +536,11 @@ public final class Compiler {
 			assert li.getLocation() instanceof Field;
 			LoadInst replacement = new LoadInst(streamNodes.get(worker).fields.get(worker, (Field)li.getLocation()));
 			li.replaceInstWithInst(replacement);
+		} else if (inst instanceof StoreInst) {
+			StoreInst si = (StoreInst)inst;
+			assert si.getLocation() instanceof Field;
+			StoreInst replacement = new StoreInst(streamNodes.get(worker).fields.get(worker, (Field)si.getLocation()), si.getData());
+			si.replaceInstWithInst(replacement);
 		} else
 			throw new AssertionError("Couldn't eliminate reciever: "+inst);
 	}
