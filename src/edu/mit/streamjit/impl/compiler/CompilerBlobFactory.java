@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.compiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.BlobFactory;
+import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
 import java.util.Set;
@@ -16,8 +17,8 @@ public final class CompilerBlobFactory implements BlobFactory {
 	public CompilerBlobFactory() {}
 
 	@Override
-	public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
-		return new Compiler(workers, config, maxNumCores).compile();
+	public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
+		return new Compiler(workers, config, maxNumCores, initialState).compile();
 	}
 
 	/**

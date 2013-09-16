@@ -47,7 +47,7 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		stream.visit(cwv);
 		ImmutableSet<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
-		Blob blob = blobFactory.makeBlob(workers, getConfiguration(workers), getMaxNumCores());
+		Blob blob = blobFactory.makeBlob(workers, getConfiguration(workers), getMaxNumCores(), null);
 
 		Token inputToken = Iterables.getOnlyElement(blob.getInputs());
 		Token outputToken = Iterables.getOnlyElement(blob.getOutputs());

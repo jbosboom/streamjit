@@ -38,7 +38,7 @@ public interface BlobFactory {
 	 * >= 1)
 	 * @return a Blob responsible for the given workers
 	 */
-	public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores);
+	public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState);
 
 	/**
 	 * Creates a new Configuration with parameters and default values suitable

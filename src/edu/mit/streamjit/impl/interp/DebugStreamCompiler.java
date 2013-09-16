@@ -24,6 +24,7 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
+import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
@@ -61,7 +62,7 @@ public class DebugStreamCompiler extends BlobHostStreamCompiler {
 
 	private static final class DebugInterpreterBlobFactory extends Interpreter.InterpreterBlobFactory {
 		@Override
-		public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
+		public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 			//TODO: find message constraints
 			return new DebugInterpreter(workers, Collections.<MessageConstraint>emptyList(), config);
 		}

@@ -98,6 +98,7 @@ public final class Compiler {
 	private final Set<Worker<?, ?>> workers;
 	private final Configuration config;
 	private final int maxNumCores;
+	private final DrainData initialState;
 	private final ImmutableSet<IOInfo> ioinfo;
 	private final Worker<?, ?> firstWorker, lastWorker;
 	/**
@@ -129,10 +130,11 @@ public final class Compiler {
 	 * from them in the blobKlass static initializer.
 	 */
 	private final Klass fieldHelperKlass;
-	public Compiler(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
+	public Compiler(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 		this.workers = workers;
 		this.config = config;
 		this.maxNumCores = maxNumCores;
+		this.initialState = initialState;
 		this.ioinfo = IOInfo.externalEdges(workers);
 
 		//We can only have one first and last worker, though they can have
@@ -1576,7 +1578,7 @@ public final class Compiler {
 				}
 			});
 			Configuration config = Configuration.builder().addParameter(new Configuration.SwitchParameter<>("channelFactory", ChannelFactory.class, universe.get(0), universe)).build();
-			Blob interp = new Interpreter.InterpreterBlobFactory().makeBlob(workers, config, 1);
+			Blob interp = new Interpreter.InterpreterBlobFactory().makeBlob(workers, config, 1, null /* TODO */);
 			interp.installBuffers(buffers);
 			Runnable interpCode = interp.getCoreCode(0);
 			final AtomicBoolean interpFinished = new AtomicBoolean();
@@ -1617,7 +1619,7 @@ public final class Compiler {
 		Set<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
 		Configuration config = new CompilerBlobFactory().getDefaultConfiguration(workers);
 		int maxNumCores = 1;
-		Compiler compiler = new Compiler(workers, config, maxNumCores);
+		Compiler compiler = new Compiler(workers, config, maxNumCores, null);
 
 		Blob blob = compiler.compile();
 		Map<Token, Buffer> buffers = new HashMap<>();

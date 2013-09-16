@@ -238,7 +238,7 @@ public class Interpreter implements Blob {
 	public static class InterpreterBlobFactory implements BlobFactory {
 		public InterpreterBlobFactory() {}
 		@Override
-		public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores) {
+		public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 			//TODO: get the constraints!
 			return new Interpreter(workers, Collections.<MessageConstraint>emptyList(), config);
 		}
