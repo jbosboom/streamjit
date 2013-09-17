@@ -64,7 +64,7 @@ public class DebugStreamCompiler extends BlobHostStreamCompiler {
 		@Override
 		public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 			//TODO: find message constraints
-			return new DebugInterpreter(workers, Collections.<MessageConstraint>emptyList(), config);
+			return new DebugInterpreter(workers, Collections.<MessageConstraint>emptyList(), config, initialState);
 		}
 		@Override
 		public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
@@ -92,8 +92,8 @@ public class DebugStreamCompiler extends BlobHostStreamCompiler {
 	}
 
 	private static final class DebugInterpreter extends Interpreter {
-		private DebugInterpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter, Configuration config) {
-			super(workersIter, constraintsIter, config);
+		private DebugInterpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter, Configuration config, DrainData initialState) {
+			super(workersIter, constraintsIter, config, initialState);
 		}
 
 		@Override

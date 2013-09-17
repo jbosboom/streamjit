@@ -21,6 +21,7 @@ import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.util.EmptyRunnable;
 import edu.mit.streamjit.util.Pair;
+import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
@@ -82,7 +83,7 @@ public class Interpreter implements Blob {
 	 * can't fire a source.
 	 */
 	private ImmutableMap<Channel<?>, Buffer> inputBuffers, outputBuffers;
-	public Interpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter, Configuration config) {
+	public Interpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter, Configuration config, DrainData initialState) {
 		this.workers = ImmutableSet.copyOf(workersIter);
 		this.sinks = Workers.getBottommostWorkers(workers);
 		this.config = config;
@@ -107,6 +108,10 @@ public class Interpreter implements Blob {
 			Channel channel = factory.makeChannel((Worker)info.upstream(), (Worker)info.downstream());
 			Workers.getOutputChannels(info.upstream()).set(info.getUpstreamChannelIndex(), channel);
 			Workers.getInputChannels(info.downstream()).set(info.getDownstreamChannelIndex(), channel);
+			if (initialState != null) {
+				for (Object o : initialState.getData(info.token()))
+					channel.push(o);
+			}
 		}
 		ImmutableSet.Builder<Token> inputTokens = ImmutableSet.builder(), outputTokens = ImmutableSet.builder();
 		ImmutableMap.Builder<Token, Integer> minimumBufferSize = ImmutableMap.builder();
@@ -132,6 +137,30 @@ public class Interpreter implements Blob {
 				int chanIdx = info.getDownstreamChannelIndex();
 				int rate = Math.max(w.getPeekRates().get(chanIdx).max(), w.getPopRates().get(chanIdx).max());
 				minimumBufferSize.put(info.token(), rate);
+
+				//Only fill input channels -- any existing output will be used
+				//as input in the downstream blob.
+				if (initialState != null)
+					for (Object o : initialState.getData(info.token()))
+						channel.push(o);
+			}
+		}
+
+		if (initialState != null) {
+			for (Worker<?, ?> w : workers) {
+				int id = Workers.getIdentifier(w);
+				ImmutableSet<Field> fields = ReflectionUtils.getAllFields(w.getClass());
+				for (Map.Entry<String, Object> e : initialState.getWorkerState(id).entrySet())
+					for (Field f : fields)
+						if (!Modifier.isFinal(f.getModifiers()) && !Modifier.isStatic(f.getModifiers())
+								&& f.getName().equals(e.getKey())) {
+							f.setAccessible(true);
+							try {
+								f.set(w, e.getValue());
+							} catch (IllegalAccessException ex) {
+								throw new AssertionError(ex);
+							}
+						}
 			}
 		}
 
@@ -240,7 +269,7 @@ public class Interpreter implements Blob {
 		@Override
 		public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 			//TODO: get the constraints!
-			return new Interpreter(workers, Collections.<MessageConstraint>emptyList(), config);
+			return new Interpreter(workers, Collections.<MessageConstraint>emptyList(), config, initialState);
 		}
 		@Override
 		public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
