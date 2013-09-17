@@ -168,6 +168,9 @@ def start(program):
 		query = 'SELECT configuration FROM apps WHERE name="%s"'%program
 		c.execute(query)
 		row = c.fetchone()
+		if not row:
+			data = raw_input ( "No entry found with name = %s \nPlease press anykey to exit"%program )
+			sys.exit(1)
 		cfgString = row[0]
 		cfg = configuration.getConfiguration(cfgString)
 		cfgparams = cfg.getAllParameters()
