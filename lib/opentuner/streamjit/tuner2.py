@@ -21,10 +21,10 @@ from jvmparameters import *
 
 class StreamJitMI(MeasurementInterface):
 	''' Measurement Interface for tunning a StreamJit application'''
-	def __init__(self, args, jvm, manipulator, inputmanager, objective):
+	def __init__(self, args, jvmOptions, manipulator, inputmanager, objective):
 		super(StreamJitMI, self).__init__(args = args, program_name = args.program, manipulator = manipulator, input_manager = inputmanager, objective = objective)
 		self.trycount = 0
-		self.jvm = jvm
+		self.jvmOptions = jvmOptions
 		self.program = args.program
 		try:
 			self.con = sqlite3.connect('sj' + args.program + '.db')
@@ -44,12 +44,12 @@ class StreamJitMI(MeasurementInterface):
 		#self.niceprint(cfg)
 		commandStr = ''
 		args = ["java"]
-		for key in self.jvm.keys():
+		for key in self.jvmOptions.keys():
 			#print "\t", key
   			val = cfg[key]
 			#del cfg[key]
-			self.jvm.get(key).setValue(val)
-			cmd = self.jvm.get(key).getCommand()
+			self.jvmOptions.get(key).setValue(val)
+			cmd = self.jvmOptions.get(key).getCommand()
 			commandStr += cmd
 			args.append(cmd)
 				
@@ -100,10 +100,10 @@ class StreamJitMI(MeasurementInterface):
 		cfg = dict.copy(configuration.data)
 		commandStr = ''
 		args = ["java"]
-		for key in self.jvm.keys():
+		for key in self.jvmOptions.keys():
   			val = cfg[key]
-			self.jvm.get(key).setValue(val)
-			cmd = self.jvm.get(key).getCommand()
+			self.jvmOptions.get(key).setValue(val)
+			cmd = self.jvmOptions.get(key).getCommand()
 			commandStr += cmd
 			args.append(cmd)
 				
@@ -135,17 +135,17 @@ class StreamJitMI(MeasurementInterface):
 		cursor.execute(query)
 		conn.commit()
 
-def main(args, cfg, jvm):
+def main(args, cfg, jvmOptions):
 	logging.basicConfig(level=logging.INFO)
 	manipulator = ConfigurationManipulator()
 
-	params = dict(cfg.items() + jvm.items())
+	params = dict(cfg.items() + jvmOptions.items())
 	#print "\nFeature variables...."
 	for key in params.keys():
 		#print "\t", key
   		manipulator.add_parameter(params.get(key))
 	
-	mi = StreamJitMI(args,jvm, manipulator, FixedInputManager(),
+	mi = StreamJitMI(args,jvmOptions, manipulator, FixedInputManager(),
                     MinimizeTime())
 
 	m = TuningRunMain(mi, args)
@@ -156,7 +156,7 @@ def start(program):
 	parser = argparse.ArgumentParser(parents=opentuner.argparsers())
 	parser.add_argument('--program', help='Name of the StreamJit application')
 
-	argv = ['--program', program,  '--test-limit', '1']
+	argv = ['--program', program,  '--test-limit', '10']
 	args = parser.parse_args(argv)
 
 	if not args.database:
@@ -181,9 +181,9 @@ def start(program):
 	gc = jvmSwitchParameter("GC",['UseSerialGC','UseParallelGC','UseParallelOldGC','UseConcMarkSweepGC'],2, "-XX:+%s")
 	
 
-	jvmparams = {"GC":gc, "maxHeap":maxHeap}
+	jvmOptions = {"GC":gc, "maxHeap":maxHeap}
 
-	main(args, cfgparams, jvmparams)
+	main(args, cfgparams, jvmOptions)
 
 if __name__ == '__main__':
 	start('ChannelVocoder 4, 64')
