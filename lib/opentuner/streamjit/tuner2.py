@@ -1,4 +1,4 @@
-#!../../venv/bin/python
+#!/usr/bin/python
 import argparse
 import logging
 import json
