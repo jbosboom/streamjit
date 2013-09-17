@@ -31,12 +31,8 @@ class StreamJitMI(MeasurementInterface):
 			c = self.tunedataDB.cursor()
 			c.execute("drop table if exists results")
 			c.execute('''CREATE TABLE results ( Round int, JVMOption text, SJConfig text, Exectime real)''')
+			c.execute('''CREATE TABLE if not exists exceptions (ExpMsg text, JVMOption text, SJConfig text)''')
 			self.tunedataDB.commit()
-
-			self.exceptionLogDB = sqlite3.connect('ExptnLog_' + args.program + '.db')
-			cur = self.exceptionLogDB.cursor()
-			cur.execute('''CREATE TABLE if not exists exceptions (ExpMsg text, JVMOption text, SJConfig text)''')
-			self.exceptionLogDB.commit()
 		except Exception, e:
 			print "Exception occured : %s"%e
 			traceback.print_exc()
@@ -76,11 +72,11 @@ class StreamJitMI(MeasurementInterface):
 		out, err = p.communicate()
 		print err
 		if err.find("Exception") > 0:
-			cur = self.exceptionLogDB.cursor()
+			cur = self.tunedataDB.cursor()
 			str1 = str(commandStr)
 			str2 = str(cfg)
 			cur.execute('INSERT INTO exceptions VALUES (?,?,?)', (err, str1, str2))
-			self.exceptionLogDB.commit()
+			self.tunedataDB.commit()
 			return opentuner.resultsdb.models.Result(state='ERROR', time=float('inf'))
 
 		cur.execute('SELECT exectime FROM results WHERE round=%d'%self.trycount)
