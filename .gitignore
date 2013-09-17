@@ -19,3 +19,4 @@ bin/
 *.pyc
 venv/
 *~
+*.db
