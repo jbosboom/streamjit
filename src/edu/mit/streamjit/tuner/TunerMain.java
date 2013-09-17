@@ -33,9 +33,6 @@ import edu.mit.streamjit.test.apps.bitonicsort.BitonicSort;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
- *
- * Tuner path /home/sumanan/opentuner/opentuner/examples/streamjit/tuner.py
- *
  * @author Sumanan sumanan@mit.edu
  * @since Aug 20, 2013
  */
@@ -228,9 +225,7 @@ public class TunerMain {
 				throw new AssertionError("Wrong python dictionary...");
 			Parameter p = config.getParameter(str[0]);
 			if (p == null)
-				System.out.println(str[0] + " - " + str[1]);
-			checkNotNull(p, String.format(
-					"No parameter %s found in the configuraion", str[0]));
+				continue;
 			// System.out.println(String.format("\t%s = %s", str[0], str[1]));
 			if (p instanceof IntParameter) {
 				IntParameter ip = (IntParameter) p;
