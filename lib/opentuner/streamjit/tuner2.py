@@ -66,9 +66,13 @@ class StreamJitMI(MeasurementInterface):
 		args.append("%d"%self.trycount)
 
 		#p = subprocess.Popen(["java",'%s'%commandStr, "-jar","RunApp.jar", "%s"%self.program, "%d"%self.trycount])
-		p = subprocess.Popen(args)
+		p = subprocess.Popen(args, stderr=subprocess.PIPE)
 		p.wait()		
-		
+		out, err = p.communicate()
+		print err
+		if err.find("Exception") > 0:
+			return opentuner.resultsdb.models.Result(state='ERROR', time=float('inf'))
+
 		cur.execute('SELECT exectime FROM results WHERE round=%d'%self.trycount)
 		row = cur.fetchone()
 		time = row[0]
