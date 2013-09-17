@@ -27,11 +27,11 @@ class StreamJitMI(MeasurementInterface):
 		self.jvmOptions = jvmOptions
 		self.program = args.program
 		try:
-			self.con = sqlite3.connect('sj' + args.program + '.db')
-			c = self.con.cursor()
+			self.tunedataDB = sqlite3.connect('sj' + args.program + '.db')
+			c = self.tunedataDB.cursor()
 			c.execute("drop table if exists results")
 			c.execute('''CREATE TABLE results ( Round int, JVMOption text, SJConfig text, Exectime real)''')
-			self.con.commit()
+			self.tunedataDB.commit()
 		except Exception, e:
 			print "Exception occured : %s"%e
 			traceback.print_exc()
@@ -53,10 +53,10 @@ class StreamJitMI(MeasurementInterface):
 			commandStr += cmd
 			args.append(cmd)
 				
-		cur = self.con.cursor()
+		cur = self.tunedataDB.cursor()
 		query = 'INSERT INTO results VALUES (%d,"%s","%s", "%f")'%(self.trycount, commandStr, cfg, -1)
 		cur.execute(query)
-		self.con.commit()
+		self.tunedataDB.commit()
 		
 		print commandStr
 
@@ -107,10 +107,10 @@ class StreamJitMI(MeasurementInterface):
 			commandStr += cmd
 			args.append(cmd)
 				
-		cur = self.con.cursor()
+		cur = self.tunedataDB.cursor()
 		query = 'INSERT INTO results VALUES (%d,"%s","%s", 0)'%(self.trycount, commandStr, cfg)
 		cur.execute(query)
-		self.con.commit()
+		self.tunedataDB.commit()
 		
 		print commandStr
 
