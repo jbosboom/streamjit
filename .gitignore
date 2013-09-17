@@ -17,3 +17,4 @@ bin/
 *.pyc
 venv/
 *~
+*.db
