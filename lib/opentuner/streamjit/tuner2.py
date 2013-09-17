@@ -48,7 +48,6 @@ class StreamJitMI(MeasurementInterface):
 		for key in self.jvmOptions.keys():
 			#print "\t", key
   			val = cfg[key]
-			#del cfg[key]
 			self.jvmOptions.get(key).setValue(val)
 			cmd = self.jvmOptions.get(key).getCommand()
 			commandStr += cmd
@@ -70,6 +69,7 @@ class StreamJitMI(MeasurementInterface):
 		p = subprocess.Popen(args, stderr=subprocess.PIPE)
 		p.wait()		
 		out, err = p.communicate()
+		# Do not comment following 'pring err' line. Commenting will cause deadlog due to std error buffer become full.
 		print err
 		if err.find("Exception") > 0:
 			cur = self.tunedataDB.cursor()
