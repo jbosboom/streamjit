@@ -5,9 +5,11 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSetMultimap;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
+import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
 import com.google.common.math.IntMath;
 import edu.mit.streamjit.api.Filter;
@@ -721,8 +723,9 @@ public final class Compiler {
 		try {
 			initFieldHelper(mcl.loadClass(fieldHelperKlass.getName()));
 			Class<?> blobClass = mcl.loadClass(blobKlass.getName());
-			return new CompilerBlobHost(workers, config, initialState, blobClass, ImmutableList.copyOf(buffers.values()), initSchedule.getSchedule());
-		} catch (ClassNotFoundException ex) {
+			List<FieldData> fieldData = makeFieldData(blobClass);
+			return new CompilerBlobHost(workers, config, initialState, blobClass, ImmutableList.copyOf(buffers.values()), fieldData, initSchedule.getSchedule());
+		} catch (ClassNotFoundException | NoSuchFieldException ex) {
 			throw new AssertionError(ex);
 		}
 	}
@@ -735,6 +738,17 @@ public final class Compiler {
 				} catch (NoSuchFieldException | IllegalAccessException ex) {
 					throw new AssertionError(ex);
 				}
+	}
+
+	private List<FieldData> makeFieldData(Class<?> blobClass) throws NoSuchFieldException {
+		ImmutableList.Builder<FieldData> list = ImmutableList.builder();
+		for (StreamNode node : ImmutableSet.copyOf(streamNodes.values()))
+			for (Table.Cell<Worker<?, ?>, Field, Field> cell : node.fields.cellSet())
+				if (Sets.intersection(cell.getColumnKey().modifiers(), EnumSet.of(Modifier.STATIC, Modifier.FINAL)).isEmpty())
+					list.add(new FieldData(Workers.getIdentifier(cell.getRowKey()),
+							cell.getColumnKey().getBackingField(),
+							blobClass.getDeclaredField(cell.getValue().getName())));
+		return list.build();
 	}
 
 	private void externalSchedule() {
@@ -1193,11 +1207,29 @@ public final class Compiler {
 		}
 	}
 
+	/**
+	 * Holds information about worker state fields.  This isn't used during
+	 * compilation, so it refers to live java.lang.reflect.Fields constructed
+	 * after classloading.
+	 */
+	private static final class FieldData {
+		public final int id;
+		public final java.lang.reflect.Field workerField, blobKlassField;
+		private FieldData(int id, java.lang.reflect.Field workerField, java.lang.reflect.Field blobKlassField) {
+			this.id = id;
+			this.workerField = workerField;
+			this.workerField.setAccessible(true);
+			this.blobKlassField = blobKlassField;
+			this.blobKlassField.setAccessible(true);
+		}
+	}
+
 	private static final class CompilerBlobHost implements Blob {
 		private final ImmutableSet<Worker<?, ?>> workers;
 		private final Configuration configuration;
 		private final DrainData initialState;
 		private final ImmutableMap<Token, BufferData> bufferData;
+		private final ImmutableSetMultimap<Integer, FieldData> fieldData;
 		private final ImmutableMap<Worker<?, ?>, Integer> initSchedule;
 		private final ImmutableMap<Token, Integer> initScheduleReqs;
 		private final ImmutableSortedSet<Token> inputTokens, outputTokens, internalTokens;
@@ -1212,7 +1244,7 @@ public final class Compiler {
 		private volatile Runnable drainCallback;
 		private volatile DrainData drainData;
 
-		public CompilerBlobHost(Set<Worker<?, ?>> workers, Configuration configuration, DrainData initialState, Class<?> blobClass, List<BufferData> bufferData, Map<Worker<?, ?>, Integer> initSchedule) {
+		public CompilerBlobHost(Set<Worker<?, ?>> workers, Configuration configuration, DrainData initialState, Class<?> blobClass, List<BufferData> bufferData, List<FieldData> fieldData, Map<Worker<?, ?>, Integer> initSchedule) {
 			this.workers = ImmutableSet.copyOf(workers);
 			this.configuration = configuration;
 			this.initialState = initialState;
@@ -1223,6 +1255,11 @@ public final class Compiler {
 			for (BufferData d : bufferData)
 				bufferDataBuilder.put(d.token, d);
 			this.bufferData = bufferDataBuilder.build();
+
+			ImmutableSetMultimap.Builder<Integer, FieldData> fieldDataBuilder = ImmutableSetMultimap.builder();
+			for (FieldData d : fieldData)
+				fieldDataBuilder.put(d.id, d);
+			this.fieldData = fieldDataBuilder.build();
 
 			ImmutableSet<IOInfo> ioinfo = IOInfo.externalEdges(workers);
 			ImmutableMap.Builder<Token, Integer> initScheduleReqsBuilder = ImmutableMap.builder();
@@ -1454,6 +1491,15 @@ public final class Compiler {
 					channel.push(datum);
 			}
 
+			//Move state into worker fields.
+			if (initialState != null) {
+				for (Worker<?, ?> w : workers) {
+					int id = Workers.getIdentifier(w);
+					for (FieldData d : fieldData.get(id))
+						d.workerField.set(w, initialState.getWorkerState(id, d.workerField.getName()));
+				}
+			}
+
 			//Work workers in topological order.
 			for (Worker<?, ?> worker : Workers.topologicalSort(workers)) {
 				int iterations = initSchedule.get(worker);
@@ -1497,7 +1543,11 @@ public final class Compiler {
 					channel.pop();
 			}
 
-			//TODO: Move state to fields.
+			for (Worker<?, ?> w : workers) {
+				int id = Workers.getIdentifier(w);
+				for (FieldData d : fieldData.get(id))
+					d.blobKlassField.set(null, d.workerField.get(w));
+			}
 
 			SwitchPoint.invalidateAll(new SwitchPoint[]{sp1});
 		}
@@ -1577,7 +1627,11 @@ public final class Compiler {
 				}
 			}
 
-			//TODO: Move state into worker fields.
+			for (Worker<?, ?> w : workers) {
+				int id = Workers.getIdentifier(w);
+				for (FieldData d : fieldData.get(id))
+					d.workerField.set(w, d.blobKlassField.get(null));
+			}
 
 			//Create an interpreter and use it to drain stuff.
 			//TODO: hack.  Make a proper Interpreter interface for this use case.
