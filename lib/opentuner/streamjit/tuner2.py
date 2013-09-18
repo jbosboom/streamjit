@@ -71,7 +71,7 @@ class StreamJitMI(MeasurementInterface):
 		out, err = p.communicate()
 		# Do not comment following 'pring err' line. Commenting will cause deadlog due to std error buffer become full.
 		print err
-		if err.find("Exception") > 0:
+		if err.find("Exception") > -1:
 			cur = self.tunedataDB.cursor()
 			str1 = str(commandStr)
 			str2 = str(cfg)
@@ -139,7 +139,7 @@ class StreamJitMI(MeasurementInterface):
 
 		print time
 
-		conn = sqlite3.connect('streamjit.db')
+		conn = sqlite3.connect('streamjit.db', 100)
 		cur = conn.cursor()
 		query = 'INSERT INTO FinalResult VALUES ("%s","%s","%s",%d, %f)'%(self.program, commandStr, cfg, self.trycount, time)
 		cur.execute(query)
