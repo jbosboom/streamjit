@@ -191,15 +191,27 @@ def start(program):
 		
 
 	maxHeap = jvmPowerOfTwoParameter("maxHeap", 512, 2048, "-Xmx%dm")
-	gc = jvmSwitchParameter("GC",['UseSerialGC','UseParallelGC','UseParallelOldGC','UseConcMarkSweepGC'],2, "-XX:+%s")
-	
 
-	jvmOptions = {"GC":gc, "maxHeap":maxHeap}
+	# Garbage First (G1) Garbage Collection Options
+	gc = jvmSwitchParameter("gc",['UseSerialGC','UseParallelGC','UseParallelOldGC','UseConcMarkSweepGC'],2, "-XX:+%s")
+	newRatio = jvmIntegerParameter("newRatio", 1, 50, 8, "-XX:NewRatio=%d")
+	maxPermSize = jvmPowerOfTwoParameter("maxPermSize", 8, 2048, "-XX:MaxPermSize=%dm")
+	maxGCPauseMillis = jvmIntegerParameter("maxGCPauseMillis", 50, 5000, 100, "-XX:MaxGCPauseMillis=%d")
+	survivorRatio = jvmIntegerParameter("survivorRatio", 2, 100, 8, "-XX:SurvivorRatio=%d")
+	parallelGCThreads = jvmIntegerParameter("parallelGCThreads", 2, 25, 4, "-XX:ParallelGCThreads=%d")
+	concGCThreads = jvmIntegerParameter("concGCThreads", 2, 25, 4, "-XX:ConcGCThreads=%d")
+
+	# Performance Options
+	aggressiveOpts = jvmFlag("aggressiveOpts", "-XX:+AggressiveOpts")
+	compileThreshold = jvmIntegerParameter("compileThreshold", 1000, 100000, 1500, "-XX:CompileThreshold=%d")
+	largePageSizeInBytes = jvmPowerOfTwoParameter("largePageSizeInBytes", 2, 256, "-XX:LargePageSizeInBytes=%dm")
+
+	jvmOptions = {"gc":gc, "maxHeap":maxHeap, "newRatio":newRatio, "maxPermSize":maxPermSize, "maxGCPauseMillis":maxGCPauseMillis, "survivorRatio":survivorRatio, "parallelGCThreads":parallelGCThreads, "concGCThreads":concGCThreads, "aggressiveOpts":aggressiveOpts,  "compileThreshold":compileThreshold, "largePageSizeInBytes":largePageSizeInBytes   }
 
 	main(args, cfgparams, jvmOptions)
 
 if __name__ == '__main__':
-	start('ChannelVocoder 4, 64')
-	start('FMRadio 11, 64')
-	start('BitonicSort (N = 4, asc)')
+	#start('BitonicSort (N = 4, asc)')
+	#start('FMRadio 11, 64')
+	#start('BitonicSort (N = 4, asc)')
 	
