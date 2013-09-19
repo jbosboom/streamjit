@@ -39,8 +39,8 @@ class StreamJitMI(MeasurementInterface):
 			data = raw_input ( "Press Keyboard to exit..." )
 
 	def run(self, desired_result, input, limit):
-		print 'RUN.....................'
 		self.trycount = self.trycount + 1
+		print '**********New Run - %d **********'%self.trycount
 		cfg = dict.copy(desired_result.configuration.data)
 		#self.niceprint(cfg)
 		commandStr = ''
@@ -83,7 +83,6 @@ class StreamJitMI(MeasurementInterface):
 		row = cur.fetchone()
 		time = row[0]
 
-		print time
 		exetime = float(time)
 		if exetime < 0:
 			print "Error in execution"
@@ -166,7 +165,7 @@ def start(program):
 	parser = argparse.ArgumentParser(parents=opentuner.argparsers())
 	parser.add_argument('--program', help='Name of the StreamJit application')
 
-	argv = ['--program', program,  '--test-limit', '10']
+	argv = ['--program', program,  '--test-limit', '2']
 	args = parser.parse_args(argv)
 
 	if not args.database:
@@ -211,6 +210,20 @@ def start(program):
 	main(args, cfgparams, jvmOptions)
 
 if __name__ == '__main__':
+	prgrms = []
+	with sqlite3.connect('streamjit.db') as conn:
+		c = conn.cursor()
+		query = 'SELECT name FROM apps'
+		for row in c.execute(query):
+			prgrms.append(row[0])
+		print "Following programs found for tuning..."
+		for p in prgrms:
+			print p
+
+	for p in prgrms:
+		print "************%s***************"%p
+		start(p)
+
 	#start('BitonicSort (N = 4, asc)')
 	#start('FMRadio 11, 64')
 	#start('BitonicSort (N = 4, asc)')
