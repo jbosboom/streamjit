@@ -72,6 +72,7 @@ class StreamJitMI(MeasurementInterface):
 		# Do not comment following 'pring err' line. Commenting will cause deadlog due to std error buffer become full.
 		print err
 		if err.find("Exception") > -1:
+			print "\033[31;1mException Found\033[0m"
 			cur = self.tunedataDB.cursor()
 			str1 = str(commandStr)
 			str2 = str(cfg)
@@ -85,10 +86,10 @@ class StreamJitMI(MeasurementInterface):
 
 		exetime = float(time)
 		if exetime < 0:
-			print "Error in execution"
+			print "\033[31;1mError in execution\033[0m"
 			return opentuner.resultsdb.models.Result(state='ERROR', time=float('inf'))
 		else:	
-			print "Execution time is %f"%exetime
+			print "\033[32;1mExecution time is %f ms\033[0m"%exetime
 			return opentuner.resultsdb.models.Result(time=exetime)
 
 	def niceprint(self, cfg):
@@ -224,7 +225,7 @@ if __name__ == '__main__':
 		print "************%s***************"%p
 		start(p)
 
-	#start('BitonicSort (N = 4, asc)')
+	#start('ChannelVocoder 4, 64')
 	#start('FMRadio 11, 64')
 	#start('BitonicSort (N = 4, asc)')
 	
