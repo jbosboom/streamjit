@@ -58,8 +58,7 @@ public class RunApp {
 		String program = args[0];
 		int round = Integer.parseInt(args[1]);
 
-		System.out.println("--------------------------------");
-		System.out.println(String.format("%s Round - %d", program, round));
+		System.out.println(String.format("JAVA Executing: %s Round - %d", program, round));
 
 		String dbPath = "streamjit.db";
 
@@ -213,7 +212,7 @@ public class RunApp {
 		Dataset dataset = app.inputs().get(0);
 
 		// Input<Object> input = dataset.input();
-		Input<Object> input = Datasets.nCopies(10, dataset.input());
+		Input<Object> input = Datasets.nCopies(50, dataset.input());
 		Output<Object> output = Output.blackHole();
 
 		long startTime = System.nanoTime();
@@ -226,7 +225,6 @@ public class RunApp {
 	private static void run(StreamCompiler compiler,
 			OneToOneElement<Object, Object> streamGraph, Input<Object> input,
 			Output<Object> output) {
-		System.out.println("Running the StreamJit application...");
 		CompiledStream stream = compiler.compile(streamGraph, input, output);
 		try {
 			stream.awaitDrained();
@@ -286,5 +284,4 @@ public class RunApp {
 		}
 		return builder.build();
 	}
-
 }
