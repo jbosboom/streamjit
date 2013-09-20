@@ -5,7 +5,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.util.bytecode.insts.Instruction;
 import edu.mit.streamjit.util.bytecode.insts.PhiInst;
-import edu.mit.streamjit.util.bytecode.types.VoidType;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.IdentityHashMap;

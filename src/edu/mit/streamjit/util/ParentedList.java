@@ -1,7 +1,6 @@
 package edu.mit.streamjit.util;
 
 import static com.google.common.base.Preconditions.*;
-import edu.mit.streamjit.util.IntrusiveList;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
