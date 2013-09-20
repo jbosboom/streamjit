@@ -166,7 +166,7 @@ def start(program):
 	parser = argparse.ArgumentParser(parents=opentuner.argparsers())
 	parser.add_argument('--program', help='Name of the StreamJit application')
 
-	argv = ['--program', program,  '--test-limit', '2']
+	argv = ['--program', program,  '--test-limit', '2000']
 	args = parser.parse_args(argv)
 
 	if not args.database:
@@ -205,8 +205,22 @@ def start(program):
 	aggressiveOpts = jvmFlag("aggressiveOpts", "-XX:+AggressiveOpts")
 	compileThreshold = jvmIntegerParameter("compileThreshold", 1000, 100000, 1500, "-XX:CompileThreshold=%d")
 	largePageSizeInBytes = jvmPowerOfTwoParameter("largePageSizeInBytes", 2, 256, "-XX:LargePageSizeInBytes=%dm")
+	maxHeapFreeRatio = jvmIntegerParameter("maxHeapFreeRatio", 10, 100, 70, "-XX:MaxHeapFreeRatio=%d")
+	minHeapFreeRatio = jvmIntegerParameter("minHeapFreeRatio", 5, 100, 70, "-XX:MinHeapFreeRatio=%d")
+	threadStackSize = jvmPowerOfTwoParameter("threadStackSize", 64, 8192, "-XX:ThreadStackSize=%d")
+	useBiasedLocking = jvmFlag("useBiasedLocking", "-XX:+UseBiasedLocking")
+	useFastAccessorMethods = jvmFlag("useFastAccessorMethods", "-XX:+UseFastAccessorMethods")
+	useISM = jvmFlag("useISM", "-XX:-UseISM")
+	useLargePages = jvmFlag("useLargePages", "-XX:+UseLargePages")
+	useStringCache = jvmFlag("useStringCache", "-XX:+UseStringCache")
+	allocatePrefetchLines = jvmIntegerParameter("allocatePrefetchLines", 1, 10, 1, "-XX:AllocatePrefetchLines=%d")
+	allocatePrefetchStyle = jvmIntegerParameter("allocatePrefetchStyle", 0, 2, 1, "-XX:AllocatePrefetchStyle=%d")
+	useCompressedStrings = jvmFlag("useCompressedStrings", "-XX:+UseCompressedStrings")
+	optimizeStringConcat = jvmFlag("optimizeStringConcat", "-XX:+OptimizeStringConcat")
 
-	jvmOptions = {"gc":gc, "maxHeap":maxHeap, "newRatio":newRatio, "maxPermSize":maxPermSize, "maxGCPauseMillis":maxGCPauseMillis, "survivorRatio":survivorRatio, "parallelGCThreads":parallelGCThreads, "concGCThreads":concGCThreads, "aggressiveOpts":aggressiveOpts,  "compileThreshold":compileThreshold, "largePageSizeInBytes":largePageSizeInBytes   }
+	#jvmOptions = {"gc":gc, "maxHeap":maxHeap, "newRatio":newRatio, "maxPermSize":maxPermSize, "maxGCPauseMillis":maxGCPauseMillis, "survivorRatio":survivorRatio, "parallelGCThreads":parallelGCThreads, "concGCThreads":concGCThreads, "aggressiveOpts":aggressiveOpts,  "compileThreshold":compileThreshold, "largePageSizeInBytes":largePageSizeInBytes, "maxHeapFreeRatio":maxHeapFreeRatio, "minHeapFreeRatio":minHeapFreeRatio, "threadStackSize":threadStackSize, "useBiasedLocking":useBiasedLocking, "useFastAccessorMethods":useFastAccessorMethods, "useISM":useISM, "useLargePages":useLargePages, "useStringCache":useStringCache, "allocatePrefetchLines":allocatePrefetchLines, "allocatePrefetchStyle":allocatePrefetchStyle, "useCompressedStrings":useCompressedStrings, "optimizeStringConcat":optimizeStringConcat}
+
+	jvmOptions = {"gc":gc, "maxHeap":maxHeap, "newRatio":newRatio, "maxPermSize":maxPermSize, "maxGCPauseMillis":maxGCPauseMillis, "survivorRatio":survivorRatio, "parallelGCThreads":parallelGCThreads, "concGCThreads":concGCThreads, "aggressiveOpts":aggressiveOpts,  "compileThreshold":compileThreshold, "largePageSizeInBytes":largePageSizeInBytes, "threadStackSize":threadStackSize}
 
 	main(args, cfgparams, jvmOptions)
 
