@@ -1,4 +1,4 @@
-package edu.mit.streamjit.util.bytecode;
+package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableMap;

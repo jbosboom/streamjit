@@ -9,7 +9,6 @@ import edu.mit.streamjit.util.bytecode.Module;
 import edu.mit.streamjit.util.bytecode.Argument;
 import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
 import edu.mit.streamjit.util.bytecode.Field;
-import edu.mit.streamjit.util.bytecode.Schedule;
 import edu.mit.streamjit.util.bytecode.Modifier;
 import edu.mit.streamjit.util.bytecode.Method;
 import static com.google.common.base.Preconditions.*;
