@@ -1,4 +1,4 @@
-package edu.mit.streamjit.util.bytecode;
+package edu.mit.streamjit.util;
 
 import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.util.IntrusiveList;

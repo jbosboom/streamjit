@@ -1,5 +1,7 @@
 package edu.mit.streamjit.util.bytecode;
 
+import edu.mit.streamjit.util.Parented;
+import edu.mit.streamjit.util.ParentedList;
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.base.Joiner;

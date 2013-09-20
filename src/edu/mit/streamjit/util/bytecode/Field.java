@@ -1,5 +1,7 @@
 package edu.mit.streamjit.util.bytecode;
 
+import edu.mit.streamjit.util.Parented;
+import edu.mit.streamjit.util.ParentedList;
 import com.google.common.base.Joiner;
 import edu.mit.streamjit.util.bytecode.types.RegularType;
 import static com.google.common.base.Preconditions.*;

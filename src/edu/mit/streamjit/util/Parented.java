@@ -1,4 +1,4 @@
-package edu.mit.streamjit.util.bytecode;
+package edu.mit.streamjit.util;
 
 /**
  * Implementations of this interface can be logically associated with a parent

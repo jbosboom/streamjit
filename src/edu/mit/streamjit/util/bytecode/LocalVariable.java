@@ -1,5 +1,7 @@
 package edu.mit.streamjit.util.bytecode;
 
+import edu.mit.streamjit.util.Parented;
+import edu.mit.streamjit.util.ParentedList;
 import edu.mit.streamjit.util.bytecode.types.FieldType;
 import edu.mit.streamjit.util.bytecode.types.RegularType;
 

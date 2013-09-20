@@ -1,5 +1,6 @@
 package edu.mit.streamjit.util.bytecode;
 
+import edu.mit.streamjit.util.Parented;
 import edu.mit.streamjit.util.bytecode.types.RegularType;
 
 /**

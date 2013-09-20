@@ -1,5 +1,6 @@
 package edu.mit.streamjit.util.bytecode;
 
+import edu.mit.streamjit.util.ParentedList;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;

@@ -1,5 +1,6 @@
 package edu.mit.streamjit.util.bytecode;
 
+import edu.mit.streamjit.util.Parented;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.util.bytecode.types.NullType;
