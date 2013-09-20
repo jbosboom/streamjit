@@ -22,7 +22,9 @@ import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.BenchmarkProvider;
+import edu.mit.streamjit.test.apps.bitonicsort.BitonicSort;
 import edu.mit.streamjit.test.apps.channelvocoder7.ChannelVocoder7;
+import edu.mit.streamjit.test.apps.fmradio.FMRadio;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
@@ -182,9 +184,9 @@ public class Tuner {
 	 */
 	public static void main(String[] args) throws InterruptedException,
 			IOException {
-		BenchmarkProvider provider = new ChannelVocoder7();
+		//BenchmarkProvider provider = new ChannelVocoder7();
 		// BenchmarkProvider provider = new FMRadio.FMRadioBenchmarkProvider();
-		// BenchmarkProvider provider = new BitonicSort();
+		 BenchmarkProvider provider = new BitonicSort();
 		// BenchmarkProvider provider = new FileInputSanity();
 		// BenchmarkProvider provider = new SplitjoinOrderSanity();
 		// BenchmarkProvider provider = new HelperFunctionSanity();

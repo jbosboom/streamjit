@@ -74,7 +74,7 @@ public class TunerMain {
 		Dataset dataset = app.inputs().get(0);
 
 		// Input<Object> input = dataset.input();
-		Input<Object> input = Datasets.nCopies(3, dataset.input());
+		Input<Object> input = Datasets.nCopies(100, dataset.input());
 		Output<Object> output = Output.blackHole();
 
 		run(sc, app.instantiate(), input, output);
