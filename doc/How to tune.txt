@@ -1,0 +1,11 @@
+Run the edu.mit.streamjit.tuner.Tuner.java to generete configuration information for a particular app. Tuner.java will update the apps table in the streamjit.db with name, configuration, location and classname of the streamjit app.
+
+Build the edu.mit.streamjit.tuner.RunApp.java and export it as runnable jar in to stramjit folder. If you need to change the input size, you can change it inside the function runApp() in the RunApp class.
+
+Run lib/opentuner/streamjit/tuner2.py.
+
+Notes - tuner2.py reads streamjit.db and tunes all entries in the apps table sequentially. If you are only interested in a single app then you can comment everyting inside the __main__ block and just call the start(PROGRAMNAME).
+
+Inside the start function you can change the arguments of opentuner such as --test-limit, tune-time and etc.
+
+Once tuning is done, finalresults table in the streamjit.db will be updated with the final configuration and the best tune time.
