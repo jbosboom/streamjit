@@ -40,7 +40,7 @@ class StreamJitMI(MeasurementInterface):
 
 	def run(self, desired_result, input, limit):
 		self.trycount = self.trycount + 1
-		print '**********New Run - %d **********'%self.trycount
+		print '\n**********New Run - %d **********'%self.trycount
 		cfg = dict.copy(desired_result.configuration.data)
 		#self.niceprint(cfg)
 		commandStr = ''
