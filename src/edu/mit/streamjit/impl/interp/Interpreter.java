@@ -83,6 +83,9 @@ public class Interpreter implements Blob {
 	 * can't fire a source.
 	 */
 	private ImmutableMap<Channel<?>, Buffer> inputBuffers, outputBuffers;
+	public Interpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter, Configuration config) {
+		this(workersIter, constraintsIter, config, null);
+	}
 	public Interpreter(Iterable<Worker<?, ?>> workersIter, Iterable<MessageConstraint> constraintsIter, Configuration config, DrainData initialState) {
 		this.workers = ImmutableSet.copyOf(workersIter);
 		this.sinks = Workers.getBottommostWorkers(workers);
