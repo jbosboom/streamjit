@@ -33,15 +33,15 @@ import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.tuner.Tuner.sqliteAdapter;
 
 /**
- * {@link RunApp} reads configuration, streamJit app name and location
+ * {@link RunApp} reads configuration, streamJit's app name and location
  * information from streamjit.db based on the passed arguments, runs the
- * streamJit benchmark and update the database with the execution time.
- * StreamJit's opentuner Python script calls this main to run the streamJit
+ * streamJit app and update the database with the execution time.
+ * StreamJit's opentuner Python script calls this to run the streamJit
  * application.
- *
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since Sep 10, 2013
- *
+ * 
  */
 public class RunApp {
 
@@ -58,7 +58,8 @@ public class RunApp {
 		String program = args[0];
 		int round = Integer.parseInt(args[1]);
 
-		System.out.println(String.format("JAVA Executing: %s Round - %d", program, round));
+		System.out.println(String.format("JAVA Executing: %s Round - %d",
+				program, round));
 
 		String dbPath = "streamjit.db";
 
@@ -72,7 +73,9 @@ public class RunApp {
 		String jarFilePath = result.getString("location");
 		String className = result.getString("classname");
 
-		jarFilePath = "bin";
+		// We can just run locally with the relative path as well. If the IDE is
+		// Eclipse IDE then 'bin', if Netbeans the 'build'
+		// jarFilePath = "bin";
 		String sjDbPath = "sj" + program + ".db";
 		sqliteAdapter sjDb = new sqliteAdapter();
 		sjDb.connectDB(sjDbPath);
@@ -154,7 +157,7 @@ public class RunApp {
 		URL url;
 		try {
 			url = jarFile.toURI().toURL();
-			URL[] urls = new URL[] { url };
+			URL[] urls = new URL[]{url};
 
 			ClassLoader loader = new URLClassLoader(urls);
 			Class<?> topStreamClass;
@@ -212,7 +215,7 @@ public class RunApp {
 		Dataset dataset = app.inputs().get(0);
 
 		// Input<Object> input = dataset.input();
-		Input<Object> input = Datasets.nCopies(50, dataset.input());
+		Input<Object> input = Datasets.nCopies(10, dataset.input());
 		Output<Object> output = Output.blackHole();
 
 		long startTime = System.nanoTime();
@@ -241,7 +244,7 @@ public class RunApp {
 	 * configuration object can be updated from the python dict string. Now we
 	 * are destructing the old confg object and recreating a new one every time.
 	 * Not a appreciatable way.
-	 *
+	 * 
 	 * @param pythonDict
 	 *            Python dictionary string. Autotuner gives a dictionary of
 	 *            features with trial values.
