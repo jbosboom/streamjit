@@ -35,9 +35,8 @@ import edu.mit.streamjit.tuner.ConfigGenerator.sqliteAdapter;
 /**
  * {@link RunApp} reads configuration, streamJit's app name and location
  * information from streamjit.db based on the passed arguments, runs the
- * streamJit app and update the database with the execution time.
- * StreamJit's opentuner Python script calls this to run the streamJit
- * application.
+ * streamJit app and update the database with the execution time. StreamJit's
+ * opentuner Python script calls this to run the streamJit application.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Sep 10, 2013
@@ -63,7 +62,15 @@ public class RunApp {
 
 		String dbPath = "streamjit.db";
 
-		sqliteAdapter sqlite = new sqliteAdapter();
+		sqliteAdapter sqlite;
+		try {
+			sqlite = new sqliteAdapter();
+		} catch (ClassNotFoundException e) {
+			System.err
+					.println("Sqlite3 database not found...couldn't update the database with the configutaion.");
+			e.printStackTrace();
+			return;
+		}
 		sqlite.connectDB(dbPath);
 
 		ResultSet result = sqlite.executeQuery(String.format(
@@ -77,7 +84,17 @@ public class RunApp {
 		// Eclipse IDE then 'bin', if Netbeans the 'build'
 		// jarFilePath = "bin";
 		String sjDbPath = "sj" + program + ".db";
-		sqliteAdapter sjDb = new sqliteAdapter();
+		sqliteAdapter sjDb;
+		try {
+			sjDb = new sqliteAdapter();
+		} catch (ClassNotFoundException e1) {
+			// Actually this exception will not occur. If Sqlite3 did not
+			// exists then it would have exit at previous return point.
+			System.err
+					.println("Sqlite3 database not found...couldn't update the database with the configutaion.");
+			e1.printStackTrace();
+			return;
+		}
 		sjDb.connectDB(sjDbPath);
 
 		ResultSet result1 = sjDb.executeQuery(String.format(
