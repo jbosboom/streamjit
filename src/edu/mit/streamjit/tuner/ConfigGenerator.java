@@ -26,9 +26,11 @@ import edu.mit.streamjit.test.apps.bitonicsort.BitonicSort;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
- * This is implementation is to let Opentuner to start and stop the StreamJit
- * app for each tuning try so that Opentuner can tune JVM parameters such as
- * heapsize, inlinethreshold, GCpausetime, etc as well.
+ * ConfigGenerator generates {@link Configuration} of an application and stores
+ * it into a database. Later, Opentuner can read this configuration for tuning.
+ * In this way, Opentuner can start and stop the StreamJit app for each tuning
+ * try so that Opentuner can tune JVM parameters such as heapsize,
+ * inlinethreshold, GCpausetime, etc as well.
  *
  * @author Sumanan sumanan@mit.edu
  * @since Sep 10, 2013
@@ -182,14 +184,14 @@ public class ConfigGenerator {
 	 */
 	public static void main(String[] args) throws InterruptedException,
 			IOException {
-		//BenchmarkProvider provider = new ChannelVocoder7();
+		// BenchmarkProvider provider = new ChannelVocoder7();
 		// BenchmarkProvider provider = new FMRadio.FMRadioBenchmarkProvider();
-		 BenchmarkProvider provider = new BitonicSort();
+		BenchmarkProvider provider = new BitonicSort();
 		// BenchmarkProvider provider = new FileInputSanity();
 		// BenchmarkProvider provider = new SplitjoinOrderSanity();
 		// BenchmarkProvider provider = new HelperFunctionSanity();
 
-		ConfigGenerator tuner = new ConfigGenerator();
-		tuner.tune(provider);
+		ConfigGenerator cfgGen = new ConfigGenerator();
+		cfgGen.tune(provider);
 	}
 }
