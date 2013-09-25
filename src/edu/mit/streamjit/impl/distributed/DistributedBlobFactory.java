@@ -34,7 +34,7 @@ public class DistributedBlobFactory implements BlobFactory {
 
 	private int noOfMachines;
 
-	DistributedBlobFactory(int noOfMachines) {
+	public DistributedBlobFactory(int noOfMachines) {
 		this.noOfMachines = noOfMachines;
 	}
 

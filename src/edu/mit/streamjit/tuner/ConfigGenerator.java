@@ -20,6 +20,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
+import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.apps.bitonicsort.BitonicSort;
@@ -46,7 +47,17 @@ public class ConfigGenerator {
 		return s3;
 	}
 
-	public void generate(BenchmarkProvider provider) {
+	/**
+	 * Generates configuration for the passed provider.
+	 *
+	 * @param provider
+	 *            Only first benchmark is used to generate configuration. i.e.,
+	 *            only first benchmark will be tuned.
+	 * @param factory
+	 */
+	public void generate(BenchmarkProvider provider, BlobFactory factory) {
+		checkNotNull(provider);
+
 		sqliteAdapter sqlite = new sqliteAdapter();
 		String dbPath = "streamjit.db";
 		sqlite.connectDB(dbPath);
@@ -65,14 +76,14 @@ public class ConfigGenerator {
 		Benchmark app = provider.iterator().next();
 		// TODO: BlobFactory.getDefaultConfiguration() asks for workers. But
 		// from outside workers are not available. need to do something
-		// else. This is not a proper design to do.
-		BlobFactory bf = new CompilerBlobFactory();
+		// else.
+
 		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		OneToOneElement<?, ?> stream = app.instantiate();
 		stream.visit(cwv);
 		ImmutableSet<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv
 				.getSource());
-		Configuration cfg = bf.getDefaultConfiguration(workers);
+		Configuration cfg = factory.getDefaultConfiguration(workers);
 
 		String name = app.toString();
 		String confString = getConfigurationString(cfg);
@@ -173,12 +184,28 @@ public class ConfigGenerator {
 
 	/**
 	 * @param args
-	 *            [0] - String topLevelWorkerName args[1] - String jarFilePath
+	 *            [0] - NoofMachines that will be connected in distributed case.
 	 * @throws InterruptedException
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws InterruptedException,
 			IOException {
+		int noOfmachines = 1;
+
+		if (args.length > 0) {
+			noOfmachines = Integer.parseInt(args[0]);
+			if (noOfmachines < 1)
+				throw new IllegalArgumentException(String.format(
+						"noOfMachines should be 1 or greater. %d passed.",
+						noOfmachines));
+		}
+
+		BlobFactory bf;
+		if (noOfmachines == 1)
+			bf = new CompilerBlobFactory();
+		else
+			bf = new DistributedBlobFactory(noOfmachines);
+
 		// BenchmarkProvider provider = new ChannelVocoder7();
 		// BenchmarkProvider provider = new FMRadio.FMRadioBenchmarkProvider();
 		BenchmarkProvider provider = new BitonicSort();
@@ -187,6 +214,6 @@ public class ConfigGenerator {
 		// BenchmarkProvider provider = new HelperFunctionSanity();
 
 		ConfigGenerator cfgGen = new ConfigGenerator();
-		cfgGen.generate(provider);
+		cfgGen.generate(provider, bf);
 	}
 }
