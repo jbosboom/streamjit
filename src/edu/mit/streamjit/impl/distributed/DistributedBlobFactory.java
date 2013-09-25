@@ -54,7 +54,7 @@ public class DistributedBlobFactory implements BlobFactory {
 				.removeParameter("multiplier");
 		for (Worker<?, ?> w : workers) {
 			Parameter p = new Configuration.IntParameter(String.format(
-					"worker%dmachine", Workers.getIdentifier(w)), 1,
+					"worker%dtomachine", Workers.getIdentifier(w)), 1,
 					noOfMachines, 1);
 			builder.addParameter(p);
 		}
