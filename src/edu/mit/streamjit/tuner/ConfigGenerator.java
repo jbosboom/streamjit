@@ -39,6 +39,13 @@ import edu.mit.streamjit.util.json.Jsonifiers;
 
 public class ConfigGenerator {
 
+	/**
+	 * TODO: Need to remove the string "class" from the {@link Configuration}
+	 * jsonifiers. Once it is done, this method can be removed.
+	 *
+	 * @param cfg
+	 * @return
+	 */
 	private String getConfigurationString(Configuration cfg) {
 		String s = Jsonifiers.toJson(cfg).toString();
 		String s1 = s.replaceAll("__class__", "ttttt");
@@ -58,7 +65,16 @@ public class ConfigGenerator {
 	public void generate(BenchmarkProvider provider, BlobFactory factory) {
 		checkNotNull(provider);
 
-		sqliteAdapter sqlite = new sqliteAdapter();
+		sqliteAdapter sqlite;
+		try {
+			sqlite = new sqliteAdapter();
+		} catch (ClassNotFoundException e) {
+			System.err
+					.println("Sql lite database not found...couldn't update the database with the configutaion.");
+			e.printStackTrace();
+			return;
+		}
+
 		String dbPath = "streamjit.db";
 		sqlite.connectDB(dbPath);
 		sqlite.createTable(
@@ -111,12 +127,8 @@ public class ConfigGenerator {
 		private Statement statement;
 		private Connection con = null;
 
-		public sqliteAdapter() {
-			try {
-				Class.forName("org.sqlite.JDBC");
-			} catch (ClassNotFoundException e1) {
-				e1.printStackTrace();
-			}
+		public sqliteAdapter() throws ClassNotFoundException {
+			Class.forName("org.sqlite.JDBC");
 		}
 
 		public void connectDB(String path) {
