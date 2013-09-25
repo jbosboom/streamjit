@@ -70,7 +70,7 @@ public class ConfigGenerator {
 			sqlite = new sqliteAdapter();
 		} catch (ClassNotFoundException e) {
 			System.err
-					.println("Sql lite database not found...couldn't update the database with the configutaion.");
+					.println("Sqlite3 database not found...couldn't update the database with the configutaion.");
 			e.printStackTrace();
 			return;
 		}
