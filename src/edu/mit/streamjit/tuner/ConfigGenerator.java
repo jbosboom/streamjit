@@ -46,13 +46,8 @@ public class ConfigGenerator {
 		return s3;
 	}
 
-	public void tune(BenchmarkProvider provider) throws InterruptedException,
-			IOException {
+	public void generate(BenchmarkProvider provider) {
 		sqliteAdapter sqlite = new sqliteAdapter();
-		// String dbPath = String.format(
-		// "lib%sopentuner%sstreamjit%sstreamjit.db", File.separator,
-		// File.separator, File.separator);
-
 		String dbPath = "streamjit.db";
 		sqlite.connectDB(dbPath);
 		sqlite.createTable(
@@ -192,6 +187,6 @@ public class ConfigGenerator {
 		// BenchmarkProvider provider = new HelperFunctionSanity();
 
 		ConfigGenerator cfgGen = new ConfigGenerator();
-		cfgGen.tune(provider);
+		cfgGen.generate(provider);
 	}
 }
