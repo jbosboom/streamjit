@@ -9,6 +9,7 @@ import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.compiler.Compiler;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.interp.Interpreter.InterpreterBlobFactory;
 
@@ -18,9 +19,13 @@ import edu.mit.streamjit.impl.interp.Interpreter.InterpreterBlobFactory;
  * default configurations for a given stream graph. In addition to that, it adds
  * all parameters, such as worker to machine assignment, multiplication factor
  * for each machine and etc, which are related to distributed tuning.
- *
+ * <p>
  * This {@link BlobFactory} becomes statefull because of the numbers of the
  * machine connected.
+ * </p>
+ * <p>
+ * TODO: For the moment this factory just deal with compiler blob. Need to make
+ * interpreter blob as well based on the dynamic edges.
  *
  * @author Sumanan sumanan@mit.edu
  * @since Sep 24, 2013
@@ -36,7 +41,8 @@ public class DistributedBlobFactory implements BlobFactory {
 	@Override
 	public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config,
 			int maxNumCores, DrainData initialState) {
-		return null;
+		return new Compiler(workers, config, maxNumCores, initialState)
+				.compile();
 	}
 
 	@Override
