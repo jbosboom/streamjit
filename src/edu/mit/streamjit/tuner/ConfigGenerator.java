@@ -23,8 +23,6 @@ import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.apps.bitonicsort.BitonicSort;
-import edu.mit.streamjit.test.apps.channelvocoder7.ChannelVocoder7;
-import edu.mit.streamjit.test.apps.fmradio.FMRadio;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
@@ -36,7 +34,7 @@ import edu.mit.streamjit.util.json.Jsonifiers;
  * @since Sep 10, 2013
  */
 
-public class Tuner {
+public class ConfigGenerator {
 
 	private String getConfigurationString(Configuration cfg) {
 		String s = Jsonifiers.toJson(cfg).toString();
@@ -191,7 +189,7 @@ public class Tuner {
 		// BenchmarkProvider provider = new SplitjoinOrderSanity();
 		// BenchmarkProvider provider = new HelperFunctionSanity();
 
-		Tuner tuner = new Tuner();
+		ConfigGenerator tuner = new ConfigGenerator();
 		tuner.tune(provider);
 	}
 }

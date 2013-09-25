@@ -30,7 +30,7 @@ import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.Datasets;
-import edu.mit.streamjit.tuner.Tuner.sqliteAdapter;
+import edu.mit.streamjit.tuner.ConfigGenerator.sqliteAdapter;
 
 /**
  * {@link RunApp} reads configuration, streamJit's app name and location
