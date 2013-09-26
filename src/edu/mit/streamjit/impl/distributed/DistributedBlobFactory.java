@@ -7,6 +7,7 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.compiler.Compiler;
@@ -26,7 +27,7 @@ import edu.mit.streamjit.impl.interp.Interpreter.InterpreterBlobFactory;
  * <p>
  * TODO: For the moment this factory just deal with compiler blob. Need to make
  * interpreter blob as well based on the dynamic edges.
- *
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since Sep 24, 2013
  */
@@ -64,6 +65,15 @@ public class DistributedBlobFactory implements BlobFactory {
 					"multiplier%d", (i + 1)), multiplierParam.getRange(),
 					multiplierParam.getValue()));
 		}
+
+		// This parameter cannot be tuned. Its added here because we need this
+		// parameter to run the app.
+		// TODO: Consider using partition parameter and extradata to store this
+		// kind of not tunable data.
+		IntParameter noOfMachinesParam = new IntParameter("noOfMachines",
+				noOfMachines, noOfMachines, noOfMachines);
+
+		builder.addParameter(noOfMachinesParam);
 
 		return builder.build();
 	}
