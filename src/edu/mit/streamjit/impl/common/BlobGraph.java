@@ -163,7 +163,8 @@ public class BlobGraph {
 			if (colorMap.get(adj) == Color.GRAY)
 				return true;
 			if (colorMap.get(adj) == Color.WHITE)
-				DFS(adj, colorMap);
+				if(DFS(adj, colorMap))
+					return true;
 		}
 		colorMap.put(vertex, Color.BLACK);
 		return false;
