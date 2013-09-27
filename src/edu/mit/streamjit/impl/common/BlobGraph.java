@@ -19,6 +19,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
+import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
@@ -144,7 +145,8 @@ public class BlobGraph {
 		for (BlobNode b : blobNodes) {
 			if (colorMap.get(b) == Color.WHITE)
 				if (DFS(b, colorMap))
-					throw new AssertionError("Cycles found among blobs");
+					throw new StreamCompilationFailedException(
+							"Cycles found among blobs");
 		}
 	}
 
@@ -163,7 +165,7 @@ public class BlobGraph {
 			if (colorMap.get(adj) == Color.GRAY)
 				return true;
 			if (colorMap.get(adj) == Color.WHITE)
-				if(DFS(adj, colorMap))
+				if (DFS(adj, colorMap))
 					return true;
 		}
 		colorMap.put(vertex, Color.BLACK);
