@@ -20,9 +20,11 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecifier;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
+import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
@@ -32,7 +34,7 @@ import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
  * {@link ConfigurationStringProcessor} at {@link StreamNode} side.
- *
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
@@ -89,7 +91,25 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 			ImmutableSet.Builder<Blob> blobSet = ImmutableSet.builder();
 
-			BlobFactory bf = new Interpreter.InterpreterBlobFactory();
+			BlobFactory bf;
+			Configuration blobConfigs = cfg.getSubconfiguration("blobConfigs");
+			// blobConfigs = null;
+			if (blobConfigs == null) {
+				blobConfigs = cfg;
+				bf = new Interpreter.InterpreterBlobFactory();
+			} else {
+				IntParameter mul = blobConfigs.getParameter(
+						String.format("multiplier%d", streamNode.getNodeID()),
+						IntParameter.class);
+				Configuration.Builder builder = Configuration
+						.builder(blobConfigs);
+				builder.removeParameter(mul.getName());
+				builder.addParameter(new IntParameter("multiplier", mul
+						.getRange(), mul.getValue()));
+				blobConfigs = builder.build();
+				bf = new CompilerBlobFactory();
+			}
+
 			for (BlobSpecifier bs : blobList) {
 				Set<Integer> workIdentifiers = bs.getWorkerIdentifiers();
 				System.out
@@ -99,7 +119,7 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 										workIdentifiers.toString()));
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
 
-				Blob b = bf.makeBlob(workerset, cfg, 1, null);
+				Blob b = bf.makeBlob(workerset, blobConfigs, 1, null);
 				blobSet.add(b);
 			}
 			return blobSet.build();
@@ -109,7 +129,7 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	/**
 	 * Gets a Stream Graph from a jar file.
-	 *
+	 * 
 	 * @param jarFilePath
 	 * @param topStreamClassName
 	 * @return : StreamGraph
@@ -147,7 +167,7 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 		URL url;
 		try {
 			url = jarFile.toURI().toURL();
-			URL[] urls = new URL[] { url };
+			URL[] urls = new URL[]{url};
 
 			ClassLoader loader = new URLClassLoader(urls);
 			Class<?> topStreamClass;
