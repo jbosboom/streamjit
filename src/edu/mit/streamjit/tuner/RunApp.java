@@ -26,6 +26,7 @@ import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.BenchmarkProvider;
@@ -56,6 +57,7 @@ public class RunApp {
 
 		String program = args[0];
 		int round = Integer.parseInt(args[1]);
+		round = 4;
 
 		System.out.println(String.format("JAVA Executing: %s Round - %d",
 				program, round));
@@ -82,7 +84,7 @@ public class RunApp {
 
 		// We can just run locally with the relative path as well. If the IDE is
 		// Eclipse IDE then 'bin', if Netbeans the 'build'
-		// jarFilePath = "bin";
+		jarFilePath = "bin";
 		String sjDbPath = "sj" + program + ".db";
 		sqliteAdapter sjDb;
 		try {
@@ -224,16 +226,20 @@ public class RunApp {
 	private static double runApp(Benchmark app, Configuration cfg)
 			throws InterruptedException {
 		StreamCompiler sc;
-
-		CompilerStreamCompiler csc = new CompilerStreamCompiler();
-		csc.setConfig(cfg);
-		sc = csc;
-
+		IntParameter p = cfg.getParameter("noOfMachines", IntParameter.class);
+		if (p == null) {
+			CompilerStreamCompiler csc = new CompilerStreamCompiler();
+			csc.setConfig(cfg);
+			sc = csc;
+		} else {
+			sc = new DistributedStreamCompiler(p.getValue(), cfg);
+		}
 		Dataset dataset = app.inputs().get(0);
 
-		// Input<Object> input = dataset.input();
-		Input<Object> input = Datasets.nCopies(10, dataset.input());
-		Output<Object> output = Output.blackHole();
+		 Input<Object> input = dataset.input();
+		// Input<Object> input = Datasets.nCopies(10, dataset.input());
+		// Output<Object> output = Output.blackHole();
+		Output<Object> output = Output.<Object> toPrintStream(System.out);
 
 		long startTime = System.nanoTime();
 		run(sc, app.instantiate(), input, output);
