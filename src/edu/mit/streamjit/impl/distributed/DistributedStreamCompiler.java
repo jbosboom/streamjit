@@ -242,21 +242,19 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			bg = new BlobGraph(partitionList);
 		} catch (StreamCompilationFailedException ex) {
 			System.err.print("Cycles found in the worker->blob assignment");
-
-			throw ex;
-		}
-
-		for (int machine : partitionsMachineMap.keySet()) {
-			System.err.print("\nMachine - " + machine);
-			for (Set<Worker<?, ?>> blobworkers : partitionsMachineMap
-					.get(machine)) {
-				System.err.print("\n\tBlob worker set : ");
-				for (Worker<?, ?> w : blobworkers) {
-					System.err.print(Workers.getIdentifier(w) + " ");
+			for (int machine : partitionsMachineMap.keySet()) {
+				System.err.print("\nMachine - " + machine);
+				for (Set<Worker<?, ?>> blobworkers : partitionsMachineMap
+						.get(machine)) {
+					System.err.print("\n\tBlob worker set : ");
+					for (Worker<?, ?> w : blobworkers) {
+						System.err.print(Workers.getIdentifier(w) + " ");
+					}
 				}
 			}
+			System.err.println();
+			throw ex;
 		}
-		System.err.println();
 
 		int nodeCount = partitionsMachineMap.keySet().size();
 
