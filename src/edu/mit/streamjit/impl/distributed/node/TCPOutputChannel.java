@@ -22,6 +22,8 @@ import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
  */
 public final class TCPOutputChannel implements BoundaryOutputChannel {
 
+	private String name;
+
 	private int portNo;
 
 	private AtomicBoolean stopFlag;
@@ -30,10 +32,11 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private Buffer buffer;
 
-	public TCPOutputChannel(Buffer buffer, int portNo) {
+	public TCPOutputChannel(Buffer buffer, int portNo, String bufferTokenName) {
 		this.buffer = buffer;
 		this.portNo = portNo;
 		this.stopFlag = new AtomicBoolean(false);
+		this.name = "TCPOutputChannel - " + bufferTokenName;
 	}
 
 	@Override
@@ -137,5 +140,10 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+	}
+
+	@Override
+	public String name() {
+		return name;
 	}
 }
