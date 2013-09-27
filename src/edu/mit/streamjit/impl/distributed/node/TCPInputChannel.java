@@ -30,11 +30,15 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private AtomicBoolean stopFlag;
 
-	public TCPInputChannel(Buffer buffer, String ipAddress, int portNo) {
+	private String name;
+
+	public TCPInputChannel(Buffer buffer, String ipAddress, int portNo,
+			String bufferTokenName) {
 		this.buffer = buffer;
 		this.ipAddress = ipAddress;
 		this.portNo = portNo;
 		this.stopFlag = new AtomicBoolean(false);
+		this.name = "TCPInputChannel - " + bufferTokenName;
 	}
 
 	@Override
@@ -161,5 +165,10 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	@Override
 	public void stop() {
 		this.stopFlag.set(true);
+	}
+
+	@Override
+	public String name() {
+		return name;
 	}
 }

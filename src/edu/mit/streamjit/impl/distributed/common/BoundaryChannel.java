@@ -16,6 +16,8 @@ import edu.mit.streamjit.impl.blob.Buffer;
  */
 public interface BoundaryChannel {
 
+	String name();
+
 	/**
 	 * Close the connection.
 	 * 
