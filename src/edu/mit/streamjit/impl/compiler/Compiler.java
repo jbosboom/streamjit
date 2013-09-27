@@ -855,7 +855,7 @@ public final class Compiler {
 		public Set<StreamNode> predecessorNodes() {
 			ImmutableSet.Builder<StreamNode> set = ImmutableSet.builder();
 			for (IOInfo info : ioinfo) {
-				if (!info.isInput() || info.token().isOverallInput())
+				if (!info.isInput() || info.token().isOverallInput() || !streamNodes.containsKey(info.upstream()))
 					continue;
 				set.add(streamNodes.get(info.upstream()));
 			}
@@ -889,7 +889,7 @@ public final class Compiler {
 		 */
 		public void constrainExternalSchedule(Schedule.Builder<StreamNode> scheduleBuilder) {
 			for (IOInfo info : ioinfo) {
-				if (!info.isOutput() || info.token().isOverallOutput())
+				if (!info.isOutput() || info.token().isOverallOutput() || !streamNodes.containsKey(info.downstream()))
 					continue;
 				StreamNode other = streamNodes.get(info.downstream());
 				int upstreamAdjust = internalSchedule.getExecutions(info.upstream());
