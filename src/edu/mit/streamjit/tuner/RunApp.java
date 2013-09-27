@@ -57,7 +57,6 @@ public class RunApp {
 
 		String program = args[0];
 		int round = Integer.parseInt(args[1]);
-		round = 4;
 
 		System.out.println(String.format("JAVA Executing: %s Round - %d",
 				program, round));
@@ -103,10 +102,6 @@ public class RunApp {
 				"SELECT * FROM results WHERE Round=%d", round));
 
 		String pyDict = result1.getString("SJConfig");
-
-		// System.out.println(confgString);
-		// System.out.println(jarFilePath);
-		// System.out.println(className);
 
 		Configuration config = Configuration
 				.fromJson(getConfigurationString(confgString));
@@ -236,7 +231,7 @@ public class RunApp {
 		}
 		Dataset dataset = app.inputs().get(0);
 
-		 Input<Object> input = dataset.input();
+		Input<Object> input = dataset.input();
 		// Input<Object> input = Datasets.nCopies(10, dataset.input());
 		// Output<Object> output = Output.blackHole();
 		Output<Object> output = Output.<Object> toPrintStream(System.out);
