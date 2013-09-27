@@ -147,14 +147,16 @@ public class Controller {
 	 */
 	public void start() {
 		if (headChannel != null) {
-			headThread = new Thread(headChannel.getRunnable(), "headChannel");
+			headThread = new Thread(headChannel.getRunnable(),
+					headChannel.name());
 			headThread.start();
 		}
 
 		sendToAll(Command.START);
 
 		if (tailChannel != null) {
-			tailThread = new Thread(tailChannel.getRunnable(), "tailChannel");
+			tailThread = new Thread(tailChannel.getRunnable(),
+					tailChannel.name());
 			tailThread.start();
 		}
 	}
@@ -204,11 +206,24 @@ public class Controller {
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
 			String jarFilePath, String toplevelclass,
 			List<MessageConstraint> constraints, Worker<?, ?> source,
-			Worker<?, ?> sink, ImmutableMap<Token, Buffer> bufferMap) {
+			Worker<?, ?> sink, ImmutableMap<Token, Buffer> bufferMap,
+			Configuration blobConfigs) {
 
 		Configuration cfg = makeConfiguration(partitionsMachineMap,
 				jarFilePath, toplevelclass, source, sink);
-		ConfigurationString json = new ConfigurationString(cfg.toJson());
+
+		Configuration mergedConfig;
+		if (blobConfigs != null) {
+			Configuration.Builder builder = Configuration.builder(cfg);
+
+			builder.addSubconfiguration("blobConfigs", blobConfigs);
+
+			mergedConfig = builder.build();
+		} else
+			mergedConfig = cfg;
+
+		ConfigurationString json = new ConfigurationString(
+				mergedConfig.toJson());
 		sendToAll(json);
 
 		setupHeadTail(cfg, bufferMap, Token.createOverallInputToken(source),
@@ -246,7 +261,8 @@ public class Controller {
 						"No head buffer in the passed bufferMap.");
 
 			headChannel = new TCPOutputChannel(bufferMap.get(headToken),
-					portIdMap.get(headToken));
+					portIdMap.get(headToken), "headChannel - "
+							+ headToken.toString());
 		}
 
 		Map.Entry<Integer, Integer> tailentry = tokenMachineMap.get(tailToken);
@@ -263,7 +279,8 @@ public class Controller {
 			String ipAddress = nodeInfo.getIpAddress().getHostAddress();
 
 			tailChannel = new TCPInputChannel(bufferMap.get(tailToken),
-					ipAddress, portIdMap.get(tailToken));
+					ipAddress, portIdMap.get(tailToken), "tailChannel - "
+							+ tailToken.toString());
 		}
 	}
 

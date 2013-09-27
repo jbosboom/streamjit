@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Input;
@@ -26,6 +27,8 @@ import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.BlobGraph;
+import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.impl.common.MessageConstraint;
@@ -33,6 +36,7 @@ import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
+import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
@@ -59,6 +63,11 @@ import edu.mit.streamjit.partitioner.Partitioner;
 public class DistributedStreamCompiler implements StreamCompiler {
 
 	/**
+	 * Configuration from Opentuner.
+	 */
+	Configuration cfg;
+
+	/**
 	 * Total number of nodes including controller node.
 	 */
 	int noOfnodes;
@@ -82,8 +91,26 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		this(1);
 	}
 
+	/**
+	 * Run the application with the passed configureation.
+	 */
+	public DistributedStreamCompiler(int noOfnodes, Configuration cfg) {
+		if (noOfnodes < 1)
+			throw new IllegalArgumentException("noOfnodes must be 1 or greater");
+		this.noOfnodes = noOfnodes;
+		this.cfg = cfg;
+	}
+
+	// Having compileConv() and compileConf() is just a temporary hack.
 	@Override
 	public <I, O> CompiledStream compile(OneToOneElement<I, O> stream,
+			Input<I> input, Output<O> output) {
+		if (cfg == null)
+			return compileConv(stream, input, output);
+		return compileConf(stream, input, output);
+	}
+
+	public <I, O> CompiledStream compileConv(OneToOneElement<I, O> stream,
 			Input<I> input, Output<O> output) {
 
 		checkforDefaultOneToOneElement(stream);
@@ -153,7 +180,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		controller.setPartition(partitionsMachineMap, jarFilePath, stream
 				.getClass().getName(), constraints, source, sink,
-				bufferMapBuilder.build());
+				bufferMapBuilder.build(), cfg);
 
 		final DistributedCompiledStream cs = new DistributedCompiledStream(bg,
 				controller);
@@ -172,6 +199,159 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		else
 			cs.drain();
 		return cs;
+	}
+
+	public <I, O> CompiledStream compileConf(OneToOneElement<I, O> stream,
+			Input<I> input, Output<O> output) {
+
+		checkforDefaultOneToOneElement(stream);
+
+		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
+		stream.visit(primitiveConnector);
+		Worker<I, ?> source = (Worker<I, ?>) primitiveConnector.getSource();
+		Worker<?, O> sink = (Worker<?, O>) primitiveConnector.getSink();
+
+		// TODO: derive a algorithm to find good buffer size and use here.
+		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
+				1000);
+		Buffer tail = OutputBufferFactory.unwrap(output).createWritableBuffer(
+				1000);
+
+		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
+				.<Token, Buffer> builder();
+
+		bufferMapBuilder.put(Token.createOverallInputToken(source), head);
+		bufferMapBuilder.put(Token.createOverallOutputToken(sink), tail);
+
+		VerifyStreamGraph verifier = new VerifyStreamGraph();
+		stream.visit(verifier);
+
+		ImmutableSet<Worker<?, ?>> allworkers = Workers
+				.getAllWorkersInGraph(source);
+
+		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
+				cfg, allworkers);
+
+		List<Set<Worker<?, ?>>> partitionList = new ArrayList<>();
+		for (List<Set<Worker<?, ?>>> lst : partitionsMachineMap.values()) {
+			partitionList.addAll(lst);
+		}
+
+		BlobGraph bg = null;
+		try {
+			bg = new BlobGraph(partitionList);
+		} catch (StreamCompilationFailedException ex) {
+			System.err.print("Cycles found in the worker->blob assignment");
+
+			throw ex;
+		}
+
+		for (int machine : partitionsMachineMap.keySet()) {
+			System.err.print("\nMachine - " + machine);
+			for (Set<Worker<?, ?>> blobworkers : partitionsMachineMap
+					.get(machine)) {
+				System.err.print("\n\tBlob worker set : ");
+				for (Worker<?, ?> w : blobworkers) {
+					System.err.print(Workers.getIdentifier(w) + " ");
+				}
+			}
+		}
+		System.err.println();
+
+		int nodeCount = partitionsMachineMap.keySet().size();
+
+		Map<CommunicationType, Integer> conTypeCount = new HashMap<>();
+		conTypeCount.put(CommunicationType.LOCAL, 1);
+		conTypeCount.put(CommunicationType.TCP, nodeCount - 1);
+		Controller controller = new Controller();
+		controller.connect(conTypeCount);
+
+		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
+		// context.
+		List<MessageConstraint> constraints = MessageConstraint
+				.findConstraints(source);
+		Set<Portal<?>> portals = new HashSet<>();
+		for (MessageConstraint mc : constraints)
+			portals.add(mc.getPortal());
+		for (Portal<?> portal : portals)
+			Portals.setConstraints(portal, constraints);
+
+		String jarFilePath = this.getClass().getProtectionDomain()
+				.getCodeSource().getLocation().getPath();
+
+		controller.setPartition(partitionsMachineMap, jarFilePath, stream
+				.getClass().getName(), constraints, source, sink,
+				bufferMapBuilder.build(), cfg);
+
+		final DistributedCompiledStream cs = new DistributedCompiledStream(bg,
+				controller);
+
+		if (input instanceof ManualInput)
+			InputBufferFactory
+					.setManualInputDelegate(
+							(ManualInput<I>) input,
+							new InputBufferFactory.AbstractManualInputDelegate<I>(
+									head) {
+								@Override
+								public void drain() {
+									cs.drain();
+								}
+							});
+		else
+			cs.drain();
+		return cs;
+	}
+
+	/**
+	 * Reads the configuration and returns a map of nodeID to list of workers
+	 * set which are assigned to the node. value of the returned map is list of
+	 * worker set where each worker set is individual blob.
+	 * 
+	 * @param config
+	 * @param workerset
+	 * @return map of nodeID to list of workers set which are assigned to the
+	 *         node. value is list of worker set where each set is individual
+	 *         blob.
+	 */
+	private Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
+			Configuration config, ImmutableSet<Worker<?, ?>> workerset) {
+		Map<Integer, Set<Worker<?, ?>>> partition = new HashMap<>();
+		for (Worker<?, ?> w : workerset) {
+			IntParameter w2m = config.getParameter(String.format(
+					"worker%dtomachine", Workers.getIdentifier(w)),
+					IntParameter.class);
+			int machine = w2m.getValue();
+
+			if (!partition.containsKey(machine)) {
+				Set<Worker<?, ?>> set = new HashSet<>();
+				partition.put(machine, set);
+			}
+			partition.get(machine).add(w);
+		}
+
+		Map<Integer, List<Set<Worker<?, ?>>>> machineWorkerMap = new HashMap<>();
+		for (int machine : partition.keySet()) {
+			machineWorkerMap.put(machine, getBlobs(partition.get(machine)));
+		}
+		return machineWorkerMap;
+	}
+
+	/**
+	 * Goes through all the workers assigned to a machine, find the workers
+	 * which are interconnected and group them as a blob workers. i.e., Group
+	 * the workers such that each group can be executed as either a compiler
+	 * blob or an interpreter blob.
+	 * <p>
+	 * TODO: Not implemented yet. If any dynamic edges exists then should create
+	 * interpreter blob.
+	 * 
+	 * @param workerset
+	 * @return list of workers set which contains interconnected workers.
+	 */
+	private List<Set<Worker<?, ?>>> getBlobs(Set<Worker<?, ?>> workerset) {
+		List<Set<Worker<?, ?>>> ret = new ArrayList<Set<Worker<?, ?>>>();
+		ret.add(workerset);
+		return ret;
 	}
 
 	// TODO: Need to do precise mapping. For the moment just mapping in order.
