@@ -20,6 +20,8 @@ import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
  */
 public class TCPInputChannel implements BoundaryInputChannel {
 
+	private Boolean debugPrint;
+
 	private Buffer buffer;
 
 	private String ipAddress;
@@ -33,12 +35,13 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	private String name;
 
 	public TCPInputChannel(Buffer buffer, String ipAddress, int portNo,
-			String bufferTokenName) {
+			String bufferTokenName, Boolean debugPrint) {
 		this.buffer = buffer;
 		this.ipAddress = ipAddress;
 		this.portNo = portNo;
 		this.stopFlag = new AtomicBoolean(false);
 		this.name = "TCPInputChannel - " + bufferTokenName;
+		this.debugPrint = debugPrint;
 	}
 
 	@Override
@@ -82,10 +85,20 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	public void receiveData() {
 		try {
 			Object obj = tcpConnection.readObject();
+
+			if (debugPrint) {
+				System.out.println(Thread.currentThread().getName() + " - "
+						+ obj.toString());
+			}
+
 			while (!this.buffer.write(obj)) {
 				try {
 					// TODO: Need to tune the sleep time.
 					// System.out.println("InputChannel : Buffer full");
+					if (debugPrint) {
+						System.out.println(Thread.currentThread().getName()
+								+ " Buffer FULL - " + obj.toString());
+					}
 					Thread.sleep(5);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
@@ -117,6 +130,11 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		do {
 			try {
 				Object obj = tcpConnection.readObject();
+				if (debugPrint) {
+					System.out.println(Thread.currentThread().getName()
+							+ " finalReceive - " + obj.toString());
+				}
+
 				hasData = true;
 				while (!this.buffer.write(obj)) {
 					try {
@@ -125,6 +143,11 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						// becomes full forever. ( Other worker thread is
 						// stopped and not consuming any data.)
 						// System.out.println("InputChannel : Buffer full");
+						if (debugPrint) {
+							System.out.println(Thread.currentThread().getName()
+									+ " finalReceive:Buffer FULL - "
+									+ obj.toString());
+						}
 						Thread.sleep(5);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
