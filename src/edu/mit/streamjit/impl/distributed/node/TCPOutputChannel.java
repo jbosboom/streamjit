@@ -5,6 +5,8 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
+
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
@@ -22,6 +24,8 @@ import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
  */
 public final class TCPOutputChannel implements BoundaryOutputChannel {
 
+	private Boolean debugPrint;
+
 	private String name;
 
 	private int portNo;
@@ -32,11 +36,13 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private Buffer buffer;
 
-	public TCPOutputChannel(Buffer buffer, int portNo, String bufferTokenName) {
+	public TCPOutputChannel(Buffer buffer, int portNo, String bufferTokenName,
+			Boolean debugPrint) {
 		this.buffer = buffer;
 		this.portNo = portNo;
 		this.stopFlag = new AtomicBoolean(false);
 		this.name = "TCPOutputChannel - " + bufferTokenName;
+		this.debugPrint = debugPrint;
 	}
 
 	@Override
@@ -79,7 +85,13 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 	public void sendData() {
 		while (this.buffer.size() > 0 && !stopFlag.get()) {
 			try {
-				tcpConnection.writeObject(buffer.read());
+				if (debugPrint) {
+					Object o = buffer.read();
+					System.out.println(Thread.currentThread().getName() + " - "
+							+ o.toString());
+					tcpConnection.writeObject(o);
+				} else
+					tcpConnection.writeObject(buffer.read());
 			} catch (IOException e) {
 				System.err
 						.println("TCP Output Channel. WriteObject exception.");
@@ -107,7 +119,13 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 			try {
 				// System.out.println(Thread.currentThread().getName() +
 				// " buffer.size()" + this.buffer.size());
-				tcpConnection.writeObject(buffer.read());
+				if (debugPrint) {
+					Object o = buffer.read();
+					System.out.println(Thread.currentThread().getName() + " FinalSend - "
+							+ o.toString());
+					tcpConnection.writeObject(o);
+				} else
+					tcpConnection.writeObject(buffer.read());
 			} catch (IOException e) {
 				System.err.println("TCP Output Channel. finalSend exception.");
 			}
