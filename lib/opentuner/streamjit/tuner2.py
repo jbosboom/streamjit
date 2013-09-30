@@ -26,6 +26,7 @@ class StreamJitMI(MeasurementInterface):
 		self.trycount = 0
 		self.jvmOptions = jvmOptions
 		self.program = args.program
+		self.StreamNodes = []
 		try:
 			self.tunedataDB = sqlite3.connect('sj' + args.program + '.db')
 			c = self.tunedataDB.cursor()
@@ -44,14 +45,14 @@ class StreamJitMI(MeasurementInterface):
 		cfg = dict.copy(desired_result.configuration.data)
 		#self.niceprint(cfg)
 		commandStr = ''
-		args = ["java"]
+		baseargs = ["java"]
 		for key in self.jvmOptions.keys():
 			#print "\t", key
   			val = cfg[key]
 			self.jvmOptions.get(key).setValue(val)
 			cmd = self.jvmOptions.get(key).getCommand()
 			commandStr += cmd
-			args.append(cmd)
+			baseargs.append(cmd)
 				
 		cur = self.tunedataDB.cursor()
 		query = 'INSERT INTO results VALUES (%d,"%s","%s", "%f")'%(self.trycount, commandStr, cfg, -1)
@@ -60,19 +61,23 @@ class StreamJitMI(MeasurementInterface):
 		
 		print commandStr
 
-		args.append("-jar")
+		baseargs.append("-jar")
+		args = list(baseargs)
 		args.append("RunApp.jar")
 		args.append("%s"%self.program)
 		args.append("%d"%self.trycount)
 
 		#p = subprocess.Popen(["java",'%s'%commandStr, "-jar","RunApp.jar", "%s"%self.program, "%d"%self.trycount])
 		p = subprocess.Popen(args, stderr=subprocess.PIPE)
+		if cfg.get('noOfMachines'):
+			self.startStreamNodes(cfg.get('noOfMachines'),baseargs)
 		p.wait()		
 		out, err = p.communicate()
 		# Do not comment following 'pring err' line. Commenting will cause deadlog due to std error buffer become full.
 		print err
 		if err.find("Exception") > -1:
 			print "\033[31;1mException Found\033[0m"
+			self.waitForStreamNodes(True)
 			cur = self.tunedataDB.cursor()
 			str1 = str(commandStr)
 			str2 = str(cfg)
@@ -87,9 +92,11 @@ class StreamJitMI(MeasurementInterface):
 		exetime = float(time)
 		if exetime < 0:
 			print "\033[31;1mError in execution\033[0m"
+			self.waitForStreamNodes(True)
 			return opentuner.resultsdb.models.Result(state='ERROR', time=float('inf'))
 		else:	
 			print "\033[32;1mExecution time is %f ms\033[0m"%exetime
+			self.waitForStreamNodes(False)
 			return opentuner.resultsdb.models.Result(time=exetime)
 
 	def niceprint(self, cfg):
@@ -144,6 +151,21 @@ class StreamJitMI(MeasurementInterface):
 		query = 'INSERT INTO FinalResult VALUES ("%s","%s","%s",%d, %f)'%(self.program, commandStr, cfg, self.trycount, time)
 		cur.execute(query)
 		conn.commit()
+
+	def startStreamNodes(self, count, baseargs):
+		args = list(baseargs)
+		args.append("StreamNode.jar")
+		self.StreamNodes = []
+		for i in range(count):
+			p = subprocess.Popen(args)
+			self.StreamNodes.append(p)
+
+	def waitForStreamNodes(self, needKill):
+		if needKill:
+			for p in self.StreamNodes:
+				p.kill()
+		for p in self.StreamNodes:
+			p.wait()
 
 def main(args, cfg, jvmOptions):
 	logging.basicConfig(level=logging.INFO)
