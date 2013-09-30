@@ -23,7 +23,7 @@ import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.BenchmarkProvider;
-import edu.mit.streamjit.test.apps.bitonicsort.BitonicSort;
+import edu.mit.streamjit.test.sanity.minimal.Minimal;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
@@ -82,7 +82,7 @@ public class ConfigGenerator {
 				"name string PRIMARY KEY NOT NULL, configuration string, location string, classname string");
 
 		sqlite.createTable("FinalResult",
-				"Name string, JVMOption string, SJConfig string, Round int, Exectime real");
+				"Name string, Config string, Round int, State string, Exectime real");
 
 		String jarFilePath = provider.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
@@ -212,6 +212,7 @@ public class ConfigGenerator {
 						noOfmachines));
 		}
 
+		noOfmachines = 2;
 		BlobFactory bf;
 		if (noOfmachines == 1)
 			bf = new CompilerBlobFactory();
@@ -220,10 +221,11 @@ public class ConfigGenerator {
 
 		// BenchmarkProvider provider = new ChannelVocoder7();
 		// BenchmarkProvider provider = new FMRadio.FMRadioBenchmarkProvider();
-		BenchmarkProvider provider = new BitonicSort();
+		// BenchmarkProvider provider = new BitonicSort();
 		// BenchmarkProvider provider = new FileInputSanity();
 		// BenchmarkProvider provider = new SplitjoinOrderSanity();
 		// BenchmarkProvider provider = new HelperFunctionSanity();
+		BenchmarkProvider provider = new Minimal.MinimalBenchmarkProvider();
 
 		ConfigGenerator cfgGen = new ConfigGenerator();
 		cfgGen.generate(provider, bf);
