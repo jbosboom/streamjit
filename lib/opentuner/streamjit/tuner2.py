@@ -40,9 +40,14 @@ class StreamJitMI(MeasurementInterface):
 			data = raw_input ( "Press Keyboard to exit..." )
 
 	def run(self, desired_result, input, limit):
+		cfg = dict.copy(desired_result.configuration.data)
+		(st, t) = self.runApp(cfg)
+		return opentuner.resultsdb.models.Result(state=st, time=t)
+
+
+	def runApp(self, cfg):
 		self.trycount = self.trycount + 1
 		print '\n**********New Run - %d **********'%self.trycount
-		cfg = dict.copy(desired_result.configuration.data)
 		#self.niceprint(cfg)
 		commandStr = ''
 		baseargs = ["java"]
@@ -83,7 +88,7 @@ class StreamJitMI(MeasurementInterface):
 			str2 = str(cfg)
 			cur.execute('INSERT INTO exceptions VALUES (?,?,?)', (err, str1, str2))
 			self.tunedataDB.commit()
-			return opentuner.resultsdb.models.Result(state='ERROR', time=float('inf'))
+			return ('ERROR', float('inf'))
 
 		cur.execute('SELECT exectime FROM results WHERE round=%d'%self.trycount)
 		row = cur.fetchone()
@@ -93,11 +98,11 @@ class StreamJitMI(MeasurementInterface):
 		if exetime < 0:
 			print "\033[31;1mError in execution\033[0m"
 			self.waitForStreamNodes(True)
-			return opentuner.resultsdb.models.Result(state='ERROR', time=float('inf'))
+			return ('ERROR', float('inf'))
 		else:	
 			print "\033[32;1mExecution time is %f ms\033[0m"%exetime
 			self.waitForStreamNodes(False)
-			return opentuner.resultsdb.models.Result(time=exetime)
+			return ('OK',exetime)
 
 	def niceprint(self, cfg):
 		print "\n--------------------------------------------------"
@@ -113,42 +118,12 @@ class StreamJitMI(MeasurementInterface):
 
 	def save_final_config(self, configuration):
 		'''called at the end of autotuning with the best resultsdb.models.Configuration'''
-		self.trycount = self.trycount + 1
 		cfg = dict.copy(configuration.data)
-		commandStr = ''
-		args = ["java"]
-		for key in self.jvmOptions.keys():
-  			val = cfg[key]
-			self.jvmOptions.get(key).setValue(val)
-			cmd = self.jvmOptions.get(key).getCommand()
-			commandStr += cmd
-			args.append(cmd)
-				
-		cur = self.tunedataDB.cursor()
-		query = 'INSERT INTO results VALUES (%d,"%s","%s", 0)'%(self.trycount, commandStr, cfg)
-		cur.execute(query)
-		self.tunedataDB.commit()
-		
-		print commandStr
-
-		args.append("-jar")
-		args.append("RunApp.jar")
-		args.append("%s"%self.program)
-		args.append("%d"%self.trycount)
-
-		#p = subprocess.Popen(["java",'%s'%commandStr, "-jar","RunApp.jar", "%s"%self.program, "%d"%self.trycount])
-		p = subprocess.Popen(args)
-		p.wait()		
-		
-		cur.execute('SELECT exectime FROM results WHERE round=%d'%self.trycount)
-		row = cur.fetchone()
-		time = row[0]
-
-		print time
-
+		print "\033[32;1mFinal Config...\033[0m"
+		(state, time) = self.runApp(cfg)
 		conn = sqlite3.connect('streamjit.db', 100)
 		cur = conn.cursor()
-		query = 'INSERT INTO FinalResult VALUES ("%s","%s","%s",%d, %f)'%(self.program, commandStr, cfg, self.trycount, time)
+		query = 'INSERT INTO FinalResult VALUES ("%s","%s", %d, "%s", "%f")'%(self.program, cfg, self.trycount, state, float(time))
 		cur.execute(query)
 		conn.commit()
 
