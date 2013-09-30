@@ -138,38 +138,43 @@ public class StreamNode extends Thread {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		int requiredArgCount = 1; // Port no is optional.
 		String ipAddress;
+		int portNo = 0;
 
-		if (args.length < requiredArgCount) {
-			/*
-			 * System.out.println(args.length); System.out.println(
-			 * "Not enough parameters passed. Please provide thr following parameters."
-			 * ); System.out.println("0: Controller's IP address");
-			 * System.exit(0);
-			 */
+		switch (args.length) {
+			case 1 :
+				ipAddress = args[0];
+				portNo = GlobalConstants.PORTNO;
+				break;
+
+			case 2 :
+				ipAddress = args[0];
+				try {
+					portNo = Integer.parseInt(args[1]);
+				} catch (NumberFormatException ex) {
+					System.err.println("Invalid port No...");
+					System.err.println("Please verify the second argument.");
+					System.exit(0);
+				}
+				break;
+			default :
+				ipAddress = "127.0.0.1";
+				portNo = GlobalConstants.PORTNO;
 		}
 
-		// ipAddress = args[0];
-		ipAddress = "127.0.0.1";
 		if (!Ipv4Validator.getInstance().isValid(ipAddress)) {
-			System.out.println("Invalid IP address...");
-			System.out.println("Please verify the first argument.");
+			System.err.println("Invalid IP address...");
+			System.err.println("Please verify the first argument.");
 
 			System.exit(0);
 		}
 
-		int portNo = 0;
-		if (args.length > 1) {
-			try {
-				portNo = Integer.parseInt(args[1]);
-			} catch (NumberFormatException ex) {
-				System.out.println("Invalid port No...");
-				System.out.println("Please verify the second argument.");
-				System.exit(0);
-			}
-		} else {
-			portNo = GlobalConstants.PORTNO;
+		if (portNo < 1024) {
+			System.err
+					.println("Wellknown port number has been used. Please consider avoid using it");
+		} else if (portNo > 65535) {
+			System.err.println("Invalid port no...");
+			System.exit(0);
 		}
 
 		ConnectionFactory cf = new ConnectionFactory();
