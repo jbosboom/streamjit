@@ -130,6 +130,8 @@ class StreamJitMI(MeasurementInterface):
 	def startStreamNodes(self, count, baseargs):
 		args = list(baseargs)
 		args.append("StreamNode.jar")
+		args.insert(0, "-e")
+		args.insert(0, "xterm")
 		self.StreamNodes = []
 		for i in range(count):
 			p = subprocess.Popen(args)
