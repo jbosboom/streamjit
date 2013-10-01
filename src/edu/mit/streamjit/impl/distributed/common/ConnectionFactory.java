@@ -23,7 +23,7 @@ public class ConnectionFactory {
 		if (!validator.isValid(portNo))
 			throw new IllegalArgumentException("Invalid port No");
 
-		int maxTryAttempts = 5;
+		int maxTryAttempts = 10;
 		for (int i = 0; i < maxTryAttempts; i++) {
 			try {
 				Socket socket = new Socket(serverAddress, portNo);
