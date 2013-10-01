@@ -1,6 +1,8 @@
 package edu.mit.streamjit.impl.distributed;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -13,20 +15,21 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.api.CompiledStream;
+import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.Splitjoin;
-import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.BlobGraph;
+import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
@@ -35,7 +38,6 @@ import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
-import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
@@ -337,21 +339,45 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	/**
 	 * Goes through all the workers assigned to a machine, find the workers
 	 * which are interconnected and group them as a blob workers. i.e., Group
-	 * the workers such that each group can be executed as either a compiler
-	 * blob or an interpreter blob.
+	 * the workers such that each group can be executed as a blob.
 	 * <p>
-	 * TODO: Not implemented yet. If any dynamic edges exists then should create
-	 * interpreter blob.
+	 * TODO: If any dynamic edges exists then should create interpreter blob.
 	 * 
 	 * @param workerset
-	 * @return list of workers set which contains interconnected workers.
+	 * @return list of workers set which contains interconnected workers. Each
+	 *         worker set in the list is supposed to run in an individual blob.
 	 */
 	private List<Set<Worker<?, ?>>> getBlobs(Set<Worker<?, ?>> workerset) {
 		List<Set<Worker<?, ?>>> ret = new ArrayList<Set<Worker<?, ?>>>();
-		ret.add(workerset);
+		while (!workerset.isEmpty()) {
+			Deque<Worker<?, ?>> queue = new ArrayDeque<>();
+			Set<Worker<?, ?>> blobworkers = new HashSet<>();
+			Worker<?, ?> w = workerset.iterator().next();
+			blobworkers.add(w);
+			workerset.remove(w);
+			queue.offer(w);
+			while (!queue.isEmpty()) {
+				Worker<?, ?> wrkr = queue.poll();
+				for (Worker<?, ?> succ : Workers.getSuccessors(wrkr)) {
+					if (workerset.contains(succ)) {
+						blobworkers.add(succ);
+						workerset.remove(succ);
+						queue.offer(succ);
+					}
+				}
+
+				for (Worker<?, ?> pred : Workers.getPredecessors(wrkr)) {
+					if (workerset.contains(pred)) {
+						blobworkers.add(pred);
+						workerset.remove(pred);
+						queue.offer(pred);
+					}
+				}
+			}
+			ret.add(blobworkers);
+		}
 		return ret;
 	}
-
 	// TODO: Need to do precise mapping. For the moment just mapping in order.
 	private Map<Integer, List<Set<Worker<?, ?>>>> mapPartitionstoMachines(
 			List<Set<Worker<?, ?>>> partitionList,
