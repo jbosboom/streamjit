@@ -262,7 +262,7 @@ public class Controller {
 
 			headChannel = new TCPOutputChannel(bufferMap.get(headToken),
 					portIdMap.get(headToken), "headChannel - "
-							+ headToken.toString(), true);
+							+ headToken.toString(), false);
 		}
 
 		Map.Entry<Integer, Integer> tailentry = tokenMachineMap.get(tailToken);
@@ -280,7 +280,7 @@ public class Controller {
 
 			tailChannel = new TCPInputChannel(bufferMap.get(tailToken),
 					ipAddress, portIdMap.get(tailToken), "tailChannel - "
-							+ tailToken.toString(), true);
+							+ tailToken.toString(), false);
 		}
 	}
 
