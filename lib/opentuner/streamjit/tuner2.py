@@ -9,6 +9,7 @@ import sys
 import subprocess
 import sqlite3
 import traceback
+import time
 
 import deps #fix sys.path
 import opentuner
@@ -76,10 +77,25 @@ class StreamJitMI(MeasurementInterface):
 		p = subprocess.Popen(args, stderr=subprocess.PIPE)
 		if cfg.get('noOfMachines'):
 			self.startStreamNodes(cfg.get('noOfMachines'),baseargs)
-		p.wait()		
+
+		timeout = 15
+
+		while timeout > 0 and p.poll() is None:
+			time.sleep(1)
+			timeout = timeout - 1
+
+		if timeout == 0:
+			if p.poll() is None:
+				p.kill()
+			self.waitForStreamNodes(True)
+			p.wait()
+			print "\033[34;1mTime out\033[0m"
+			return ('OK', float('inf'))
+
 		out, err = p.communicate()
 		# Do not comment following 'pring err' line. Commenting will cause deadlog due to std error buffer become full.
 		print err
+
 		if err.find("Exception") > -1:
 			print "\033[31;1mException Found\033[0m"
 			self.waitForStreamNodes(True)
@@ -92,9 +108,9 @@ class StreamJitMI(MeasurementInterface):
 
 		cur.execute('SELECT exectime FROM results WHERE round=%d'%self.trycount)
 		row = cur.fetchone()
-		time = row[0]
+		t = row[0]
 
-		exetime = float(time)
+		exetime = float(t)
 		if exetime < 0:
 			print "\033[31;1mError in execution\033[0m"
 			self.waitForStreamNodes(True)
