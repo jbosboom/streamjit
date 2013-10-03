@@ -2,14 +2,11 @@ package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicate;
-import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Multiset;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import edu.mit.streamjit.impl.blob.Blob.Token;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -35,6 +32,12 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		return new ActorGroup(ImmutableSet.<Actor>builder().addAll(first.actors()).addAll(second.actors()).build());
 	}
 
+	public void remove(Actor a) {
+		assert actors.contains(a) : a;
+		actors = ImmutableSet.copyOf(Sets.difference(actors, ImmutableSet.of(a)));
+		schedule = ImmutableMap.copyOf(Maps.difference(schedule, ImmutableMap.of(a, 0)).entriesOnlyOnLeft());
+	}
+
 	public ImmutableSet<Actor> actors() {
 		return actors;
 	}
@@ -57,30 +60,30 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		return false;
 	}
 
-	public Set<Edge> inputs() {
-		return Sets.filter(allEdges(), new Predicate<Edge>() {
+	public Set<Storage> inputs() {
+		return Sets.filter(allEdges(), new Predicate<Storage>() {
 			@Override
-			public boolean apply(Edge input) {
+			public boolean apply(Storage input) {
 				return !input.hasUpstreamActor() ||
 						input.upstreamActor().group() != ActorGroup.this;
 			}
 		});
 	}
 
-	public Set<Edge> outputs() {
-		return Sets.filter(allEdges(), new Predicate<Edge>() {
+	public Set<Storage> outputs() {
+		return Sets.filter(allEdges(), new Predicate<Storage>() {
 			@Override
-			public boolean apply(Edge input) {
+			public boolean apply(Storage input) {
 				return !input.hasDownstreamActor()||
 						input.downstreamActor().group() != ActorGroup.this;
 			}
 		});
 	}
 
-	public Set<Edge> internalEdges() {
-		return Sets.filter(allEdges(), new Predicate<Edge>() {
+	public Set<Storage> internalEdges() {
+		return Sets.filter(allEdges(), new Predicate<Storage>() {
 			@Override
-			public boolean apply(Edge input) {
+			public boolean apply(Storage input) {
 				return input.hasUpstreamActor() && input.hasDownstreamActor() &&
 						input.upstreamActor().group() == ActorGroup.this &&
 						input.downstreamActor().group() == ActorGroup.this;
@@ -88,81 +91,30 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		});
 	}
 
-	private Set<Edge> allEdges() {
-		/*
-		 * Building edges is complicated by multi-edges introducing ambiguity
-		 * into which edges is which (matters for rates).  We're assuming the
-		 * graph is planar here.
-		 */
-		ImmutableSet.Builder<Edge> builder = ImmutableSet.builder();
+	private Set<Storage> allEdges() {
+		ImmutableSet.Builder<Storage> builder = ImmutableSet.builder();
 		for (Actor a : actors) {
-			Multiset<Actor> appearances = HashMultiset.create();
-			for (int i = 0; i < a.predecessors().size(); ++i) {
-				Object o = a.predecessors().get(i);
-				int upstreamIndex;
-				if (o instanceof Token)
-					upstreamIndex = 0;
-				else {
-					/*
-					 * Because the graph is planar, we know the Nth edge from
-					 * one end is also the Nth edge from the other end (the
-					 * multi-edges do not cross).
-					 */
-					Actor a2 = (Actor)o;
-					upstreamIndex = findNth(a2.successors(), a, appearances.count(a2));
-					appearances.add(a2);
-				}
-				builder.add(new Edge(o, a, upstreamIndex, i));
-			}
-		}
-
-		for (Actor a : actors) {
-			Multiset<Actor> appearances = HashMultiset.create();
-			for (int i = 0; i < a.successors().size(); ++i) {
-				Object o = a.successors().get(i);
-				int downstreamIndex;
-				if (o instanceof Token)
-					downstreamIndex = 0;
-				else {
-					/*
-					 * Because the graph is planar, we know the Nth edge from
-					 * one end is also the Nth edge from the other end (the
-					 * multi-edges do not cross).
-					 */
-					Actor a2 = (Actor)o;
-					downstreamIndex = findNth(a2.predecessors(), a, appearances.count(a2));
-					appearances.add(a2);
-				}
-				builder.add(new Edge(a, o, i, downstreamIndex));
-			}
+			builder.addAll(a.inputs());
+			builder.addAll(a.outputs());
 		}
 		return builder.build();
-	}
-
-	private int findNth(List<Object> list, Object target, int n) {
-		int i = 0;
-		while (i != -1 && n-- >= 0) {
-			list = list.subList(i+1, list.size());
-			i = list.indexOf(target);
-		}
-		return i;
 	}
 
 	public Set<ActorGroup> predecessorGroups() {
 		ImmutableSet.Builder<ActorGroup> builder = ImmutableSet.builder();
 		for (Actor a : actors)
-			for (Object o : a.predecessors())
-				if (o instanceof Actor && ((Actor)o).group() != this)
-					builder.add(((Actor)o).group());
+			for (Storage s : a.inputs())
+				if (s.hasUpstreamActor() && s.upstreamActor().group() != this)
+					builder.add(s.upstreamActor().group());
 		return builder.build();
 	}
 
 	public Set<ActorGroup> successorGroups() {
 		ImmutableSet.Builder<ActorGroup> builder = ImmutableSet.builder();
 		for (Actor a : actors)
-			for (Object o : a.successors())
-				if (o instanceof Actor && ((Actor)o).group() != this)
-					builder.add(((Actor)o).group());
+			for (Storage s : a.outputs())
+				if (s.hasDownstreamActor()&& s.downstreamActor().group() != this)
+					builder.add(s.downstreamActor().group());
 		return builder.build();
 	}
 

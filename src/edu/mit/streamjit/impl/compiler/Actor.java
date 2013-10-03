@@ -1,9 +1,9 @@
 package edu.mit.streamjit.impl.compiler;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Table;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.util.ReflectionUtils;
@@ -25,14 +25,15 @@ public class Actor implements Comparable<Actor> {
 	private final ActorArchetype archetype;
 	private ActorGroup group;
 	/**
-	 * The upstream and downstream things: either Actors in this blob, or Tokens
-	 * corresponding to Buffers at the blob boundary.
+	 * The upstream and downstream Storage, one for each input or output of this
+	 * Actor.
 	 */
-	private final List<Object> upstream = new ArrayList<>(), downstream = new ArrayList<>();
+	private final List<Storage> upstream = new ArrayList<>(), downstream = new ArrayList<>();
 	/**
 	 * Index functions (int -> int) that transform a nominal index
 	 * (iteration * rate + popCount/pushCount (+ peekIndex)) into a physical
 	 * index (subject to further adjustment if circular buffers are in use).
+	 * One for each input or output of this actor.
 	 */
 	private final List<MethodHandle> upstreamIndex = new ArrayList<>(),
 			downstreamIndex = new ArrayList<>();
@@ -45,18 +46,38 @@ public class Actor implements Comparable<Actor> {
 	 * Sets up Actor connections based on the worker's predecessor/successor
 	 * relationships.
 	 */
-	public void connect(Map<Worker<?, ?>, Actor> actors) {
+	public void connect(Map<Worker<?, ?>, Actor> actors, Table<Object, Object, Storage> storage) {
 		List<? extends Worker<?, ?>> predecessors = Workers.getPredecessors(worker);
-		if (predecessors.isEmpty())
-			upstream.add(Token.createOverallInputToken(worker));
-		for (Worker<?, ?> w : predecessors)
-			upstream.add(actors.get(w));
+		if (predecessors.isEmpty()) {
+			Token t = Token.createOverallInputToken(worker);
+			Storage s = new Storage(t, this);
+			upstream.add(s);
+			storage.put(t, this, s);
+		}
+		for (Worker<?, ?> w : predecessors) {
+			Object pred = actors.get(w);
+			if (pred == null)
+				pred = new Token(w, worker());
+			Storage s = new Storage(pred, this);
+			upstream.add(s);
+			storage.put(pred, this, s);
+		}
 
 		List<? extends Worker<?, ?>> successors = Workers.getSuccessors(worker);
-		if (successors.isEmpty())
-			downstream.add(Token.createOverallOutputToken(worker));
-		for (Worker<?, ?> w : successors)
-			downstream.add(actors.get(w));
+		if (successors.isEmpty()) {
+			Token t = Token.createOverallOutputToken(worker);
+			Storage s = new Storage(this, t);
+			downstream.add(s);
+			storage.put(this, t, s);
+		}
+		for (Worker<?, ?> w : successors) {
+			Object succ = actors.get(w);
+			if (succ == null)
+				succ = new Token(worker(), w);
+			Storage s = new Storage(this, succ);
+			downstream.add(s);
+			storage.put(succ, this, s);
+		}
 
 		MethodHandle identity = MethodHandles.identity(int.class);
 		upstreamIndex.addAll(Collections.nCopies(upstream.size(), identity));
@@ -93,11 +114,11 @@ public class Actor implements Comparable<Actor> {
 		return false;
 	}
 
-	public List<Object> predecessors() {
+	public List<Storage> inputs() {
 		return upstream;
 	}
 
-	public List<Object> successors() {
+	public List<Storage> outputs() {
 		return downstream;
 	}
 
