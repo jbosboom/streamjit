@@ -76,9 +76,9 @@ class StreamJitMI(MeasurementInterface):
 		#p = subprocess.Popen(["java",'%s'%commandStr, "-jar","RunApp.jar", "%s"%self.program, "%d"%self.trycount])
 		p = subprocess.Popen(args, stderr=subprocess.PIPE)
 		if cfg.get('noOfMachines'):
-			self.startStreamNodes(cfg.get('noOfMachines'),baseargs)
+			self.startStreamNodes(cfg.get('noOfMachines') - 1,baseargs)
 
-		timeout = 15
+		timeout = 50
 
 		while timeout > 0 and p.poll() is None:
 			time.sleep(1)
