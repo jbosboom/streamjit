@@ -2,11 +2,14 @@ package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.Lists;
+import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Workers;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Holds information about intermediate storage in the stream graph (buffers,
@@ -23,6 +26,12 @@ public final class Storage {
 	 * The upstream and downstream Actors or Tokens.
 	 */
 	private final List<Object> upstream, downstream;
+	/**
+	 * The type of data stored in this storage.  Initially this is Object, but
+	 * unboxing may change it to a primitive type after examining the connected
+	 * Actors.
+	 */
+	private Class<?> type;
 	public Storage(Object upstream, Object downstream) {
 		checkArgument(upstream instanceof Actor || upstream instanceof Token, upstream);
 		checkArgument(downstream instanceof Actor || downstream instanceof Token, downstream);
@@ -100,6 +109,35 @@ public final class Storage {
 	public boolean isInternal() {
 		return hasUpstreamActor() && hasDownstreamActor() &&
 				upstreamActor().group() == downstreamActor().group();
+	}
+
+	public Class<?> type() {
+		return type;
+	}
+
+	public void setType(Class<?> type) {
+		//We could check the new type is compatible with the common type if we
+		//consider primitives compatible with their wrapper type.
+		this.type = type;
+	}
+
+	/**
+	 * Computes the common type of the Actors connected to this Storage.
+	 * @return the common type of the Actors connected to this Storage
+	 */
+	public Class<?> commonType() {
+		Set<Class<?>> types = new HashSet<>();
+		for (Object o : upstream())
+			if (o instanceof Actor)
+				types.add(((Actor)o).archetype().outputType());
+		for (Object o : downstream())
+			if (o instanceof Actor)
+				types.add(((Actor)o).archetype().inputType());
+		//TODO: we only really care about the case where the common types are
+		//all one (wrapper) type, so check that and return Object otherwise.
+		if (types.size() == 1)
+			return types.iterator().next();
+		return Object.class;
 	}
 
 	@Override
