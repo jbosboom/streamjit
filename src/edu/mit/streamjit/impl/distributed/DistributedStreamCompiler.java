@@ -103,16 +103,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		this.cfg = cfg;
 	}
 
-	// Having compileConv() and compileConf() is just a temporary hack.
-	@Override
 	public <I, O> CompiledStream compile(OneToOneElement<I, O> stream,
-			Input<I> input, Output<O> output) {
-		if (cfg == null)
-			return compileConv(stream, input, output);
-		return compileConf(stream, input, output);
-	}
-
-	public <I, O> CompiledStream compileConv(OneToOneElement<I, O> stream,
 			Input<I> input, Output<O> output) {
 
 		checkforDefaultOneToOneElement(stream);
@@ -143,96 +134,12 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Controller controller = new Controller();
 		controller.connect(conTypeCount);
 
-		Map<Integer, Integer> coreCounts = controller.getCoreCount();
-
-		// As we are just running small benchmark applications, lets utilize
-		// just a single core per node. TODO: When running big
-		// real world applications utilize all available cores. For that simply
-		// comment the following lines.
-		for (Integer key : coreCounts.keySet()) {
-			coreCounts.put(key, 1);
-		}
-
-		int totalCores = 0;
-		for (int coreCount : coreCounts.values())
-			totalCores += coreCount;
-
-		// TODO: Need to map the machines and the partitions precisely. Now just
-		// it is mapped based on the list order.
-		Partitioner<I, O> horzPartitioner = new HorizontalPartitioner<>();
-		List<Set<Worker<?, ?>>> partitionList = horzPartitioner
-				.partitionEqually(stream, source, sink, totalCores);
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = mapPartitionstoMachines(
-				partitionList, coreCounts);
-
-		BlobGraph bg = new BlobGraph(partitionList);
-
-		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
-		// context.
-		List<MessageConstraint> constraints = MessageConstraint
-				.findConstraints(source);
-		Set<Portal<?>> portals = new HashSet<>();
-		for (MessageConstraint mc : constraints)
-			portals.add(mc.getPortal());
-		for (Portal<?> portal : portals)
-			Portals.setConstraints(portal, constraints);
-
-		String jarFilePath = this.getClass().getProtectionDomain()
-				.getCodeSource().getLocation().getPath();
-
-		controller.setPartition(partitionsMachineMap, jarFilePath, stream
-				.getClass().getName(), constraints, source, sink,
-				bufferMapBuilder.build(), cfg);
-
-		final DistributedCompiledStream cs = new DistributedCompiledStream(bg,
-				controller);
-
-		if (input instanceof ManualInput)
-			InputBufferFactory
-					.setManualInputDelegate(
-							(ManualInput<I>) input,
-							new InputBufferFactory.AbstractManualInputDelegate<I>(
-									head) {
-								@Override
-								public void drain() {
-									cs.drain();
-								}
-							});
+		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap;
+		if (cfg == null)
+			partitionsMachineMap = getMachineWorkerMap(controller, stream,
+					source, sink);
 		else
-			cs.drain();
-		return cs;
-	}
-
-	public <I, O> CompiledStream compileConf(OneToOneElement<I, O> stream,
-			Input<I> input, Output<O> output) {
-
-		checkforDefaultOneToOneElement(stream);
-
-		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
-		stream.visit(primitiveConnector);
-		Worker<I, ?> source = (Worker<I, ?>) primitiveConnector.getSource();
-		Worker<?, O> sink = (Worker<?, O>) primitiveConnector.getSink();
-
-		// TODO: derive a algorithm to find good buffer size and use here.
-		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
-				1000);
-		Buffer tail = OutputBufferFactory.unwrap(output).createWritableBuffer(
-				1000);
-
-		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
-				.<Token, Buffer> builder();
-
-		bufferMapBuilder.put(Token.createOverallInputToken(source), head);
-		bufferMapBuilder.put(Token.createOverallOutputToken(sink), tail);
-
-		VerifyStreamGraph verifier = new VerifyStreamGraph();
-		stream.visit(verifier);
-
-		ImmutableSet<Worker<?, ?>> allworkers = Workers
-				.getAllWorkersInGraph(source);
-
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
-				cfg, allworkers);
+			partitionsMachineMap = getMachineWorkerMap(cfg, source);
 
 		List<Set<Worker<?, ?>>> partitionList = new ArrayList<>();
 		for (List<Set<Worker<?, ?>>> lst : partitionsMachineMap.values()) {
@@ -258,14 +165,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			throw ex;
 		}
 
-		int nodeCount = partitionsMachineMap.keySet().size();
-
-		Map<CommunicationType, Integer> conTypeCount = new HashMap<>();
-		conTypeCount.put(CommunicationType.LOCAL, 1);
-		conTypeCount.put(CommunicationType.TCP, nodeCount - 1);
-		Controller controller = new Controller();
-		controller.connect(conTypeCount);
-
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
 		// context.
 		List<MessageConstraint> constraints = MessageConstraint
@@ -302,6 +201,75 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		return cs;
 	}
 
+	private <I, O> Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
+			Controller controller, OneToOneElement<I, O> stream,
+			Worker<I, ?> source, Worker<?, O> sink) {
+
+		Map<Integer, Integer> coreCounts = controller.getCoreCount();
+
+		// As we are just running small benchmark applications, lets utilize
+		// just a single core per node. TODO: When running big
+		// real world applications utilize all available cores. For that simply
+		// comment the following lines.
+		for (Integer key : coreCounts.keySet()) {
+			coreCounts.put(key, 1);
+		}
+
+		int totalCores = 0;
+		for (int coreCount : coreCounts.values())
+			totalCores += coreCount;
+
+		// TODO: Need to map the machines and the partitions precisely. Now just
+		// it is mapped based on the list order.
+		Partitioner<I, O> horzPartitioner = new HorizontalPartitioner<>();
+		List<Set<Worker<?, ?>>> partitionList = horzPartitioner
+				.partitionEqually(stream, source, sink, totalCores);
+		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = mapPartitionstoMachines(
+				partitionList, coreCounts);
+
+		return partitionsMachineMap;
+	}
+
+	private Map<Integer, List<Set<Worker<?, ?>>>> mapPartitionstoMachines(
+			List<Set<Worker<?, ?>>> partitionList,
+			Map<Integer, Integer> coreCountMap) {
+
+		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = new HashMap<Integer, List<Set<Worker<?, ?>>>>();
+		for (Integer machineID : coreCountMap.keySet()) {
+			partitionsMachineMap.put(
+					machineID,
+					new ArrayList<Set<Worker<?, ?>>>(coreCountMap
+							.get(machineID)));
+		}
+
+		int index = 0;
+		for (Integer machineID : partitionsMachineMap.keySet()) {
+			if (!(index < partitionList.size()))
+				break;
+			for (int i = 0; i < coreCountMap.get(machineID); i++) {
+				if (!(index < partitionList.size()))
+					break;
+				partitionsMachineMap.get(machineID).add(
+						partitionList.get(index++));
+			}
+		}
+
+		// In case we received more partitions than available cores. Assign the
+		// remaining partitions in round robin fashion. This case
+		// shouldn't happen if the partitioning is correctly done based on the
+		// available core count. This code is added just to ensure
+		// the correctness of the program and to avoid the bugs.
+		while (index < partitionList.size()) {
+			for (Integer machineID : partitionsMachineMap.keySet()) {
+				if (!(index < partitionList.size()))
+					break;
+				partitionsMachineMap.get(machineID).add(
+						partitionList.get(index++));
+			}
+		}
+		return partitionsMachineMap;
+	}
+
 	/**
 	 * Reads the configuration and returns a map of nodeID to list of workers
 	 * set which are assigned to the node. value of the returned map is list of
@@ -314,7 +282,11 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	 *         blob.
 	 */
 	private Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
-			Configuration config, ImmutableSet<Worker<?, ?>> workerset) {
+			Configuration config, Worker<?, ?> source) {
+
+		ImmutableSet<Worker<?, ?>> workerset = Workers
+				.getAllWorkersInGraph(source);
+
 		Map<Integer, Set<Worker<?, ?>>> partition = new HashMap<>();
 		for (Worker<?, ?> w : workerset) {
 			IntParameter w2m = config.getParameter(String.format(
@@ -377,46 +349,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			ret.add(blobworkers);
 		}
 		return ret;
-	}
-	// TODO: Need to do precise mapping. For the moment just mapping in order.
-	private Map<Integer, List<Set<Worker<?, ?>>>> mapPartitionstoMachines(
-			List<Set<Worker<?, ?>>> partitionList,
-			Map<Integer, Integer> coreCountMap) {
-
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = new HashMap<Integer, List<Set<Worker<?, ?>>>>();
-		for (Integer machineID : coreCountMap.keySet()) {
-			partitionsMachineMap.put(
-					machineID,
-					new ArrayList<Set<Worker<?, ?>>>(coreCountMap
-							.get(machineID)));
-		}
-
-		int index = 0;
-		for (Integer machineID : partitionsMachineMap.keySet()) {
-			if (!(index < partitionList.size()))
-				break;
-			for (int i = 0; i < coreCountMap.get(machineID); i++) {
-				if (!(index < partitionList.size()))
-					break;
-				partitionsMachineMap.get(machineID).add(
-						partitionList.get(index++));
-			}
-		}
-
-		// In case we received more partitions than available cores. Assign the
-		// remaining partitions in round robin fashion. This case
-		// shouldn't happen if the partitioning is correctly done based on the
-		// available core count. This code is added just to ensure
-		// the correctness of the program and to avoid the bugs.
-		while (index < partitionList.size()) {
-			for (Integer machineID : partitionsMachineMap.keySet()) {
-				if (!(index < partitionList.size()))
-					break;
-				partitionsMachineMap.get(machineID).add(
-						partitionList.get(index++));
-			}
-		}
-		return partitionsMachineMap;
 	}
 
 	/**
