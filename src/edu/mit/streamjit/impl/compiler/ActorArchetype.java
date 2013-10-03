@@ -1,14 +1,17 @@
 package edu.mit.streamjit.impl.compiler;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StatefulFilter;
+import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
 
 /**
  * Contains information about a Worker subclass, detached from any particular
@@ -50,14 +53,26 @@ public class ActorArchetype {
 		return fields;
 	}
 
+	/**
+	 * Returns an upper bound on the input type of the Worker class. For
+	 * example, a Filter<Integer, String> will return Integer, and a Filter<T,
+	 * T> will return Object.
+	 * @return an upper bound on the input type of the Worker class
+	 */
 	public Class<?> inputType() {
-		//TODO
-		return Object.class;
+		ParameterizedType t = (ParameterizedType)TypeToken.of(workerClass).getSupertype(StreamElement.class).getType();
+		return TypeToken.of(t.getActualTypeArguments()[0]).getRawType();
 	}
 
+	/**
+	 * Returns an upper bound on the output type of the Worker class. For
+	 * example, a Filter<Integer, String> will return String, and a Filter<T, T>
+	 * will return Object.
+	 * @return an upper bound on the output type of the Worker class
+	 */
 	public Class<?> outputType() {
-		//TODO
-		return Object.class;
+		ParameterizedType t = (ParameterizedType)TypeToken.of(workerClass).getSupertype(StreamElement.class).getType();
+		return TypeToken.of(t.getActualTypeArguments()[1]).getRawType();
 	}
 
 	public boolean isStateful() {
