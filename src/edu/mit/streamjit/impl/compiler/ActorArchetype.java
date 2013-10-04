@@ -1,6 +1,8 @@
 package edu.mit.streamjit.impl.compiler;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.primitives.Primitives;
 import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Joiner;
@@ -9,9 +11,20 @@ import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.util.ReflectionUtils;
+import edu.mit.streamjit.util.bytecode.BasicBlock;
+import edu.mit.streamjit.util.bytecode.Klass;
+import edu.mit.streamjit.util.bytecode.Method;
+import edu.mit.streamjit.util.bytecode.Module;
+import edu.mit.streamjit.util.bytecode.User;
+import edu.mit.streamjit.util.bytecode.Value;
+import edu.mit.streamjit.util.bytecode.insts.CallInst;
+import edu.mit.streamjit.util.bytecode.insts.CastInst;
+import edu.mit.streamjit.util.bytecode.insts.Instruction;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Contains information about a Worker subclass, detached from any particular
@@ -32,10 +45,12 @@ public class ActorArchetype {
 	 * These are the fields that must be passed to a work method instance.
 	 */
 	private final ImmutableList<Field> fields;
-
-	public ActorArchetype(Class<? extends Worker<?, ?>> workerClass) {
+	/**
+	 * The Klass corresponding to the worker class.
+	 */
+	private final Klass klass;
+	public ActorArchetype(Class<? extends Worker<?, ?>> workerClass, Module module) {
 		this.workerClass = workerClass;
-
 		ImmutableList.Builder<Field> fieldsBuilder = ImmutableList.builder();
 		for (Class<?> c = this.workerClass; c != Filter.class && c != Splitter.class && c != Joiner.class; c = c.getSuperclass()) {
 			for (Field f : c.getDeclaredFields())
@@ -43,6 +58,7 @@ public class ActorArchetype {
 					fieldsBuilder.add(f);
 		}
 		this.fields = fieldsBuilder.build();
+		this.klass = module.getKlass(workerClass);
 	}
 
 	public Class<? extends Worker<?, ?>> workerClass() {
@@ -77,5 +93,59 @@ public class ActorArchetype {
 
 	public boolean isStateful() {
 		return ReflectionUtils.getAllSupertypes(workerClass()).contains(StatefulFilter.class);
+	}
+
+	public boolean canUnboxInput() {
+		if (!Primitives.isWrapperType(inputType())) return false;
+		Class<?> primitiveType = Primitives.unwrap(inputType());
+
+		Module module = klass.getParent();
+		Klass filterKlass = module.getKlass(Filter.class);
+		Klass splitterKlass = module.getKlass(Splitter.class);
+		Klass joinerKlass = module.getKlass(Joiner.class);
+		Method peek1Filter = filterKlass.getMethod("peek", module.types().getMethodType(Object.class, Filter.class, int.class));
+		assert peek1Filter != null;
+		Method peek1Splitter = splitterKlass.getMethod("peek", module.types().getMethodType(Object.class, Splitter.class, int.class));
+		assert peek1Splitter != null;
+		Method pop1Filter = filterKlass.getMethod("pop", module.types().getMethodType(Object.class, Filter.class));
+		assert pop1Filter != null;
+		Method pop1Splitter = splitterKlass.getMethod("pop", module.types().getMethodType(Object.class, Splitter.class));
+		assert pop1Splitter != null;
+		Method peek2 = joinerKlass.getMethod("peek", module.types().getMethodType(Object.class, Joiner.class, int.class, int.class));
+		assert peek2 != null;
+		Method pop2 = joinerKlass.getMethod("pop", module.types().getMethodType(Object.class, Joiner.class, int.class));
+		assert pop2 != null;
+		ImmutableSet<Method> inputMethods = ImmutableSet.of(peek1Filter, peek1Splitter, pop1Filter, pop1Splitter, peek2, pop2);
+
+		Method work = klass.getMethodByVirtual("work", module.types().getMethodType(void.class, workerClass()));
+		work.resolve();
+		List<Value> inputs = new ArrayList<>();
+		for (BasicBlock block : work.basicBlocks())
+			for (Instruction inst : block.instructions())
+				if (inst instanceof CallInst &&
+						inputMethods.contains(((CallInst)inst).getMethod())) {
+					inputs.add(inst);
+				}
+
+		//The only use of the value should be a CastInst to the input type,
+		//followed by the proper fooValue() call.  TODO: tolerate more uses?
+		for (Value v : inputs)
+			for (User u : v.users().elementSet()) {
+				if (!(u instanceof CastInst))
+					return false;
+				for (User t : u.users().elementSet()) {
+					if (!(t instanceof CallInst))
+						return false;
+					Method fooValue = module.getKlass(inputType()).getMethod(primitiveType.getCanonicalName()+"Value", module.types().getMethodType(primitiveType, inputType()));
+					if (((CallInst)t).getMethod() != fooValue)
+						return false;
+				}
+			}
+		return true;
+	}
+
+	public boolean canUnboxOutput() {
+		//TODO
+		return false;
 	}
 }

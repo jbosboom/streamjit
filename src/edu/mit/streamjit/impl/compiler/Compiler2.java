@@ -19,6 +19,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.IOInfo;
 import static edu.mit.streamjit.util.Combinators.*;
+import edu.mit.streamjit.util.bytecode.Module;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ public class Compiler2 {
 	private final Set<Storage> storage;
 	private ImmutableMap<ActorGroup, Integer> externalSchedule;
 	private final Map<Token, MethodHandle> tokenInputIndices = new HashMap<>(), tokenOutputIndices = new HashMap<>();
+	private final Module module = new Module();
 	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 		Map<Class<?>, ActorArchetype> archetypesBuilder = new HashMap<>();
 		Map<Worker<?, ?>, Actor> actorsBuilder = new HashMap<>();
@@ -53,7 +55,7 @@ public class Compiler2 {
 			@SuppressWarnings("unchecked")
 			Class<? extends Worker<?, ?>> wClass = (Class<? extends Worker<?, ?>>)w.getClass();
 			if (archetypesBuilder.get(wClass) == null)
-				archetypesBuilder.put(wClass, new ActorArchetype(wClass));
+				archetypesBuilder.put(wClass, new ActorArchetype(wClass, module));
 			Actor actor = new Actor(w, archetypesBuilder.get(wClass));
 			actorsBuilder.put(w, actor);
 		}
