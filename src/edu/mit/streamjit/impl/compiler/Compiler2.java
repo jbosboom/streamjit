@@ -146,24 +146,24 @@ public class Compiler2 {
 	 */
 	private void internalSchedule(ActorGroup g) {
 		Schedule.Builder<Actor> scheduleBuilder = Schedule.builder();
-			scheduleBuilder.addAll(g.actors());
-			Map<Worker<?, ?>, Actor> map = new HashMap<>();
-			for (Actor a : g.actors())
-				map.put(a.worker(), a);
-			for (IOInfo info : IOInfo.internalEdges(map.keySet())) {
-				scheduleBuilder.connect(map.get(info.upstream()), map.get(info.downstream()))
-						.push(info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max())
-						.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max())
-						.peek(info.downstream().getPeekRates().get(info.getDownstreamChannelIndex()).max())
-						.bufferExactly(0);
-			}
+		scheduleBuilder.addAll(g.actors());
+		Map<Worker<?, ?>, Actor> map = new HashMap<>();
+		for (Actor a : g.actors())
+			map.put(a.worker(), a);
+		for (IOInfo info : IOInfo.internalEdges(map.keySet())) {
+			scheduleBuilder.connect(map.get(info.upstream()), map.get(info.downstream()))
+					.push(info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max())
+					.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max())
+					.peek(info.downstream().getPeekRates().get(info.getDownstreamChannelIndex()).max())
+					.bufferExactly(0);
+		}
 
-			try {
-				Schedule<Actor> schedule = scheduleBuilder.build();
-				g.setSchedule(schedule.getSchedule());
-			} catch (Schedule.ScheduleException ex) {
-				throw new StreamCompilationFailedException("couldn't find internal schedule for group "+g.id(), ex);
-			}
+		try {
+			Schedule<Actor> schedule = scheduleBuilder.build();
+			g.setSchedule(schedule.getSchedule());
+		} catch (Schedule.ScheduleException ex) {
+			throw new StreamCompilationFailedException("couldn't find internal schedule for group "+g.id(), ex);
+		}
 	}
 
 	private void splitterRemoval() {
