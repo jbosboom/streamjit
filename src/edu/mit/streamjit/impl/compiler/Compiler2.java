@@ -9,6 +9,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
+import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
@@ -84,6 +85,7 @@ public class Compiler2 {
 //		identityRemoval();
 		splitterRemoval();
 		//joinerRemoval();
+		unbox();
 		return null;
 	}
 
@@ -272,4 +274,22 @@ public class Compiler2 {
 //			}
 //		return replacements;
 //	}
+
+	/**
+	 * Symbolically unboxes a Storage if its common type is a wrapper type and
+	 * all the connected Actors support unboxing.
+	 */
+	private void unbox() {
+		next_storage: for (Storage s : storage) {
+			Class<?> commonType = s.commonType();
+			if (!Primitives.isWrapperType(commonType)) continue;
+			for (Object o : s.upstream())
+				if (o instanceof Actor && !((Actor)o).archetype().canUnboxOutput())
+					continue next_storage;
+			for (Object o : s.downstream())
+				if (o instanceof Actor && !((Actor)o).archetype().canUnboxInput())
+					continue next_storage;
+			s.setType(Primitives.unwrap(s.commonType()));
+		}
+	}
 }
