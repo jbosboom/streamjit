@@ -165,7 +165,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			int portNo = getPortNo(t);
 			String ipAddress = getIPAddress(t);
 			inputChannelMap.put(t, new TCPInputChannel(bufferMap.get(t),
-					ipAddress, portNo, t.toString(), false));
+					ipAddress, portNo, t.toString(), true));
 		}
 		return inputChannelMap.build();
 	}
@@ -176,7 +176,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		for (Token t : outputTokens) {
 			int portNo = getPortNo(t);
 			outputChannelMap.put(t, new TCPOutputChannel(bufferMap.get(t),
-					portNo, t.toString(), false));
+					portNo, t.toString(), true));
 		}
 		return outputChannelMap.build();
 	}
@@ -258,7 +258,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 
 			for (BoundaryOutputChannel bc : outputChannels) {
-				bc.stop();
+				bc.stop(true);
 			}
 
 			for (Thread t : blobThreads)
@@ -294,8 +294,8 @@ public class BlobsManagerImpl implements BlobsManager {
 				bt.requestStop();
 			}
 
-			for (BoundaryChannel bc : outputChannels) {
-				bc.stop();
+			for (BoundaryOutputChannel bc : outputChannels) {
+				bc.stop(true);
 			}
 
 			for (Thread t : outputChannelThreads) {
