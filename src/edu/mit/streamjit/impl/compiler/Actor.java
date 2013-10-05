@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Table;
 import edu.mit.streamjit.api.Rate;
@@ -126,8 +127,26 @@ public class Actor implements Comparable<Actor> {
 		return upstreamIndex;
 	}
 
+	public int translateInputIndex(int input, int logicalIndex) {
+		checkArgument(logicalIndex >= 0);
+		try {
+			return (int)inputIndexFunctions().get(input).invokeExact(logicalIndex);
+		} catch (Throwable ex) {
+			throw new AssertionError(String.format("index functions should not throw; translateInputIndex(%d, %d)", input, logicalIndex), ex);
+		}
+	}
+
 	public List<MethodHandle> outputIndexFunctions() {
 		return downstreamIndex;
+	}
+
+	public int translateOutputIndex(int output, int logicalIndex) {
+		checkArgument(logicalIndex >= 0);
+		try {
+			return (int)outputIndexFunctions().get(output).invokeExact(logicalIndex);
+		} catch (Throwable ex) {
+			throw new AssertionError(String.format("index functions should not throw; translateOutputtIndex(%d, %d)", output, logicalIndex), ex);
+		}
 	}
 
 	@Override
