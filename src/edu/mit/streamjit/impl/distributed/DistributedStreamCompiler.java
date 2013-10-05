@@ -113,18 +113,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Worker<I, ?> source = (Worker<I, ?>) primitiveConnector.getSource();
 		Worker<?, O> sink = (Worker<?, O>) primitiveConnector.getSink();
 
-		// TODO: derive a algorithm to find good buffer size and use here.
-		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
-				1000);
-		Buffer tail = OutputBufferFactory.unwrap(output).createWritableBuffer(
-				1000);
-
-		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
-				.<Token, Buffer> builder();
-
-		bufferMapBuilder.put(Token.createOverallInputToken(source), head);
-		bufferMapBuilder.put(Token.createOverallOutputToken(sink), tail);
-
 		VerifyStreamGraph verifier = new VerifyStreamGraph();
 		stream.visit(verifier);
 
@@ -175,15 +163,14 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 
-		String jarFilePath = this.getClass().getProtectionDomain()
-				.getCodeSource().getLocation().getPath();
-
-		controller.setPartition(partitionsMachineMap, jarFilePath, stream
-				.getClass().getName(), constraints, source, sink,
-				bufferMapBuilder.build(), cfg);
-
-		final DistributedCompiledStream cs = new DistributedCompiledStream(bg,
+		final AbstractDrainer drainer = new DistributedDrainer(bg, false,
 				controller);
+
+		// TODO: derive a algorithm to find good buffer size and use here.
+		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
+				1000);
+		Buffer tail = OutputBufferFactory.unwrap(output).createWritableBuffer(
+				1000);
 
 		if (input instanceof ManualInput)
 			InputBufferFactory
@@ -193,11 +180,28 @@ public class DistributedStreamCompiler implements StreamCompiler {
 									head) {
 								@Override
 								public void drain() {
-									cs.drain();
+									drainer.startDraining();
 								}
 							});
-		else
-			cs.drain();
+		else {
+			head = new HeadBuffer(head, drainer);
+		}
+
+		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
+				.<Token, Buffer> builder();
+
+		bufferMapBuilder.put(Token.createOverallInputToken(source), head);
+		bufferMapBuilder.put(Token.createOverallOutputToken(sink), tail);
+
+		String jarFilePath = this.getClass().getProtectionDomain()
+				.getCodeSource().getLocation().getPath();
+
+		controller.setPartition(partitionsMachineMap, jarFilePath, stream
+				.getClass().getName(), constraints, source, sink,
+				bufferMapBuilder.build(), cfg);
+
+		CompiledStream cs = new DistributedCompiledStream(controller, drainer);
+
 		return cs;
 	}
 
@@ -375,20 +379,16 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Controller controller;
 		AbstractDrainer drainer;
 
-		public DistributedCompiledStream(BlobGraph blobGraph,
-				Controller controller) {
+		public DistributedCompiledStream(Controller controller,
+				AbstractDrainer drainer) {
 			this.controller = controller;
-			this.drainer = new DistributedDrainer(blobGraph, false, controller);
+			this.drainer = drainer;
 			this.controller.start();
 		}
 
 		@Override
 		public boolean isDrained() {
 			return drainer.isDrained();
-		}
-
-		private void drain() {
-			drainer.startDraining();
 		}
 
 		@Override
