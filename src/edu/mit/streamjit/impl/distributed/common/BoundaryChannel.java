@@ -42,15 +42,18 @@ public interface BoundaryChannel {
 	int getOtherNodeID();
 
 	/**
-	 * Stop the actions. If it is {@link BoundaryOutputChannel} then stop
-	 * sending, if {@link BoundaryInputChannel} then stop receiving.
-	 */
-	void stop();
-
-	/**
 	 * Interface that represents input channels.
 	 */
 	public interface BoundaryInputChannel extends BoundaryChannel {
+
+		/**
+		 * No more data will be sent by corresponding
+		 * {@link BoundaryOutputChannel}. So stop receiving. There may be data
+		 * in middle, specifically in intermediate buffers like kernel's socket
+		 * buffer. Its implementations responsibility to receive all data those
+		 * are in middle before stopping.
+		 */
+		void stop();
 
 		/**
 		 * Receive data from other node.
@@ -62,6 +65,16 @@ public interface BoundaryChannel {
 	 * Interface that represents output channels.
 	 */
 	public interface BoundaryOutputChannel extends BoundaryChannel {
+
+		/**
+		 * Stop sending. If clean is true, send all data in the buffer before
+		 * stop. Else just stop and leave the buffer as it is. i.e., call
+		 * stop(true) for final stop. call stop(false) for onlinetuning's
+		 * intermediate stop.
+		 *
+		 * @param clean
+		 */
+		void stop(boolean clean);
 
 		/**
 		 * Send data to other node.

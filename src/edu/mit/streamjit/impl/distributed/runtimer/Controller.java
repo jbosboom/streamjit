@@ -435,7 +435,7 @@ public class Controller {
 	public void drain(Token blobID) {
 		if (!drainStarted) {
 			if (headChannel != null) {
-				headChannel.stop();
+				headChannel.stop(true);
 				try {
 					headThread.join();
 				} catch (InterruptedException e) {

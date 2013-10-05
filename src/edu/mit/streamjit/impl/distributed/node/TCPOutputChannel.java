@@ -106,7 +106,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 	}
 
 	@Override
-	public void stop() {
+	public void stop(boolean clean) {
 		this.stopFlag.set(true);
 	}
 
@@ -121,8 +121,8 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 				// " buffer.size()" + this.buffer.size());
 				if (debugPrint) {
 					Object o = buffer.read();
-					System.out.println(Thread.currentThread().getName() + " FinalSend - "
-							+ o.toString());
+					System.out.println(Thread.currentThread().getName()
+							+ " FinalSend - " + o.toString());
 					tcpConnection.writeObject(o);
 				} else
 					tcpConnection.writeObject(buffer.read());
