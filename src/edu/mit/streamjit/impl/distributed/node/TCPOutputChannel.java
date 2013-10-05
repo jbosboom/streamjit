@@ -5,8 +5,6 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
-
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
@@ -18,6 +16,9 @@ import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
  * {@link Buffer} and send them over the TCP connection.
  * <p>
  * Note: TCPOutputChannel acts as server when making TCP connection.
+ * </p>
+ * <p>
+ * TODO: Need to aggressively optimise this class.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 29, 2013
@@ -32,6 +33,8 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private AtomicBoolean stopFlag;
 
+	private boolean cleanStop;
+
 	private Connection tcpConnection;
 
 	private Buffer buffer;
@@ -41,6 +44,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 		this.buffer = buffer;
 		this.portNo = portNo;
 		this.stopFlag = new AtomicBoolean(false);
+		this.cleanStop = false;
 		this.name = "TCPOutputChannel - " + bufferTokenName;
 		this.debugPrint = debugPrint;
 	}
@@ -65,14 +69,14 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 					try {
 						makeConnection();
 					} catch (IOException e) {
-						// TODO: Need to handle this exception.
 						e.printStackTrace();
 					}
 				}
 				while (!stopFlag.get())
 					sendData();
 
-				finalSend();
+				if (cleanStop)
+					finalSend();
 				try {
 					closeConnection();
 				} catch (IOException e) {
@@ -107,6 +111,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	@Override
 	public void stop(boolean clean) {
+		this.cleanStop = clean;
 		this.stopFlag.set(true);
 	}
 
@@ -155,7 +160,6 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 				}
 			}
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 	}
