@@ -200,7 +200,9 @@ public class DistributedStreamCompiler implements StreamCompiler {
 				.getClass().getName(), constraints, source, sink,
 				bufferMapBuilder.build(), cfg);
 
-		CompiledStream cs = new DistributedCompiledStream(controller, drainer);
+		CompiledStream cs = new DistributedCompiledStream(drainer);
+
+		controller.start();
 
 		return cs;
 	}
@@ -376,14 +378,10 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 	private static class DistributedCompiledStream implements CompiledStream {
 
-		Controller controller;
 		AbstractDrainer drainer;
 
-		public DistributedCompiledStream(Controller controller,
-				AbstractDrainer drainer) {
-			this.controller = controller;
+		public DistributedCompiledStream(AbstractDrainer drainer) {
 			this.drainer = drainer;
-			this.controller.start();
 		}
 
 		@Override
