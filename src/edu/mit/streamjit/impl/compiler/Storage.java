@@ -8,6 +8,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Workers;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -32,6 +33,7 @@ public final class Storage {
 	 * Actors.
 	 */
 	private Class<?> type;
+	private int throughput = -1, unconsumedItems = -1;
 	public Storage(Object upstream, Object downstream) {
 		checkArgument(upstream instanceof Actor || upstream instanceof Token, upstream);
 		checkArgument(downstream instanceof Actor || downstream instanceof Token, downstream);
@@ -138,6 +140,57 @@ public final class Storage {
 		if (types.size() == 1)
 			return types.iterator().next();
 		return Object.class;
+	}
+
+	public int throughput() {
+		checkState(throughput != -1);
+		return throughput;
+	}
+
+	public int unconsumedItems() {
+		checkState(unconsumedItems != -1);
+		return unconsumedItems;
+	}
+
+	public void setSizes(Map<ActorGroup, Integer> externalSchedule) {
+		//TODO: 1-based/0-based adjustments here -- are they correct?
+		int pushOnePastEnd = Integer.MAX_VALUE;
+		for (Object o : upstream()) {
+			if (!(o instanceof Actor))
+				continue;
+			Actor a = (Actor)o;
+			int executions = a.group().schedule().get(a) * (isInternal() ? 1 : externalSchedule.get(a.group()));
+			for (int i = 0; i < a.outputs().size(); ++i) {
+				if (!a.outputs().get(i).equals(this)) continue;
+				int maxLogicalPush = (a.worker().getPushRates().get(i).max()-1) * executions;
+				int maxPhysicalPush = a.translateOutputIndex(i, maxLogicalPush);
+				assert maxPhysicalPush >= 0;
+				pushOnePastEnd = Math.max(pushOnePastEnd, maxPhysicalPush+1);
+			}
+		}
+
+		int popOnePastEnd = Integer.MAX_VALUE, peekOnePastEnd = Integer.MAX_VALUE;
+		for (Object o : downstream()) {
+			if (!(o instanceof Actor))
+				continue;
+			Actor a = (Actor)o;
+			int executions = a.group().schedule().get(a) * (isInternal() ? 1 : externalSchedule.get(a.group()));
+			for (int i = 0; i < a.inputs().size(); ++i) {
+				if (!a.outputs().get(i).equals(this)) continue;
+				int maxLogicalPop = (a.worker().getPopRates().get(i).max()-1) * executions;
+				int maxPhysicalPop = a.translateInputIndex(i, maxLogicalPop);
+				assert maxPhysicalPop >= 0;
+				popOnePastEnd = Math.max(popOnePastEnd, maxPhysicalPop+1);
+
+				int maxLogicalPeek = (a.worker().getPeekRates().get(i).max()-1) * executions;
+				int maxPhysicalPeek = a.translateInputIndex(i, maxLogicalPeek);
+				assert maxPhysicalPeek >= 0;
+				peekOnePastEnd = Math.max(peekOnePastEnd, maxPhysicalPeek+1);
+			}
+		}
+
+		this.throughput = Math.max(pushOnePastEnd, popOnePastEnd);
+		this.unconsumedItems = Math.max(0, peekOnePastEnd - throughput);
 	}
 
 	@Override
