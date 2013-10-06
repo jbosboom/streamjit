@@ -60,7 +60,7 @@ import edu.mit.streamjit.impl.interp.Interpreter;
  */
 public class Controller {
 
-	CommunicationManager comManager;
+	private CommunicationManager comManager;
 
 	/**
 	 * {@link StreamNodeAgent}s for all connected {@link StreamNode}s mapped
