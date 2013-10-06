@@ -314,13 +314,6 @@ public class BlobGraph {
 		private AtomicInteger unDrainedNodes;
 
 		/**
-		 * We cannot say draining is finished by checking unDrainedNodes ==0.
-		 * Even after unDrainedNodes become zero, all data in the tail buffers
-		 * have to be read by the CompiledStream.pull().
-		 */
-		private AtomicBoolean isDrainingfinished;
-
-		/**
 		 * Whether the {@link StreamCompiler} needs the drain data after
 		 * draining.
 		 */
@@ -332,14 +325,12 @@ public class BlobGraph {
 			unDrainedNodes = new AtomicInteger(blobGraph.getBlobNodes().size());
 			latch = new CountDownLatch(1);
 			blobGraph.setDrainer(this);
-			isDrainingfinished = new AtomicBoolean(false);
 		}
 
 		public void drainingFinished(BlobNode blobNode) {
 			drained(blobNode);
 			if (unDrainedNodes.decrementAndGet() == 0) {
 				drainingFinished();
-				isDrainingfinished.set(true);
 				latch.countDown();
 			}
 		}
@@ -347,7 +338,7 @@ public class BlobGraph {
 		/**
 		 * Initiate the draining of the blobgraph.
 		 */
-		public final void startDraining() {
+		public final void startDraining(boolean isFinal) {
 			blobGraph.getSourceBlobNode().drain();
 		}
 
@@ -355,7 +346,7 @@ public class BlobGraph {
 		 * @return true iff draining of the stream application is finished.
 		 */
 		public final boolean isDrained() {
-			return isDrainingfinished.get();
+			return latch.getCount() == 0;
 		}
 
 		public final void awaitDrained() throws InterruptedException {
