@@ -43,7 +43,7 @@ import edu.mit.streamjit.partitioner.Partitioner;
 /**
  * A stream compiler that partitions a streamgraph into multiple blobs and
  * execute it on multiple threads.
- *
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since Apr 8, 2013
  */
@@ -110,7 +110,8 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 		Set<Blob> blobSet = new HashSet<>();
 		for (Set<Worker<?, ?>> partition : partitionList) {
-			blobSet.add(new Interpreter(partition, constraints, makeConfig()));
+			blobSet.add(new Interpreter(partition, constraints, makeConfig(),
+					null));
 		}
 
 		BlobGraph bg = new BlobGraph(partitionList);
@@ -155,7 +156,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 	/**
 	 * Only create buffers for inter worker communication. No global input or
 	 * global output buffer is created.
-	 *
+	 * 
 	 * @param blobList
 	 * @return
 	 */
@@ -222,7 +223,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 				blobThreads.add(t);
 				threadMap.put(b, Collections.singleton(t));
 			}
-			this.drainer = new ConcurrentDrainer(blobGraph, false, threadMap);
+			this.drainer = new ConcurrentDrainer(blobGraph, threadMap);
 			start(blobThreads);
 		}
 
@@ -238,7 +239,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		}
 
 		protected void drain() {
-			drainer.startDraining();
+			drainer.startDraining(true);
 		}
 
 		@Override
