@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
+import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
@@ -56,6 +57,13 @@ public abstract class AbstractDrainer {
 		state = DrainerState.NODRAINING;
 	}
 
+	/**
+	 * Sets the blobGraph that is in execution. When
+	 * {@link #startDraining(boolean)} is called, abstract drainer will traverse
+	 * through the blobgraph and drain the stream application.
+	 *
+	 * @param blobGraph
+	 */
 	public final void setBlobGraph(BlobGraph blobGraph) {
 		if (state == DrainerState.NODRAINING) {
 			this.blobGraph = blobGraph;
@@ -83,27 +91,31 @@ public abstract class AbstractDrainer {
 	}
 
 	/**
-	 * A blob thread ( Only one blob thread, if there are many threads on the
-	 * blob) must call this function through a callback once draining of that
-	 * particular blob is finished.
-	 * 
-	 * @param node
+	 * Once draining of a blob is done, it has to inform to the drainer by
+	 * calling this method.
 	 */
 	public final void drained(Token blobID) {
 		blobGraph.getBlobNode(blobID).drained();
 	}
 
 	/**
-	 * @return true iff draining of the stream application is finished.
+	 * @return true iff draining of the stream application is finished. See
+	 *         {@link CompiledStream#isDrained()} for more details.
 	 */
 	public final boolean isDrained() {
 		return latch.getCount() == 0;
 	}
 
+	/**
+	 * See {@link CompiledStream#awaitDrained()} for more details.
+	 */
 	public final void awaitDrained() throws InterruptedException {
 		latch.await();
 	}
 
+	/**
+	 * See {@link CompiledStream#awaitDrained(long, TimeUnit)} for more details.
+	 */
 	public final void awaitDrained(long timeout, TimeUnit unit)
 			throws InterruptedException, TimeoutException {
 		latch.await(timeout, unit);
