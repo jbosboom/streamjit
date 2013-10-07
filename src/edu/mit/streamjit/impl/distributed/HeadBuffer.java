@@ -2,7 +2,7 @@ package edu.mit.streamjit.impl.distributed;
 
 import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
+import edu.mit.streamjit.impl.common.AbstractDrainer;
 
 public class HeadBuffer extends AbstractReadOnlyBuffer {
 

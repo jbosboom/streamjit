@@ -1,9 +1,7 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.common.BlobGraph;
-import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
-import edu.mit.streamjit.impl.common.BlobGraph.BlobNode;
+import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
 
 /**

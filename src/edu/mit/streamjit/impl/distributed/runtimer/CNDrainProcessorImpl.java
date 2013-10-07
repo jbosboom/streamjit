@@ -1,10 +1,6 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
-import static com.google.common.base.Preconditions.*;
-
-import edu.mit.streamjit.impl.common.BlobGraph;
-import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
-import edu.mit.streamjit.impl.common.BlobGraph.BlobNode;
+import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.common.DrainElement.DoDrain;
 import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainDataRequest;
 import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
