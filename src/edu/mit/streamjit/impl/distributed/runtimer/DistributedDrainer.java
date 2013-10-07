@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
+import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.BlobGraph;
 import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
 import edu.mit.streamjit.impl.common.BlobGraph.BlobNode;
@@ -13,26 +14,24 @@ public class DistributedDrainer extends AbstractDrainer {
 
 	Controller controller;
 
-	public DistributedDrainer(BlobGraph blobGraph, boolean needDrainData,
-			Controller controller) {
-		super(blobGraph, needDrainData);
+	public DistributedDrainer(Controller controller) {
 		this.controller = controller;
-		DrainProcessor dp = new CNDrainProcessorImpl(blobGraph);
+		DrainProcessor dp = new CNDrainProcessorImpl(this);
 		controller.setDrainProcessor(dp);
-
 	}
 
 	@Override
-	public void drain(BlobNode node) {
-		controller.drain(node.getBlobID());
-	}
-
-	@Override
-	public void drained(BlobNode node) {
-	}
-
-	@Override
-	protected void drainingFinished() {
+	protected void drainingDone() {
 		controller.drainingFinished();
+	}
+
+	@Override
+	protected void drain(Token blobID, boolean isFinal) {
+		controller.drain(blobID, isFinal);
+	}
+
+	@Override
+	protected void drainingDone(Token blobID) {
+		// Nothing to clean in Distributed case.
 	}
 }

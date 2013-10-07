@@ -432,7 +432,7 @@ public class Controller {
 	// Used to identify the first draining call.
 	private boolean drainStarted = false;
 
-	public void drain(Token blobID) {
+	public void drain(Token blobID, boolean isFinal) {
 		if (!drainStarted) {
 			if (headChannel != null) {
 				headChannel.stop(true);
