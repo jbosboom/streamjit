@@ -68,22 +68,6 @@ public abstract class AbstractDrainer {
 	}
 
 	/**
-	 * {@link BlobNode}s have to call this function to inform draining done
-	 * event.
-	 * 
-	 * @param blobNode
-	 */
-	private void drainingDone(BlobNode blobNode) {
-		assert state != DrainerState.NODRAINING : "Illegal call. Drainer is not in draining mode.";
-		drainingDone(blobNode.blobID);
-		if (unDrainedNodes.decrementAndGet() == 0) {
-			drainingDone();
-			state = DrainerState.NODRAINING;
-			latch.countDown();
-		}
-	}
-
-	/**
 	 * Initiate the draining of the blobgraph.
 	 */
 	public final void startDraining(boolean isFinal) {
@@ -96,6 +80,17 @@ public abstract class AbstractDrainer {
 		} else {
 			throw new RuntimeException("Drainer is in draing mode.");
 		}
+	}
+
+	/**
+	 * A blob thread ( Only one blob thread, if there are many threads on the
+	 * blob) must call this function through a callback once draining of that
+	 * particular blob is finished.
+	 * 
+	 * @param node
+	 */
+	public final void drained(Token blobID) {
+		blobGraph.getBlobNode(blobID).drained();
 	}
 
 	/**
@@ -123,17 +118,6 @@ public abstract class AbstractDrainer {
 	protected abstract void drain(Token blobID, boolean isFinal);
 
 	/**
-	 * A blob thread ( Only one blob thread, if there are many threads on the
-	 * blob) must call this function through a callback once draining of that
-	 * particular blob is finished.
-	 * 
-	 * @param node
-	 */
-	public final void drained(Token blobID) {
-		blobGraph.getBlobNode(blobID).drained();
-	}
-
-	/**
 	 * {@link AbstractDrainer} will call this function after the corresponding
 	 * blob is drained. Sub classes may implement blob related resource cleanup
 	 * jobs here ( e.g., stop blob threads).
@@ -150,6 +134,22 @@ public abstract class AbstractDrainer {
 	 * and any threads waiting at awaitdraining() will be released.
 	 */
 	protected abstract void drainingDone();
+
+	/**
+	 * {@link BlobNode}s have to call this function to inform draining done
+	 * event.
+	 * 
+	 * @param blobNode
+	 */
+	private void drainingDone(BlobNode blobNode) {
+		assert state != DrainerState.NODRAINING : "Illegal call. Drainer is not in draining mode.";
+		drainingDone(blobNode.blobID);
+		if (unDrainedNodes.decrementAndGet() == 0) {
+			drainingDone();
+			state = DrainerState.NODRAINING;
+			latch.countDown();
+		}
+	}
 
 	/**
 	 * BlobGraph builds predecessor successor relationship for set of
@@ -239,11 +239,9 @@ public abstract class AbstractDrainer {
 		}
 
 		/**
-		 * TODO: Ensure whether providing this public method is useful.
-		 * 
 		 * @return the sourceBlobNode
 		 */
-		public BlobNode getSourceBlobNode() {
+		private BlobNode getSourceBlobNode() {
 			return sourceBlobNode;
 		}
 
@@ -311,7 +309,6 @@ public abstract class AbstractDrainer {
 				id = Collections.min(inputs);
 			}
 		}
-
 	}
 
 	/**
@@ -320,7 +317,8 @@ public abstract class AbstractDrainer {
 	 * 
 	 * @author Sumanan
 	 */
-	public static final class BlobNode {
+	private static final class BlobNode {
+
 		private AbstractDrainer drainer;
 		/**
 		 * The blob that wrapped by this blob node.
@@ -359,7 +357,7 @@ public abstract class AbstractDrainer {
 		 * finished. This function stops all threads belong to the blob and
 		 * inform its successors as well.
 		 */
-		public void drained() {
+		private void drained() {
 			isDrained = true;
 			for (BlobNode suc : this.successors) {
 				suc.predecessorDrained(this);
@@ -373,21 +371,6 @@ public abstract class AbstractDrainer {
 		private void drain() {
 			checkNotNull(drainer);
 			drainer.drain(blobID, drainer.state == DrainerState.FINAL);
-		}
-
-		/**
-		 * @return <code>true</code> iff the blob mapped by this blob node was
-		 *         drained.
-		 */
-		public boolean isDrained() {
-			return isDrained;
-		}
-
-		/**
-		 * @return Identifier of {@link Blob} and blob node.
-		 */
-		public Token getBlobID() {
-			return blobID;
 		}
 
 		private ImmutableList<BlobNode> getSuccessors() {
@@ -433,7 +416,6 @@ public abstract class AbstractDrainer {
 			checkNotNull(drainer);
 			this.drainer = drainer;
 		}
-
 	}
 
 	/**
