@@ -222,7 +222,7 @@ public class BlobGraph {
 			for (BlobNode suc : this.successors) {
 				suc.predecessorDrained(this);
 			}
-			drainer.drainingFinished(this);
+			drainer.drainingDone(this);
 		}
 
 		/**
@@ -230,7 +230,7 @@ public class BlobGraph {
 		 */
 		private void drain() {
 			checkNotNull(drainer);
-			drainer.drain(this);
+			drainer.drain(blobID, drainer.state == DrainerState.FINAL);
 		}
 
 		/**
@@ -307,30 +307,45 @@ public class BlobGraph {
 		/**
 		 * Blob graph of the stream application that needs to be drained.
 		 */
-		protected final BlobGraph blobGraph;
+		protected BlobGraph blobGraph;
 
-		private final CountDownLatch latch;
+		private CountDownLatch latch;
 
 		private AtomicInteger unDrainedNodes;
 
 		/**
-		 * Whether the {@link StreamCompiler} needs the drain data after
-		 * draining.
+		 * State of the drainer.
 		 */
-		protected boolean needDrainData;
+		private DrainerState state;
 
-		public AbstractDrainer(BlobGraph blobGraph, boolean needDrainData) {
-			this.blobGraph = blobGraph;
-			this.needDrainData = needDrainData;
-			unDrainedNodes = new AtomicInteger(blobGraph.getBlobNodes().size());
-			latch = new CountDownLatch(1);
-			blobGraph.setDrainer(this);
+		public AbstractDrainer() {
+			state = DrainerState.NODRAINING;
 		}
 
-		public void drainingFinished(BlobNode blobNode) {
-			drained(blobNode);
+		public final void setBlobGraph(BlobGraph blobGraph) {
+			if (state == DrainerState.NODRAINING) {
+				this.blobGraph = blobGraph;
+				unDrainedNodes = new AtomicInteger(blobGraph.getBlobNodes()
+						.size());
+				latch = new CountDownLatch(1);
+				blobGraph.setDrainer(this);
+			} else {
+				throw new RuntimeException("Drainer is in draing mode.");
+			}
+		}
+
+		/**
+		 * {@link BlobNode}s have to call this function to inform draining done
+		 * event.
+		 *
+		 * @param blobNode
+		 */
+		private void drainingDone(BlobNode blobNode) {
+			assert state != DrainerState.NODRAINING : "Illegal call. Drainer is not in draining mode.";
+			drainingDone(blobNode.blobID);
 			if (unDrainedNodes.decrementAndGet() == 0) {
-				drainingFinished();
+				drainingDone();
+				state = DrainerState.NODRAINING;
 				latch.countDown();
 			}
 		}
@@ -339,7 +354,15 @@ public class BlobGraph {
 		 * Initiate the draining of the blobgraph.
 		 */
 		public final void startDraining(boolean isFinal) {
-			blobGraph.getSourceBlobNode().drain();
+			if (state == DrainerState.NODRAINING) {
+				if (isFinal)
+					this.state = DrainerState.FINAL;
+				else
+					this.state = DrainerState.INTERMEDIATE;
+				blobGraph.getSourceBlobNode().drain();
+			} else {
+				throw new RuntimeException("Drainer is in draing mode.");
+			}
 		}
 
 		/**
@@ -364,7 +387,7 @@ public class BlobGraph {
 		 * 
 		 * @param node
 		 */
-		protected abstract void drain(BlobNode node);
+		protected abstract void drain(Token blobID, boolean isFinal);
 
 		/**
 		 * A blob thread ( Only one blob thread, if there are many threads on
@@ -373,16 +396,28 @@ public class BlobGraph {
 		 * 
 		 * @param node
 		 */
-		protected abstract void drained(BlobNode node);
+		public final void drained(Token blobID) {
+			blobGraph.getBlobNode(blobID).drained();
+		}
 
 		/**
-		 * Once all {@link BlobNode} have been drained, this function will get
-		 * called. This can be used to do the final cleanups ( e.g, All data in
-		 * the tail buffer should be consumed before this function returns.)
-		 * After the return of this function, isDrained() will start to return
-		 * true.
+		 * {@link AbstractDrainer} will call this function after the
+		 * corresponding blob is drained. Sub classes may implement blob related
+		 * resource cleanup jobs here ( e.g., stop blob threads).
+		 *
+		 * @param blobID
 		 */
-		protected abstract void drainingFinished();
+		protected abstract void drainingDone(Token blobID);
+
+		/**
+		 * {@link AbstractDrainer} will call this function after the draining
+		 * process is complete. This can be used to do the final cleanups ( e.g,
+		 * All data in the tail buffer should be consumed before this function
+		 * returns.) After the return of this function, isDrained() will start
+		 * to return true and any threads waiting at awaitdraining() will be
+		 * released.
+		 */
+		protected abstract void drainingDone();
 
 	}
 
@@ -414,5 +449,22 @@ public class BlobGraph {
 	 */
 	private enum Color {
 		WHITE, GRAY, BLACK
+	}
+
+	/**
+	 * Reflects {@link AbstractDrainer}'s state.
+	 */
+	private enum DrainerState {
+		NODRAINING, /**
+		 * Draining in middle of the stream graph's execution. This
+		 * type of draining will be triggered by the open tuner for
+		 * reconfiguration. Drained data of all blobs are expected in this case.
+		 */
+		INTERMEDIATE, /**
+		 * This type of draining will take place when input stream
+		 * runs out. No drained data expected as all blob are expected to
+		 * executes until all input buffers become empty.
+		 */
+		FINAL
 	}
 }

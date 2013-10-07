@@ -163,8 +163,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 
-		final AbstractDrainer drainer = new DistributedDrainer(bg, false,
-				controller);
+		final AbstractDrainer drainer = new DistributedDrainer(controller);
+		drainer.setBlobGraph(bg);
 
 		// TODO: derive a algorithm to find good buffer size and use here.
 		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
@@ -180,7 +180,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 									head) {
 								@Override
 								public void drain() {
-									drainer.startDraining();
+									drainer.startDraining(true);
 								}
 							});
 		else {

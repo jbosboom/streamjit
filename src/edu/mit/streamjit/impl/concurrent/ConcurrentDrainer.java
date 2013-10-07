@@ -102,7 +102,7 @@ public final class ConcurrentDrainer extends AbstractDrainer {
 	}
 
 	@Override
-	protected void drainingFinished() {
+	protected void drainingDone() {
 		System.out.println("Draining Finished");
 	}
 }

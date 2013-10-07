@@ -34,7 +34,7 @@ public class HeadBuffer extends AbstractReadOnlyBuffer {
 		}
 
 		public void run() {
-			drainer.startDraining();
+			drainer.startDraining(true);
 		}
 	}
 }
