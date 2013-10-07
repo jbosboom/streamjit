@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
@@ -42,7 +43,7 @@ public class BlobGraph {
 	/**
 	 * All nodes in the graph.
 	 */
-	private final ImmutableSet<BlobNode> blobNodes;
+	private final ImmutableMap<Token, BlobNode> blobNodes;
 
 	/**
 	 * The blob which has the overall stream input.
@@ -56,24 +57,20 @@ public class BlobGraph {
 			blobSet.add(new DummyBlob(workers));
 		}
 
-		ImmutableSet.Builder<BlobNode> builder = new ImmutableSet.Builder<>();
+		ImmutableMap.Builder<Token, BlobNode> builder = new ImmutableMap.Builder<>();
 		for (DummyBlob b : blobSet) {
-			builder.add(new BlobNode(b.id));
+			builder.put(b.id, new BlobNode(b.id));
 		}
 
 		this.blobNodes = builder.build();
 
-		Map<Token, BlobNode> blobNodeMap = new HashMap<>();
-		for (BlobNode node : blobNodes) {
-			blobNodeMap.put(node.blobID, node);
-		}
 		for (DummyBlob cur : blobSet) {
 			for (DummyBlob other : blobSet) {
 				if (cur == other)
 					continue;
 				if (Sets.intersection(cur.outputs, other.inputs).size() != 0) {
-					BlobNode curNode = blobNodeMap.get(cur.id);
-					BlobNode otherNode = blobNodeMap.get(other.id);
+					BlobNode curNode = blobNodes.get(cur.id);
+					BlobNode otherNode = blobNodes.get(other.id);
 
 					curNode.addSuccessor(otherNode);
 					otherNode.addPredecessor(curNode);
@@ -81,10 +78,10 @@ public class BlobGraph {
 			}
 		}
 
-		checkCycles(blobNodes);
+		checkCycles(blobNodes.values());
 
 		BlobNode sourceBlob = null;
-		for (BlobNode bn : blobNodes) {
+		for (BlobNode bn : blobNodes.values()) {
 			if (bn.getDependencyCount() == 0) {
 				assert sourceBlob == null : "Multiple independent blobs found.";
 				sourceBlob = bn;
@@ -96,20 +93,14 @@ public class BlobGraph {
 	}
 
 	/**
-	 * .
-	 * 
-	 * @return All nodes in the graph.
+	 * @return BlobIds of all blobnodes in the blobgraph.
 	 */
-	public ImmutableSet<BlobNode> getBlobNodes() {
-		return blobNodes;
+	public ImmutableSet<Token> getBlobIds() {
+		return blobNodes.keySet();
 	}
 
 	public BlobNode getBlobNode(Token blobID) {
-		for (BlobNode bn : blobNodes) {
-			if (bn.getBlobID().equals(blobID))
-				return bn;
-		}
-		return null;
+		return blobNodes.get(blobID);
 	}
 
 	/**
@@ -118,7 +109,7 @@ public class BlobGraph {
 	 * @param drainer
 	 */
 	public void setDrainer(AbstractDrainer drainer) {
-		for (BlobNode bn : blobNodes) {
+		for (BlobNode bn : blobNodes.values()) {
 			bn.setDrainer(drainer);
 		}
 	}
@@ -325,7 +316,7 @@ public class BlobGraph {
 		public final void setBlobGraph(BlobGraph blobGraph) {
 			if (state == DrainerState.NODRAINING) {
 				this.blobGraph = blobGraph;
-				unDrainedNodes = new AtomicInteger(blobGraph.getBlobNodes()
+				unDrainedNodes = new AtomicInteger(blobGraph.getBlobIds()
 						.size());
 				latch = new CountDownLatch(1);
 				blobGraph.setDrainer(this);
