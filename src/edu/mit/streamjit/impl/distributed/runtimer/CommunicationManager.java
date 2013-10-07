@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import edu.mit.streamjit.impl.common.BlobGraph;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.Error;
