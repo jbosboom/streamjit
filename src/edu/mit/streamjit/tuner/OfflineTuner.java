@@ -30,17 +30,20 @@ import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.test.apps.bitonicsort.BitonicSort;
+import edu.mit.streamjit.test.apps.channelvocoder7.ChannelVocoder7;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
+ * Offline tuner tunes a StreamJit app in a Start-Stop-Restart manner.
+ *
  * @author Sumanan sumanan@mit.edu
  * @since Aug 20, 2013
  */
-public class TunerMain {
+public class OfflineTuner {
 
 	OpenTuner autoTuner;
 
-	public TunerMain() {
+	public OfflineTuner() {
 		autoTuner = new TCPTuner();
 	}
 
@@ -266,16 +269,16 @@ public class TunerMain {
 	public static void main(String[] args) throws InterruptedException,
 			IOException {
 
-		// BenchmarkProvider provider = new ChannelVocoder7();
+		BenchmarkProvider provider = new ChannelVocoder7();
 		// BenchmarkProvider provider = new FMRadio.FMRadioBenchmarkProvider();
-		BenchmarkProvider provider = new BitonicSort();
+		// BenchmarkProvider provider = new BitonicSort();
 		// BenchmarkProvider provider = new FileInputSanity();
 		// BenchmarkProvider provider = new SplitjoinOrderSanity();
 		// BenchmarkProvider provider = new HelperFunctionSanity();
 
 		Benchmark benchmark = provider.iterator().next();
 
-		TunerMain tuner = new TunerMain();
+		OfflineTuner tuner = new OfflineTuner();
 		tuner.tune(benchmark);
 	}
 }
