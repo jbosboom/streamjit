@@ -38,7 +38,7 @@ import edu.mit.streamjit.util.json.Jsonifiers;
  */
 public class TunerMain {
 
-	AutoTuner autoTuner;
+	OpenTuner autoTuner;
 
 	public TunerMain() {
 		autoTuner = new TCPTuner();
