@@ -11,7 +11,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Random;
 
-public final class TCPTuner implements AutoTuner {
+public final class TCPTuner implements OpenTuner {
 
 	Process tuner;
 	TunerConnection connection;
@@ -172,7 +172,7 @@ public final class TCPTuner implements AutoTuner {
 	public static void main(String[] args) throws InterruptedException,
 			IOException {
 
-		AutoTuner tuner = new TCPTuner();
+		OpenTuner tuner = new TCPTuner();
 		try {
 			tuner.startTuner("/lib/opentuner/streamjit/streamjit.py");
 		} catch (IOException e) {

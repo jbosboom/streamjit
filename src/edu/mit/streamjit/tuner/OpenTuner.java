@@ -10,7 +10,7 @@ import java.io.IOException;
  * @author sumanan
  * @since 8/26/2013
  */
-public interface AutoTuner {
+public interface OpenTuner {
 
 	/**
 	 * Reads a line from the tuner.
