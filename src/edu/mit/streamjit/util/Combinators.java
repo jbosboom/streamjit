@@ -1,9 +1,11 @@
 package edu.mit.streamjit.util;
 
+import static com.google.common.base.Preconditions.*;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
+import java.util.Arrays;
 
 /**
  * Contains various combinators and other MethodHandle utilities.
@@ -12,22 +14,6 @@ import java.lang.invoke.MethodType;
  */
 public final class Combinators {
 	private Combinators() {}
-
-	public static MethodHandle add(MethodHandle x, int y) {
-		return _filterIntIntToInt(x, ADD, y);
-	}
-	public static MethodHandle sub(MethodHandle x, int y) {
-		return _filterIntIntToInt(x, SUB, y);
-	}
-	public static MethodHandle mul(MethodHandle x, int y) {
-		return _filterIntIntToInt(x, MUL, y);
-	}
-	public static MethodHandle div(MethodHandle x, int y) {
-		return _filterIntIntToInt(x, DIV, y);
-	}
-	public static MethodHandle mod(MethodHandle x, int y) {
-		return _filterIntIntToInt(x, MOD, y);
-	}
 
 	private static final Lookup LOOKUP = MethodHandles.lookup();
 	private static final MethodType INT_INT_TO_INT = MethodType.methodType(int.class, int.class, int.class);
@@ -60,5 +46,39 @@ public final class Combinators {
 	}
 	private static MethodHandle _filterIntIntToInt(MethodHandle target, MethodHandle filter, int filterSecondArg) {
 		return MethodHandles.filterReturnValue(target, MethodHandles.insertArguments(filter, 1, filterSecondArg));
+	}
+
+	public static MethodHandle add(MethodHandle x, int y) {
+		return _filterIntIntToInt(x, ADD, y);
+	}
+	public static MethodHandle sub(MethodHandle x, int y) {
+		return _filterIntIntToInt(x, SUB, y);
+	}
+	public static MethodHandle mul(MethodHandle x, int y) {
+		return _filterIntIntToInt(x, MUL, y);
+	}
+	public static MethodHandle div(MethodHandle x, int y) {
+		return _filterIntIntToInt(x, DIV, y);
+	}
+	public static MethodHandle mod(MethodHandle x, int y) {
+		return _filterIntIntToInt(x, MOD, y);
+	}
+
+	private static final MethodHandle METHODHANDLE_ARRAY_GETTER = MethodHandles.arrayElementGetter(MethodHandle[].class);
+	/**
+	 * Returns a MethodHandle with a leading int argument that selects one of
+	 * the MethodHandles in the given array, which is invoked with the
+	 * remaining arguments.
+	 * @param cases the cases to select from
+	 * @return a MethodHandle approximating the switch statement
+	 */
+	public static MethodHandle tableswitch(MethodHandle[] cases) {
+		checkArgument(cases.length >= 1);
+		MethodType type = cases[0].type();
+		for (MethodHandle mh : cases)
+			checkArgument(mh.type().equals(type), "Type mismatch in "+Arrays.toString(cases));
+		MethodHandle selector = METHODHANDLE_ARRAY_GETTER.bindTo(cases);
+		//Replace the index with the handle to invoke, passing it to an invoker.
+		return MethodHandles.filterArguments(MethodHandles.exactInvoker(type), 0, selector);
 	}
 }
