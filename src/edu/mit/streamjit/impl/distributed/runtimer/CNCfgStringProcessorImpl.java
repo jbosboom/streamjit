@@ -11,7 +11,7 @@ import edu.mit.streamjit.impl.distributed.common.ConfigurationString.Configurati
 public class CNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	@Override
-	public void process(String cfg) {
+	public void process(String cfg, ConfigType type) {
 		throw new IllegalArgumentException(
 				"Configuraion string shouldn't be received by controller.");
 	}
