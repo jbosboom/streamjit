@@ -106,7 +106,7 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 					.getSubconfiguration("blobConfigs");
 			// blobConfigs = null;
 			if (blobConfigs == null) {
-				blobConfigs = dyncfg;
+				blobConfigs = staticConfig;
 				bf = new Interpreter.InterpreterBlobFactory();
 			} else {
 				IntParameter mul = blobConfigs.getParameter(
