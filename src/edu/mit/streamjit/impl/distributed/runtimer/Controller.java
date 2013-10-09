@@ -30,6 +30,7 @@ import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
+import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Command;
@@ -99,6 +100,8 @@ public class Controller {
 
 	private Thread headThread;
 	private Thread tailThread;
+
+	StreamJitApp app;
 
 	public Controller() {
 		this.comManager = new BlockingCommunicationManager();
@@ -228,6 +231,98 @@ public class Controller {
 
 		setupHeadTail(cfg, bufferMap, Token.createOverallInputToken(source),
 				Token.createOverallOutputToken(sink));
+	}
+
+	public void newApp(StreamJitApp app) {
+		this.app = app;
+
+		Configuration.Builder builder = Configuration.builder(app
+				.getStaticConfiguration());
+
+		Map<Integer, NodeInfo> nodeInfoMap = new HashMap<>();
+		for (StreamNodeAgent agent : StreamNodeMap.values())
+			nodeInfoMap.put(agent.getNodeID(), agent.getNodeInfo());
+
+		nodeInfoMap.put(controllerNodeID, NodeInfo.getMyinfo());
+
+		builder.putExtraData(GlobalConstants.NODE_INFO_MAP, nodeInfoMap);
+
+		ConfigurationString json = new ConfigurationString(builder.build()
+				.toJson());
+		sendToAll(json);
+	}
+
+	public void reconfigure() {
+		Configuration.Builder builder = Configuration.builder(app
+				.getDynamicConfiguration());
+
+		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = new HashMap<>();
+		Map<Token, Integer> portIdMap = new HashMap<>();
+
+		buildTokenMap(app.partitionsMachineMap1, tokenMachineMap, portIdMap,
+				app.source1, app.sink1);
+
+		builder.putExtraData(GlobalConstants.TOKEN_MACHINE_MAP, tokenMachineMap)
+				.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
+
+		Configuration cfg = builder.build();
+		setupHeadTail1(cfg, app.getBufferMap(),
+				Token.createOverallInputToken(app.source1),
+				Token.createOverallOutputToken(app.sink1));
+
+		start();
+	}
+
+	/**
+	 * Setup the headchannel and tailchannel.
+	 *
+	 * @param cfg
+	 * @param bufferMap
+	 * @param headToken
+	 * @param tailToken
+	 */
+	@SuppressWarnings("unchecked")
+	private void setupHeadTail1(Configuration cfg,
+			ImmutableMap<Token, Buffer> bufferMap, Token headToken,
+			Token tailToken) {
+		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = (Map<Token, Map.Entry<Integer, Integer>>) cfg
+				.getExtraData(GlobalConstants.TOKEN_MACHINE_MAP);
+
+		Map<Token, Integer> portIdMap = (Map<Token, Integer>) cfg
+				.getExtraData(GlobalConstants.PORTID_MAP);
+
+		Map.Entry<Integer, Integer> headentry = tokenMachineMap.get(headToken);
+		assert headentry != null : "No head token exists in tokenMachineMap";
+		assert headentry.getKey() == controllerNodeID : "Head channel should start from the controller.";
+
+		if (headentry.getValue() != controllerNodeID) {
+			if (!bufferMap.containsKey(headToken))
+				throw new IllegalArgumentException(
+						"No head buffer in the passed bufferMap.");
+
+			headChannel = new TCPOutputChannel(bufferMap.get(headToken),
+					portIdMap.get(headToken), "headChannel - "
+							+ headToken.toString(), false);
+		}
+
+		Map.Entry<Integer, Integer> tailentry = tokenMachineMap.get(tailToken);
+		assert tailentry != null : "No tail token exists in tokenMachineMap";
+		assert tailentry.getValue() == controllerNodeID : "Tail channel should ends at the controller.";
+
+		if (tailentry.getKey() != controllerNodeID) {
+			if (!bufferMap.containsKey(tailToken))
+				throw new IllegalArgumentException(
+						"No tail buffer in the passed bufferMap.");
+
+			int nodeID = tokenMachineMap.get(tailToken).getKey();
+			StreamNodeAgent agent = this.StreamNodeMap.get(nodeID);
+			NodeInfo nodeInfo = agent.getNodeInfo();
+			String ipAddress = nodeInfo.getIpAddress().getHostAddress();
+
+			tailChannel = new TCPInputChannel(bufferMap.get(tailToken),
+					ipAddress, portIdMap.get(tailToken), "tailChannel - "
+							+ tailToken.toString(), false);
+		}
 	}
 
 	/**
