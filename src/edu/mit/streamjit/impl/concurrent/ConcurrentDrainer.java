@@ -39,7 +39,7 @@ public final class ConcurrentDrainer extends AbstractDrainer {
 	}
 
 	@Override
-	protected void drainingDone() {
+	protected void drainingDone(boolean isFinal) {
 		System.out.println("Draining Finished");
 	}
 
@@ -53,7 +53,7 @@ public final class ConcurrentDrainer extends AbstractDrainer {
 	}
 
 	@Override
-	protected void drainingDone(Token blobID) {
+	protected void drainingDone(Token blobID, boolean isFinal) {
 		Blob blob = blobMap.get(blobID);
 		Set<BlobThread> blobThreads = threadMap.get(blob);
 		checkNotNull(blobThreads);

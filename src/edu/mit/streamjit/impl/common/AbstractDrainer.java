@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 import edu.mit.streamjit.api.CompiledStream;
+import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
@@ -33,6 +34,17 @@ import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
  * {@link DistributedStreamCompiler} and {@link ConcurrentStreamCompiler} may
  * extends this to implement the draining on their particular context. Works
  * coupled with {@link BlobNode} and {@link BlobGraph}.
+ * 
+ * <p>
+ * Two Kind of draining can be carried out.
+ * <ol>
+ * <li>Final draining: At the end of input data. After this draining StreamJit
+ * app will stop. This draining may be triggered by a {@link Input} when it run
+ * out of input data. .</li>
+ * <li>Intermediate draining: In the middle of the execution. This draining may
+ * be triggered by Opentuner for reconfiguration purpose.</li>
+ * </ol>
+ * </p>
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Jul 30, 2013
@@ -61,7 +73,7 @@ public abstract class AbstractDrainer {
 	 * Sets the blobGraph that is in execution. When
 	 * {@link #startDraining(boolean)} is called, abstract drainer will traverse
 	 * through the blobgraph and drain the stream application.
-	 *
+	 * 
 	 * @param blobGraph
 	 */
 	public final void setBlobGraph(BlobGraph blobGraph) {
@@ -76,7 +88,19 @@ public abstract class AbstractDrainer {
 	}
 
 	/**
-	 * Initiate the draining of the blobgraph.
+	 * Initiate the draining of the blobgraph. Two Kind of draining can be
+	 * carried out.
+	 * <ol>
+	 * <li>Final draining: At the end of input data. After this draining
+	 * StreamJit app will stop. This draining may be triggered by a
+	 * {@link Input} when it run out of input data. .</li>
+	 * <li>Intermediate draining: In the middle of the execution. This draining
+	 * may be triggered by Opentuner for reconfiguration purpose.</li>
+	 * </ol>
+	 * 
+	 * @param isFinal
+	 *            whether the draining is the final draining or intermediate
+	 *            draining.
 	 */
 	public final void startDraining(boolean isFinal) {
 		if (state == DrainerState.NODRAINING) {
@@ -125,7 +149,10 @@ public abstract class AbstractDrainer {
 	 * Once a {@link BlobNode}'s all preconditions are satisfied for draining,
 	 * blob node will call this function drain the blob.
 	 * 
-	 * @param node
+	 * @param blobID
+	 * @param isFinal
+	 *            : whether the draining is the final draining or intermediate
+	 *            draining.
 	 */
 	protected abstract void drain(Token blobID, boolean isFinal);
 
@@ -135,8 +162,11 @@ public abstract class AbstractDrainer {
 	 * jobs here ( e.g., stop blob threads).
 	 * 
 	 * @param blobID
+	 * @param isFinal
+	 *            : whether the draining is the final draining or intermediate
+	 *            draining.
 	 */
-	protected abstract void drainingDone(Token blobID);
+	protected abstract void drainingDone(Token blobID, boolean isFinal);
 
 	/**
 	 * {@link AbstractDrainer} will call this function after the draining
@@ -144,8 +174,12 @@ public abstract class AbstractDrainer {
 	 * data in the tail buffer should be consumed before this function returns.)
 	 * After the return of this function, isDrained() will start to return true
 	 * and any threads waiting at awaitdraining() will be released.
+	 * 
+	 * @param isFinal
+	 *            : whether the draining is the final draining or intermediate
+	 *            draining.
 	 */
-	protected abstract void drainingDone();
+	protected abstract void drainingDone(boolean isFinal);
 
 	/**
 	 * {@link BlobNode}s have to call this function to inform draining done
@@ -155,9 +189,9 @@ public abstract class AbstractDrainer {
 	 */
 	private void drainingDone(BlobNode blobNode) {
 		assert state != DrainerState.NODRAINING : "Illegal call. Drainer is not in draining mode.";
-		drainingDone(blobNode.blobID);
+		drainingDone(blobNode.blobID, state == DrainerState.FINAL);
 		if (unDrainedNodes.decrementAndGet() == 0) {
-			drainingDone();
+			drainingDone(state == DrainerState.FINAL);
 			state = DrainerState.NODRAINING;
 			latch.countDown();
 		}
