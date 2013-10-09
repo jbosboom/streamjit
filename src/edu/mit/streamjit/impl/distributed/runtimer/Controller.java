@@ -33,6 +33,7 @@ import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.DrainElement;
 import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
@@ -226,7 +227,7 @@ public class Controller {
 			mergedConfig = cfg;
 
 		ConfigurationString json = new ConfigurationString(
-				mergedConfig.toJson());
+				mergedConfig.toJson(), ConfigType.DYNAMIC);
 		sendToAll(json);
 
 		setupHeadTail(cfg, bufferMap, Token.createOverallInputToken(source),
@@ -248,7 +249,7 @@ public class Controller {
 		builder.putExtraData(GlobalConstants.NODE_INFO_MAP, nodeInfoMap);
 
 		ConfigurationString json = new ConfigurationString(builder.build()
-				.toJson());
+				.toJson(), ConfigType.STATIC);
 		sendToAll(json);
 	}
 
@@ -266,6 +267,10 @@ public class Controller {
 				.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
 
 		Configuration cfg = builder.build();
+		ConfigurationString json = new ConfigurationString(cfg.toJson(),
+				ConfigType.DYNAMIC);
+		sendToAll(json);
+
 		setupHeadTail1(cfg, app.getBufferMap(),
 				Token.createOverallInputToken(app.source1),
 				Token.createOverallOutputToken(app.sink1));
