@@ -26,6 +26,7 @@ import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecif
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
@@ -47,7 +48,7 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 	}
 
 	@Override
-	public void process(String json) {
+	public void process(String json, ConfigType type) {
 
 		Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
 		ImmutableSet<Blob> blobSet = getBlobs(cfg);
