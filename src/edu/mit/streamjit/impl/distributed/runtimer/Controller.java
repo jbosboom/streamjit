@@ -554,7 +554,7 @@ public class Controller {
 		int machineID = app.blobtoMachineMap.get(blobID);
 		StreamNodeAgent agent = StreamNodeMap.get(machineID);
 		try {
-			agent.writeObject(new DrainElement.DoDrain(blobID, false));
+			agent.writeObject(new DrainElement.DoDrain(blobID, !isFinal));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -569,7 +569,7 @@ public class Controller {
 		}
 	}
 
-	public void drainingFinished() {
+	public void drainingFinished(boolean isFinal) {
 		System.out.println("Controller : Draining Finished...");
 		if (tailChannel != null) {
 			tailChannel.stop();
@@ -580,10 +580,12 @@ public class Controller {
 			}
 		}
 
-		try {
-			comManager.closeAllConnections();
-		} catch (IOException e) {
-			e.printStackTrace();
+		if (isFinal) {
+			try {
+				comManager.closeAllConnections();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 }
