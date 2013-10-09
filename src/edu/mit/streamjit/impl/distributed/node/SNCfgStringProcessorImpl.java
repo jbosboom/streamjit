@@ -42,6 +42,7 @@ import edu.mit.streamjit.util.json.Jsonifiers;
 public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	StreamNode streamNode;
+	Configuration staticConfig = null;
 
 	public SNCfgStringProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
@@ -49,35 +50,43 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	@Override
 	public void process(String json, ConfigType type) {
+		if (type == ConfigType.STATIC) {
+			if (this.staticConfig == null)
+				this.staticConfig = Jsonifiers.fromJson(json,
+						Configuration.class);
+			else
+				System.err
+						.println("New static configuration received...But Ignored...");
+		} else {
+			Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
+			ImmutableSet<Blob> blobSet = getBlobs(cfg, staticConfig);
+			if (blobSet != null) {
+				Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = (Map<Token, Map.Entry<Integer, Integer>>) cfg
+						.getExtraData(GlobalConstants.TOKEN_MACHINE_MAP);
+				Map<Token, Integer> portIdMap = (Map<Token, Integer>) cfg
+						.getExtraData(GlobalConstants.PORTID_MAP);
 
-		Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
-		ImmutableSet<Blob> blobSet = getBlobs(cfg);
-		if (blobSet != null) {
-			Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = (Map<Token, Map.Entry<Integer, Integer>>) cfg
-					.getExtraData(GlobalConstants.TOKEN_MACHINE_MAP);
-			Map<Token, Integer> portIdMap = (Map<Token, Integer>) cfg
-					.getExtraData(GlobalConstants.PORTID_MAP);
+				Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) staticConfig
+						.getExtraData(GlobalConstants.NODE_INFO_MAP);
 
-			Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) cfg
-					.getExtraData(GlobalConstants.NODE_INFO_MAP);
-
-			streamNode.setBlobsManager(new BlobsManagerImpl(blobSet,
-					tokenMachineMap, portIdMap, nodeInfoMap, streamNode));
-		} else
-			System.out.println("Couldn't get the blobset....");
+				streamNode.setBlobsManager(new BlobsManagerImpl(blobSet,
+						tokenMachineMap, portIdMap, nodeInfoMap, streamNode));
+			} else
+				System.out.println("Couldn't get the blobset....");
+		}
 	}
+	private ImmutableSet<Blob> getBlobs(Configuration dyncfg,
+			Configuration stccfg) {
 
-	private ImmutableSet<Blob> getBlobs(Configuration cfg) {
-
-		PartitionParameter partParam = cfg.getParameter(
+		PartitionParameter partParam = dyncfg.getParameter(
 				GlobalConstants.PARTITION, PartitionParameter.class);
 		if (partParam == null)
 			throw new IllegalArgumentException(
 					"Partition parameter is not available in the received configuraion");
 
-		String topLevelWorkerName = (String) cfg
+		String topLevelWorkerName = (String) stccfg
 				.getExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME);
-		String jarFilePath = (String) cfg
+		String jarFilePath = (String) stccfg
 				.getExtraData(GlobalConstants.JARFILE_PATH);
 
 		OneToOneElement<?, ?> streamGraph = getStreamGraph(jarFilePath,
@@ -93,10 +102,11 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 			ImmutableSet.Builder<Blob> blobSet = ImmutableSet.builder();
 
 			BlobFactory bf;
-			Configuration blobConfigs = cfg.getSubconfiguration("blobConfigs");
+			Configuration blobConfigs = dyncfg
+					.getSubconfiguration("blobConfigs");
 			// blobConfigs = null;
 			if (blobConfigs == null) {
-				blobConfigs = cfg;
+				blobConfigs = dyncfg;
 				bf = new Interpreter.InterpreterBlobFactory();
 			} else {
 				IntParameter mul = blobConfigs.getParameter(

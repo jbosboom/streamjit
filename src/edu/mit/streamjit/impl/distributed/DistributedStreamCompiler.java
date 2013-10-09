@@ -181,8 +181,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		app.setConstraints(constraints);
 
 		controller.newApp(app);
+		controller.reconfigure();
 		CompiledStream cs = new DistributedCompiledStream(drainer);
-		controller.start();
 
 		return cs;
 	}
