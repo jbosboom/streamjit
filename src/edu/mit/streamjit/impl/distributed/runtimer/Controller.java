@@ -71,12 +71,6 @@ public class Controller {
 	private Map<Integer, StreamNodeAgent> StreamNodeMap;
 
 	/**
-	 * Keeps track of assigned machine Ids of each blob. This information is
-	 * need for draining. TODO: If possible use a better solution.
-	 */
-	private Map<Token, Integer> blobtoMachineMap;
-
-	/**
 	 * NodeID for the {@link Controller}. We need this as Controller need to
 	 * handle the head and tail buffers. Most of the cases ID 0 will be assigned
 	 * to the Controller.
@@ -409,7 +403,7 @@ public class Controller {
 		BlobFactory factory = new Interpreter.InterpreterBlobFactory();
 		partParam.addBlobFactory(factory);
 
-		blobtoMachineMap = new HashMap<>();
+		app.blobtoMachineMap = new HashMap<>();
 
 		for (Integer machineID : partitionsMachineMap.keySet()) {
 			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap
@@ -420,7 +414,7 @@ public class Controller {
 
 				// TODO: Temp fix to build.
 				Token t = Utils.getblobID(blobWorkers);
-				blobtoMachineMap.put(t, machineID);
+				app.blobtoMachineMap.put(t, machineID);
 			}
 		}
 
@@ -554,10 +548,10 @@ public class Controller {
 			drainStarted = true;
 		}
 
-		if (!blobtoMachineMap.containsKey(blobID))
+		if (!app.blobtoMachineMap.containsKey(blobID))
 			throw new IllegalArgumentException(blobID
 					+ " not found in the blobtoMachineMap");
-		int machineID = blobtoMachineMap.get(blobID);
+		int machineID = app.blobtoMachineMap.get(blobID);
 		StreamNodeAgent agent = StreamNodeMap.get(machineID);
 		try {
 			agent.writeObject(new DrainElement.DoDrain(blobID, false));
