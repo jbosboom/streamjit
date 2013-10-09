@@ -123,10 +123,14 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		controller.connect(conTypeCount);
 
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap;
-		if (cfg == null)
-			partitionsMachineMap = getMachineWorkerMap(controller, stream,
+		if (cfg == null) {
+			Integer[] machineIds = new Integer[this.noOfnodes];
+			for (int i = 0; i < machineIds.length; i++) {
+				machineIds[i] = i + 1;
+			}
+			partitionsMachineMap = getMachineWorkerMap(machineIds, stream,
 					source, sink);
-		else
+		} else
 			partitionsMachineMap = getMachineWorkerMap(cfg, source);
 
 		List<Set<Worker<?, ?>>> partitionList = new ArrayList<>();
@@ -208,63 +212,21 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	}
 
 	private <I, O> Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
-			Controller controller, OneToOneElement<I, O> stream,
+			Integer[] machineIds, OneToOneElement<I, O> stream,
 			Worker<I, ?> source, Worker<?, O> sink) {
+		int totalCores = machineIds.length;
 
-		Map<Integer, Integer> coreCounts = controller.getCoreCount();
-
-		// As we are just running small benchmark applications, lets utilize
-		// just a single core per node. TODO: When running big
-		// real world applications utilize all available cores. For that simply
-		// comment the following lines.
-		for (Integer key : coreCounts.keySet()) {
-			coreCounts.put(key, 1);
-		}
-
-		int totalCores = 0;
-		for (int coreCount : coreCounts.values())
-			totalCores += coreCount;
-
-		// TODO: Need to map the machines and the partitions precisely. Now just
-		// it is mapped based on the list order.
 		Partitioner<I, O> horzPartitioner = new HorizontalPartitioner<>();
 		List<Set<Worker<?, ?>>> partitionList = horzPartitioner
 				.partitionEqually(stream, source, sink, totalCores);
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = mapPartitionstoMachines(
-				partitionList, coreCounts);
-
-		return partitionsMachineMap;
-	}
-
-	private Map<Integer, List<Set<Worker<?, ?>>>> mapPartitionstoMachines(
-			List<Set<Worker<?, ?>>> partitionList,
-			Map<Integer, Integer> coreCountMap) {
 
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = new HashMap<Integer, List<Set<Worker<?, ?>>>>();
-		for (Integer machineID : coreCountMap.keySet()) {
-			partitionsMachineMap.put(
-					machineID,
-					new ArrayList<Set<Worker<?, ?>>>(coreCountMap
-							.get(machineID)));
+		for (Integer machineID : machineIds) {
+			partitionsMachineMap.put(machineID,
+					new ArrayList<Set<Worker<?, ?>>>());
 		}
 
 		int index = 0;
-		for (Integer machineID : partitionsMachineMap.keySet()) {
-			if (!(index < partitionList.size()))
-				break;
-			for (int i = 0; i < coreCountMap.get(machineID); i++) {
-				if (!(index < partitionList.size()))
-					break;
-				partitionsMachineMap.get(machineID).add(
-						partitionList.get(index++));
-			}
-		}
-
-		// In case we received more partitions than available cores. Assign the
-		// remaining partitions in round robin fashion. This case
-		// shouldn't happen if the partitioning is correctly done based on the
-		// available core count. This code is added just to ensure
-		// the correctness of the program and to avoid the bugs.
 		while (index < partitionList.size()) {
 			for (Integer machineID : partitionsMachineMap.keySet()) {
 				if (!(index < partitionList.size()))
