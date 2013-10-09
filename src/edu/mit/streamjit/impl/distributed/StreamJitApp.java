@@ -98,15 +98,19 @@ public class StreamJitApp {
 	 * the new configuration, no changes otherwise.
 	 * 
 	 * @param config
-	 * @throws StreamCompilationFailedException
-	 *             if any cycles found among blobs.
+	 * @return true iff no cycles among blobs
 	 */
-	public void newConfiguration(Configuration config) {
+	public boolean newConfiguration(Configuration config) {
 
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
 				config, this.source1);
-		varifyConfiguration(partitionsMachineMap);
+		try {
+			varifyConfiguration(partitionsMachineMap);
+		} catch (StreamCompilationFailedException ex) {
+			return false;
+		}
 		this.blobConfiguration = config;
+		return true;
 	}
 
 	/**
@@ -119,12 +123,16 @@ public class StreamJitApp {
 	 * 
 	 * @param partitionsMachineMap
 	 * 
-	 * @throws StreamCompilationFailedException
-	 *             if any cycles found among blobs.
+	 * @return true iff no cycles among blobs
 	 */
-	public void newPartitionMap(
+	public boolean newPartitionMap(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
-		varifyConfiguration(partitionsMachineMap);
+		try {
+			varifyConfiguration(partitionsMachineMap);
+		} catch (StreamCompilationFailedException ex) {
+			return false;
+		}
+		return true;
 	}
 
 	/**
