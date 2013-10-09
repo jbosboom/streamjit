@@ -273,7 +273,7 @@ public class Controller {
 				ConfigType.DYNAMIC);
 		sendToAll(json);
 
-		setupHeadTail1(cfg, app.getBufferMap(),
+		setupHeadTail1(cfg, app.bufferMap,
 				Token.createOverallInputToken(app.source1),
 				Token.createOverallOutputToken(app.sink1));
 

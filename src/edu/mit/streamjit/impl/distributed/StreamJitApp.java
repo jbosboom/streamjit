@@ -36,6 +36,10 @@ import edu.mit.streamjit.impl.interp.Interpreter;
  * and etc. Three main classes, {@link DistributedStreamCompiler},
  * {@link Controller} and {@link OnlineTuner} will be using this class of their
  * functional purpose.
+ * <p>
+ * All member variables of this class are public, because this class is supposed
+ * to be used by only trusted classes.
+ * </p>
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Oct 8, 2013
@@ -53,13 +57,13 @@ public class StreamJitApp {
 
 	public final String jarFilePath;
 
-	private BlobGraph blobGraph1;
+	public BlobGraph blobGraph1;
 
 	public Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap1;
 
-	private ImmutableMap<Token, Buffer> bufferMap;
+	public ImmutableMap<Token, Buffer> bufferMap;
 
-	private List<MessageConstraint> constraints;
+	public List<MessageConstraint> constraints;
 
 	/**
 	 * Keeps track of assigned machine Ids of each blob. This information is
@@ -82,10 +86,6 @@ public class StreamJitApp {
 		this.jarFilePath = this.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
 
-	}
-
-	public BlobGraph getBlobGraph() {
-		return blobGraph1;
 	}
 
 	/**
@@ -256,22 +256,6 @@ public class StreamJitApp {
 			ret.add(blobworkers);
 		}
 		return ret;
-	}
-
-	public ImmutableMap<Token, Buffer> getBufferMap() {
-		return bufferMap;
-	}
-
-	public void setBufferMap(ImmutableMap<Token, Buffer> bufferMap) {
-		this.bufferMap = bufferMap;
-	}
-
-	public List<MessageConstraint> getConstraints() {
-		return constraints;
-	}
-
-	public void setConstraints(List<MessageConstraint> constraints) {
-		this.constraints = constraints;
 	}
 
 	public Configuration getStaticConfiguration() {
