@@ -122,6 +122,9 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Controller controller = new Controller();
 		controller.connect(conTypeCount);
 
+		StreamJitApp app = new StreamJitApp(stream.getClass().getName(),
+				source, sink);
+
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap;
 		if (cfg == null) {
 			Integer[] machineIds = new Integer[this.noOfnodes];
@@ -130,32 +133,9 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			}
 			partitionsMachineMap = getMachineWorkerMap(machineIds, stream,
 					source, sink);
+			app.newPartitionMap(partitionsMachineMap);
 		} else
-			partitionsMachineMap = getMachineWorkerMap(cfg, source);
-
-		List<Set<Worker<?, ?>>> partitionList = new ArrayList<>();
-		for (List<Set<Worker<?, ?>>> lst : partitionsMachineMap.values()) {
-			partitionList.addAll(lst);
-		}
-
-		BlobGraph bg = null;
-		try {
-			bg = new BlobGraph(partitionList);
-		} catch (StreamCompilationFailedException ex) {
-			System.err.print("Cycles found in the worker->blob assignment");
-			for (int machine : partitionsMachineMap.keySet()) {
-				System.err.print("\nMachine - " + machine);
-				for (Set<Worker<?, ?>> blobworkers : partitionsMachineMap
-						.get(machine)) {
-					System.err.print("\n\tBlob worker set : ");
-					for (Worker<?, ?> w : blobworkers) {
-						System.err.print(Workers.getIdentifier(w) + " ");
-					}
-				}
-			}
-			System.err.println();
-			throw ex;
-		}
+			app.newConfiguration(cfg);
 
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
 		// context.
@@ -168,7 +148,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			Portals.setConstraints(portal, constraints);
 
 		final AbstractDrainer drainer = new DistributedDrainer(controller);
-		drainer.setBlobGraph(bg);
+		drainer.setBlobGraph(app.getBlobGraph());
 
 		// TODO: derive a algorithm to find good buffer size and use here.
 		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
@@ -197,15 +177,11 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		bufferMapBuilder.put(Token.createOverallInputToken(source), head);
 		bufferMapBuilder.put(Token.createOverallOutputToken(sink), tail);
 
-		String jarFilePath = this.getClass().getProtectionDomain()
-				.getCodeSource().getLocation().getPath();
+		app.setBufferMap(bufferMapBuilder.build());
+		app.setConstraints(constraints);
 
-		controller.setPartition(partitionsMachineMap, jarFilePath, stream
-				.getClass().getName(), constraints, source, sink,
-				bufferMapBuilder.build(), cfg);
-
+		controller.newApp(app);
 		CompiledStream cs = new DistributedCompiledStream(drainer);
-
 		controller.start();
 
 		return cs;
@@ -236,87 +212,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			}
 		}
 		return partitionsMachineMap;
-	}
-
-	/**
-	 * Reads the configuration and returns a map of nodeID to list of workers
-	 * set which are assigned to the node. value of the returned map is list of
-	 * worker set where each worker set is individual blob.
-	 * 
-	 * @param config
-	 * @param workerset
-	 * @return map of nodeID to list of workers set which are assigned to the
-	 *         node. value is list of worker set where each set is individual
-	 *         blob.
-	 */
-	private Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
-			Configuration config, Worker<?, ?> source) {
-
-		ImmutableSet<Worker<?, ?>> workerset = Workers
-				.getAllWorkersInGraph(source);
-
-		Map<Integer, Set<Worker<?, ?>>> partition = new HashMap<>();
-		for (Worker<?, ?> w : workerset) {
-			IntParameter w2m = config.getParameter(String.format(
-					"worker%dtomachine", Workers.getIdentifier(w)),
-					IntParameter.class);
-			int machine = w2m.getValue();
-
-			if (!partition.containsKey(machine)) {
-				Set<Worker<?, ?>> set = new HashSet<>();
-				partition.put(machine, set);
-			}
-			partition.get(machine).add(w);
-		}
-
-		Map<Integer, List<Set<Worker<?, ?>>>> machineWorkerMap = new HashMap<>();
-		for (int machine : partition.keySet()) {
-			machineWorkerMap.put(machine, getBlobs(partition.get(machine)));
-		}
-		return machineWorkerMap;
-	}
-
-	/**
-	 * Goes through all the workers assigned to a machine, find the workers
-	 * which are interconnected and group them as a blob workers. i.e., Group
-	 * the workers such that each group can be executed as a blob.
-	 * <p>
-	 * TODO: If any dynamic edges exists then should create interpreter blob.
-	 * 
-	 * @param workerset
-	 * @return list of workers set which contains interconnected workers. Each
-	 *         worker set in the list is supposed to run in an individual blob.
-	 */
-	private List<Set<Worker<?, ?>>> getBlobs(Set<Worker<?, ?>> workerset) {
-		List<Set<Worker<?, ?>>> ret = new ArrayList<Set<Worker<?, ?>>>();
-		while (!workerset.isEmpty()) {
-			Deque<Worker<?, ?>> queue = new ArrayDeque<>();
-			Set<Worker<?, ?>> blobworkers = new HashSet<>();
-			Worker<?, ?> w = workerset.iterator().next();
-			blobworkers.add(w);
-			workerset.remove(w);
-			queue.offer(w);
-			while (!queue.isEmpty()) {
-				Worker<?, ?> wrkr = queue.poll();
-				for (Worker<?, ?> succ : Workers.getSuccessors(wrkr)) {
-					if (workerset.contains(succ)) {
-						blobworkers.add(succ);
-						workerset.remove(succ);
-						queue.offer(succ);
-					}
-				}
-
-				for (Worker<?, ?> pred : Workers.getPredecessors(wrkr)) {
-					if (workerset.contains(pred)) {
-						blobworkers.add(pred);
-						workerset.remove(pred);
-						queue.offer(pred);
-					}
-				}
-			}
-			ret.add(blobworkers);
-		}
-		return ret;
 	}
 
 	/**
