@@ -246,7 +246,15 @@ public class Controller {
 
 		nodeInfoMap.put(controllerNodeID, NodeInfo.getMyinfo());
 
-		builder.putExtraData(GlobalConstants.NODE_INFO_MAP, nodeInfoMap);
+		// TODO: Ensure the need of this switch parameter.
+		List<ChannelFactory> universe = Arrays
+				.<ChannelFactory> asList(new ConcurrentChannelFactory());
+		SwitchParameter<ChannelFactory> cfParameter = new SwitchParameter<ChannelFactory>(
+				"channelFactory", ChannelFactory.class, universe.get(0),
+				universe);
+
+		builder.addParameter(cfParameter).putExtraData(
+				GlobalConstants.NODE_INFO_MAP, nodeInfoMap);
 
 		ConfigurationString json = new ConfigurationString(builder.build()
 				.toJson(), ConfigType.STATIC);
@@ -280,7 +288,7 @@ public class Controller {
 
 	/**
 	 * Setup the headchannel and tailchannel.
-	 *
+	 * 
 	 * @param cfg
 	 * @param bufferMap
 	 * @param headToken
