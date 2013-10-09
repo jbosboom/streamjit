@@ -44,6 +44,7 @@ import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 import edu.mit.streamjit.impl.distributed.runtimer.DistributedDrainer;
+import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
 
@@ -148,7 +149,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			Portals.setConstraints(portal, constraints);
 
 		final AbstractDrainer drainer = new DistributedDrainer(controller);
-		drainer.setBlobGraph(app.getBlobGraph());
+		drainer.setBlobGraph(app.blobGraph1);
 
 		// TODO: derive a algorithm to find good buffer size and use here.
 		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
@@ -177,12 +178,15 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		bufferMapBuilder.put(Token.createOverallInputToken(source), head);
 		bufferMapBuilder.put(Token.createOverallOutputToken(sink), tail);
 
-		app.setBufferMap(bufferMapBuilder.build());
-		app.setConstraints(constraints);
+		app.bufferMap = bufferMapBuilder.build();
+		app.constraints = constraints;
 
 		controller.newApp(app);
 		controller.reconfigure();
 		CompiledStream cs = new DistributedCompiledStream(drainer);
+
+		OnlineTuner tuner = new OnlineTuner(drainer, controller, app);
+		new Thread(tuner, "OnlineTuner").start();
 
 		return cs;
 	}
