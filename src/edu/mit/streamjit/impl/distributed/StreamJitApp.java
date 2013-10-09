@@ -266,7 +266,8 @@ public class StreamJitApp {
 		}
 
 		builder.addParameter(partParam.build());
-		builder.addSubconfiguration("blobConfigs", this.blobConfiguration);
+		if (this.blobConfiguration != null)
+			builder.addSubconfiguration("blobConfigs", this.blobConfiguration);
 		return builder.build();
 	}
 }
