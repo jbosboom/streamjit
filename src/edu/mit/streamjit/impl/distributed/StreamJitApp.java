@@ -65,7 +65,7 @@ public class StreamJitApp {
 	 * Keeps track of assigned machine Ids of each blob. This information is
 	 * need for draining. TODO: If possible use a better solution.
 	 */
-	private Map<Token, Integer> blobtoMachineMap;
+	public Map<Token, Integer> blobtoMachineMap;
 
 	/**
 	 * blobConfiguration contains decision variables that are tuned by
