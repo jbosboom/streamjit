@@ -3,7 +3,7 @@ import socket
 import argparse
 import traceback
 import configuration
-import tuner
+import onlinetuner
 import sys
 
 
@@ -43,7 +43,7 @@ class streamJit:
 				try:
 					cfg = configuration.getConfiguration(cfgString)
 					argv = ['--program', self.program,  '--test-limit', '500']
-					tuner.start(argv, cfg, self)
+					onlinetuner.start(argv, cfg, self)
 				except Exception, e:
 					print "Exception occured : %s"%e
 					traceback.print_exc()

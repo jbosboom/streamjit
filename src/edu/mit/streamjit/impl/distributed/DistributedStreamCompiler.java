@@ -27,6 +27,7 @@ import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
@@ -126,16 +127,22 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		StreamJitApp app = new StreamJitApp(stream.getClass().getName(),
 				source, sink);
 
-		if (cfg == null) {
-			Integer[] machineIds = new Integer[this.noOfnodes];
-			for (int i = 0; i < machineIds.length; i++) {
-				machineIds[i] = i + 1;
-			}
-			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
-					machineIds, stream, source, sink);
-			app.newPartitionMap(partitionsMachineMap);
-		} else
-			app.newConfiguration(cfg);
+		BlobFactory bf = new DistributedBlobFactory(noOfnodes);
+		this.cfg = bf.getDefaultConfiguration(Workers
+				.getAllWorkersInGraph(source));
+		app.newConfiguration(cfg);
+
+		// if (cfg == null) {
+		// Integer[] machineIds = new Integer[this.noOfnodes];
+		// for (int i = 0; i < machineIds.length; i++) {
+		// machineIds[i] = i + 1;
+		// }
+		// Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap =
+		// getMachineWorkerMap(
+		// machineIds, stream, source, sink);
+		// app.newPartitionMap(partitionsMachineMap);
+		// } else
+		// app.newConfiguration(cfg);
 
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
 		// context.

@@ -61,7 +61,7 @@ public class OnlineTuner implements Runnable {
 		int tryCount = 0;
 		try {
 			tuner.startTuner(String.format(
-					"lib%sopentuner%sstreamjit%sstreamjit.py", File.separator,
+					"lib%sopentuner%sstreamjit%sstreamjit2.py", File.separator,
 					File.separator, File.separator));
 
 			tuner.writeLine("program");
