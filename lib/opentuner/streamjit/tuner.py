@@ -58,7 +58,7 @@ class StreamJitMI(MeasurementInterface):
 		sys.exit(0)
 
 
-def main(args, cfg, con, ss):
+def main(args, cfg, ss):
 	logging.basicConfig(level=logging.INFO)
 	manipulator = ConfigurationManipulator()
 
@@ -74,7 +74,7 @@ def main(args, cfg, con, ss):
 	m = TuningRunMain(mi, args)
 	m.main()
 
-def start(argv, cfg, con, ss):
+def start(argv, cfg, ss):
 	log = logging.getLogger(__name__)
 	parser = argparse.ArgumentParser(parents=opentuner.argparsers())
 
@@ -85,4 +85,4 @@ def start(argv, cfg, con, ss):
 	if not args.database:
     		args.database = 'sqlite:///' + args.program + '.db'
 
-	main(args, cfg, con, ss)
+	main(args, cfg, ss)
