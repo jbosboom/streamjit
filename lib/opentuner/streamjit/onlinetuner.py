@@ -28,6 +28,8 @@ class StreamJitMI(MeasurementInterface):
 		self.niceprint(cfg)
 		self.sdk.sendmsg("%s\n"%cfg)
 		msg = self.sdk.recvmsg()
+		if ( msg == 'Error\n'):
+			msg = -1
 		exetime = float(msg)
 		if exetime < 0:
 			print "Error in execution"

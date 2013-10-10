@@ -537,7 +537,7 @@ public class Controller {
 	public void drain(Token blobID, boolean isFinal) {
 		if (!drainStarted) {
 			if (headChannel != null) {
-				headChannel.stop(true);
+				headChannel.stop(isFinal);
 				try {
 					headThread.join();
 				} catch (InterruptedException e) {
@@ -571,6 +571,7 @@ public class Controller {
 
 	public void drainingFinished(boolean isFinal) {
 		System.out.println("Controller : Draining Finished...");
+		drainStarted = false;
 		if (tailChannel != null) {
 			tailChannel.stop();
 			try {
@@ -587,5 +588,9 @@ public class Controller {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	public double getperformanceTime() {
+		return 5.0;
 	}
 }
