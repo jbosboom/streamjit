@@ -101,10 +101,13 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 			ImmutableSet.Builder<Blob> blobSet = ImmutableSet.builder();
 
+			if (blobList == null)
+				return blobSet.build();
+
 			BlobFactory bf;
 			Configuration blobConfigs = dyncfg
 					.getSubconfiguration("blobConfigs");
-			// blobConfigs = null;
+			blobConfigs = null;
 			if (blobConfigs == null) {
 				blobConfigs = staticConfig;
 				bf = new Interpreter.InterpreterBlobFactory();
