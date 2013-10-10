@@ -56,7 +56,11 @@ public abstract class AbstractDrainer {
 	 */
 	protected BlobGraph blobGraph;
 
-	private CountDownLatch latch;
+	/**
+	 * Latch to block the external thread that calls
+	 * {@link CompiledStream#awaitDrained()}.
+	 */
+	private CountDownLatch finalLatch;
 
 	private AtomicInteger unDrainedNodes;
 
@@ -80,7 +84,7 @@ public abstract class AbstractDrainer {
 		if (state == DrainerState.NODRAINING) {
 			this.blobGraph = blobGraph;
 			unDrainedNodes = new AtomicInteger(blobGraph.getBlobIds().size());
-			latch = new CountDownLatch(1);
+			finalLatch = new CountDownLatch(1);
 			blobGraph.setDrainer(this);
 		} else {
 			throw new RuntimeException("Drainer is in draing mode.");
@@ -127,14 +131,14 @@ public abstract class AbstractDrainer {
 	 *         {@link CompiledStream#isDrained()} for more details.
 	 */
 	public final boolean isDrained() {
-		return latch.getCount() == 0;
+		return finalLatch.getCount() == 0;
 	}
 
 	/**
 	 * See {@link CompiledStream#awaitDrained()} for more details.
 	 */
 	public final void awaitDrained() throws InterruptedException {
-		latch.await();
+		finalLatch.await();
 	}
 
 	/**
@@ -142,7 +146,7 @@ public abstract class AbstractDrainer {
 	 */
 	public final void awaitDrained(long timeout, TimeUnit unit)
 			throws InterruptedException, TimeoutException {
-		latch.await(timeout, unit);
+		finalLatch.await(timeout, unit);
 	}
 
 	/**
@@ -194,7 +198,7 @@ public abstract class AbstractDrainer {
 			drainingDone(state == DrainerState.FINAL);
 			if (state == DrainerState.FINAL) {
 				state = DrainerState.NODRAINING;
-				latch.countDown();
+				finalLatch.countDown();
 			} else
 				state = DrainerState.NODRAINING;
 		}
