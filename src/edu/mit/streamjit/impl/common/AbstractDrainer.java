@@ -111,6 +111,8 @@ public abstract class AbstractDrainer {
 	 * @param isFinal
 	 *            whether the draining is the final draining or intermediate
 	 *            draining.
+	 * @return true iff draining process has been started. startDraining will
+	 *         fail if the final draining has already been called.
 	 */
 	public final boolean startDraining(boolean isFinal) {
 		if (state == DrainerState.NODRAINING) {
