@@ -62,6 +62,12 @@ public abstract class AbstractDrainer {
 	 */
 	private CountDownLatch finalLatch;
 
+	/**
+	 * Latch to block online tuner thread until intermediate draining is
+	 * accomplished.
+	 */
+	private CountDownLatch intermediateLatch;
+
 	private AtomicInteger unDrainedNodes;
 
 	/**
@@ -106,13 +112,18 @@ public abstract class AbstractDrainer {
 	 *            whether the draining is the final draining or intermediate
 	 *            draining.
 	 */
-	public final void startDraining(boolean isFinal) {
+	public final boolean startDraining(boolean isFinal) {
 		if (state == DrainerState.NODRAINING) {
-			if (isFinal)
+			if (isFinal) {
 				this.state = DrainerState.FINAL;
-			else
+			} else {
 				this.state = DrainerState.INTERMEDIATE;
+				intermediateLatch = new CountDownLatch(1);
+			}
 			blobGraph.getSourceBlobNode().drain();
+			return true;
+		} else if (state == DrainerState.FINAL) {
+			return false;
 		} else {
 			throw new RuntimeException("Drainer is in draing mode.");
 		}
@@ -139,6 +150,10 @@ public abstract class AbstractDrainer {
 	 */
 	public final void awaitDrained() throws InterruptedException {
 		finalLatch.await();
+	}
+
+	public final void awaitDrainedIntrmdiate() throws InterruptedException {
+		intermediateLatch.await();
 	}
 
 	/**
@@ -197,10 +212,11 @@ public abstract class AbstractDrainer {
 		if (unDrainedNodes.decrementAndGet() == 0) {
 			drainingDone(state == DrainerState.FINAL);
 			if (state == DrainerState.FINAL) {
-				state = DrainerState.NODRAINING;
 				finalLatch.countDown();
-			} else
+			} else {
 				state = DrainerState.NODRAINING;
+				intermediateLatch.countDown();
+			}
 		}
 	}
 
