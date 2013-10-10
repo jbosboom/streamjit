@@ -192,8 +192,11 @@ public abstract class AbstractDrainer {
 		drainingDone(blobNode.blobID, state == DrainerState.FINAL);
 		if (unDrainedNodes.decrementAndGet() == 0) {
 			drainingDone(state == DrainerState.FINAL);
-			state = DrainerState.NODRAINING;
-			latch.countDown();
+			if (state == DrainerState.FINAL) {
+				state = DrainerState.NODRAINING;
+				latch.countDown();
+			} else
+				state = DrainerState.NODRAINING;
 		}
 	}
 
