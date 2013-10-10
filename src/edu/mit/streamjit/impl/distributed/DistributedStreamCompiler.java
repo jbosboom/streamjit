@@ -126,14 +126,13 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		StreamJitApp app = new StreamJitApp(stream.getClass().getName(),
 				source, sink);
 
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap;
 		if (cfg == null) {
 			Integer[] machineIds = new Integer[this.noOfnodes];
 			for (int i = 0; i < machineIds.length; i++) {
 				machineIds[i] = i + 1;
 			}
-			partitionsMachineMap = getMachineWorkerMap(machineIds, stream,
-					source, sink);
+			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
+					machineIds, stream, source, sink);
 			app.newPartitionMap(partitionsMachineMap);
 		} else
 			app.newConfiguration(cfg);
