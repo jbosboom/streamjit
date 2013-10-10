@@ -18,19 +18,15 @@ import java.util.Set;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableSet;
 
-import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
-import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.tuner.OpenTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
@@ -87,12 +83,19 @@ public class OnlineTuner implements Runnable {
 						app.blobConfiguration);
 				try {
 					if (!app.newConfiguration(config)) {
-						tuner.writeLine("Error");
+						tuner.writeLine("-1");
 						continue;
 					}
 
-					drainer.startDraining(false);
-					drainer.awaitDrained();
+					boolean state = drainer.startDraining(false);
+					if (!state) {
+						System.err
+								.println("Final drain has already been called. no more tuning.");
+						tuner.writeLine("exit");
+						break;
+					}
+
+					drainer.awaitDrainedIntrmdiate();
 					drainer.setBlobGraph(app.blobGraph1);
 
 					controller.reconfigure();
@@ -106,7 +109,7 @@ public class OnlineTuner implements Runnable {
 				} catch (Exception ex) {
 					System.err
 							.println("Couldn't compile the stream graph with this configuration");
-					tuner.writeLine("ERROR");
+					tuner.writeLine("-1");
 				}
 			}
 
