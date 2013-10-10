@@ -31,6 +31,7 @@ import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
+import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.tuner.OpenTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
 import edu.mit.streamjit.util.json.Jsonifiers;
@@ -45,16 +46,14 @@ public class OnlineTuner implements Runnable {
 	AbstractDrainer drainer;
 	Controller controller;
 	OpenTuner tuner;
-	Configuration cfg;
-	String program;
-	Worker<?, ?> source;
+	StreamJitApp app;
 
 	public OnlineTuner(AbstractDrainer drainer, Controller controller,
-			Configuration cfg, String program, Worker<?, ?> source) {
+			StreamJitApp app) {
 		this.drainer = drainer;
 		this.controller = controller;
+		this.app = app;
 		this.tuner = new TCPTuner();
-		this.cfg = cfg;
 	}
 
 	@Override
@@ -66,15 +65,13 @@ public class OnlineTuner implements Runnable {
 					File.separator, File.separator));
 
 			tuner.writeLine("program");
-			tuner.writeLine(program);
+			tuner.writeLine(app.topLevelClass);
 
 			tuner.writeLine("confg");
-			String s = getConfigurationString(cfg);
+			String s = getConfigurationString(app.blobConfiguration);
 			tuner.writeLine(s);
 
 			System.out.println("New tune run.............");
-			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap;
-			BlobGraph bg = null;
 			while (true) {
 				String pythonDict = tuner.readLine();
 				if (pythonDict.equals("Completed")) {
@@ -86,20 +83,19 @@ public class OnlineTuner implements Runnable {
 				System.out
 						.println("----------------------------------------------");
 				System.out.println(tryCount++);
-				Configuration config = rebuildConfiguraion(pythonDict, cfg);
+				Configuration config = rebuildConfiguraion(pythonDict,
+						app.blobConfiguration);
 				try {
-
-					partitionsMachineMap = getMachineWorkerMap(config, source);
-					if (!isValid(partitionsMachineMap, bg)) {
+					if (!app.newConfiguration(config)) {
 						tuner.writeLine("Error");
 						continue;
 					}
 
 					drainer.startDraining(false);
 					drainer.awaitDrained();
-					drainer.setBlobGraph(bg);
+					drainer.setBlobGraph(app.blobGraph1);
 
-					controller.reconfigure(config);
+					controller.reconfigure();
 
 					Thread.sleep(10000);
 
@@ -118,7 +114,6 @@ public class OnlineTuner implements Runnable {
 			e.printStackTrace();
 		}
 	}
-
 	/**
 	 * Reads the configuration and returns a map of nodeID to list of workers
 	 * set which are assigned to the node. value of the returned map is list of
