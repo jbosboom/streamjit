@@ -185,8 +185,10 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		controller.reconfigure();
 		CompiledStream cs = new DistributedCompiledStream(drainer);
 
-		OnlineTuner tuner = new OnlineTuner(drainer, controller, app);
-		new Thread(tuner, "OnlineTuner").start();
+		if (app.blobConfiguration != null) {
+			OnlineTuner tuner = new OnlineTuner(drainer, controller, app);
+			new Thread(tuner, "OnlineTuner").start();
+		}
 
 		return cs;
 	}
