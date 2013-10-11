@@ -1,5 +1,11 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
+import java.util.Map;
+
+import com.google.common.collect.Multiset.Entry;
+
+import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.common.DrainElement.DoDrain;
 import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainDataRequest;
@@ -40,6 +46,9 @@ public class CNDrainProcessorImpl implements DrainProcessor {
 
 	@Override
 	public void process(DrainedDataMap drainedData) {
-
+		for (Map.Entry<Token, DrainData> entry : drainedData.drainData
+				.entrySet()) {
+			drainer.newDrainData(entry.getKey(), entry.getValue());
+		}
 	}
 }

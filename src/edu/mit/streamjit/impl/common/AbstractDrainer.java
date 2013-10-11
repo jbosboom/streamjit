@@ -26,6 +26,7 @@ import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 
@@ -63,6 +64,13 @@ public abstract class AbstractDrainer {
 	private CountDownLatch finalLatch;
 
 	/**
+	 * Blocks the online tuner thread until drainer gets all drained data.
+	 */
+	private CountDownLatch drainDataLatch;
+
+	private AtomicInteger noOfDrainData;
+
+	/**
 	 * Latch to block online tuner thread until intermediate draining is
 	 * accomplished.
 	 */
@@ -90,6 +98,7 @@ public abstract class AbstractDrainer {
 		if (state == DrainerState.NODRAINING) {
 			this.blobGraph = blobGraph;
 			unDrainedNodes = new AtomicInteger(blobGraph.getBlobIds().size());
+			noOfDrainData = new AtomicInteger(blobGraph.getBlobIds().size());
 			finalLatch = new CountDownLatch(1);
 			blobGraph.setDrainer(this);
 		} else {
@@ -119,7 +128,9 @@ public abstract class AbstractDrainer {
 			if (isFinal) {
 				this.state = DrainerState.FINAL;
 			} else {
+				this.blobGraph.clearDrainData();
 				this.state = DrainerState.INTERMEDIATE;
+				drainDataLatch = new CountDownLatch(1);
 				intermediateLatch = new CountDownLatch(1);
 			}
 			blobGraph.getSourceBlobNode().drain();
@@ -139,10 +150,33 @@ public abstract class AbstractDrainer {
 		blobGraph.getBlobNode(blobID).drained();
 	}
 
+	public final void awaitDrainData() throws InterruptedException {
+		drainDataLatch.await();
+	}
+
+	public final void newDrainData(Token blobID, DrainData drainData) {
+		blobGraph.getBlobNode(blobID).setDrainData(drainData);
+		if (noOfDrainData.decrementAndGet() == 0) {
+			assert state == DrainerState.NODRAINING;
+			drainDataLatch.countDown();
+		}
+	}
+
+	public final DrainData getDrainData() {
+		DrainData drainData = null;
+		for (BlobNode node : blobGraph.blobNodes.values()) {
+			if (drainData == null)
+				drainData = node.drainData;
+			else
+				drainData = drainData.merge(node.drainData);
+		}
+		return drainData;
+	}
 	/**
 	 * @return true iff draining of the stream application is finished. See
 	 *         {@link CompiledStream#isDrained()} for more details.
 	 */
+
 	public final boolean isDrained() {
 		return finalLatch.getCount() == 0;
 	}
@@ -309,6 +343,12 @@ public abstract class AbstractDrainer {
 			}
 		}
 
+		public void clearDrainData() {
+			for (BlobNode node : blobNodes.values()) {
+				node.drainData = null;
+			}
+		}
+
 		/**
 		 * @return the sourceBlobNode
 		 */
@@ -390,6 +430,11 @@ public abstract class AbstractDrainer {
 	 */
 	private static final class BlobNode {
 
+		/**
+		 * Intermediate drain data.
+		 */
+		private DrainData drainData;
+
 		private AbstractDrainer drainer;
 		/**
 		 * The blob that wrapped by this blob node.
@@ -442,6 +487,14 @@ public abstract class AbstractDrainer {
 		private void drain() {
 			checkNotNull(drainer);
 			drainer.drain(blobID, drainer.state == DrainerState.FINAL);
+		}
+
+		private void setDrainData(DrainData drainData) {
+			if (this.drainData == null)
+				this.drainData = drainData;
+			else
+				throw new AssertionError(
+						"Multiple drain data has been received.");
 		}
 
 		private ImmutableList<BlobNode> getSuccessors() {
