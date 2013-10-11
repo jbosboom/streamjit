@@ -17,6 +17,7 @@ import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
@@ -64,6 +65,8 @@ public class StreamJitApp {
 	public ImmutableMap<Token, Buffer> bufferMap;
 
 	public List<MessageConstraint> constraints;
+
+	public DrainData drainData = null;
 
 	/**
 	 * Keeps track of assigned machine Ids of each blob. This information is

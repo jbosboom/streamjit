@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
@@ -95,9 +96,17 @@ public class OnlineTuner implements Runnable {
 						break;
 					}
 
+					System.err.println("awaitDrainedIntrmdiate");
 					drainer.awaitDrainedIntrmdiate();
+
+					System.err.println("awaitDrainData...");
+					drainer.awaitDrainData();
+					DrainData drainData = drainer.getDrainData();
+
+					app.drainData = drainData;
 					drainer.setBlobGraph(app.blobGraph1);
 
+					System.err.println("awaitDrainData...");
 					controller.reconfigure();
 
 					Thread.sleep(10000);
