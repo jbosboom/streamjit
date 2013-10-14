@@ -14,8 +14,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import com.google.common.base.Splitter;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.api.StreamCompilationFailedException;
@@ -109,9 +111,12 @@ public class OnlineTuner implements Runnable {
 					System.err.println("awaitDrainData...");
 					controller.reconfigure();
 
-					Thread.sleep(10000);
+					Stopwatch stopwatch = new Stopwatch();
+					stopwatch.start();
+					controller.awaitForFixInput();
+					stopwatch.stop();
+					long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 
-					double time = controller.getperformanceTime();
 					System.out.println("Execution time is " + time
 							+ " milli seconds");
 					tuner.writeLine(new Double(time).toString());

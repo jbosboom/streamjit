@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
+import java.util.concurrent.CountDownLatch;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -62,6 +63,8 @@ import edu.mit.streamjit.impl.interp.Interpreter;
  */
 public class Controller {
 
+	int reconf = 0;
+
 	private CommunicationManager comManager;
 
 	/**
@@ -91,7 +94,7 @@ public class Controller {
 	 * we need to pull the sink's output in to the {@link Controller} in order
 	 * to make {@link CompiledStream} .pull() to work.
 	 */
-	private BoundaryInputChannel tailChannel;
+	private TailChannel tailChannel;
 
 	private Thread headThread;
 	private Thread tailThread;
@@ -153,6 +156,7 @@ public class Controller {
 		sendToAll(Command.START);
 
 		if (tailChannel != null) {
+			tailChannel.reset();
 			tailThread = new Thread(tailChannel.getRunnable(),
 					tailChannel.name());
 			tailThread.start();
@@ -256,6 +260,7 @@ public class Controller {
 	}
 
 	public void reconfigure() {
+		reconf++;
 		Configuration.Builder builder = Configuration.builder(app
 				.getDynamicConfiguration());
 
@@ -326,9 +331,9 @@ public class Controller {
 			NodeInfo nodeInfo = agent.getNodeInfo();
 			String ipAddress = nodeInfo.getIpAddress().getHostAddress();
 
-			tailChannel = new TCPInputChannel(bufferMap.get(tailToken),
-					ipAddress, portIdMap.get(tailToken), "tailChannel - "
-							+ tailToken.toString(), false);
+			tailChannel = new TailChannel(bufferMap.get(tailToken), ipAddress,
+					portIdMap.get(tailToken), "tailChannel - "
+							+ tailToken.toString(), false, 10000);
 		}
 	}
 
@@ -380,9 +385,9 @@ public class Controller {
 			NodeInfo nodeInfo = nodeInfoMap.get(nodeID);
 			String ipAddress = nodeInfo.getIpAddress().getHostAddress();
 
-			tailChannel = new TCPInputChannel(bufferMap.get(tailToken),
-					ipAddress, portIdMap.get(tailToken), "tailChannel - "
-							+ tailToken.toString(), false);
+			tailChannel = new TailChannel(bufferMap.get(tailToken), ipAddress,
+					portIdMap.get(tailToken), "tailChannel - "
+							+ tailToken.toString(), false, 10000);
 		}
 	}
 
@@ -463,7 +468,9 @@ public class Controller {
 		assert tokenMachineMap != null : "tokenMachineMap is null";
 		assert portIdMap != null : "portIdMap is null";
 
-		int startPortNo = 24896; // Just a random magic number.
+		int startPortNo = 24896 + (reconf % 10) + 500; // Just a random magic
+														// number.
+
 		for (Integer machineID : partitionsMachineMap.keySet()) {
 			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap
 					.get(machineID);
@@ -590,7 +597,42 @@ public class Controller {
 		}
 	}
 
-	public double getperformanceTime() {
-		return 5.0;
+	public void awaitForFixInput() throws InterruptedException {
+		tailChannel.awaitForFixInput();
+	}
+
+	/**
+	 * TODO: Temp fix. Change it later.
+	 */
+	private class TailChannel extends TCPInputChannel {
+		int limit;
+		int count;
+
+		CountDownLatch latch;
+
+		private TailChannel(Buffer buffer, String ipAddress, int portNo,
+				String bufferTokenName, Boolean debugPrint, int limit) {
+			super(buffer, ipAddress, portNo, bufferTokenName, debugPrint);
+			this.limit = limit;
+			count = 0;
+			latch = new CountDownLatch(1);
+		}
+
+		@Override
+		public void receiveData() {
+			super.receiveData();
+			count++;
+			if (count == limit)
+				latch.countDown();
+		}
+
+		private void awaitForFixInput() throws InterruptedException {
+			latch.await();
+		}
+
+		private void reset() {
+			latch = new CountDownLatch(1);
+			count = 0;
+		}
 	}
 }
