@@ -41,8 +41,9 @@ import edu.mit.streamjit.util.json.Jsonifiers;
  */
 public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 
-	StreamNode streamNode;
-	Configuration staticConfig = null;
+	private StreamNode streamNode;
+
+	private Configuration staticConfig = null;
 
 	public SNCfgStringProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
@@ -75,6 +76,7 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 				System.out.println("Couldn't get the blobset....");
 		}
 	}
+
 	private ImmutableSet<Blob> getBlobs(Configuration dyncfg,
 			Configuration stccfg) {
 
@@ -237,5 +239,4 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 						"Innter class %s is not found in the outter class %s. Check the accessibility/visibility of the inner class",
 						InnterClassName, OutterClass.getName()));
 	}
-
 }

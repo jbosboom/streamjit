@@ -33,7 +33,7 @@ import edu.mit.streamjit.impl.interp.Interpreter;
 
 /**
  * This class contains all information about the current streamJit application
- * including {@link BlobGraph}, current {@link Configuration}, TokenMachineMap,
+ * including {@link BlobGraph}, current {@link Configuration}, partitionsMachineMap1,
  * and etc. Three main classes, {@link DistributedStreamCompiler},
  * {@link Controller} and {@link OnlineTuner} will be using this class of their
  * functional purpose.
