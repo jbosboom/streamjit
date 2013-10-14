@@ -57,7 +57,10 @@ public interface Connection {
 	public boolean isStillConnected();
 
 	/**
-	 * Describes a connection between two machines.
+	 * Describes a connection between two machines. ConnectionInfo is considered
+	 * symmetric for equal() and hashCode() calculation. As long as same
+	 * machineIDs are involved, irrespect of srcID and dstID positions, these
+	 * methods return same result.
 	 */
 	public abstract class ConnectionInfo implements Serializable {
 
@@ -82,8 +85,10 @@ public interface Connection {
 		public int hashCode() {
 			final int prime = 31;
 			int result = 1;
-			result = prime * result + dstID;
-			result = prime * result + srcID;
+			int min = Math.min(srcID, dstID);
+			int max = Math.max(srcID, dstID);
+			result = prime * result + min;
+			result = prime * result + max;
 			return result;
 		}
 
@@ -96,9 +101,13 @@ public interface Connection {
 			if (getClass() != obj.getClass())
 				return false;
 			ConnectionInfo other = (ConnectionInfo) obj;
-			if (dstID != other.dstID)
+			int myMin = Math.min(srcID, dstID);
+			int myMax = Math.max(srcID, dstID);
+			int otherMin = Math.min(other.srcID, other.dstID);
+			int otherMax = Math.max(other.srcID, other.dstID);
+			if (myMin != otherMin)
 				return false;
-			if (srcID != other.srcID)
+			if (myMax != otherMax)
 				return false;
 			return true;
 		}
