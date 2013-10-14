@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.distributed.common;
 import java.io.*;
 import java.net.*;
 
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 public class TCPConnection implements Connection {
 
@@ -20,7 +21,8 @@ public class TCPConnection implements Connection {
 			ooStream = new ObjectOutputStream(this.socket.getOutputStream());
 			oiStream = new ObjectInputStream(this.socket.getInputStream());
 			isconnected = true;
-			System.out.println(String.format("DEBUG: TCP connection %d has been established", count++));
+			System.out.println(String.format(
+					"DEBUG: TCP connection %d has been established", count++));
 		} catch (IOException iex) {
 			isconnected = false;
 			iex.printStackTrace();
@@ -34,12 +36,17 @@ public class TCPConnection implements Connection {
 				ooStream.writeObject(obj);
 				// System.out.println("Object send...");
 			} catch (IOException ix) {
-				// Following doesn't change when other side of the socket is closed.....
+				// Following doesn't change when other side of the socket is
+				// closed.....
 				/*
-				 * System.out.println("socket.isBound()" + socket.isBound()); System.out.println("socket.isClosed()" +
-				 * socket.isClosed()); System.out.println("socket.isConnected()" + socket.isConnected());
-				 * System.out.println("socket.isInputShutdown()" + socket.isInputShutdown());
-				 * System.out.println("socket.isOutputShutdown()" + socket.isOutputShutdown());
+				 * System.out.println("socket.isBound()" + socket.isBound());
+				 * System.out.println("socket.isClosed()" + socket.isClosed());
+				 * System.out.println("socket.isConnected()" +
+				 * socket.isConnected());
+				 * System.out.println("socket.isInputShutdown()" +
+				 * socket.isInputShutdown());
+				 * System.out.println("socket.isOutputShutdown()" +
+				 * socket.isOutputShutdown());
 				 */
 				isconnected = false;
 				throw ix;
@@ -103,5 +110,61 @@ public class TCPConnection implements Connection {
 			return this.socket.getInetAddress();
 		else
 			throw new NullPointerException("Socket is not initilized.");
+	}
+
+	/**
+	 * Uniquely identifies a TCP connection among all connected machines.
+	 *
+	 * <p>
+	 * NOTE: IPAddress is not included for the moment to avoid re-sending same
+	 * information again and again for every reconfiguration. machineId to
+	 * {@link NodeInfo} map will be sent initially. So {@link StreamNode}s can
+	 * get ipAddress of a machine from that map.
+	 */
+	public static class TCPConnectionInfo extends ConnectionInfo {
+
+		private static final long serialVersionUID = 1L;
+
+		int portNo;
+
+		public TCPConnectionInfo(int srcID, int dstID, int portNo) {
+			super(srcID, dstID);
+			Ipv4Validator validator = Ipv4Validator.getInstance();
+			if (!validator.isValid(portNo))
+				throw new IllegalArgumentException("Invalid port No");
+			this.portNo = portNo;
+		}
+
+		public int getPortNo() {
+			return portNo;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = super.hashCode();
+			result = prime * result + portNo;
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (!super.equals(obj))
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			TCPConnectionInfo other = (TCPConnectionInfo) obj;
+			if (portNo != other.portNo)
+				return false;
+			return true;
+		}
+
+		@Override
+		public String toString() {
+			return "TCPConnectionInfo [srcID=" + getSrcID() + ", dstID="
+					+ getDstID() + ", portID=" + portNo + "]";
+		}
 	}
 }
