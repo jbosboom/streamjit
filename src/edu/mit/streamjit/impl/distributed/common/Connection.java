@@ -59,7 +59,7 @@ public interface Connection {
 	/**
 	 * Describes a connection between two machines.
 	 */
-	public class ConnectionInfo implements Serializable {
+	public abstract class ConnectionInfo implements Serializable {
 
 		private int srcID;
 
