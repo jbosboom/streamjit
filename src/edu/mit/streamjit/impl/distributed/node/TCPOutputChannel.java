@@ -1,17 +1,14 @@
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
-import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
-import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
 
 /**
  * This is {@link BoundaryOutputChannel} over TCP. Reads data from the given
@@ -105,6 +102,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 			} catch (IOException e) {
 				System.err
 						.println("TCP Output Channel. WriteObject exception.");
+				reConnect();
 			}
 		}
 	}
@@ -143,17 +141,13 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 	}
 
 	private void reConnect() {
-		int portNo = 5000; // Added later when changing this class to use
-							// StreamNode.getConnection().
-		ListenerSocket lstnSckt;
 		try {
-			lstnSckt = new ListenerSocket(portNo);
 			this.tcpConnection.closeConnection();
 			while (!stopFlag.get()) {
 				System.out.println("TCPOutputChannel : Reconnecting...");
 				try {
-					Socket skt = lstnSckt.makeConnection(1000);
-					this.tcpConnection = new TCPConnection(skt);
+					this.tcpConnection = conProvider.getConnection(conInfo,
+							1000);
 					return;
 				} catch (SocketTimeoutException stex) {
 					// We make this exception to recheck the stopFlag. Otherwise
