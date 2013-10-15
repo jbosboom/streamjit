@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentMap;
 import static com.google.common.base.Preconditions.*;
 
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
-import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
 
 public class TCPConnection implements Connection {
 
@@ -201,8 +200,31 @@ public class TCPConnection implements Connection {
 			this.allConnections = new ConcurrentHashMap<>();
 		}
 
+		/**
+		 * See {@link #getConnection(TCPConnectionInfo, int)}.
+		 *
+		 * @param conInfo
+		 * @return
+		 * @throws IOException
+		 */
 		public Connection getConnection(TCPConnectionInfo conInfo)
 				throws IOException {
+			return getConnection(conInfo, 0);
+		}
+
+		/**
+		 * If the connection corresponds to conInfo is already established
+		 * returns the connection. Try to make a new connection otherwise.
+		 *
+		 * @param conInfo - Information that uniquely identifies a {@link TCPConnection
+		 * @param timeOut - Time out only valid if making connection needs to be
+		 * 			done through a listener socket. i.e, conInfo.getSrcID() == myNodeID.
+		 * @return
+		 * @throws SocketTimeoutException
+		 * @throws IOException
+		 */
+		public Connection getConnection(TCPConnectionInfo conInfo, int timeOut)
+				throws SocketTimeoutException, IOException {
 			TCPConnection con = allConnections.get(conInfo);
 			if (con != null) {
 				if (con.isStillConnected())
@@ -212,19 +234,14 @@ public class TCPConnection implements Connection {
 			}
 
 			if (conInfo.getSrcID() == myNodeID) {
-				ListenerSocket listnerSckt = new ListenerSocket(
-						conInfo.getPortNo());
-				Socket socket = listnerSckt.makeConnection(0);
-				con = new TCPConnection(socket);
-
+				con = ConnectionFactory.getConnection(conInfo.getPortNo(),
+						timeOut);
 			} else if (conInfo.getDstID() == myNodeID) {
 				NodeInfo nodeInfo = nodeInfoMap.get(conInfo.getSrcID());
 				String ipAddress = nodeInfo.getIpAddress().getHostAddress();
 				int portNo = conInfo.getPortNo();
-				ConnectionFactory cf = new ConnectionFactory();
-				con = cf.getConnection(ipAddress, portNo);
+				con = ConnectionFactory.getConnection(ipAddress, portNo);
 			}
-
 			allConnections.put(conInfo, con);
 			return con;
 		}
