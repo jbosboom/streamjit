@@ -26,7 +26,6 @@ import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecif
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
-import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
@@ -72,21 +71,17 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 			Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
 			ImmutableSet<Blob> blobSet = getBlobs(cfg, staticConfig);
 			if (blobSet != null) {
-				Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = (Map<Token, Map.Entry<Integer, Integer>>) cfg
-						.getExtraData(GlobalConstants.TOKEN_MACHINE_MAP);
-				Map<Token, Integer> portIdMap = (Map<Token, Integer>) cfg
-						.getExtraData(GlobalConstants.PORTID_MAP);
 
 				Map<Token, TCPConnectionInfo> conInfoMap = (Map<Token, TCPConnectionInfo>) cfg
 						.getExtraData(GlobalConstants.CONINFOMAP);
 
 				streamNode.setBlobsManager(new BlobsManagerImpl(blobSet,
-						tokenMachineMap, portIdMap, null, conInfoMap,
-						streamNode, conProvider));
+						conInfoMap, streamNode, conProvider));
 			} else
 				System.out.println("Couldn't get the blobset....");
 		}
 	}
+
 	private ImmutableSet<Blob> getBlobs(Configuration dyncfg,
 			Configuration stccfg) {
 
@@ -231,7 +226,6 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
-			// System.exit(0);
 		}
 		return null;
 	}

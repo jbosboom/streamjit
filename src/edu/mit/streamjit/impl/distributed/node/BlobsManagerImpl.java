@@ -37,22 +37,14 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private Set<BlobExecuter> blobExecuters;
 
-	private Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap;
-	private Map<Token, Integer> portIdMap;
-	private Map<Integer, NodeInfo> nodeInfoMap;
 	private final StreamNode streamNode;
 	private final TCPConnectionProvider conProvider;
 	private Map<Token, TCPConnectionInfo> conInfoMap;
 
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
-			Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap,
-			Map<Token, Integer> portIdMap, Map<Integer, NodeInfo> nodeInfoMap,
 			Map<Token, TCPConnectionInfo> conInfoMap, StreamNode streamNode,
 			TCPConnectionProvider conProvider) {
 
-		this.tokenMachineMap = tokenMachineMap;
-		this.portIdMap = portIdMap;
-		this.nodeInfoMap = nodeInfoMap;
 		this.conInfoMap = conInfoMap;
 		this.streamNode = streamNode;
 		this.conProvider = conProvider;
@@ -185,15 +177,6 @@ public class BlobsManagerImpl implements BlobsManager {
 					conProvider, conInfo, t.toString(), false));
 		}
 		return outputChannelMap.build();
-	}
-	private String getIPAddress(Token t) {
-		if (!tokenMachineMap.containsKey(t))
-			throw new IllegalArgumentException(t
-					+ " is not found in the tokenMachineMap");
-
-		int machineID = tokenMachineMap.get(t).getKey();
-		NodeInfo nodeInfo = nodeInfoMap.get(machineID);
-		return nodeInfo.getIpAddress().getHostAddress();
 	}
 
 	private class BlobExecuter {
