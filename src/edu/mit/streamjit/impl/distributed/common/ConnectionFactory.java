@@ -13,7 +13,7 @@ import java.net.Socket;
  */
 public class ConnectionFactory {
 
-	public Connection getConnection(String serverAddress, int portNo)
+	public TCPConnection getConnection(String serverAddress, int portNo)
 			throws IOException {
 		Ipv4Validator validator = Ipv4Validator.getInstance();
 

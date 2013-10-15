@@ -3,7 +3,6 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -13,7 +12,6 @@ import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.OneToOneElement;
@@ -27,7 +25,6 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
-import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
@@ -36,12 +33,15 @@ import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputCh
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
 import edu.mit.streamjit.impl.distributed.common.Command;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.DrainElement;
 import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
@@ -63,7 +63,11 @@ import edu.mit.streamjit.impl.interp.Interpreter;
  */
 public class Controller {
 
+	TCPConnectionProvider conProvider;
+
 	int reconf = 0;
+
+	int startPortNo = 24896; // Just a random magic number.
 
 	private CommunicationManager comManager;
 
@@ -96,6 +100,8 @@ public class Controller {
 	 */
 	private TailChannel tailChannel;
 
+	private Set<TCPConnectionInfo> currentConInfos;
+
 	private Thread headThread;
 	private Thread tailThread;
 
@@ -104,6 +110,7 @@ public class Controller {
 	public Controller() {
 		this.comManager = new BlockingCommunicationManager();
 		this.controllerNodeID = 0;
+		this.currentConInfos = new HashSet<>();
 	}
 
 	/**
@@ -254,6 +261,9 @@ public class Controller {
 		builder.addParameter(cfParameter).putExtraData(
 				GlobalConstants.NODE_INFO_MAP, nodeInfoMap);
 
+		this.conProvider = new TCPConnectionProvider(controllerNodeID,
+				nodeInfoMap);
+
 		ConfigurationString json = new ConfigurationString(builder.build()
 				.toJson(), ConfigType.STATIC);
 		sendToAll(json);
@@ -267,18 +277,20 @@ public class Controller {
 		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = new HashMap<>();
 		Map<Token, Integer> portIdMap = new HashMap<>();
 
-		buildTokenMap(app.partitionsMachineMap1, tokenMachineMap, portIdMap,
-				app.source1, app.sink1);
+		Map<Token, TCPConnectionInfo> conInfoMap = buildConInfoMap(
+				app.partitionsMachineMap1, app.source1, app.sink1);
 
 		builder.putExtraData(GlobalConstants.TOKEN_MACHINE_MAP, tokenMachineMap)
 				.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
+
+		builder.putExtraData(GlobalConstants.CONINFOMAP, conInfoMap);
 
 		Configuration cfg = builder.build();
 		ConfigurationString json = new ConfigurationString(cfg.toJson(),
 				ConfigType.DYNAMIC);
 		sendToAll(json);
 
-		setupHeadTail1(cfg, app.bufferMap,
+		setupHeadTail1(conInfoMap, app.bufferMap,
 				Token.createOverallInputToken(app.source1),
 				Token.createOverallOutputToken(app.sink1));
 
@@ -293,50 +305,38 @@ public class Controller {
 	 * @param headToken
 	 * @param tailToken
 	 */
-	@SuppressWarnings("unchecked")
-	private void setupHeadTail1(Configuration cfg,
+	private void setupHeadTail1(Map<Token, TCPConnectionInfo> conInfoMap,
 			ImmutableMap<Token, Buffer> bufferMap, Token headToken,
 			Token tailToken) {
-		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = (Map<Token, Map.Entry<Integer, Integer>>) cfg
-				.getExtraData(GlobalConstants.TOKEN_MACHINE_MAP);
 
-		Map<Token, Integer> portIdMap = (Map<Token, Integer>) cfg
-				.getExtraData(GlobalConstants.PORTID_MAP);
+		TCPConnectionInfo headconInfo = conInfoMap.get(headToken);
+		assert headconInfo != null : "No head connection info exists in conInfoMap";
+		assert headconInfo.getSrcID() == controllerNodeID : "Head channel should start from the controller.";
 
-		Map.Entry<Integer, Integer> headentry = tokenMachineMap.get(headToken);
-		assert headentry != null : "No head token exists in tokenMachineMap";
-		assert headentry.getKey() == controllerNodeID : "Head channel should start from the controller.";
-
-		if (headentry.getValue() != controllerNodeID) {
+		if (headconInfo.getDstID() != controllerNodeID) {
 			if (!bufferMap.containsKey(headToken))
 				throw new IllegalArgumentException(
 						"No head buffer in the passed bufferMap.");
 
 			headChannel = new TCPOutputChannel(bufferMap.get(headToken),
-					portIdMap.get(headToken), "headChannel - "
+					conProvider, headconInfo, "headChannel - "
 							+ headToken.toString(), false);
 		}
 
-		Map.Entry<Integer, Integer> tailentry = tokenMachineMap.get(tailToken);
-		assert tailentry != null : "No tail token exists in tokenMachineMap";
-		assert tailentry.getValue() == controllerNodeID : "Tail channel should ends at the controller.";
+		TCPConnectionInfo tailconInfo = conInfoMap.get(tailToken);
+		assert tailconInfo != null : "No tail connection info exists in conInfoMap";
+		assert tailconInfo.getDstID() == controllerNodeID : "Tail channel should ends at the controller.";
 
-		if (tailentry.getKey() != controllerNodeID) {
+		if (tailconInfo.getSrcID() != controllerNodeID) {
 			if (!bufferMap.containsKey(tailToken))
 				throw new IllegalArgumentException(
 						"No tail buffer in the passed bufferMap.");
 
-			int nodeID = tokenMachineMap.get(tailToken).getKey();
-			StreamNodeAgent agent = this.StreamNodeMap.get(nodeID);
-			NodeInfo nodeInfo = agent.getNodeInfo();
-			String ipAddress = nodeInfo.getIpAddress().getHostAddress();
-
-			tailChannel = new TailChannel(bufferMap.get(tailToken), ipAddress,
-					portIdMap.get(tailToken), "tailChannel - "
+			tailChannel = new TailChannel(bufferMap.get(tailToken),
+					conProvider, tailconInfo, "tailChannel - "
 							+ tailToken.toString(), false, 10000);
 		}
 	}
-
 	/**
 	 * Setup the headchannel and tailchannel.
 	 * 
@@ -367,9 +367,9 @@ public class Controller {
 				throw new IllegalArgumentException(
 						"No head buffer in the passed bufferMap.");
 
-			headChannel = new TCPOutputChannel(bufferMap.get(headToken),
-					portIdMap.get(headToken), "headChannel - "
-							+ headToken.toString(), false);
+			// headChannel = new TCPOutputChannel(bufferMap.get(headToken),
+			// portIdMap.get(headToken), "headChannel - "
+			// + headToken.toString(), false);
 		}
 
 		Map.Entry<Integer, Integer> tailentry = tokenMachineMap.get(tailToken);
@@ -384,10 +384,11 @@ public class Controller {
 			int nodeID = tokenMachineMap.get(tailToken).getKey();
 			NodeInfo nodeInfo = nodeInfoMap.get(nodeID);
 			String ipAddress = nodeInfo.getIpAddress().getHostAddress();
-
-			tailChannel = new TailChannel(bufferMap.get(tailToken), ipAddress,
-					portIdMap.get(tailToken), "tailChannel - "
-							+ tailToken.toString(), false, 10000);
+			//
+			// tailChannel = new TailChannel(bufferMap.get(tailToken),
+			// ipAddress,
+			// portIdMap.get(tailToken), "tailChannel - "
+			// + tailToken.toString(), false, 10000);
 		}
 	}
 
@@ -453,6 +454,82 @@ public class Controller {
 				.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
 
 		return builder.build();
+	}
+
+	private Map<Token, TCPConnectionInfo> buildConInfoMap(
+			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
+			Worker<?, ?> source, Worker<?, ?> sink) {
+
+		assert partitionsMachineMap != null : "partitionsMachineMap is null";
+
+		Set<TCPConnectionInfo> usedConInfos = new HashSet<>();
+		Map<Token, TCPConnectionInfo> conInfoMap = new HashMap<>();
+
+		for (Integer machineID : partitionsMachineMap.keySet()) {
+			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap
+					.get(machineID);
+			Set<Worker<?, ?>> allWorkers = new HashSet<>(); // Contains all
+															// workers those are
+															// assigned to the
+															// current machineID
+															// machine.
+			for (Set<Worker<?, ?>> blobWorkers : blobList) {
+				allWorkers.addAll(blobWorkers);
+			}
+
+			for (Worker<?, ?> w : allWorkers) {
+				for (Worker<?, ?> succ : Workers.getSuccessors(w)) {
+					if (allWorkers.contains(succ))
+						continue;
+					int dstMachineID = getAssignedMachine(succ,
+							partitionsMachineMap);
+					Token t = new Token(w, succ);
+					addtoconInfoMap(machineID, dstMachineID, t, usedConInfos,
+							conInfoMap);
+				}
+			}
+		}
+
+		Token headToken = Token.createOverallInputToken(source);
+		int dstMachineID = getAssignedMachine(source, partitionsMachineMap);
+		addtoconInfoMap(controllerNodeID, dstMachineID, headToken,
+				usedConInfos, conInfoMap);
+
+		Token tailToken = Token.createOverallOutputToken(sink);
+		int srcMahineID = getAssignedMachine(sink, partitionsMachineMap);
+		addtoconInfoMap(srcMahineID, controllerNodeID, tailToken, usedConInfos,
+				conInfoMap);
+
+		return conInfoMap;
+	}
+
+	/**
+	 * Just extracted from {@link #buildConInfoMap(Map, Worker, Worker)} because
+	 * the code snippet in this method happened to repeat three times inside the
+	 * {@link #buildConInfoMap(Map, Worker, Worker)} method.
+	 */
+	private void addtoconInfoMap(int srcID, int dstID, Token t,
+			Set<TCPConnectionInfo> usedConInfos,
+			Map<Token, TCPConnectionInfo> conInfoMap) {
+
+		ConnectionInfo conInfo = new ConnectionInfo(srcID, dstID);
+
+		TCPConnectionInfo tcpConInfo = getTcpConInfo(conInfo);
+		if (tcpConInfo == null || usedConInfos.contains(tcpConInfo)) {
+			tcpConInfo = new TCPConnectionInfo(srcID, dstID, startPortNo++);
+			this.currentConInfos.add(tcpConInfo);
+		}
+
+		conInfoMap.put(t, tcpConInfo);
+		usedConInfos.add(tcpConInfo);
+	}
+
+	private TCPConnectionInfo getTcpConInfo(ConnectionInfo conInfo) {
+		for (TCPConnectionInfo tcpconInfo : currentConInfos) {
+			if (conInfo.equals(tcpconInfo))
+				return tcpconInfo;
+		}
+		return null;
 	}
 
 	// Key - MachineID of the source node, Value - MachineID of the destination
@@ -605,14 +682,17 @@ public class Controller {
 	 * TODO: Temp fix. Change it later.
 	 */
 	private class TailChannel extends TCPInputChannel {
+
 		int limit;
+
 		int count;
 
 		CountDownLatch latch;
 
-		private TailChannel(Buffer buffer, String ipAddress, int portNo,
-				String bufferTokenName, Boolean debugPrint, int limit) {
-			super(buffer, ipAddress, portNo, bufferTokenName, debugPrint);
+		public TailChannel(Buffer buffer, TCPConnectionProvider conProvider,
+				TCPConnectionInfo conInfo, String bufferTokenName,
+				Boolean debugPrint, int limit) {
+			super(buffer, conProvider, conInfo, bufferTokenName, debugPrint);
 			this.limit = limit;
 			count = 0;
 			latch = new CountDownLatch(1);

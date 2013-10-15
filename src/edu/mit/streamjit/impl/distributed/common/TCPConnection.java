@@ -2,8 +2,14 @@ package edu.mit.streamjit.impl.distributed.common;
 
 import java.io.*;
 import java.net.*;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import static com.google.common.base.Preconditions.*;
 
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
+import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
 
 public class TCPConnection implements Connection {
 
@@ -114,7 +120,7 @@ public class TCPConnection implements Connection {
 
 	/**
 	 * Uniquely identifies a TCP connection among all connected machines.
-	 *
+	 * 
 	 * <p>
 	 * NOTE: IPAddress is not included for the moment to avoid re-sending same
 	 * information again and again for every reconfiguration. machineId to
@@ -165,6 +171,68 @@ public class TCPConnection implements Connection {
 		public String toString() {
 			return "TCPConnectionInfo [srcID=" + getSrcID() + ", dstID="
 					+ getDstID() + ", portID=" + portNo + "]";
+		}
+	}
+
+	/**
+	 * Keeps all opened {@link TCPConnection}s for a machine. Each machine
+	 * should have a single instance of this class and use this class to make
+	 * new connections.
+	 * 
+	 * <p>
+	 * TODO: Need to make this class singleton. I didn't do it now because in
+	 * current way, controller and a local {@link StreamNode} are running in a
+	 * same JVM. So first, local {@link StreamNode} should be made to run on a
+	 * different JVM and then make this class singleton.
+	 */
+	public static class TCPConnectionProvider {
+
+		private ConcurrentMap<TCPConnectionInfo, TCPConnection> allConnections;
+
+		private final int myNodeID;
+
+		private final Map<Integer, NodeInfo> nodeInfoMap;
+
+		public TCPConnectionProvider(int myNodeID,
+				Map<Integer, NodeInfo> nodeInfoMap) {
+			checkNotNull(nodeInfoMap, "nodeInfoMap is null");
+			this.myNodeID = myNodeID;
+			this.nodeInfoMap = nodeInfoMap;
+			this.allConnections = new ConcurrentHashMap<>();
+		}
+
+		public Connection getConnection(TCPConnectionInfo conInfo)
+				throws IOException {
+			TCPConnection con = allConnections.get(conInfo);
+			if (con != null) {
+				if (con.isStillConnected())
+					return con;
+				else
+					con.closeConnection();
+			}
+
+			if (conInfo.getSrcID() == myNodeID) {
+				ListenerSocket listnerSckt = new ListenerSocket(
+						conInfo.getPortNo());
+				Socket socket = listnerSckt.makeConnection(0);
+				con = new TCPConnection(socket);
+
+			} else if (conInfo.getDstID() == myNodeID) {
+				NodeInfo nodeInfo = nodeInfoMap.get(conInfo.getSrcID());
+				String ipAddress = nodeInfo.getIpAddress().getHostAddress();
+				int portNo = conInfo.getPortNo();
+				ConnectionFactory cf = new ConnectionFactory();
+				con = cf.getConnection(ipAddress, portNo);
+			}
+
+			allConnections.put(conInfo, con);
+			return con;
+		}
+
+		public void closeAllConnections() {
+			for (TCPConnection con : allConnections.values()) {
+				con.closeConnection();
+			}
 		}
 	}
 }

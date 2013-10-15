@@ -27,9 +27,11 @@ import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
@@ -45,6 +47,8 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	private Configuration staticConfig = null;
 
+	private TCPConnectionProvider conProvider;
+
 	public SNCfgStringProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
@@ -52,10 +56,16 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 	@Override
 	public void process(String json, ConfigType type) {
 		if (type == ConfigType.STATIC) {
-			if (this.staticConfig == null)
+			if (this.staticConfig == null) {
 				this.staticConfig = Jsonifiers.fromJson(json,
 						Configuration.class);
-			else
+
+				Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) staticConfig
+						.getExtraData(GlobalConstants.NODE_INFO_MAP);
+
+				this.conProvider = new TCPConnectionProvider(
+						streamNode.getNodeID(), nodeInfoMap);
+			} else
 				System.err
 						.println("New static configuration received...But Ignored...");
 		} else {
@@ -67,16 +77,16 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 				Map<Token, Integer> portIdMap = (Map<Token, Integer>) cfg
 						.getExtraData(GlobalConstants.PORTID_MAP);
 
-				Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) staticConfig
-						.getExtraData(GlobalConstants.NODE_INFO_MAP);
+				Map<Token, TCPConnectionInfo> conInfoMap = (Map<Token, TCPConnectionInfo>) cfg
+						.getExtraData(GlobalConstants.CONINFOMAP);
 
 				streamNode.setBlobsManager(new BlobsManagerImpl(blobSet,
-						tokenMachineMap, portIdMap, nodeInfoMap, streamNode));
+						tokenMachineMap, portIdMap, null, conInfoMap,
+						streamNode, conProvider));
 			} else
 				System.out.println("Couldn't get the blobset....");
 		}
 	}
-
 	private ImmutableSet<Blob> getBlobs(Configuration dyncfg,
 			Configuration stccfg) {
 
