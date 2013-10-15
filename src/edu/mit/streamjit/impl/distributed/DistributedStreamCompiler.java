@@ -119,8 +119,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		stream.visit(verifier);
 
 		Map<CommunicationType, Integer> conTypeCount = new HashMap<>();
-		conTypeCount.put(CommunicationType.LOCAL, 1);
-		conTypeCount.put(CommunicationType.TCP, this.noOfnodes - 1);
+		// conTypeCount.put(CommunicationType.LOCAL, 1);
+		conTypeCount.put(CommunicationType.TCP, this.noOfnodes);
 		Controller controller = new Controller();
 		controller.connect(conTypeCount);
 
@@ -130,19 +130,17 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		BlobFactory bf = new DistributedBlobFactory(noOfnodes);
 		this.cfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(source));
-		app.newConfiguration(cfg);
 
-		// if (cfg == null) {
-		// Integer[] machineIds = new Integer[this.noOfnodes];
-		// for (int i = 0; i < machineIds.length; i++) {
-		// machineIds[i] = i + 1;
-		// }
-		// Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap =
-		// getMachineWorkerMap(
-		// machineIds, stream, source, sink);
-		// app.newPartitionMap(partitionsMachineMap);
-		// } else
-		// app.newConfiguration(cfg);
+		if (cfg == null) {
+			Integer[] machineIds = new Integer[this.noOfnodes];
+			for (int i = 0; i < machineIds.length; i++) {
+				machineIds[i] = i + 1;
+			}
+			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
+					machineIds, stream, source, sink);
+			app.newPartitionMap(partitionsMachineMap);
+		} else
+			app.newConfiguration(cfg);
 
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
 		// context.
@@ -195,7 +193,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			OnlineTuner tuner = new OnlineTuner(drainer, controller, app);
 			new Thread(tuner, "OnlineTuner").start();
 		}
-
 		return cs;
 	}
 
