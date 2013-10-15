@@ -1,8 +1,10 @@
 package edu.mit.streamjit.impl.distributed.common;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.net.Socket;
 
+import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
 
 /**
  * Returns {@link Connection}s. Ask this {@link ConnectionFactory} for a new
@@ -13,7 +15,7 @@ import java.net.Socket;
  */
 public class ConnectionFactory {
 
-	public TCPConnection getConnection(String serverAddress, int portNo)
+	public static TCPConnection getConnection(String serverAddress, int portNo)
 			throws IOException {
 		Ipv4Validator validator = Ipv4Validator.getInstance();
 
@@ -44,7 +46,22 @@ public class ConnectionFactory {
 		throw new IOException("Connection creation failed.");
 	}
 
-	public Connection getConnection(Socket socket) throws IOException {
+	/**
+	 * @param portNo
+	 * @param timeOut
+	 *            in milliseconds. If zero, no timeout. See {@link ServerSocket}
+	 *            .setSoTimeout().
+	 * @return
+	 * @throws IOException
+	 */
+	public static TCPConnection getConnection(int portNo, int timeOut)
+			throws IOException {
+		ListenerSocket listnerSckt = new ListenerSocket(portNo);
+		Socket socket = listnerSckt.makeConnection(timeOut);
+		return new TCPConnection(socket);
+	}
+
+	public static Connection getConnection(Socket socket) throws IOException {
 		if (socket == null)
 			throw new IOException("Null Socket.");
 		return new TCPConnection(socket);
