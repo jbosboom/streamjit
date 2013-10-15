@@ -2,31 +2,16 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.base.Splitter;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableSet;
 
-import edu.mit.streamjit.api.StreamCompilationFailedException;
-import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
@@ -130,114 +115,6 @@ public class OnlineTuner implements Runnable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-	/**
-	 * Reads the configuration and returns a map of nodeID to list of workers
-	 * set which are assigned to the node. value of the returned map is list of
-	 * worker set where each worker set is individual blob.
-	 * 
-	 * @param config
-	 * @param workerset
-	 * @return map of nodeID to list of workers set which are assigned to the
-	 *         node. value is list of worker set where each set is individual
-	 *         blob.
-	 */
-	private Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
-			Configuration config, Worker<?, ?> source) {
-
-		ImmutableSet<Worker<?, ?>> workerset = Workers
-				.getAllWorkersInGraph(source);
-
-		Map<Integer, Set<Worker<?, ?>>> partition = new HashMap<>();
-		for (Worker<?, ?> w : workerset) {
-			IntParameter w2m = config.getParameter(String.format(
-					"worker%dtomachine", Workers.getIdentifier(w)),
-					IntParameter.class);
-			int machine = w2m.getValue();
-
-			if (!partition.containsKey(machine)) {
-				Set<Worker<?, ?>> set = new HashSet<>();
-				partition.put(machine, set);
-			}
-			partition.get(machine).add(w);
-		}
-
-		Map<Integer, List<Set<Worker<?, ?>>>> machineWorkerMap = new HashMap<>();
-		for (int machine : partition.keySet()) {
-			machineWorkerMap.put(machine, getBlobs(partition.get(machine)));
-		}
-		return machineWorkerMap;
-	}
-
-	private boolean isValid(
-			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
-			BlobGraph bg) {
-		List<Set<Worker<?, ?>>> partitionList = new ArrayList<>();
-		for (List<Set<Worker<?, ?>>> lst : partitionsMachineMap.values()) {
-			partitionList.addAll(lst);
-		}
-		try {
-			bg = new BlobGraph(partitionList);
-
-		} catch (StreamCompilationFailedException ex) {
-			System.err.print("Cycles found in the worker->blob assignment");
-			for (int machine : partitionsMachineMap.keySet()) {
-				System.err.print("\nMachine - " + machine);
-				for (Set<Worker<?, ?>> blobworkers : partitionsMachineMap
-						.get(machine)) {
-					System.err.print("\n\tBlob worker set : ");
-					for (Worker<?, ?> w : blobworkers) {
-						System.err.print(Workers.getIdentifier(w) + " ");
-					}
-				}
-			}
-			System.err.println();
-			return false;
-		}
-		return true;
-	}
-
-	/**
-	 * Goes through all the workers assigned to a machine, find the workers
-	 * which are interconnected and group them as a blob workers. i.e., Group
-	 * the workers such that each group can be executed as a blob.
-	 * <p>
-	 * TODO: If any dynamic edges exists then should create interpreter blob.
-	 * 
-	 * @param workerset
-	 * @return list of workers set which contains interconnected workers. Each
-	 *         worker set in the list is supposed to run in an individual blob.
-	 */
-	private List<Set<Worker<?, ?>>> getBlobs(Set<Worker<?, ?>> workerset) {
-		List<Set<Worker<?, ?>>> ret = new ArrayList<Set<Worker<?, ?>>>();
-		while (!workerset.isEmpty()) {
-			Deque<Worker<?, ?>> queue = new ArrayDeque<>();
-			Set<Worker<?, ?>> blobworkers = new HashSet<>();
-			Worker<?, ?> w = workerset.iterator().next();
-			blobworkers.add(w);
-			workerset.remove(w);
-			queue.offer(w);
-			while (!queue.isEmpty()) {
-				Worker<?, ?> wrkr = queue.poll();
-				for (Worker<?, ?> succ : Workers.getSuccessors(wrkr)) {
-					if (workerset.contains(succ)) {
-						blobworkers.add(succ);
-						workerset.remove(succ);
-						queue.offer(succ);
-					}
-				}
-
-				for (Worker<?, ?> pred : Workers.getPredecessors(wrkr)) {
-					if (workerset.contains(pred)) {
-						blobworkers.add(pred);
-						workerset.remove(pred);
-						queue.offer(pred);
-					}
-				}
-			}
-			ret.add(blobworkers);
-		}
-		return ret;
 	}
 
 	/**
