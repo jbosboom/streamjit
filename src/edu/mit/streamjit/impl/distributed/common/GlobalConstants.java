@@ -41,5 +41,6 @@ public final class GlobalConstants {
 	 */
 	public static final String PORTID_MAP = "portIdMap";
 	public static final String PARTITION = "partition";
+	public static final String CONINFOMAP = "ConInfoMap";
 
 }

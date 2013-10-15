@@ -9,6 +9,8 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
 
 /**
@@ -27,22 +29,26 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private Boolean debugPrint;
 
-	private String name;
+	private Buffer buffer;
 
-	private int portNo;
+	private TCPConnectionProvider conProvider;
 
-	private AtomicBoolean stopFlag;
-
-	private boolean cleanStop;
+	private TCPConnectionInfo conInfo;
 
 	private Connection tcpConnection;
 
-	private Buffer buffer;
+	private AtomicBoolean stopFlag;
 
-	public TCPOutputChannel(Buffer buffer, int portNo, String bufferTokenName,
+	private String name;
+
+	private boolean cleanStop;
+
+	public TCPOutputChannel(Buffer buffer, TCPConnectionProvider conProvider,
+			TCPConnectionInfo conInfo, String bufferTokenName,
 			Boolean debugPrint) {
 		this.buffer = buffer;
-		this.portNo = portNo;
+		this.conProvider = conProvider;
+		this.conInfo = conInfo;
 		this.stopFlag = new AtomicBoolean(false);
 		this.cleanStop = false;
 		this.name = "TCPOutputChannel - " + bufferTokenName;
@@ -51,7 +57,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	@Override
 	public void closeConnection() throws IOException {
-		tcpConnection.closeConnection();
+		// tcpConnection.closeConnection();
 	}
 
 	@Override
@@ -67,7 +73,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 			public void run() {
 				if (tcpConnection == null || !tcpConnection.isStillConnected()) {
 					try {
-						makeConnection();
+						tcpConnection = conProvider.getConnection(conInfo);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -99,7 +105,6 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 			} catch (IOException e) {
 				System.err
 						.println("TCP Output Channel. WriteObject exception.");
-				reConnect();
 			}
 		}
 	}
@@ -137,13 +142,9 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 		}
 	}
 
-	private void makeConnection() throws IOException {
-		ListenerSocket listnerSckt = new ListenerSocket(portNo);
-		Socket socket = listnerSckt.makeConnection(0);
-		this.tcpConnection = new TCPConnection(socket);
-	}
-
 	private void reConnect() {
+		int portNo = 5000; // Added later when changing this class to use
+							// StreamNode.getConnection().
 		ListenerSocket lstnSckt;
 		try {
 			lstnSckt = new ListenerSocket(portNo);

@@ -8,6 +8,8 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 
 /**
  * This is {@link BoundaryInputChannel} over TCP. Receive objects from TCP
@@ -24,9 +26,9 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private Buffer buffer;
 
-	private String ipAddress;
+	private TCPConnectionProvider conProvider;
 
-	private int portNo;
+	private TCPConnectionInfo conInfo;
 
 	private Connection tcpConnection;
 
@@ -34,11 +36,12 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private String name;
 
-	public TCPInputChannel(Buffer buffer, String ipAddress, int portNo,
-			String bufferTokenName, Boolean debugPrint) {
+	public TCPInputChannel(Buffer buffer, TCPConnectionProvider conProvider,
+			TCPConnectionInfo conInfo, String bufferTokenName,
+			Boolean debugPrint) {
 		this.buffer = buffer;
-		this.ipAddress = ipAddress;
-		this.portNo = portNo;
+		this.conProvider = conProvider;
+		this.conInfo = conInfo;
 		this.stopFlag = new AtomicBoolean(false);
 		this.name = "TCPInputChannel - " + bufferTokenName;
 		this.debugPrint = debugPrint;
@@ -46,7 +49,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	@Override
 	public void closeConnection() throws IOException {
-		tcpConnection.closeConnection();
+		// tcpConnection.closeConnection();
 	}
 
 	@Override
@@ -61,8 +64,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			public void run() {
 				if (tcpConnection == null || !tcpConnection.isStillConnected()) {
 					try {
-						ConnectionFactory cf = new ConnectionFactory();
-						tcpConnection = cf.getConnection(ipAddress, portNo);
+						tcpConnection = conProvider.getConnection(conInfo);
 					} catch (IOException e) {
 						// TODO: Need to handle this exception.
 						e.printStackTrace();
@@ -167,8 +169,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			try {
 				System.out.println("TCPInputChannel : Reconnecting...");
 				this.tcpConnection.closeConnection();
-				ConnectionFactory cf = new ConnectionFactory();
-				tcpConnection = cf.getConnection(ipAddress, portNo);
+				tcpConnection = conProvider.getConnection(conInfo);
 				return;
 			} catch (IOException e) {
 				try {

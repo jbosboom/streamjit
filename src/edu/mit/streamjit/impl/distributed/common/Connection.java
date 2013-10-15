@@ -62,7 +62,7 @@ public interface Connection {
 	 * machineIDs are involved, irrespect of srcID and dstID positions, these
 	 * methods return same result.
 	 */
-	public abstract class ConnectionInfo implements Serializable {
+	public class ConnectionInfo implements Serializable {
 
 		private int srcID;
 

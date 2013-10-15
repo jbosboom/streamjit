@@ -22,6 +22,8 @@ import edu.mit.streamjit.impl.distributed.common.MessageElement;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 
 /**
@@ -39,16 +41,21 @@ public class BlobsManagerImpl implements BlobsManager {
 	private Map<Token, Integer> portIdMap;
 	private Map<Integer, NodeInfo> nodeInfoMap;
 	private final StreamNode streamNode;
+	private final TCPConnectionProvider conProvider;
+	private Map<Token, TCPConnectionInfo> conInfoMap;
 
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
 			Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap,
 			Map<Token, Integer> portIdMap, Map<Integer, NodeInfo> nodeInfoMap,
-			StreamNode streamNode) {
+			Map<Token, TCPConnectionInfo> conInfoMap, StreamNode streamNode,
+			TCPConnectionProvider conProvider) {
 
 		this.tokenMachineMap = tokenMachineMap;
 		this.portIdMap = portIdMap;
 		this.nodeInfoMap = nodeInfoMap;
+		this.conInfoMap = conInfoMap;
 		this.streamNode = streamNode;
+		this.conProvider = conProvider;
 
 		ImmutableMap<Token, Buffer> bufferMap = createBufferMap(blobSet);
 
@@ -162,10 +169,9 @@ public class BlobsManagerImpl implements BlobsManager {
 			Set<Token> inputTokens, ImmutableMap<Token, Buffer> bufferMap) {
 		ImmutableMap.Builder<Token, BoundaryInputChannel> inputChannelMap = new ImmutableMap.Builder<>();
 		for (Token t : inputTokens) {
-			int portNo = getPortNo(t);
-			String ipAddress = getIPAddress(t);
+			TCPConnectionInfo conInfo = conInfoMap.get(t);
 			inputChannelMap.put(t, new TCPInputChannel(bufferMap.get(t),
-					ipAddress, portNo, t.toString(), false));
+					conProvider, conInfo, t.toString(), false));
 		}
 		return inputChannelMap.build();
 	}
@@ -174,13 +180,12 @@ public class BlobsManagerImpl implements BlobsManager {
 			Set<Token> outputTokens, ImmutableMap<Token, Buffer> bufferMap) {
 		ImmutableMap.Builder<Token, BoundaryOutputChannel> outputChannelMap = new ImmutableMap.Builder<>();
 		for (Token t : outputTokens) {
-			int portNo = getPortNo(t);
+			TCPConnectionInfo conInfo = conInfoMap.get(t);
 			outputChannelMap.put(t, new TCPOutputChannel(bufferMap.get(t),
-					portNo, t.toString(), false));
+					conProvider, conInfo, t.toString(), false));
 		}
 		return outputChannelMap.build();
 	}
-
 	private String getIPAddress(Token t) {
 		if (!tokenMachineMap.containsKey(t))
 			throw new IllegalArgumentException(t
@@ -189,13 +194,6 @@ public class BlobsManagerImpl implements BlobsManager {
 		int machineID = tokenMachineMap.get(t).getKey();
 		NodeInfo nodeInfo = nodeInfoMap.get(machineID);
 		return nodeInfo.getIpAddress().getHostAddress();
-	}
-
-	private int getPortNo(Token t) {
-		if (!portIdMap.containsKey(t))
-			throw new IllegalArgumentException(t
-					+ " is not found in the portIdMap");
-		return portIdMap.get(t);
 	}
 
 	private class BlobExecuter {
