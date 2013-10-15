@@ -2,8 +2,6 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.util.Map;
 
-import com.google.common.collect.Multiset.Entry;
-
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
