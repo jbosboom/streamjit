@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.OptionalDataException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.mit.streamjit.impl.blob.Buffer;
@@ -35,6 +36,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private String name;
 
+	private boolean softClosed;
+
 	public TCPInputChannel(Buffer buffer, TCPConnectionProvider conProvider,
 			TCPConnectionInfo conInfo, String bufferTokenName,
 			Boolean debugPrint) {
@@ -44,6 +47,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		this.stopFlag = new AtomicBoolean(false);
 		this.name = "TCPInputChannel - " + bufferTokenName;
 		this.debugPrint = debugPrint;
+		this.softClosed = false;
 	}
 
 	@Override
@@ -69,10 +73,11 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						e.printStackTrace();
 					}
 				}
-				while (!stopFlag.get()) {
+				while (!stopFlag.get()&&!softClosed) {
 					receiveData();
 				}
-				finalReceive();
+				if (!softClosed)
+					finalReceive();
 				try {
 					closeConnection();
 				} catch (IOException e) {
@@ -107,7 +112,10 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			}
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
-		} catch (EOFException e) {
+		} catch (OptionalDataException e) {
+			softClosed = true;
+		}
+		catch (EOFException e) {
 			// Other side is closed.
 			stopFlag.set(true);
 		} catch (IOException e) {
@@ -157,6 +165,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			} catch (ClassNotFoundException e) {
 				hasData = true;
 				e.printStackTrace();
+			} catch (OptionalDataException e) {
+				hasData = false;
 			} catch (IOException e) {
 				hasData = false;
 			}

@@ -55,6 +55,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 	@Override
 	public void closeConnection() throws IOException {
 		// tcpConnection.closeConnection();
+		tcpConnection.softClose();
 	}
 
 	@Override
@@ -80,10 +81,18 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 				if (cleanStop)
 					finalSend();
+
 				try {
 					closeConnection();
 				} catch (IOException e) {
 					e.printStackTrace();
+				}
+
+				if (debugPrint) {
+					System.err.println(Thread.currentThread().getName()
+							+ " - Exiting...");
+					System.out.println("cleanStop " + cleanStop);
+					System.out.println("stopFlag " + stopFlag.get());
 				}
 			}
 		};
@@ -114,6 +123,9 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	@Override
 	public void stop(boolean clean) {
+		if (debugPrint)
+			System.out.println(Thread.currentThread().getName()
+					+ " - stop request");
 		this.cleanStop = clean;
 		this.stopFlag.set(true);
 	}
