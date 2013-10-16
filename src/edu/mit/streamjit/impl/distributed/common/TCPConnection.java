@@ -10,6 +10,13 @@ import static com.google.common.base.Preconditions.*;
 
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
+/**
+ * TCPConnection is not thread safe.
+ *
+ * @author Sumanan sumanan@mit.edu
+ * @since Oct 16, 2013
+ *
+ */
 public class TCPConnection implements Connection {
 
 	private ObjectOutput ooStream = null;
@@ -93,9 +100,9 @@ public class TCPConnection implements Connection {
 				// System.out.println("Object read...");
 				cb = (T) o;
 			} catch (OptionalDataException ex) {
-				//System.err.println("OptionalDataException....SoftClose...");
+				// System.err.println("OptionalDataException....SoftClose...");
 				int a = oiStream.read();
-				//System.out.println(a);
+				// System.out.println(a);
 				throw ex;
 			} catch (ClassCastException e) {
 				System.err.println("ClassCastException...");
@@ -216,7 +223,7 @@ public class TCPConnection implements Connection {
 
 		/**
 		 * See {@link #getConnection(TCPConnectionInfo, int)}.
-		 *
+		 * 
 		 * @param conInfo
 		 * @return
 		 * @throws IOException
@@ -226,7 +233,7 @@ public class TCPConnection implements Connection {
 			return getConnection(conInfo, 0);
 		}
 
-		/**
+/**
 		 * If the connection corresponds to conInfo is already established
 		 * returns the connection. Try to make a new connection otherwise.
 		 *
@@ -251,12 +258,12 @@ public class TCPConnection implements Connection {
 
 			if (conInfo.getSrcID() == myNodeID) {
 				con = ConnectionFactory.getConnection(conInfo.getPortNo(),
-						timeOut);
+						timeOut, false);
 			} else if (conInfo.getDstID() == myNodeID) {
 				NodeInfo nodeInfo = nodeInfoMap.get(conInfo.getSrcID());
 				String ipAddress = nodeInfo.getIpAddress().getHostAddress();
 				int portNo = conInfo.getPortNo();
-				con = ConnectionFactory.getConnection(ipAddress, portNo);
+				con = ConnectionFactory.getConnection(ipAddress, portNo, false);
 			}
 			allConnections.put(conInfo, con);
 			return con;
