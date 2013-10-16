@@ -24,7 +24,7 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
  */
 public final class TCPOutputChannel implements BoundaryOutputChannel {
 
-	private Boolean debugPrint;
+	private final int debugPrint;
 
 	private Buffer buffer;
 
@@ -40,9 +40,10 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private boolean cleanStop;
 
+	private int count;
+
 	public TCPOutputChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName,
-			Boolean debugPrint) {
+			TCPConnectionInfo conInfo, String bufferTokenName, int debugPrint) {
 		this.buffer = buffer;
 		this.conProvider = conProvider;
 		this.conInfo = conInfo;
@@ -50,6 +51,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 		this.cleanStop = false;
 		this.name = "TCPOutputChannel - " + bufferTokenName;
 		this.debugPrint = debugPrint;
+		count = 0;
 	}
 
 	@Override
@@ -88,7 +90,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 					e.printStackTrace();
 				}
 
-				if (debugPrint) {
+				if (debugPrint > 0) {
 					System.err.println(Thread.currentThread().getName()
 							+ " - Exiting...");
 					System.out.println("cleanStop " + cleanStop);
@@ -100,8 +102,9 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	public void sendData() {
 		while (this.buffer.size() > 0 && !stopFlag.get()) {
+			count++;
 			try {
-				if (debugPrint) {
+				if (debugPrint == 3) {
 					Object o = buffer.read();
 					System.out.println(Thread.currentThread().getName() + " - "
 							+ o.toString());
@@ -113,6 +116,10 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 						.println("TCP Output Channel. WriteObject exception.");
 				reConnect();
 			}
+			if (count % 1000 == 0 && debugPrint == 2) {
+				System.out.println(Thread.currentThread().getName() + " - "
+						+ count + " items have been sent");
+			}
 		}
 	}
 
@@ -123,7 +130,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	@Override
 	public void stop(boolean clean) {
-		if (debugPrint)
+		if (debugPrint > 0)
 			System.out.println(Thread.currentThread().getName()
 					+ " - stop request");
 		this.cleanStop = clean;
@@ -136,10 +143,11 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 	 */
 	private void finalSend() {
 		while (this.buffer.size() > 0) {
+			count++;
 			try {
 				// System.out.println(Thread.currentThread().getName() +
 				// " buffer.size()" + this.buffer.size());
-				if (debugPrint) {
+				if (debugPrint == 3) {
 					Object o = buffer.read();
 					System.out.println(Thread.currentThread().getName()
 							+ " FinalSend - " + o.toString());
@@ -149,9 +157,13 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 			} catch (IOException e) {
 				System.err.println("TCP Output Channel. finalSend exception.");
 			}
+			if (count % 1000 == 0 && debugPrint == 2) {
+				System.out.println(Thread.currentThread().getName()
+						+ " FinalSend - " + count
+						+ " no of items have been sent");
+			}
 		}
 	}
-
 	private void reConnect() {
 		try {
 			this.tcpConnection.closeConnection();
