@@ -10,43 +10,26 @@ import java.net.Socket;
  * @author Sumanan sumanan@mit.edu
  * @since Oct 16, 2013
  */
-public class SynchronizedTCPConnection implements Connection {
-
-	private final TCPConnection tcpConnection;
+public class SynchronizedTCPConnection extends TCPConnection {
 
 	private final Object writeLock = new Object();
 	private final Object readLock = new Object();
 
 	public SynchronizedTCPConnection(Socket socket) {
-		this.tcpConnection = new TCPConnection(socket);
+		super(socket);
 	}
 
 	@Override
 	public <T> T readObject() throws IOException, ClassNotFoundException {
 		synchronized (readLock) {
-			return tcpConnection.readObject();
+			return super.readObject();
 		}
 	}
 
 	@Override
 	public void writeObject(Object obj) throws IOException {
 		synchronized (writeLock) {
-			tcpConnection.writeObject(obj);
+			super.writeObject(obj);
 		}
-	}
-
-	@Override
-	public void closeConnection() throws IOException {
-		tcpConnection.closeConnection();
-	}
-
-	@Override
-	public void softClose() throws IOException {
-		tcpConnection.softClose();
-	}
-
-	@Override
-	public boolean isStillConnected() {
-		return tcpConnection.isStillConnected();
 	}
 }
