@@ -179,7 +179,8 @@ public class StreamNode extends Thread {
 
 		Connection tcpConnection;
 		try {
-			tcpConnection = ConnectionFactory.getConnection(ipAddress, portNo);
+			tcpConnection = ConnectionFactory.getConnection(ipAddress, portNo,
+					true);
 			new StreamNode(tcpConnection).run();
 		} catch (IOException e) {
 			e.printStackTrace();

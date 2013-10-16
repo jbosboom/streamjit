@@ -109,9 +109,8 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		new Thread() {
 			public void run() {
 				try {
-					ConnectionFactory cf = new ConnectionFactory();
-					Connection connection = cf.getConnection("127.0.0.1",
-							listenPort);
+					Connection connection = ConnectionFactory.getConnection(
+							"127.0.0.1", listenPort, true);
 					StreamNode.getInstance(connection).start();
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
