@@ -189,7 +189,20 @@ public abstract class AbstractDrainer {
 	}
 
 	public final void awaitDrainedIntrmdiate() throws InterruptedException {
-		intermediateLatch.await();
+		// intermediateLatch.await();
+		while (intermediateLatch.getCount() != 0) {
+			Thread.sleep(3000);
+			System.out.println("****************************************");
+			for (BlobNode bn : blobGraph.blobNodes.values()) {
+				if (bn.isDrained)
+					System.out.println(String.format("Blob %s is Drained",
+							bn.blobID));
+				else
+					System.out.println(String.format("Blob %s is NOT Drained",
+							bn.blobID));
+			}
+			System.out.println("****************************************");
+		}
 	}
 
 	/**
