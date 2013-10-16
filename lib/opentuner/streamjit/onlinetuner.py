@@ -29,7 +29,7 @@ class StreamJitMI(MeasurementInterface):
 		self.sdk.sendmsg("%s\n"%cfg)
 		msg = self.sdk.recvmsg()
 		if (msg == "exit\n"):
-			data = raw_input ( "exit cmd received. Press Keyboard to exit..." )
+			#data = raw_input ( "exit cmd received. Press Keyboard to exit..." )
 			self.sdk.close()
 			sys.exit(1)
 		exetime = float(msg)
