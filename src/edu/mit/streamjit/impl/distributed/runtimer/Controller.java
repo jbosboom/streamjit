@@ -258,7 +258,7 @@ public class Controller {
 
 		headChannel = new TCPOutputChannel(bufferMap.get(headToken),
 				conProvider, headconInfo, "headChannel - "
-						+ headToken.toString(), false);
+						+ headToken.toString(), 1);
 
 		TCPConnectionInfo tailconInfo = conInfoMap.get(tailToken);
 		assert tailconInfo != null : "No tail connection info exists in conInfoMap";
@@ -269,8 +269,7 @@ public class Controller {
 					"No tail buffer in the passed bufferMap.");
 
 		tailChannel = new TailChannel(bufferMap.get(tailToken), conProvider,
-				tailconInfo, "tailChannel - " + tailToken.toString(), false,
-				10000);
+				tailconInfo, "tailChannel - " + tailToken.toString(), 1, 10000);
 	}
 
 	private Map<Token, TCPConnectionInfo> buildConInfoMap(
@@ -463,7 +462,7 @@ public class Controller {
 
 		public TailChannel(Buffer buffer, TCPConnectionProvider conProvider,
 				TCPConnectionInfo conInfo, String bufferTokenName,
-				Boolean debugPrint, int limit) {
+				int debugPrint, int limit) {
 			super(buffer, conProvider, conInfo, bufferTokenName, debugPrint);
 			this.limit = limit;
 			count = 0;

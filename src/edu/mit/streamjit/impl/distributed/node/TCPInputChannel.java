@@ -22,7 +22,7 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
  */
 public class TCPInputChannel implements BoundaryInputChannel {
 
-	private Boolean debugPrint;
+	private final int debugPrint;
 
 	private Buffer buffer;
 
@@ -38,9 +38,10 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private boolean softClosed;
 
+	int count;
+
 	public TCPInputChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName,
-			Boolean debugPrint) {
+			TCPConnectionInfo conInfo, String bufferTokenName, int debugPrint) {
 		this.buffer = buffer;
 		this.conProvider = conProvider;
 		this.conInfo = conInfo;
@@ -48,6 +49,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		this.name = "TCPInputChannel - " + bufferTokenName;
 		this.debugPrint = debugPrint;
 		this.softClosed = false;
+		count = 0;
 	}
 
 	@Override
@@ -73,7 +75,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						e.printStackTrace();
 					}
 				}
-				while (!stopFlag.get()&&!softClosed) {
+				while (!stopFlag.get() && !softClosed) {
 					receiveData();
 				}
 				if (!softClosed)
@@ -91,8 +93,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	public void receiveData() {
 		try {
 			Object obj = tcpConnection.readObject();
-
-			if (debugPrint) {
+			count++;
+			if (debugPrint == 3) {
 				System.out.println(Thread.currentThread().getName() + " - "
 						+ obj.toString());
 			}
@@ -101,7 +103,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				try {
 					// TODO: Need to tune the sleep time.
 					// System.out.println("InputChannel : Buffer full");
-					if (debugPrint) {
+					if (debugPrint == 3) {
 						System.out.println(Thread.currentThread().getName()
 								+ " Buffer FULL - " + obj.toString());
 					}
@@ -110,12 +112,16 @@ public class TCPInputChannel implements BoundaryInputChannel {
 					e.printStackTrace();
 				}
 			}
+
+			if (count % 1000 == 0 && debugPrint == 2) {
+				System.out.println(Thread.currentThread().getName() + " - "
+						+ count + " no of items have been received");
+			}
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		} catch (OptionalDataException e) {
 			softClosed = true;
-		}
-		catch (EOFException e) {
+		} catch (EOFException e) {
 			// Other side is closed.
 			stopFlag.set(true);
 		} catch (IOException e) {
@@ -139,7 +145,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		do {
 			try {
 				Object obj = tcpConnection.readObject();
-				if (debugPrint) {
+				count++;
+				if (debugPrint == 3) {
 					System.out.println(Thread.currentThread().getName()
 							+ " finalReceive - " + obj.toString());
 				}
@@ -152,7 +159,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						// becomes full forever. ( Other worker thread is
 						// stopped and not consuming any data.)
 						// System.out.println("InputChannel : Buffer full");
-						if (debugPrint) {
+						if (debugPrint == 3) {
 							System.out.println(Thread.currentThread().getName()
 									+ " finalReceive:Buffer FULL - "
 									+ obj.toString());
@@ -162,6 +169,12 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						e.printStackTrace();
 					}
 				}
+
+				if (count % 1000 == 0 && debugPrint == 2) {
+					System.out.println(Thread.currentThread().getName() + " - "
+							+ count + " no of items have been received");
+				}
+
 			} catch (ClassNotFoundException e) {
 				hasData = true;
 				e.printStackTrace();
