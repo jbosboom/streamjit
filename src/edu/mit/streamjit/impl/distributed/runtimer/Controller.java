@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -251,29 +252,25 @@ public class Controller {
 		assert headconInfo != null : "No head connection info exists in conInfoMap";
 		assert headconInfo.getSrcID() == controllerNodeID : "Head channel should start from the controller.";
 
-		if (headconInfo.getDstID() != controllerNodeID) {
-			if (!bufferMap.containsKey(headToken))
-				throw new IllegalArgumentException(
-						"No head buffer in the passed bufferMap.");
+		if (!bufferMap.containsKey(headToken))
+			throw new IllegalArgumentException(
+					"No head buffer in the passed bufferMap.");
 
-			headChannel = new TCPOutputChannel(bufferMap.get(headToken),
-					conProvider, headconInfo, "headChannel - "
-							+ headToken.toString(), false);
-		}
+		headChannel = new TCPOutputChannel(bufferMap.get(headToken),
+				conProvider, headconInfo, "headChannel - "
+						+ headToken.toString(), false);
 
 		TCPConnectionInfo tailconInfo = conInfoMap.get(tailToken);
 		assert tailconInfo != null : "No tail connection info exists in conInfoMap";
 		assert tailconInfo.getDstID() == controllerNodeID : "Tail channel should ends at the controller.";
 
-		if (tailconInfo.getSrcID() != controllerNodeID) {
-			if (!bufferMap.containsKey(tailToken))
-				throw new IllegalArgumentException(
-						"No tail buffer in the passed bufferMap.");
+		if (!bufferMap.containsKey(tailToken))
+			throw new IllegalArgumentException(
+					"No tail buffer in the passed bufferMap.");
 
-			tailChannel = new TailChannel(bufferMap.get(tailToken),
-					conProvider, tailconInfo, "tailChannel - "
-							+ tailToken.toString(), false, 10000);
-		}
+		tailChannel = new TailChannel(bufferMap.get(tailToken), conProvider,
+				tailconInfo, "tailChannel - " + tailToken.toString(), false,
+				10000);
 	}
 
 	private Map<Token, TCPConnectionInfo> buildConInfoMap(
@@ -334,8 +331,17 @@ public class Controller {
 
 		ConnectionInfo conInfo = new ConnectionInfo(srcID, dstID);
 
-		TCPConnectionInfo tcpConInfo = getTcpConInfo(conInfo);
-		if (tcpConInfo == null || usedConInfos.contains(tcpConInfo)) {
+		List<TCPConnectionInfo> conSet = getTcpConInfo(conInfo);
+		TCPConnectionInfo tcpConInfo = null;
+
+		for (TCPConnectionInfo con : conSet) {
+			if (!usedConInfos.contains(con)) {
+				tcpConInfo = con;
+				break;
+			}
+		}
+
+		if (tcpConInfo == null) {
 			tcpConInfo = new TCPConnectionInfo(srcID, dstID, startPortNo++);
 			this.currentConInfos.add(tcpConInfo);
 		}
@@ -344,12 +350,13 @@ public class Controller {
 		usedConInfos.add(tcpConInfo);
 	}
 
-	private TCPConnectionInfo getTcpConInfo(ConnectionInfo conInfo) {
+	private List<TCPConnectionInfo> getTcpConInfo(ConnectionInfo conInfo) {
+		List<TCPConnectionInfo> conList = new ArrayList<>();
 		for (TCPConnectionInfo tcpconInfo : currentConInfos) {
 			if (conInfo.equals(tcpconInfo))
-				return tcpconInfo;
+				conList.add(tcpconInfo);
 		}
-		return null;
+		return conList;
 	}
 
 	/**
@@ -476,6 +483,7 @@ public class Controller {
 		}
 
 		private void reset() {
+			latch.countDown();
 			latch = new CountDownLatch(1);
 			count = 0;
 		}
