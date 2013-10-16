@@ -9,6 +9,7 @@ import java.util.Set;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+import com.sun.swing.internal.plaf.synth.resources.synth;
 
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
@@ -297,6 +298,8 @@ public class BlobsManagerImpl implements BlobsManager {
 				e.printStackTrace();
 			}
 
+			printDrainedStatus();
+
 			if (this.reqDrainData) {
 				ImmutableMap.Builder<Token, DrainData> builder = new ImmutableMap.Builder<>();
 				builder.put(blobID, blob.getDrainData());
@@ -335,9 +338,27 @@ public class BlobsManagerImpl implements BlobsManager {
 		for (BlobExecuter be : blobExecuters) {
 			if (be.getBlobID().equals(blobID)) {
 				be.doDrain(reqDrainData);
-				break;
+				return;
 			}
 		}
+		throw new IllegalArgumentException(String.format(
+				"No blob with blobID %s", blobID));
+	}
+
+	/**
+	 * Just to added for debugging purpose.
+	 */
+	private synchronized void printDrainedStatus() {
+		System.out.println("****************************************");
+		for (BlobExecuter be : blobExecuters) {
+			if (be.isDrained)
+				System.out.println(String.format("Blob %s is Drained",
+						be.blobID));
+			else
+				System.out.println(String.format("Blob %s is NOT Drained",
+						be.blobID));
+		}
+		System.out.println("****************************************");
 	}
 
 	@Override
