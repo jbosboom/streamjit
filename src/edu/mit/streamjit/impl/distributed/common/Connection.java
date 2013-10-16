@@ -61,8 +61,16 @@ public interface Connection {
 	 * symmetric for equal() and hashCode() calculation. As long as same
 	 * machineIDs are involved, irrespect of srcID and dstID positions, these
 	 * methods return same result.
+	 * 
+	 * <p>
+	 * <b>Note : </b> All instances of ConnectionInfo, including subclass
+	 * instances, will be equal to each other if the IDs matches. See the
+	 * hashCode() and equals() methods. <b>The whole point of this class is to
+	 * identify a connection between two machines.</b>
 	 */
 	public class ConnectionInfo implements Serializable {
+
+		private static final long serialVersionUID = 1L;
 
 		private int srcID;
 
@@ -98,7 +106,7 @@ public interface Connection {
 				return true;
 			if (obj == null)
 				return false;
-			if (getClass() != obj.getClass())
+			if (!(obj instanceof ConnectionInfo))
 				return false;
 			ConnectionInfo other = (ConnectionInfo) obj;
 			int myMin = Math.min(srcID, dstID);
