@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.common;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
 
 import com.google.common.collect.ComparisonChain;
@@ -48,6 +49,20 @@ public interface Connection {
 	 * @throws IOException
 	 */
 	public void closeConnection() throws IOException;
+
+	/**
+	 * Do not close the underlying real connection. Instead inform other side to
+	 * the current communication session is over.
+	 * <p>
+	 * This is introduced because {@link ObjectInputStream#readObject()} eats
+	 * thread InterruptedException and yields no way to close the reader thread
+	 * when the thread is blocked at {@link ObjectInputStream#readObject()}
+	 * method call.
+	 * </p>
+	 *
+	 * @throws IOException
+	 */
+	public void softClose() throws IOException;
 
 	/**
 	 * Checks whether the connection is still open or not.

@@ -92,15 +92,23 @@ public class TCPConnection implements Connection {
 				// System.out.println("DEBUG: getClass = " + o.getClass());
 				// System.out.println("Object read...");
 				cb = (T) o;
+			} catch (OptionalDataException ex) {
+				//System.err.println("OptionalDataException....SoftClose...");
+				int a = oiStream.read();
+				//System.out.println(a);
+				throw ex;
 			} catch (ClassCastException e) {
+				System.err.println("ClassCastException...");
 				// If unknown object then ignore it.
 				System.out.println(o.toString());
 			} catch (ClassNotFoundException ex) {
 				// If unknown object then ignore it.
 				// System.out.println(o.toString());
+				System.err.println("ClassNotFoundException...");
 				throw ex;
 			} catch (IOException e) {
 				// e.printStackTrace();
+				System.err.println("IOException...");
 				isconnected = false;
 				throw e;
 			}
@@ -115,6 +123,12 @@ public class TCPConnection implements Connection {
 			return this.socket.getInetAddress();
 		else
 			throw new NullPointerException("Socket is not initilized.");
+	}
+
+	@Override
+	public void softClose() throws IOException {
+		this.ooStream.write('\u001a');
+		this.ooStream.flush();
 	}
 
 	/**
@@ -227,10 +241,12 @@ public class TCPConnection implements Connection {
 				throws SocketTimeoutException, IOException {
 			TCPConnection con = allConnections.get(conInfo);
 			if (con != null) {
-				if (con.isStillConnected())
+				if (con.isStillConnected()) {
 					return con;
-				else
-					con.closeConnection();
+				} else {
+					throw new AssertionError("con.closeConnection()");
+					// con.closeConnection();
+				}
 			}
 
 			if (conInfo.getSrcID() == myNodeID) {
