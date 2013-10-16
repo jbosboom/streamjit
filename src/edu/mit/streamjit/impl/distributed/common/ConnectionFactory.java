@@ -15,8 +15,8 @@ import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
  */
 public class ConnectionFactory {
 
-	public static TCPConnection getConnection(String serverAddress, int portNo)
-			throws IOException {
+	public static TCPConnection getConnection(String serverAddress, int portNo,
+			boolean needSync) throws IOException {
 		Ipv4Validator validator = Ipv4Validator.getInstance();
 
 		if (!validator.isValid(serverAddress))
@@ -29,7 +29,10 @@ public class ConnectionFactory {
 		for (int i = 0; i < maxTryAttempts; i++) {
 			try {
 				Socket socket = new Socket(serverAddress, portNo);
-				return new TCPConnection(socket);
+				if (needSync)
+					return new SynchronizedTCPConnection(socket);
+				else
+					return new TCPConnection(socket);
 			} catch (IOException ioe) {
 				System.out.println("IO Connection failed");
 				if (i == maxTryAttempts - 1)
@@ -54,16 +57,23 @@ public class ConnectionFactory {
 	 * @return
 	 * @throws IOException
 	 */
-	public static TCPConnection getConnection(int portNo, int timeOut)
-			throws IOException {
+	public static TCPConnection getConnection(int portNo, int timeOut,
+			boolean needSync) throws IOException {
 		ListenerSocket listnerSckt = new ListenerSocket(portNo);
 		Socket socket = listnerSckt.makeConnection(timeOut);
-		return new TCPConnection(socket);
+		if (needSync)
+			return new SynchronizedTCPConnection(socket);
+		else
+			return new TCPConnection(socket);
 	}
 
-	public static Connection getConnection(Socket socket) throws IOException {
+	public static Connection getConnection(Socket socket, boolean needSync)
+			throws IOException {
 		if (socket == null)
 			throw new IOException("Null Socket.");
-		return new TCPConnection(socket);
+		if (needSync)
+			return new SynchronizedTCPConnection(socket);
+		else
+			return new TCPConnection(socket);
 	}
 }
