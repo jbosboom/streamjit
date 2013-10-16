@@ -26,7 +26,7 @@ class streamJit:
 		except Exception, e:
 			print "Exception occured : %s"%e
 			traceback.print_exc()
-			data = raw_input ( "Press Keyboard to exit..." )
+			#data = raw_input ( "Press Keyboard to exit..." )
 			
 	def run(self):
 		while 1:
@@ -47,7 +47,7 @@ class streamJit:
 				except Exception, e:
 					print "Exception occured : %s"%e
 					traceback.print_exc()
-					data = raw_input ( "Press Keyboard to exit..." )
+					#data = raw_input ( "Press Keyboard to exit..." )
 					break;
 					
 			else:
@@ -62,7 +62,7 @@ class streamJit:
 		data = self.file.readline()
 		if not data:
 			print "Socket closed...."
-			data = raw_input ( "Press Keyboard to exit..." )
+			#data = raw_input ( "Press Keyboard to exit..." )
 			self.close()
 			sys.exit(1)
 		else:
