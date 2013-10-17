@@ -32,4 +32,9 @@ public class DistributedDrainer extends AbstractDrainer {
 	protected void drainingDone(Token blobID, boolean isFinal) {
 		// Nothing to clean in Distributed case.
 	}
+
+	@Override
+	protected void prepareDraining(boolean isFinal) {
+		controller.drainingStarted(isFinal);
+	}
 }

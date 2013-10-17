@@ -239,7 +239,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		}
 
 		protected void drain() {
-			drainer.startDraining(true);
+			drainer.startDraining(2);
 		}
 
 		@Override

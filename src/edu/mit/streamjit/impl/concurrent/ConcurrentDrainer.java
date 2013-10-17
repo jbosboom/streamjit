@@ -92,4 +92,9 @@ public final class ConcurrentDrainer extends AbstractDrainer {
 			drainer.drained(blobID);
 		}
 	}
+
+	@Override
+	protected void prepareDraining(boolean isFinal) {
+		// TODO Auto-generated method stub
+	}
 }

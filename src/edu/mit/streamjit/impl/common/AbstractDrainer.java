@@ -29,6 +29,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
+import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 
 /**
  * Abstract drainer is to perform draining on a stream application. Both
@@ -107,32 +108,52 @@ public abstract class AbstractDrainer {
 	}
 
 	/**
-	 * Initiate the draining of the blobgraph. Two Kind of draining can be
+	 * Initiate the draining of the blobgraph. Three type of draining can be
 	 * carried out.
 	 * <ol>
-	 * <li>Final draining: At the end of input data. After this draining
-	 * StreamJit app will stop. This draining may be triggered by a
-	 * {@link Input} when it run out of input data. .</li>
-	 * <li>Intermediate draining: In the middle of the execution. This draining
-	 * may be triggered by Opentuner for reconfiguration purpose.</li>
+	 * <li>type 0 - Intermediate draining: In this case, no data from input
+	 * buffer will be consumed and StreamJit app will not be stopped. Rather,
+	 * StreamJit app will be just paused for reconfiguration purpose. This
+	 * draining may be triggered by {@link OnlineTuner}.</li>
+	 * <li>type 1 - Semi final draining: In this case, no data from input buffer
+	 * will be consumed but StreamJit app will be stopped. i.e, StreamJit app
+	 * will be stopped safely without consuming any new input. This draining may
+	 * be triggered by {@link OnlineTuner} after opentuner finish tuning and
+	 * send it's final configuration.</li>
+	 * <li>type 2 - Final draining: At the end of input data. After this
+	 * draining StreamJit app will stop. This draining may be triggered by a
+	 * {@link Input} when it run out of input data.</li>
 	 * </ol>
 	 * 
-	 * @param isFinal
+	 * @param type
 	 *            whether the draining is the final draining or intermediate
 	 *            draining.
 	 * @return true iff draining process has been started. startDraining will
 	 *         fail if the final draining has already been called.
 	 */
-	public final boolean startDraining(boolean isFinal) {
+	public final boolean startDraining(int type) {
 		if (state == DrainerState.NODRAINING) {
-			if (isFinal) {
-				this.state = DrainerState.FINAL;
-			} else {
-				this.blobGraph.clearDrainData();
-				this.state = DrainerState.INTERMEDIATE;
-				drainDataLatch = new CountDownLatch(1);
-				intermediateLatch = new CountDownLatch(1);
+			switch (type) {
+				case 0 :
+					this.blobGraph.clearDrainData();
+					this.state = DrainerState.INTERMEDIATE;
+					drainDataLatch = new CountDownLatch(1);
+					intermediateLatch = new CountDownLatch(1);
+					prepareDraining(false);
+					break;
+				case 1 :
+					this.state = DrainerState.FINAL;
+					prepareDraining(false);
+					break;
+				case 2 :
+					this.state = DrainerState.FINAL;
+					prepareDraining(true);
+					break;
+				default :
+					throw new IllegalArgumentException(
+							"Invalid draining type. type can be 0, 1, or 2.");
 			}
+
 			blobGraph.getSourceBlobNode().drain();
 			return true;
 		} else if (state == DrainerState.FINAL) {
@@ -220,7 +241,7 @@ public abstract class AbstractDrainer {
 	 * @param blobID
 	 * @param isFinal
 	 *            : whether the draining is the final draining or intermediate
-	 *            draining.
+	 *            draining. Set to true for semi final case.
 	 */
 	protected abstract void drain(Token blobID, boolean isFinal);
 
@@ -232,7 +253,7 @@ public abstract class AbstractDrainer {
 	 * @param blobID
 	 * @param isFinal
 	 *            : whether the draining is the final draining or intermediate
-	 *            draining.
+	 *            draining. Set to true for semi final case.
 	 */
 	protected abstract void drainingDone(Token blobID, boolean isFinal);
 
@@ -245,9 +266,19 @@ public abstract class AbstractDrainer {
 	 * 
 	 * @param isFinal
 	 *            : whether the draining is the final draining or intermediate
-	 *            draining.
+	 *            draining. Set to true for semi final case.
 	 */
 	protected abstract void drainingDone(boolean isFinal);
+
+	/**
+	 * {@link AbstractDrainer} will call this function as a first step to start
+	 * a draining.
+	 * 
+	 * @param isFinal
+	 *            :Whether the draining is the final draining or intermediate
+	 *            draining. Set to false for semi final case.
+	 */
+	protected abstract void prepareDraining(boolean isFinal);
 
 	/**
 	 * {@link BlobNode}s have to call this function to inform draining done
