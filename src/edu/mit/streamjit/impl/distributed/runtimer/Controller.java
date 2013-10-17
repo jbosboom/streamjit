@@ -386,23 +386,20 @@ public class Controller {
 		}
 	}
 
-	// Used to identify the first draining call.
-	private boolean drainStarted = false;
+	public void drainingStarted(boolean isFinal) {
+		if (headChannel != null) {
+			headChannel.stop(isFinal);
+			try {
+				headThread.join();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
 
 	public void drain(Token blobID, boolean isFinal) {
-		if (!drainStarted) {
-			if (headChannel != null) {
-				headChannel.stop(isFinal);
-				try {
-					headThread.join();
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-			drainStarted = true;
-		}
-
+		System.out.println("Drain requested to blob " + blobID);
 		if (!app.blobtoMachineMap.containsKey(blobID))
 			throw new IllegalArgumentException(blobID
 					+ " not found in the blobtoMachineMap");
@@ -426,7 +423,6 @@ public class Controller {
 
 	public void drainingFinished(boolean isFinal) {
 		System.out.println("Controller : Draining Finished...");
-		drainStarted = false;
 		if (tailChannel != null) {
 			tailChannel.stop();
 			try {

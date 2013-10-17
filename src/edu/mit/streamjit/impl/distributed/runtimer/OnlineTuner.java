@@ -61,6 +61,7 @@ public class OnlineTuner implements Runnable {
 				if (pythonDict.equals("Completed")) {
 					String finalConfg = tuner.readLine();
 					System.out.println("Tuning finished");
+					drainer.startDraining(1);
 					break;
 				}
 
@@ -75,7 +76,7 @@ public class OnlineTuner implements Runnable {
 						continue;
 					}
 
-					boolean state = drainer.startDraining(false);
+					boolean state = drainer.startDraining(0);
 					if (!state) {
 						System.err
 								.println("Final drain has already been called. no more tuning.");
@@ -86,14 +87,14 @@ public class OnlineTuner implements Runnable {
 					System.err.println("awaitDrainedIntrmdiate");
 					drainer.awaitDrainedIntrmdiate();
 
-					System.err.println("awaitDrainData...");
-					drainer.awaitDrainData();
+					// System.err.println("awaitDrainData...");
+					// drainer.awaitDrainData();
 					DrainData drainData = drainer.getDrainData();
 
 					app.drainData = drainData;
 					drainer.setBlobGraph(app.blobGraph1);
 
-					System.err.println("awaitDrainData...");
+					System.err.println("Reconfiguring...");
 					controller.reconfigure();
 
 					Stopwatch stopwatch = new Stopwatch();

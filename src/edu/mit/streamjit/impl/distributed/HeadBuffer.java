@@ -23,6 +23,7 @@ public class HeadBuffer extends AbstractReadOnlyBuffer {
 		}
 		return o;
 	}
+
 	@Override
 	public int size() {
 		return buffer.size();
@@ -34,7 +35,7 @@ public class HeadBuffer extends AbstractReadOnlyBuffer {
 		}
 
 		public void run() {
-			drainer.startDraining(true);
+			drainer.startDraining(2);
 		}
 	}
 }
