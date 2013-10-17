@@ -210,7 +210,11 @@ public abstract class AbstractDrainer {
 	}
 
 	public final void awaitDrainedIntrmdiate() throws InterruptedException {
-		// intermediateLatch.await();
+		intermediateLatch.await();
+
+		// Just for debuging purpose. To make effect of this code snippet
+		// comment the above, intermediateLatch.await(), line. Otherwise no
+		// effect.
 		while (intermediateLatch.getCount() != 0) {
 			Thread.sleep(3000);
 			System.out.println("****************************************");
