@@ -47,11 +47,19 @@ public interface BoundaryChannel {
 	public interface BoundaryInputChannel extends BoundaryChannel {
 
 		/**
+		 * <p>
 		 * No more data will be sent by corresponding
-		 * {@link BoundaryOutputChannel}. So stop receiving. There may be data
-		 * in middle, specifically in intermediate buffers like kernel's socket
-		 * buffer. Its implementations responsibility to receive all data those
-		 * are in middle before stopping.
+		 * {@link BoundaryOutputChannel}. So stop receiving.
+		 * </p>
+		 * <p>
+		 * There may be data in middle, specifically in intermediate buffers
+		 * like kernel's socket buffer. Its implementations responsibility to
+		 * receive all data those are in middle and try to fill the actual
+		 * buffer. But in some case, after Stop() is called, actual buffer might
+		 * be full forever to write and there might be even more data in the
+		 * intermediate kernel buffer. In this case, before exiting, extraBuffer
+		 * should be filled with all unconsumed data in the kernel buffer.
+		 * </p>
 		 */
 		void stop();
 
@@ -59,6 +67,13 @@ public interface BoundaryChannel {
 		 * Receive data from other node.
 		 */
 		void receiveData();
+
+		/**
+		 * @return unconsumed data after Stop() is called. Returning buffer may
+		 *         or may not be thread safe. Or null also can be returned if
+		 *         there is no data.
+		 */
+		Buffer getExtraBuffer();
 	}
 
 	/**
@@ -71,7 +86,7 @@ public interface BoundaryChannel {
 		 * stop. Else just stop and leave the buffer as it is. i.e., call
 		 * stop(true) for final stop. call stop(false) for onlinetuning's
 		 * intermediate stop.
-		 *
+		 * 
 		 * @param clean
 		 */
 		void stop(boolean clean);

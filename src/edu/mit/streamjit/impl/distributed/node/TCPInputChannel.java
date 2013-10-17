@@ -3,8 +3,11 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.OptionalDataException;
+import java.util.ArrayDeque;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import edu.mit.streamjit.impl.blob.AbstractBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
@@ -16,6 +19,11 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
  * connection and write them into the given {@link Buffer}.
  * <p>
  * Note: TCPInputChannel acts as client when making TCP connection.
+ * </p>
+ * <p>
+ * In some case, after Stop() is called, buffer might be full forever and there
+ * might be more data in the kernel TCP buffer. In this case before extraBuffer
+ * will be filled with all kernel data.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 29, 2013
@@ -25,6 +33,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	private final int debugPrint;
 
 	private Buffer buffer;
+
+	private Buffer extraBuffer;
 
 	private TCPConnectionProvider conProvider;
 
@@ -49,6 +59,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		this.name = "TCPInputChannel - " + bufferTokenName;
 		this.debugPrint = debugPrint;
 		this.softClosed = false;
+		this.extraBuffer = null;
 		count = 0;
 	}
 
@@ -91,6 +102,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	@Override
 	public void receiveData() {
+		int bufFullCount = 0;
 		try {
 			Object obj = tcpConnection.readObject();
 			count++;
@@ -100,16 +112,26 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			}
 
 			while (!this.buffer.write(obj)) {
+				if (debugPrint == 3) {
+					System.out.println(Thread.currentThread().getName()
+							+ " Buffer FULL - " + obj.toString());
+				}
 				try {
 					// TODO: Need to tune the sleep time.
-					// System.out.println("InputChannel : Buffer full");
-					if (debugPrint == 3) {
-						System.out.println(Thread.currentThread().getName()
-								+ " Buffer FULL - " + obj.toString());
-					}
 					Thread.sleep(5);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
+				}
+				if (stopFlag.get() && bufFullCount++ > 5) {
+					this.extraBuffer = new ExtraBuffer();
+					extraBuffer.write(obj);
+					System.err
+							.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+					System.err
+							.println("*****Writing extra data in to extra buffer*****");
+					System.err
+							.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+					break;
 				}
 			}
 
@@ -142,7 +164,14 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	 */
 	private void finalReceive() {
 		boolean hasData;
+		int bufFullCount;
+		Buffer buffer;
+		if (this.extraBuffer == null)
+			buffer = this.buffer;
+		else
+			buffer = this.extraBuffer;
 		do {
+			bufFullCount = 0;
 			try {
 				Object obj = tcpConnection.readObject();
 				count++;
@@ -152,21 +181,30 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				}
 
 				hasData = true;
-				while (!this.buffer.write(obj)) {
+				while (!buffer.write(obj)) {
+					if (debugPrint == 3) {
+						System.out.println(Thread.currentThread().getName()
+								+ " finalReceive:Buffer FULL - "
+								+ obj.toString());
+					}
 					try {
-						// TODO: Need to tune the sleep time.
-						// TODO : Need to handle the situation if the buffer
-						// becomes full forever. ( Other worker thread is
-						// stopped and not consuming any data.)
-						// System.out.println("InputChannel : Buffer full");
-						if (debugPrint == 3) {
-							System.out.println(Thread.currentThread().getName()
-									+ " finalReceive:Buffer FULL - "
-									+ obj.toString());
-						}
-						Thread.sleep(5);
+						Thread.sleep(20);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
+					}
+
+					if (bufFullCount++ > 5) {
+						assert buffer != this.extraBuffer : "ExtraBuffer is full. This shouldn't be the case.";
+						assert this.extraBuffer == null : "Extra buffer has already been created.";
+						this.extraBuffer = new ExtraBuffer();
+						extraBuffer.write(obj);
+						buffer = extraBuffer;
+						System.err
+								.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+						System.err
+								.println("*****Writing extra data in to extra buffer*****");
+						System.err
+								.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 					}
 				}
 
@@ -179,13 +217,13 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				hasData = true;
 				e.printStackTrace();
 			} catch (OptionalDataException e) {
+				softClosed = true;
 				hasData = false;
 			} catch (IOException e) {
 				hasData = false;
 			}
 		} while (hasData);
 	}
-
 	private void reConnect() {
 		while (!stopFlag.get()) {
 			try {
@@ -217,4 +255,45 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	public String name() {
 		return name;
 	}
+
+	@Override
+	public Buffer getExtraBuffer() {
+		return extraBuffer;
+	}
+
+	/**
+	 * Another buffer implementation. Not thread safe.
+	 * 
+	 * @author Sumanan sumanan@mit.edu
+	 * @since Oct 17, 2013
+	 */
+	private class ExtraBuffer extends AbstractBuffer {
+
+		private final Queue<Object> queue;
+
+		public ExtraBuffer() {
+			this.queue = new ArrayDeque<>();
+		}
+
+		@Override
+		public Object read() {
+			return queue.poll();
+		}
+
+		@Override
+		public boolean write(Object t) {
+			return queue.offer(t);
+		}
+
+		@Override
+		public int size() {
+			return queue.size();
+		}
+
+		@Override
+		public int capacity() {
+			return Integer.MAX_VALUE;
+		}
+	}
+
 }
