@@ -62,7 +62,7 @@ public abstract class AbstractDrainer {
 	 * Latch to block the external thread that calls
 	 * {@link CompiledStream#awaitDrained()}.
 	 */
-	private CountDownLatch finalLatch;
+	private final CountDownLatch finalLatch;
 
 	/**
 	 * Blocks the online tuner thread until drainer gets all drained data.
@@ -86,6 +86,7 @@ public abstract class AbstractDrainer {
 
 	public AbstractDrainer() {
 		state = DrainerState.NODRAINING;
+		finalLatch = new CountDownLatch(1);
 	}
 
 	/**
@@ -100,7 +101,6 @@ public abstract class AbstractDrainer {
 			this.blobGraph = blobGraph;
 			unDrainedNodes = new AtomicInteger(blobGraph.getBlobIds().size());
 			noOfDrainData = new AtomicInteger(blobGraph.getBlobIds().size());
-			finalLatch = new CountDownLatch(1);
 			blobGraph.setDrainer(this);
 		} else {
 			throw new RuntimeException("Drainer is in draing mode.");
