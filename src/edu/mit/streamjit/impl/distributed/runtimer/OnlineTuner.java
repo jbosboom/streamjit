@@ -88,7 +88,7 @@ public class OnlineTuner implements Runnable {
 					drainer.awaitDrainedIntrmdiate();
 
 					// System.err.println("awaitDrainData...");
-					// drainer.awaitDrainData();
+					drainer.awaitDrainData();
 					DrainData drainData = drainer.getDrainData();
 
 					app.drainData = drainData;
