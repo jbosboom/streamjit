@@ -55,18 +55,18 @@ public class DistributedBlobFactory implements BlobFactory {
 		Configuration.IntParameter multiplierParam = (Configuration.IntParameter) builder
 				.removeParameter("multiplier");
 
+		for (int i = 0; i < noOfMachines; i++) {
+			builder.addParameter(new Configuration.IntParameter(String.format(
+					"multiplier%d", (i + 1)), multiplierParam.getRange(),
+					multiplierParam.getValue()));
+		}
+
 		// Configuration.Builder builder = Configuration.builder();
 		for (Worker<?, ?> w : workers) {
 			Parameter p = new Configuration.IntParameter(String.format(
 					"worker%dtomachine", Workers.getIdentifier(w)), 1,
 					noOfMachines, 1);
 			builder.addParameter(p);
-		}
-
-		for (int i = 0; i < noOfMachines; i++) {
-			builder.addParameter(new Configuration.IntParameter(String.format(
-					"multiplier%d", (i + 1)), multiplierParam.getRange(),
-					multiplierParam.getValue()));
 		}
 
 		// This parameter cannot be tuned. Its added here because we need this
