@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.compiler;
+package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
@@ -19,6 +19,7 @@ import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.IOInfo;
+import edu.mit.streamjit.impl.compiler.Schedule;
 import static edu.mit.streamjit.util.Combinators.*;
 import edu.mit.streamjit.util.bytecode.Module;
 import java.lang.invoke.MethodHandle;

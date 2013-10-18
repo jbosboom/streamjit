@@ -1,5 +1,6 @@
-package edu.mit.streamjit.impl.compiler;
+package edu.mit.streamjit.impl.compiler2;
 
+import edu.mit.streamjit.impl.compiler2.ConcreteStorage;
 import edu.mit.streamjit.util.Combinators;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;

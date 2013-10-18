@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.compiler;
+package edu.mit.streamjit.impl.compiler2;
 
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
