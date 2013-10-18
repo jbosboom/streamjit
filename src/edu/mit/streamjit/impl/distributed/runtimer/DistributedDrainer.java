@@ -14,7 +14,7 @@ public class DistributedDrainer extends AbstractDrainer {
 
 	public DistributedDrainer(Controller controller) {
 		this.controller = controller;
-		SNDrainProcessor dp = new DrainProcessorImpl(this);
+		SNDrainProcessor dp = new SNDrainProcessorImpl(this);
 		controller.setDrainProcessor(dp);
 	}
 

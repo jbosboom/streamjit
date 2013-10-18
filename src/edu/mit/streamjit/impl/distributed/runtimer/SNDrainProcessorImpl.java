@@ -15,11 +15,11 @@ import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor
  * @author Sumanan sumanan@mit.edu
  * @since Aug 11, 2013
  */
-public class DrainProcessorImpl implements SNDrainProcessor {
+public class SNDrainProcessorImpl implements SNDrainProcessor {
 
 	AbstractDrainer drainer;
 
-	public DrainProcessorImpl(AbstractDrainer drainer) {
+	public SNDrainProcessorImpl(AbstractDrainer drainer) {
 		this.drainer = drainer;
 	}
 
