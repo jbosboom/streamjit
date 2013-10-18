@@ -10,10 +10,10 @@ import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class SNCommandProcessorImpl implements CommandProcessor {
+public class CommandProcessorImpl implements CommandProcessor {
 	StreamNode streamNode;
 
-	public SNCommandProcessorImpl(StreamNode streamNode) {
+	public CommandProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
 

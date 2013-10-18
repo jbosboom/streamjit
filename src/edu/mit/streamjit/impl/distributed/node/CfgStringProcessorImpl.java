@@ -40,7 +40,7 @@ import edu.mit.streamjit.util.json.Jsonifiers;
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
+public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	private StreamNode streamNode;
 
@@ -48,7 +48,7 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	private TCPConnectionProvider conProvider;
 
-	public SNCfgStringProcessorImpl(StreamNode streamNode) {
+	public CfgStringProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
 

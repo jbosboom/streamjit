@@ -11,11 +11,11 @@ import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class SNRequestProcessorImpl implements RequestProcessor {
+public class RequestProcessorImpl implements RequestProcessor {
 
 	StreamNode streamNode;
 
-	SNRequestProcessorImpl(StreamNode streamNode) {
+	RequestProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
 
