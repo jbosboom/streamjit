@@ -1,10 +1,8 @@
 package edu.mit.streamjit.impl.distributed.node;
 
-import edu.mit.streamjit.impl.distributed.common.DrainElement.DoDrain;
-import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainDataRequest;
-import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
-import edu.mit.streamjit.impl.distributed.common.DrainElement.Drained;
-import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainedDataMap;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DoDrain;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainDataRequest;
 
 /**
  * Implementation of {@link DrainProcessor} at {@link StreamNode} side. All
@@ -14,7 +12,7 @@ import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainedDataMap;
  * @author Sumanan sumanan@mit.edu
  * @since Jul 30, 2013
  */
-public class SNDrainProcessorImpl implements DrainProcessor {
+public class SNDrainProcessorImpl implements CTRLRDrainProcessor {
 
 	StreamNode streamNode;
 
@@ -31,17 +29,4 @@ public class SNDrainProcessorImpl implements DrainProcessor {
 	public void process(DoDrain drain) {
 		streamNode.getBlobsManager().drain(drain.blobID, drain.reqDrainData);
 	}
-
-	@Override
-	public void process(Drained drained) {
-		throw new IllegalArgumentException(
-				"Stream Node shall not receive this object from controller.");
-	}
-
-	@Override
-	public void process(DrainedDataMap drainedData) {
-		throw new IllegalArgumentException(
-				"Stream Node shall not receive this object from controller.");
-	}
-
 }

@@ -16,8 +16,8 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  * @author Sumanan sumanan@mit.edu
  * @since May 20, 2013
  */
-public interface MessageElement extends Serializable {
+public interface CTRLRMessageElement extends Serializable {
 
-	public void accept(MessageVisitor visitor);
+	public void accept(CTRLRMessageVisitor visitor);
 
 }

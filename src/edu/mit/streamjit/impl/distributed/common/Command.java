@@ -11,7 +11,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  * @author Sumanan sumanan@mit.edu
  * @since May 17, 2013
  */
-public enum Command implements MessageElement {
+public enum Command implements CTRLRMessageElement {
 	/**
 	 * Starts the StreamJit Application. Once all blobs are set, Stream nodes
 	 * will wait for start command from the controller to start the execution.
@@ -54,7 +54,7 @@ public enum Command implements MessageElement {
 	};
 
 	@Override
-	public void accept(MessageVisitor visitor) {
+	public void accept(CTRLRMessageVisitor visitor) {
 		visitor.visit(this);
 	}
 
