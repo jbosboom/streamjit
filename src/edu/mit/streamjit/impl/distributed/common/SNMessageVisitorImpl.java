@@ -48,6 +48,7 @@ public class SNMessageVisitorImpl implements SNMessageVisitor {
 
 	@Override
 	public void visit(NodeInfo nodeInfo) {
+		np.process(nodeInfo);
 	}
 	@Override
 	public void visit(SNDrainElement snDrainElement) {

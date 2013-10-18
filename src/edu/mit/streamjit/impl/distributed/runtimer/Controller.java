@@ -23,15 +23,15 @@ import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.DrainElement;
-import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
@@ -406,7 +406,7 @@ public class Controller {
 		int machineID = app.blobtoMachineMap.get(blobID);
 		StreamNodeAgent agent = StreamNodeMap.get(machineID);
 		try {
-			agent.writeObject(new DrainElement.DoDrain(blobID, !isFinal));
+			agent.writeObject(new CTRLRDrainElement.DoDrain(blobID, !isFinal));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -415,7 +415,7 @@ public class Controller {
 
 	// TODO: Temporary fix. Need to come up with a better solution to to set
 	// DrainProcessor to StreamnodeAgent's messagevisitor.
-	public void setDrainProcessor(DrainProcessor dp) {
+	public void setDrainProcessor(SNDrainProcessor dp) {
 		for (StreamNodeAgent agent : StreamNodeMap.values()) {
 			agent.setDrainProcessor(dp);
 		}

@@ -13,7 +13,6 @@ import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.MessageElement;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;

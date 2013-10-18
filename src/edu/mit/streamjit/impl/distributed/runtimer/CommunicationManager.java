@@ -5,15 +5,16 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
-import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.Error;
-import edu.mit.streamjit.impl.distributed.common.MessageElement;
-import edu.mit.streamjit.impl.distributed.common.MessageVisitor;
-import edu.mit.streamjit.impl.distributed.common.MessageVisitorImpl;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.SNMessageVisitor;
+import edu.mit.streamjit.impl.distributed.common.SNMessageVisitorImpl;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo;
+import edu.mit.streamjit.impl.distributed.node.SNAppStatusProcessorImpl;
+import edu.mit.streamjit.impl.distributed.node.SNErrorProcessorImpl;
+import edu.mit.streamjit.impl.distributed.node.SNNodeInfoProcessorImpl;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
@@ -136,12 +137,10 @@ public interface CommunicationManager {
 			this.nodeID = nodeID;
 			stopFlag = new AtomicBoolean(false);
 			// TODO: Need to handle passing null for DrainProcessor.
-			mv = new MessageVisitorImpl(new CNAppStatusProcessorImpl(this),
-					new CNCommandProcessorImpl(),
-					new CNErrorProcessorImpl(this),
-					new CNRequestProcessorImpl(),
-					new CNCfgStringProcessorImpl(), null,
-					new CNNodeInfoProcessorImpl(this));
+			mv = new SNMessageVisitorImpl(new SNErrorProcessorImpl(),
+					new SNSystemInfoProcessorImpl(this),
+					new SNAppStatusProcessorImpl(),
+					new SNNodeInfoProcessorImpl(this), null);
 		}
 
 		/**
@@ -277,12 +276,10 @@ public interface CommunicationManager {
 		// TODO: Temporary fix. Need to come up with a better solution to to set
 		// DrainProcessor to messagevisitor.
 		public void setDrainProcessor(SNDrainProcessor dp) {
-			mv = new SNMessageVisitorImpl(new CNAppStatusProcessorImpl(this),
-					new CNCommandProcessorImpl(),
-					new CNErrorProcessorImpl(this),
-					new CNRequestProcessorImpl(),
-					new CNCfgStringProcessorImpl(), dp,
-					new CNNodeInfoProcessorImpl(this));
+			mv = new SNMessageVisitorImpl(new SNErrorProcessorImpl(),
+					new SNSystemInfoProcessorImpl(this),
+					new SNAppStatusProcessorImpl(),
+					new SNNodeInfoProcessorImpl(this), dp);
 		}
 	}
 }
