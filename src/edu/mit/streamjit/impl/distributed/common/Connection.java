@@ -4,9 +4,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 
-import com.google.common.collect.ComparisonChain;
-
-import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 

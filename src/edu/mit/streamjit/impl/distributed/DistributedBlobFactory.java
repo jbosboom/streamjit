@@ -48,11 +48,14 @@ public class DistributedBlobFactory implements BlobFactory {
 
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
-		BlobFactory compilerBF = new CompilerBlobFactory();
-		Configuration compilercfg = compilerBF.getDefaultConfiguration(workers);
+		BlobFactory compilerBf = new CompilerBlobFactory();
+		Configuration compilercfg = compilerBf.getDefaultConfiguration(workers);
+
 		Configuration.Builder builder = Configuration.builder(compilercfg);
 		Configuration.IntParameter multiplierParam = (Configuration.IntParameter) builder
 				.removeParameter("multiplier");
+
+		// Configuration.Builder builder = Configuration.builder();
 		for (Worker<?, ?> w : workers) {
 			Parameter p = new Configuration.IntParameter(String.format(
 					"worker%dtomachine", Workers.getIdentifier(w)), 1,
