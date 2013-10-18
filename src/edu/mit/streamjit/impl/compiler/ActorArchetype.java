@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler;
 
+import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -22,6 +23,7 @@ import edu.mit.streamjit.util.bytecode.LocalVariable;
 import edu.mit.streamjit.util.bytecode.Method;
 import edu.mit.streamjit.util.bytecode.Modifier;
 import edu.mit.streamjit.util.bytecode.Module;
+import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
 import edu.mit.streamjit.util.bytecode.User;
 import edu.mit.streamjit.util.bytecode.Value;
 import edu.mit.streamjit.util.bytecode.insts.BinaryInst;
@@ -35,6 +37,7 @@ import edu.mit.streamjit.util.bytecode.types.MethodType;
 import edu.mit.streamjit.util.bytecode.types.RegularType;
 import edu.mit.streamjit.util.bytecode.types.TypeFactory;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -65,11 +68,7 @@ public class ActorArchetype {
 	 * The Klass corresponding to the worker class.
 	 */
 	private final Klass workerKlass;
-	/**
-	 * The Klass holding the generated archetypal work method.
-	 */
-	private final Klass archetypeKlass;
-	private Method workMethod = null;
+	private MethodHandle workMethod;
 	public ActorArchetype(Class<? extends Worker<?, ?>> workerClass, Module module) {
 		this.workerClass = workerClass;
 		ImmutableList.Builder<java.lang.reflect.Field> fieldsBuilder = ImmutableList.builder();
@@ -80,11 +79,6 @@ public class ActorArchetype {
 		}
 		this.fields = fieldsBuilder.build();
 		this.workerKlass = module.getKlass(workerClass);
-		this.archetypeKlass = new Klass(workerKlass.getName()+"Archetype",
-				module.getKlass(Object.class),
-				ImmutableList.<Klass>of(),
-				module);
-		archetypeKlass.modifiers().addAll(EnumSet.of(Modifier.PUBLIC, Modifier.FINAL));
 	}
 
 	public Class<? extends Worker<?, ?>> workerClass() {
@@ -207,36 +201,27 @@ public class ActorArchetype {
 		return true;
 	}
 
-	public Method archetypalWorkMethod() {
+	public void generateCode(String packagePrefix, ModuleClassLoader loader) {
 		if (workMethod != null)
-			return workMethod;
+			return;
+
+		Module module = workerKlass.getParent();
+		Klass archetypeKlass = new Klass(workerKlass.getName()+"Archetype",
+				module.getKlass(Object.class),
+				ImmutableList.<Klass>of(),
+				module);
+		archetypeKlass.modifiers().addAll(EnumSet.of(Modifier.PUBLIC, Modifier.FINAL));
 
 		//We first make a method with a dummy receiver argument and clone the
 		//original work method into it.  After remapping away any instructions
 		//that use the receiver, we make the actual work method without it.
-		Module module = workerKlass.getParent();
 		TypeFactory types = module.types();
 		Method oldWork = workerKlass.getMethodByVirtual("work", types.getMethodType(types.getVoidType(), types.getRegularType(workerKlass)));
 		oldWork.resolve();
 
 		ImmutableList.Builder<RegularType> workMethodTypeBuilder = ImmutableList.builder();
 		ImmutableList.Builder<String> workMethodArgumentNameBuilder = ImmutableList.builder();
-		workMethodArgumentNameBuilder.add("$readInput");
-		workMethodTypeBuilder.add(types.getRegularType(MethodHandle.class));
-		workMethodArgumentNameBuilder.add("$writeOutput");
-		workMethodTypeBuilder.add(types.getRegularType(MethodHandle.class));
-		workMethodArgumentNameBuilder.add("$initialReadIndex");
-		if (Joiner.class.isAssignableFrom(workerClass())) {
-			//The length doubles as the inputs() rewrite.
-			workMethodTypeBuilder.add(types.getRegularType(int[].class));
-		} else
-			workMethodTypeBuilder.add(types.getRegularType(int.class));
-		workMethodArgumentNameBuilder.add("$initialWriteIndex");
-		if (Splitter.class.isAssignableFrom(workerClass())) {
-			//The length doubles as the outputs() rewrite.
-			workMethodTypeBuilder.add(types.getRegularType(int[].class));
-		} else
-			workMethodTypeBuilder.add(types.getRegularType(int.class));
+
 		if (StatefulFilter.class.isAssignableFrom(workerClass())) {
 			//Stateful filters either get read/write MHs (which can point to the
 			//worker itself, but require invoker trampolines or signature
@@ -252,11 +237,30 @@ public class ActorArchetype {
 				workMethodTypeBuilder.add(types.getRegularType(f.getType()));
 			}
 		}
+
+		workMethodArgumentNameBuilder.add("$readInput");
+		workMethodTypeBuilder.add(types.getRegularType(MethodHandle.class));
+		workMethodArgumentNameBuilder.add("$writeOutput");
+		workMethodTypeBuilder.add(types.getRegularType(MethodHandle.class));
+
+		workMethodArgumentNameBuilder.add("$initialReadIndex");
+		if (Joiner.class.isAssignableFrom(workerClass())) {
+			//The length doubles as the inputs() rewrite.
+			workMethodTypeBuilder.add(types.getRegularType(int[].class));
+		} else
+			workMethodTypeBuilder.add(types.getRegularType(int.class));
+		workMethodArgumentNameBuilder.add("$initialWriteIndex");
+		if (Splitter.class.isAssignableFrom(workerClass())) {
+			//The length doubles as the outputs() rewrite.
+			workMethodTypeBuilder.add(types.getRegularType(int[].class));
+		} else
+			workMethodTypeBuilder.add(types.getRegularType(int.class));
+
 		MethodType workMethodType = types.getMethodType(types.getVoidType(), workMethodTypeBuilder.build());
 		ImmutableList<String> workMethodArgumentNames = workMethodArgumentNameBuilder.build();
 
 		MethodType rworkMethodType = workMethodType.prependArgument(types.getRegularType(workerClass()));
-		Method rwork = new Method("rwork"+workerClass.getSimpleName(),
+		Method rwork = new Method("rwork",
 				rworkMethodType, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), archetypeKlass);
 		rwork.arguments().get(0).setName("dummyReceiver");
 		for (int i = 1; i < rwork.arguments().size(); ++i)
@@ -282,21 +286,25 @@ public class ActorArchetype {
 					remapEliminatingReceiver(i);
 
 		assert rwork.arguments().get(0).uses().isEmpty();
-		Method work = new Method("work"+workerClass.getSimpleName(),
-				workMethodType, EnumSet.of(Modifier.PRIVATE, Modifier.STATIC), archetypeKlass);
+		Method work = new Method("work",
+				workMethodType, EnumSet.of(Modifier.PUBLIC, Modifier.STATIC), archetypeKlass);
 		vmap.clear();
 		vmap.put(rwork.arguments().get(0), null);
 		for (int i = 1; i < rwork.arguments().size(); ++i)
 			vmap.put(rwork.arguments().get(i), rwork.arguments().get(i-1));
 		Cloning.cloneMethod(rwork, work, vmap);
-		workMethod = work;
 		rwork.eraseFromParent();
-
-		return workMethod;
+		try {
+			Class<?> archetypeClass = loader.loadClass(archetypeKlass.getName());
+			for (java.lang.reflect.Method m : archetypeClass.getMethods())
+				if (m.getName().equals("work"))
+					workMethod = MethodHandles.publicLookup().unreflect(m);
+		} catch (ClassNotFoundException | IllegalAccessException ex) {
+			throw new AssertionError(ex);
+		}
 	}
 
 	private void remapEliminatingReceiver(Instruction inst) {
-		Method rwork = inst.getParent().getParent();
 		if (inst instanceof CallInst)
 			remap((CallInst)inst);
 		else if (inst instanceof LoadInst)
@@ -308,7 +316,7 @@ public class ActorArchetype {
 	}
 
 	private void remap(CallInst inst) {
-		Module module = archetypeKlass.getParent();
+		Module module = workerKlass.getParent();
 		Method rwork = inst.getParent().getParent();
 		Method method = inst.getMethod();
 		Klass filterKlass = module.getKlass(Filter.class);
@@ -380,9 +388,27 @@ public class ActorArchetype {
 		throw new UnsupportedOperationException("TODO: remap StoreInsts for stateful filters");
 	}
 
-//	public MethodHandle specialize(Actor a) {
-//		checkArgument(a.archetype() == this);
-//	}
+	/**
+	 * Specializes an archetypal work function for the given Actor.  The
+	 * returned function takes four arguments: the read and write method handles
+	 * and the initial read and write indices (int or int[] as appropriate).
+	 * These four arguments depend on the ActorGroup iterations having been
+	 * assigned to cores, so can't be bound just based on the Actor.
+	 * @param a the Actor to specialize for
+	 * @return a specialized work method
+	 */
+	public MethodHandle specialize(Actor a) {
+		checkArgument(a.archetype() == this);
+		MethodHandle handle = workMethod;
+		//This relies on fields having a consistent iteration order.
+		for (java.lang.reflect.Field f : fields)
+			try {
+				handle = MethodHandles.insertArguments(handle, 0, f.get(a.worker()));
+			} catch (IllegalAccessException ex) {
+				throw new AssertionError(ex);
+			}
+		return handle;
+	}
 
 	public static Object invoke(MethodHandle handle, int arg) throws Throwable {
 		return handle.invokeExact(arg);
