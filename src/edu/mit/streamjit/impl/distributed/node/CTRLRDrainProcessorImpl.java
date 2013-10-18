@@ -12,11 +12,11 @@ import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainDataRequ
  * @author Sumanan sumanan@mit.edu
  * @since Jul 30, 2013
  */
-public class DrainProcessorImpl implements CTRLRDrainProcessor {
+public class CTRLRDrainProcessorImpl implements CTRLRDrainProcessor {
 
 	StreamNode streamNode;
 
-	public DrainProcessorImpl(StreamNode streamNode) {
+	public CTRLRDrainProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
 
