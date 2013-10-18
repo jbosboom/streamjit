@@ -1,12 +1,8 @@
 package edu.mit.streamjit.impl.distributed.common;
 
 import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
-import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
-import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
-import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo.NodeInfoProcessor;
-import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo.SystemInfoProcessor;
 
@@ -38,7 +34,7 @@ public class SNMessageVisitorImpl implements SNMessageVisitor {
 
 	@Override
 	public void visit(SystemInfo systemInfo) {
-		// systemInfo.
+		sip.process(systemInfo);
 	}
 
 	@Override

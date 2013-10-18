@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.distributed.common;
 
-import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
