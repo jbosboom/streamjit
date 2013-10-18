@@ -163,6 +163,7 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		Connection connection;
 
 		private SNAgentRunner(StreamNodeAgent SNAgent, Connection connection) {
+			super(String.format("SNAgentRunner - %d", SNAgent.getNodeID()));
 			this.SNAgent = SNAgent;
 			this.connection = connection;
 		}
