@@ -5,7 +5,6 @@ import java.io.IOException;
 
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageVisitor;
-import edu.mit.streamjit.impl.distributed.common.CTRLRMessageVisitorImpl;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
