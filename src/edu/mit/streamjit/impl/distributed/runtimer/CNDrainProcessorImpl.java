@@ -5,11 +5,9 @@ import java.util.Map;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
-import edu.mit.streamjit.impl.distributed.common.DrainElement.DoDrain;
-import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainDataRequest;
-import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainProcessor;
-import edu.mit.streamjit.impl.distributed.common.DrainElement.Drained;
-import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainedDataMap;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.Drained;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedDataMap;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 
 /**
  * {@link DrainProcessor} at {@link Controller} side.
@@ -17,24 +15,12 @@ import edu.mit.streamjit.impl.distributed.common.DrainElement.DrainedDataMap;
  * @author Sumanan sumanan@mit.edu
  * @since Aug 11, 2013
  */
-public class CNDrainProcessorImpl implements DrainProcessor {
+public class CNDrainProcessorImpl implements SNDrainProcessor {
 
 	AbstractDrainer drainer;
 
 	public CNDrainProcessorImpl(AbstractDrainer drainer) {
 		this.drainer = drainer;
-	}
-
-	@Override
-	public void process(DrainDataRequest drnDataReq) {
-		throw new IllegalArgumentException(
-				"DrainDataRequest shouldn't be received by controller.");
-	}
-
-	@Override
-	public void process(DoDrain drain) {
-		throw new IllegalArgumentException(
-				"DoDrain shouldn't be received by controller.");
 	}
 
 	@Override

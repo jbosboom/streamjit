@@ -25,6 +25,6 @@ public class SystemInfo implements SNMessageElement {
 	}
 
 	public interface SystemInfoProcessor {
-
+		public void process(SystemInfo systemInfo);
 	}
 }
