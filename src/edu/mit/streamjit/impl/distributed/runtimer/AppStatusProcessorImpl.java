@@ -10,11 +10,11 @@ import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.StreamNo
  * @author Sumanan sumanan@mit.edu
  * @since Aug 11, 2013
  */
-public class CNAppStatusProcessorImpl implements AppStatusProcessor {
+public class AppStatusProcessorImpl implements AppStatusProcessor {
 
 	StreamNodeAgent streamNode;
 
-	public CNAppStatusProcessorImpl(StreamNodeAgent streamNode) {
+	public AppStatusProcessorImpl(StreamNodeAgent streamNode) {
 		this.streamNode = streamNode;
 	}
 

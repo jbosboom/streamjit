@@ -10,11 +10,11 @@ import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.StreamNo
  * @author Sumanan sumanan@mit.edu
  * @since Aug 11, 2013
  */
-public class CNErrorProcessorImpl implements ErrorProcessor {
+public class ErrorProcessorImpl implements ErrorProcessor {
 
 	StreamNodeAgent streamNode;
 
-	public CNErrorProcessorImpl(StreamNodeAgent streamNode) {
+	public ErrorProcessorImpl(StreamNodeAgent streamNode) {
 		this.streamNode = streamNode;
 	}
 

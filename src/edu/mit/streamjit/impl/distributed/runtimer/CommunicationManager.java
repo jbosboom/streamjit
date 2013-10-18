@@ -136,9 +136,9 @@ public interface CommunicationManager {
 			this.nodeID = nodeID;
 			stopFlag = new AtomicBoolean(false);
 			// TODO: Need to handle passing null for DrainProcessor.
-			mv = new SNMessageVisitorImpl(new CNErrorProcessorImpl(this),
-					new SNSystemInfoProcessorImpl(this),
-					new CNAppStatusProcessorImpl(this),
+			mv = new SNMessageVisitorImpl(new ErrorProcessorImpl(this),
+					new SystemInfoProcessorImpl(this),
+					new AppStatusProcessorImpl(this),
 					new NodeInfoProcessorImpl(this), null);
 		}
 
@@ -275,9 +275,9 @@ public interface CommunicationManager {
 		// TODO: Temporary fix. Need to come up with a better solution to to set
 		// DrainProcessor to messagevisitor.
 		public void setDrainProcessor(SNDrainProcessor dp) {
-			mv = new SNMessageVisitorImpl(new CNErrorProcessorImpl(this),
-					new SNSystemInfoProcessorImpl(this),
-					new CNAppStatusProcessorImpl(this),
+			mv = new SNMessageVisitorImpl(new ErrorProcessorImpl(this),
+					new SystemInfoProcessorImpl(this),
+					new AppStatusProcessorImpl(this),
 					new NodeInfoProcessorImpl(this), dp);
 		}
 	}

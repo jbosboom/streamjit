@@ -4,11 +4,11 @@ import edu.mit.streamjit.impl.distributed.common.SystemInfo;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo.SystemInfoProcessor;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.StreamNodeAgent;
 
-public class SNSystemInfoProcessorImpl implements SystemInfoProcessor {
+public class SystemInfoProcessorImpl implements SystemInfoProcessor {
 
 	StreamNodeAgent streamNode;
 
-	public SNSystemInfoProcessorImpl(StreamNodeAgent streamNode) {
+	public SystemInfoProcessorImpl(StreamNodeAgent streamNode) {
 		this.streamNode = streamNode;
 	}
 
