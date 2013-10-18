@@ -13,7 +13,7 @@ import edu.mit.streamjit.impl.distributed.common.SNMessageVisitor;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo;
 import edu.mit.streamjit.impl.distributed.node.SNAppStatusProcessorImpl;
 import edu.mit.streamjit.impl.distributed.node.SNErrorProcessorImpl;
-import edu.mit.streamjit.impl.distributed.node.SNNodeInfoProcessorImpl;
+import edu.mit.streamjit.impl.distributed.node.NodeInfoProcessorImpl;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
@@ -139,7 +139,7 @@ public interface CommunicationManager {
 			mv = new SNMessageVisitorImpl(new CNErrorProcessorImpl(this),
 					new SNSystemInfoProcessorImpl(this),
 					new CNAppStatusProcessorImpl(this),
-					new SNNodeInfoProcessorImpl(this), null);
+					new NodeInfoProcessorImpl(this), null);
 		}
 
 		/**
@@ -278,7 +278,7 @@ public interface CommunicationManager {
 			mv = new SNMessageVisitorImpl(new CNErrorProcessorImpl(this),
 					new SNSystemInfoProcessorImpl(this),
 					new CNAppStatusProcessorImpl(this),
-					new SNNodeInfoProcessorImpl(this), dp);
+					new NodeInfoProcessorImpl(this), dp);
 		}
 	}
 }

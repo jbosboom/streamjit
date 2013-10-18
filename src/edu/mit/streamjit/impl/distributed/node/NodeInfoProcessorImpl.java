@@ -10,11 +10,11 @@ import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.StreamNo
  * @author Sumanan sumanan@mit.edu
  * @since Aug 11, 2013
  */
-public class SNNodeInfoProcessorImpl implements NodeInfoProcessor {
+public class NodeInfoProcessorImpl implements NodeInfoProcessor {
 
 	StreamNodeAgent streamNode;
 
-	public SNNodeInfoProcessorImpl(StreamNodeAgent streamNode) {
+	public NodeInfoProcessorImpl(StreamNodeAgent streamNode) {
 		this.streamNode = streamNode;
 	}
 
