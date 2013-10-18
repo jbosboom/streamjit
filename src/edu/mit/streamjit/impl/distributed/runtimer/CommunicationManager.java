@@ -11,8 +11,6 @@ import edu.mit.streamjit.impl.distributed.common.Request;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.SNMessageVisitor;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo;
-import edu.mit.streamjit.impl.distributed.node.SNAppStatusProcessorImpl;
-import edu.mit.streamjit.impl.distributed.node.SNErrorProcessorImpl;
 import edu.mit.streamjit.impl.distributed.node.NodeInfoProcessorImpl;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
