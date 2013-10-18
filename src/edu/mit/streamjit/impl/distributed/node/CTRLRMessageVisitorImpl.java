@@ -1,5 +1,10 @@
-package edu.mit.streamjit.impl.distributed.common;
+package edu.mit.streamjit.impl.distributed.node;
 
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
+import edu.mit.streamjit.impl.distributed.common.CTRLRMessageVisitor;
+import edu.mit.streamjit.impl.distributed.common.Command;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
+import edu.mit.streamjit.impl.distributed.common.Request;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
