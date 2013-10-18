@@ -12,6 +12,7 @@ import edu.mit.streamjit.impl.distributed.common.MessageVisitor;
 import edu.mit.streamjit.impl.distributed.common.MessageVisitorImpl;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
+import edu.mit.streamjit.impl.distributed.common.SNMessageVisitor;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
@@ -95,7 +96,7 @@ public interface CommunicationManager {
 		/**
 		 * {@link MessageVisitor} for this streamnode.
 		 */
-		private MessageVisitor mv;
+		private SNMessageVisitor mv;
 
 		/**
 		 * Assigned nodeID of the corresponding {@link StreamNode}.
@@ -269,14 +270,14 @@ public interface CommunicationManager {
 		/**
 		 * @return the mv
 		 */
-		public MessageVisitor getMv() {
+		public SNMessageVisitor getMv() {
 			return mv;
 		}
 
 		// TODO: Temporary fix. Need to come up with a better solution to to set
 		// DrainProcessor to messagevisitor.
-		public void setDrainProcessor(DrainProcessor dp) {
-			mv = new MessageVisitorImpl(new CNAppStatusProcessorImpl(this),
+		public void setDrainProcessor(SNDrainProcessor dp) {
+			mv = new SNMessageVisitorImpl(new CNAppStatusProcessorImpl(this),
 					new CNCommandProcessorImpl(),
 					new CNErrorProcessorImpl(this),
 					new CNRequestProcessorImpl(),

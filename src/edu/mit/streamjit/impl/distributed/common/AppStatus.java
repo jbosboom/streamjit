@@ -11,7 +11,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  * @author Sumanan sumanan@mit.edu
  * @since May 17, 2013
  */
-public enum AppStatus implements MessageElement {
+public enum AppStatus implements SNMessageElement {
 	/**
 	 * Stream application is still running.
 	 */
@@ -61,7 +61,7 @@ public enum AppStatus implements MessageElement {
 	};
 
 	@Override
-	public void accept(MessageVisitor visitor) {
+	public void accept(SNMessageVisitor visitor) {
 		visitor.visit(this);
 	}
 

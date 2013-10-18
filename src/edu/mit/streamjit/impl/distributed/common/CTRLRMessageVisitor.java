@@ -7,22 +7,13 @@ package edu.mit.streamjit.impl.distributed.common;
  * @author Sumanan sumanan@mit.edu
  * @since May 20, 2013
  */
-public interface MessageVisitor {
-
-	public void visit(AppStatus appStatus);
+public interface CTRLRMessageVisitor {
 
 	public void visit(Command command);
-
-	public void visit(Error error);
 
 	public void visit(Request request);
 
 	public void visit(ConfigurationString json);
 
-	public void visit(SystemInfo systemInfo);
-
-	public void visit(NodeInfo nodeInfo);
-
-	public void visit(DrainElement drain);
-
+	public void visit(CTRLRDrainElement ctrlrDrainElement);
 }

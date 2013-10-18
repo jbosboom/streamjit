@@ -13,7 +13,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class ConfigurationString implements MessageElement {
+public class ConfigurationString implements CTRLRMessageElement {
 
 	private static final long serialVersionUID = -5900812807902330853L;
 
@@ -26,7 +26,7 @@ public class ConfigurationString implements MessageElement {
 	}
 
 	@Override
-	public void accept(MessageVisitor visitor) {
+	public void accept(CTRLRMessageVisitor visitor) {
 		visitor.visit(this);
 	}
 

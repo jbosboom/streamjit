@@ -3,14 +3,14 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.io.EOFException;
 import java.io.IOException;
 
+import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
+import edu.mit.streamjit.impl.distributed.common.CTRLRMessageVisitor;
+import edu.mit.streamjit.impl.distributed.common.CTRLRMessageVisitorImpl;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
-import edu.mit.streamjit.impl.distributed.common.MessageElement;
-import edu.mit.streamjit.impl.distributed.common.MessageVisitor;
-import edu.mit.streamjit.impl.distributed.common.MessageVisitorImpl;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
@@ -34,7 +34,7 @@ public class StreamNode extends Thread {
 	private int myNodeID = -1; // TODO: consider move or remove this from
 								// StreamNode class. If so, this class will be
 								// more handy.
-	private MessageVisitor mv;
+	private CTRLRMessageVisitor mv;
 
 	private BlobsManager blobsManager;
 
@@ -66,18 +66,16 @@ public class StreamNode extends Thread {
 	private StreamNode(Connection connection) {
 		super("Stream Node");
 		this.controllerConnection = connection;
-		this.mv = new MessageVisitorImpl(new SNAppStatusProcessorImpl(),
-				new SNCommandProcessorImpl(this), new SNErrorProcessorImpl(),
+		this.mv = new CTRLRMessageVisitorImpl(new SNCommandProcessorImpl(this),
 				new SNRequestProcessorImpl(this), new SNCfgStringProcessorImpl(
-						this), new SNDrainProcessorImpl(this),
-				new SNNodeInfoProcessorImpl());
+						this), new SNDrainProcessorImpl(this));
 		this.run = true;
 	}
 
 	public void run() {
 		while (run) {
 			try {
-				MessageElement me = controllerConnection.readObject();
+				CTRLRMessageElement me = controllerConnection.readObject();
 				me.accept(mv);
 			} catch (ClassNotFoundException e) {
 				// No way. Just ignore.

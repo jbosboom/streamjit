@@ -10,7 +10,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  * @author Sumanan sumanan@mit.edu
  * @since May 17, 2013
  */
-public enum Error implements MessageElement {
+public enum Error implements SNMessageElement {
 
 	FILE_NOT_FOUND {
 		@Override
@@ -32,7 +32,7 @@ public enum Error implements MessageElement {
 	};
 
 	@Override
-	public void accept(MessageVisitor visitor) {
+	public void accept(SNMessageVisitor visitor) {
 		visitor.visit(this);
 	}
 

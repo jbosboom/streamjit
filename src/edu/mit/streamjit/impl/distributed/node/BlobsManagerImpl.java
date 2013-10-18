@@ -9,7 +9,6 @@ import java.util.Set;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import com.sun.swing.internal.plaf.synth.resources.synth;
 
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
@@ -17,12 +16,10 @@ import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.BlobThread;
-import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
-import edu.mit.streamjit.impl.distributed.common.DrainElement;
-import edu.mit.streamjit.impl.distributed.common.MessageElement;
-import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
+import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Utils;
@@ -290,7 +287,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 
 			this.isDrained = true;
-			MessageElement drained = new DrainElement.Drained(blobID);
+			SNMessageElement drained = new SNDrainElement.Drained(blobID);
 			try {
 				streamNode.controllerConnection.writeObject(drained);
 			} catch (IOException e) {
@@ -303,7 +300,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			if (this.reqDrainData) {
 				ImmutableMap.Builder<Token, DrainData> builder = new ImmutableMap.Builder<>();
 				builder.put(blobID, blob.getDrainData());
-				MessageElement me = new DrainElement.DrainedDataMap(
+				SNMessageElement me = new SNDrainElement.DrainedDataMap(
 						builder.build());
 				try {
 					streamNode.controllerConnection.writeObject(me);
@@ -372,7 +369,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		try {
 			streamNode.controllerConnection
-					.writeObject(new DrainElement.DrainedDataMap(builder
+					.writeObject(new SNDrainElement.DrainedDataMap(builder
 							.build()));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block

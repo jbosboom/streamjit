@@ -10,7 +10,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  * @author Sumanan sumanan@mit.edu
  * @since May 20, 2013
  */
-public enum Request implements MessageElement {
+public enum Request implements CTRLRMessageElement {
 	/**
 	 * Status of the streaming application. Once this is received,
 	 * {@link StreamNode} must send it's app status to the controller. See
@@ -55,7 +55,7 @@ public enum Request implements MessageElement {
 	};
 
 	@Override
-	public void accept(MessageVisitor visitor) {
+	public void accept(CTRLRMessageVisitor visitor) {
 		visitor.visit(this);
 	}
 
