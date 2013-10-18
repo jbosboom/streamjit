@@ -20,7 +20,7 @@ public class CircularArrayConcreteStorage implements ConcreteStorage {
 	private final Object array;
 	private final int capacity, throughput;
 	private int readHead, writeHead;
-	private CircularArrayConcreteStorage(Class<?> type, int capacity, int throughput, Object initialDataArray) {
+	public CircularArrayConcreteStorage(Class<?> type, int capacity, int throughput, Object initialDataArray) {
 		this.array = Array.newInstance(type, capacity);
 		this.capacity = capacity;
 		this.throughput = throughput;
