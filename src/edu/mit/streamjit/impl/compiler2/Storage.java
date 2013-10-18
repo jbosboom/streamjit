@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.Lists;
+import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.impl.blob.Blob.Token;
@@ -150,6 +151,15 @@ public final class Storage {
 	public int unconsumedItems() {
 		checkState(unconsumedItems != -1);
 		return unconsumedItems;
+	}
+
+	public int actualCapacity() {
+		if (isInternal())
+			return throughput();
+		//This assumes truncated schedules will never force us to put an extra
+		//throughput(s) into a storage to satisfy another storage's requirement.
+		//TODO: pretty sure this is wrong
+		return Ints.checkedCast((long)(Math.ceil((throughput()+unconsumedItems())/throughput()) + 1) * throughput());
 	}
 
 	public void setSizes(Map<ActorGroup, Integer> externalSchedule) {

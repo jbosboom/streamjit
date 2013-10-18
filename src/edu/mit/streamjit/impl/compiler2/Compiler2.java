@@ -50,6 +50,7 @@ public class Compiler2 {
 	private ImmutableMap<ActorGroup, Integer> externalSchedule;
 	private final Map<Token, MethodHandle> tokenInputIndices = new HashMap<>(), tokenOutputIndices = new HashMap<>();
 	private final Module module = new Module();
+	private ImmutableMap<Storage, ConcreteStorage> globalStorage;
 	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 		Map<Class<?>, ActorArchetype> archetypesBuilder = new HashMap<>();
 		Map<Worker<?, ?>, Actor> actorsBuilder = new HashMap<>();
@@ -87,6 +88,8 @@ public class Compiler2 {
 		splitterRemoval();
 		//joinerRemoval();
 		unbox();
+
+		createStorage();
 		return null;
 	}
 
@@ -292,5 +295,17 @@ public class Compiler2 {
 					continue next_storage;
 			s.setType(Primitives.unwrap(s.commonType()));
 		}
+	}
+
+	private void createStorage() {
+		//TODO: initialState needs to be used somewhere.
+		ImmutableMap.Builder<Storage, ConcreteStorage> globalStorageBuilder = ImmutableMap.builder();
+		for (Storage s : storage) {
+			s.setSizes(externalSchedule);
+			if (!s.isInternal())
+				globalStorageBuilder.put(s, new CircularArrayConcreteStorage(s.type(), s.actualCapacity(), s.throughput(),
+						new Object[0] /*TODO: new init strategy*/));
+		}
+		this.globalStorage = globalStorageBuilder.build();
 	}
 }
