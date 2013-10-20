@@ -11,4 +11,6 @@ public interface SNMessageVisitor {
 	void visit(NodeInfo nodeInfo);
 
 	void visit(SNDrainElement snDrainElement);
+
+	void visit(SNException snException);
 }
