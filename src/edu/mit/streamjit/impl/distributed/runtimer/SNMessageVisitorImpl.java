@@ -4,6 +4,8 @@ import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
+import edu.mit.streamjit.impl.distributed.common.SNException;
+import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
 import edu.mit.streamjit.impl.distributed.common.SNMessageVisitor;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo;
 import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
@@ -23,14 +25,17 @@ public class SNMessageVisitorImpl implements SNMessageVisitor {
 	private final AppStatusProcessor ap;
 	private final NodeInfoProcessor np;
 	private final SNDrainProcessor dp;
+	private final SNExceptionProcessor snExP;
 
 	public SNMessageVisitorImpl(ErrorProcessor ep, SystemInfoProcessor sip,
-			AppStatusProcessor ap, NodeInfoProcessor np, SNDrainProcessor dp) {
+			AppStatusProcessor ap, NodeInfoProcessor np, SNDrainProcessor dp,
+			SNExceptionProcessor snExP) {
 		this.ep = ep;
 		this.sip = sip;
 		this.ap = ap;
 		this.np = np;
 		this.dp = dp;
+		this.snExP = snExP;
 	}
 
 	@Override
@@ -55,5 +60,10 @@ public class SNMessageVisitorImpl implements SNMessageVisitor {
 	@Override
 	public void visit(SNDrainElement snDrainElement) {
 		snDrainElement.process(dp);
+	}
+
+	@Override
+	public void visit(SNException snException) {
+		snExP.process(snException);
 	}
 }
