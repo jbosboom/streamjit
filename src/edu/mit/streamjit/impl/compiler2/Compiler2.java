@@ -49,6 +49,11 @@ public class Compiler2 {
 	private final Set<Storage> storage;
 	private ImmutableMap<ActorGroup, Integer> externalSchedule;
 	private final Map<Token, MethodHandle> tokenInputIndices = new HashMap<>(), tokenOutputIndices = new HashMap<>();
+	/**
+	 * The Token "schedule": the number of items read or written per steady
+	 * state.
+	 */
+	private final Map<Token, Integer> tokenItemsRead = new HashMap<>(), tokenItemsWritten = new HashMap<>();
 	private final Module module = new Module();
 	private ImmutableMap<Storage, ConcreteStorage> globalStorage;
 	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
@@ -146,6 +151,20 @@ public class Compiler2 {
 			externalSchedule = scheduleBuilder.build().getSchedule();
 		} catch (Schedule.ScheduleException ex) {
 			throw new StreamCompilationFailedException("couldn't find external schedule", ex);
+		}
+
+		//Compute the Token "schedule".
+		for (ActorGroup g : groups) {
+			for (Storage s : g.inputs()) {
+				if (s.hasUpstreamActor()) continue;
+				int itemsReadFromToken = externalSchedule.get(g) * g.schedule().get(s.downstreamActor()) * s.pop();
+				tokenItemsRead.put(s.upstreamToken(), itemsReadFromToken);
+			}
+			for (Storage s : g.outputs()) {
+				if (s.hasDownstreamActor()) continue;
+				int itemsWrittenToToken = externalSchedule.get(g) * g.schedule().get(s.upstreamActor()) * s.push();
+				tokenItemsWritten.put(s.downstreamToken(), itemsWrittenToToken);
+			}
 		}
 	}
 
