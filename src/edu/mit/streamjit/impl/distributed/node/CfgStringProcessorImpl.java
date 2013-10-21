@@ -27,11 +27,13 @@ import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecif
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
+import edu.mit.streamjit.impl.distributed.common.SNException;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
@@ -142,8 +144,20 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 						workIdentifiers.toString()));
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
 
-				Blob b = bf.makeBlob(workerset, blobConfigs, 1, drainData);
-				blobSet.add(b);
+				try {
+					Blob b = bf.makeBlob(workerset, blobConfigs, 1, drainData);
+					blobSet.add(b);
+				} catch (Exception ex) {
+					Token blobID = Utils.getblobID(workerset);
+					try {
+						streamNode.controllerConnection
+								.writeObject(new SNException.MakeBlobException(
+										blobID));
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					return null;
+				}
 			}
 			return blobSet.build();
 		} else
