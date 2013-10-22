@@ -16,6 +16,7 @@ import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
@@ -204,7 +205,7 @@ public class Controller {
 				nodeInfoMap);
 
 		ConfigurationString json = new ConfigurationString(builder.build()
-				.toJson(), ConfigType.STATIC);
+				.toJson(), ConfigType.STATIC, null);
 		sendToAll(json);
 	}
 
@@ -225,9 +226,19 @@ public class Controller {
 		builder.putExtraData(GlobalConstants.CONINFOMAP, conInfoMap);
 
 		Configuration cfg = builder.build();
-		ConfigurationString json = new ConfigurationString(cfg.toJson(),
-				ConfigType.DYNAMIC);
-		sendToAll(json);
+		String jsonStirng = cfg.toJson();
+
+		ImmutableMap<Integer, DrainData> drainDataMap = app.getDrainData();
+
+		for (StreamNodeAgent node : StreamNodeMap.values()) {
+			try {
+				ConfigurationString json = new ConfigurationString(jsonStirng,
+						ConfigType.DYNAMIC, drainDataMap.get(node.getNodeID()));
+				node.writeObject(json);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 
 		setupHeadTail1(conInfoMap, app.bufferMap,
 				Token.createOverallInputToken(app.source1),
