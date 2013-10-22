@@ -20,6 +20,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
+import edu.mit.streamjit.impl.distributed.HeadChannel;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
@@ -36,7 +37,6 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
-import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.StreamNodeAgent;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
@@ -256,9 +256,8 @@ public class Controller {
 			throw new IllegalArgumentException(
 					"No head buffer in the passed bufferMap.");
 
-		headChannel = new TCPOutputChannel(bufferMap.get(headToken),
-				conProvider, headconInfo, "headChannel - "
-						+ headToken.toString(), 1);
+		headChannel = new HeadChannel(bufferMap.get(headToken), conProvider,
+				headconInfo, "headChannel - " + headToken.toString(), 1);
 
 		TCPConnectionInfo tailconInfo = conInfoMap.get(tailToken);
 		assert tailconInfo != null : "No tail connection info exists in conInfoMap";
