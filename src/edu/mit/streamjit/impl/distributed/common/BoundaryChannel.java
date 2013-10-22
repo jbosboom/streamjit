@@ -2,6 +2,8 @@ package edu.mit.streamjit.impl.distributed.common;
 
 import java.io.IOException;
 
+import com.google.common.collect.ImmutableList;
+
 import edu.mit.streamjit.impl.blob.Buffer;
 
 /**
@@ -40,6 +42,8 @@ public interface BoundaryChannel {
 	 * @return Other end of the node's ID.
 	 */
 	int getOtherNodeID();
+
+	public ImmutableList<Object> getUnprocessedData();
 
 	/**
 	 * Interface that represents input channels.

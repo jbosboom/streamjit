@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.google.common.collect.ImmutableList;
+
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
@@ -42,6 +44,8 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private int count;
 
+	private ImmutableList<Object> unProcessedData;
+
 	public TCPOutputChannel(Buffer buffer, TCPConnectionProvider conProvider,
 			TCPConnectionInfo conInfo, String bufferTokenName, int debugPrint) {
 		this.buffer = buffer;
@@ -51,6 +55,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 		this.cleanStop = false;
 		this.name = "TCPOutputChannel - " + bufferTokenName;
 		this.debugPrint = debugPrint;
+		this.unProcessedData = null;
 		count = 0;
 	}
 
@@ -89,6 +94,8 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
+
+				fillUnprocessedData();
 
 				if (debugPrint > 0) {
 					System.err.println(Thread.currentThread().getName()
@@ -164,6 +171,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 			}
 		}
 	}
+
 	private void reConnect() {
 		try {
 			this.tcpConnection.closeConnection();
@@ -186,5 +194,23 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 	@Override
 	public String name() {
 		return name;
+	}
+
+	// TODO: Huge data copying is happening in this code twice. Need to optimise
+	// this.
+	private void fillUnprocessedData() {
+		Object[] obArray = new Object[buffer.size()];
+		buffer.readAll(obArray);
+		assert buffer.size() == 0 : String.format(
+				"buffer size is %d. But 0 is expected", buffer.size());
+		this.unProcessedData = ImmutableList.copyOf(obArray);
+	}
+
+	@Override
+	public ImmutableList<Object> getUnprocessedData() {
+		if (unProcessedData == null)
+			throw new IllegalAccessError(
+					"Still processing... No unprocessed data");
+		return unProcessedData;
 	}
 }
