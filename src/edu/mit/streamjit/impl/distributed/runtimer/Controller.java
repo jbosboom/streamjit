@@ -407,7 +407,6 @@ public class Controller {
 		try {
 			agent.writeObject(new CTRLRDrainElement.DoDrain(blobID, !isFinal));
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}

@@ -17,6 +17,7 @@ import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.BlobThread;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
@@ -308,8 +309,13 @@ public class BlobsManagerImpl implements BlobsManager {
 
 				for (Token t : blob.getInputs()) {
 					if (inputChannels.containsKey(t)) {
-						inputDataBuilder.put(t, inputChannels.get(t)
-								.getUnprocessedData());
+						BoundaryChannel chanl = inputChannels.get(t);
+						ImmutableList<Object> draindata = chanl
+								.getUnprocessedData();
+						System.out.println(String.format(
+								"No of unprocessed data of %s is %d",
+								chanl.name(), draindata.size()));
+						inputDataBuilder.put(t, draindata);
 					}
 
 					// TODO: Unnecessary data copy. Optimise this.
@@ -326,8 +332,13 @@ public class BlobsManagerImpl implements BlobsManager {
 
 				for (Token t : blob.getOutputs()) {
 					if (outputChannels.containsKey(t)) {
-						outputDataBuilder.put(t, outputChannels.get(t)
-								.getUnprocessedData());
+						BoundaryChannel chanl = outputChannels.get(t);
+						ImmutableList<Object> draindata = chanl
+								.getUnprocessedData();
+						System.out.println(String.format(
+								"No of unprocessed data of %s is %d",
+								chanl.name(), draindata.size()));
+						outputDataBuilder.put(t, draindata);
 					}
 				}
 
@@ -335,6 +346,7 @@ public class BlobsManagerImpl implements BlobsManager {
 						dd, inputDataBuilder.build(), outputDataBuilder.build());
 				try {
 					streamNode.controllerConnection.writeObject(me);
+					System.out.println("DrainData has been sent");
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
