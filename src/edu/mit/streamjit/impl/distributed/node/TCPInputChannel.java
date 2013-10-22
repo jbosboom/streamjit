@@ -50,6 +50,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private boolean softClosed;
 
+	private boolean isClosed;
+
 	int count;
 
 	private ImmutableList<Object> unProcessedData;
@@ -65,12 +67,14 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		this.softClosed = false;
 		this.extraBuffer = null;
 		this.unProcessedData = null;
+		this.isClosed = false;
 		count = 0;
 	}
 
 	@Override
 	public void closeConnection() throws IOException {
 		// tcpConnection.closeConnection();
+		this.isClosed = true;
 	}
 
 	@Override
@@ -103,8 +107,6 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-
-				fillUnprocessedData();
 			}
 		};
 	}
@@ -333,10 +335,12 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	@Override
 	public ImmutableList<Object> getUnprocessedData() {
+		if (!this.isClosed)
+			throw new IllegalAccessError(
+					"Still processing... No unprocessed data");
+
 		if (unProcessedData == null)
-			if (unProcessedData == null)
-				throw new IllegalAccessError(
-						"Still processing... No unprocessed data");
+			fillUnprocessedData();
 
 		return unProcessedData;
 	}
