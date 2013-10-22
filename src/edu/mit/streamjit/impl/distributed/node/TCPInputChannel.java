@@ -7,6 +7,8 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.google.common.collect.ImmutableList;
+
 import edu.mit.streamjit.impl.blob.AbstractBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
@@ -50,6 +52,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	int count;
 
+	private ImmutableList<Object> unProcessedData;
+
 	public TCPInputChannel(Buffer buffer, TCPConnectionProvider conProvider,
 			TCPConnectionInfo conInfo, String bufferTokenName, int debugPrint) {
 		this.buffer = buffer;
@@ -60,6 +64,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		this.debugPrint = debugPrint;
 		this.softClosed = false;
 		this.extraBuffer = null;
+		this.unProcessedData = null;
 		count = 0;
 	}
 
@@ -89,13 +94,17 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				while (!stopFlag.get() && !softClosed) {
 					receiveData();
 				}
+
 				if (!softClosed)
 					finalReceive();
+
 				try {
 					closeConnection();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
+
+				fillUnprocessedData();
 			}
 		};
 	}
@@ -224,6 +233,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			}
 		} while (hasData);
 	}
+
 	private void reConnect() {
 		while (!stopFlag.get()) {
 			try {
@@ -296,4 +306,38 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		}
 	}
 
+	// TODO: Huge data copying is happening in this code three times. Need to
+	// optimise it.
+	private void fillUnprocessedData() {
+		Object[] bufArray = new Object[buffer.size()];
+		buffer.readAll(bufArray);
+		assert buffer.size() == 0 : String.format(
+				"buffer size is %d. But 0 is expected", buffer.size());
+		if (extraBuffer == null)
+			this.unProcessedData = ImmutableList.copyOf(bufArray);
+		else {
+			Object[] exArray = new Object[extraBuffer.size()];
+			extraBuffer.readAll(exArray);
+			assert extraBuffer.size() == 0 : String.format(
+					"extraBuffer size is %d. But 0 is expected",
+					extraBuffer.size());
+
+			Object[] mergedArray = new Object[bufArray.length + exArray.length];
+			System.arraycopy(bufArray, 0, mergedArray, 0, bufArray.length);
+			System.arraycopy(extraBuffer, 0, mergedArray, bufArray.length,
+					exArray.length);
+
+			this.unProcessedData = ImmutableList.copyOf(mergedArray);
+		}
+	}
+
+	@Override
+	public ImmutableList<Object> getUnprocessedData() {
+		if (unProcessedData == null)
+			if (unProcessedData == null)
+				throw new IllegalAccessError(
+						"Still processing... No unprocessed data");
+
+		return unProcessedData;
+	}
 }
