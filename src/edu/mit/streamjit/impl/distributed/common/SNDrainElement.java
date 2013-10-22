@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.common;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import edu.mit.streamjit.impl.blob.Blob;
@@ -57,13 +58,21 @@ public abstract class SNDrainElement implements SNMessageElement {
 	 * the drain data of the blobs after the draining. See {@link DrainData} for
 	 * more information.
 	 */
-	public static final class DrainedDataMap extends SNDrainElement {
+	public static final class DrainedData extends SNDrainElement {
 		private static final long serialVersionUID = 1L;
 
-		public final ImmutableMap<Token, DrainData> drainData;
+		public final Token blobID;
+		public final DrainData drainData;
+		public final ImmutableMap<Token, ImmutableList<Object>> inputData;
+		public final ImmutableMap<Token, ImmutableList<Object>> outputData;
 
-		public DrainedDataMap(ImmutableMap<Token, DrainData> drainData) {
+		public DrainedData(Token blobID, DrainData drainData,
+				ImmutableMap<Token, ImmutableList<Object>> inputData,
+				ImmutableMap<Token, ImmutableList<Object>> outputData) {
+			this.blobID = blobID;
 			this.drainData = drainData;
+			this.inputData = inputData;
+			this.outputData = outputData;
 		}
 
 		@Override
@@ -83,6 +92,6 @@ public abstract class SNDrainElement implements SNMessageElement {
 
 		public void process(Drained drained);
 
-		public void process(DrainedDataMap drainedData);
+		public void process(DrainedData drainedData);
 	}
 }

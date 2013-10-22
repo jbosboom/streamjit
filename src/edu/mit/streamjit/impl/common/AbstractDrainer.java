@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Sets;
 
 import edu.mit.streamjit.api.CompiledStream;
@@ -29,6 +30,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 
 /**
@@ -175,29 +177,55 @@ public abstract class AbstractDrainer {
 		drainDataLatch.await();
 	}
 
-	public final void newDrainData(Token blobID, DrainData drainData) {
-		blobGraph.getBlobNode(blobID).setDrainData(drainData);
+	public final void newDrainData(DrainedData drainedData) {
+		blobGraph.getBlobNode(drainedData.blobID).setDrainData(drainedData);
 		if (noOfDrainData.decrementAndGet() == 0) {
 			assert state == DrainerState.NODRAINING;
 			drainDataLatch.countDown();
 		}
 	}
 
+	// TODO: Too many unnecessary data copies are taking place at here, inside
+	// the DrainData constructor and DrainData.merge(). Need to optimise these
+	// all.
 	public final DrainData getDrainData() {
 		DrainData drainData = null;
+		Map<Token, ImmutableList<Object>> boundaryInputData = new HashMap<>();
+		Map<Token, ImmutableList<Object>> boundaryOutputData = new HashMap<>();
+
 		for (BlobNode node : blobGraph.blobNodes.values()) {
+			boundaryInputData.putAll(node.drainData.inputData);
+			boundaryOutputData.putAll(node.drainData.outputData);
 			if (drainData == null)
-				drainData = node.drainData;
+				drainData = node.drainData.drainData;
 			else
-				drainData = drainData.merge(node.drainData);
+				drainData.merge(node.drainData.drainData);
 		}
+
+		ImmutableMap.Builder<Token, ImmutableList<Object>> dataBuilder = ImmutableMap
+				.builder();
+		for (Token t : Sets.union(boundaryInputData.keySet(),
+				boundaryOutputData.keySet())) {
+			ImmutableList<Object> in = boundaryInputData.get(t) != null
+					? boundaryInputData.get(t)
+					: ImmutableList.of();
+			ImmutableList<Object> out = boundaryOutputData.get(t) != null
+					? boundaryOutputData.get(t)
+					: ImmutableList.of();
+			dataBuilder.put(t, ImmutableList.builder().addAll(in).addAll(out)
+					.build());
+		}
+
+		ImmutableTable<Integer, String, Object> state = ImmutableTable.of();
+		DrainData draindata1 = new DrainData(dataBuilder.build(), state);
+		drainData = drainData.merge(draindata1);
 		return drainData;
 	}
+
 	/**
 	 * @return true iff draining of the stream application is finished. See
 	 *         {@link CompiledStream#isDrained()} for more details.
 	 */
-
 	public final boolean isDrained() {
 		return finalLatch.getCount() == 0;
 	}
@@ -481,7 +509,7 @@ public abstract class AbstractDrainer {
 		/**
 		 * Intermediate drain data.
 		 */
-		private DrainData drainData;
+		private DrainedData drainData;
 
 		private AbstractDrainer drainer;
 		/**
@@ -537,7 +565,7 @@ public abstract class AbstractDrainer {
 			drainer.drain(blobID, drainer.state == DrainerState.FINAL);
 		}
 
-		private void setDrainData(DrainData drainData) {
+		private void setDrainData(DrainedData drainedData) {
 			if (this.drainData == null)
 				this.drainData = drainData;
 			else
