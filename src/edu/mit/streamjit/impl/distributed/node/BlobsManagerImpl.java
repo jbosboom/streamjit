@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
@@ -39,6 +40,8 @@ public class BlobsManagerImpl implements BlobsManager {
 	private final TCPConnectionProvider conProvider;
 	private Map<Token, TCPConnectionInfo> conInfoMap;
 
+	private final ImmutableMap<Token, Buffer> bufferMap;
+
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
 			Map<Token, TCPConnectionInfo> conInfoMap, StreamNode streamNode,
 			TCPConnectionProvider conProvider) {
@@ -47,7 +50,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		this.streamNode = streamNode;
 		this.conProvider = conProvider;
 
-		ImmutableMap<Token, Buffer> bufferMap = createBufferMap(blobSet);
+		bufferMap = createBufferMap(blobSet);
 
 		for (Blob b : blobSet) {
 			b.installBuffers(bufferMap);
@@ -185,8 +188,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		private final Blob blob;
 		private Set<BlobThread> blobThreads;
 
-		Set<BoundaryInputChannel> inputChannels;
-		Set<BoundaryOutputChannel> outputChannels;
+		private final ImmutableMap<Token, BoundaryInputChannel> inputChannels;
+		private final ImmutableMap<Token, BoundaryOutputChannel> outputChannels;
 
 		Set<Thread> inputChannelThreads;
 		Set<Thread> outputChannelThreads;
@@ -200,8 +203,8 @@ public class BlobsManagerImpl implements BlobsManager {
 			this.blobThreads = new HashSet<>();
 			assert blob.getInputs().containsAll(inputChannels.keySet());
 			assert blob.getOutputs().containsAll(outputChannels.keySet());
-			this.inputChannels = new HashSet<>(inputChannels.values());
-			this.outputChannels = new HashSet<>(outputChannels.values());
+			this.inputChannels = inputChannels;
+			this.outputChannels = outputChannels;
 			inputChannelThreads = new HashSet<>(inputChannels.values().size());
 			outputChannelThreads = new HashSet<>(outputChannels.values().size());
 
@@ -214,13 +217,13 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		private void start() {
-			for (BoundaryInputChannel bc : inputChannels) {
+			for (BoundaryInputChannel bc : inputChannels.values()) {
 				Thread t = new Thread(bc.getRunnable(), bc.name());
 				t.start();
 				inputChannelThreads.add(t);
 			}
 
-			for (BoundaryOutputChannel bc : outputChannels) {
+			for (BoundaryOutputChannel bc : outputChannels.values()) {
 				Thread t = new Thread(bc.getRunnable(), bc.name());
 				t.start();
 				outputChannelThreads.add(t);
@@ -232,11 +235,11 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		private void stop() {
 
-			for (BoundaryInputChannel bc : inputChannels) {
+			for (BoundaryInputChannel bc : inputChannels.values()) {
 				bc.stop();
 			}
 
-			for (BoundaryOutputChannel bc : outputChannels) {
+			for (BoundaryOutputChannel bc : outputChannels.values()) {
 				bc.stop(true);
 			}
 
@@ -251,7 +254,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		private void doDrain(boolean reqDrainData) {
 			this.reqDrainData = reqDrainData;
 
-			for (BoundaryInputChannel bc : inputChannels) {
+			for (BoundaryInputChannel bc : inputChannels.values()) {
 				bc.stop();
 			}
 
@@ -273,7 +276,7 @@ public class BlobsManagerImpl implements BlobsManager {
 				bt.requestStop();
 			}
 
-			for (BoundaryOutputChannel bc : outputChannels) {
+			for (BoundaryOutputChannel bc : outputChannels.values()) {
 				bc.stop(!this.reqDrainData);
 			}
 
@@ -298,10 +301,38 @@ public class BlobsManagerImpl implements BlobsManager {
 			printDrainedStatus();
 
 			if (this.reqDrainData) {
-				ImmutableMap.Builder<Token, DrainData> builder = new ImmutableMap.Builder<>();
-				builder.put(blobID, blob.getDrainData());
-				SNMessageElement me = new SNDrainElement.DrainedDataMap(
-						builder.build());
+				DrainData dd = blob.getDrainData();
+
+				ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
+				ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
+
+				for (Token t : blob.getInputs()) {
+					if (inputChannels.containsKey(t)) {
+						inputDataBuilder.put(t, inputChannels.get(t)
+								.getUnprocessedData());
+					}
+
+					// TODO: Unnecessary data copy. Optimise this.
+					else {
+						Buffer buf = bufferMap.get(t);
+						Object[] bufArray = new Object[buf.size()];
+						buf.readAll(bufArray);
+						assert buf.size() == 0 : String.format(
+								"buffer size is %d. But 0 is expected",
+								buf.size());
+						inputDataBuilder.put(t, ImmutableList.copyOf(bufArray));
+					}
+				}
+
+				for (Token t : blob.getOutputs()) {
+					if (outputChannels.containsKey(t)) {
+						outputDataBuilder.put(t, outputChannels.get(t)
+								.getUnprocessedData());
+					}
+				}
+
+				SNMessageElement me = new SNDrainElement.DrainedData(blobID,
+						dd, inputDataBuilder.build(), outputDataBuilder.build());
 				try {
 					streamNode.controllerConnection.writeObject(me);
 				} catch (IOException e) {
@@ -310,7 +341,6 @@ public class BlobsManagerImpl implements BlobsManager {
 				}
 			}
 		}
-
 		public Token getBlobID() {
 			return Utils.getBlobID(blob);
 		}
@@ -360,20 +390,20 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	@Override
 	public void reqDrainedData(Set<Token> blobSet) {
-		ImmutableMap.Builder<Token, DrainData> builder = new ImmutableMap.Builder<>();
-		for (BlobExecuter be : blobExecuters) {
-			if (be.isDrained) {
-				builder.put(be.blobID, be.blob.getDrainData());
-			}
-		}
-
-		try {
-			streamNode.controllerConnection
-					.writeObject(new SNDrainElement.DrainedDataMap(builder
-							.build()));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		// ImmutableMap.Builder<Token, DrainData> builder = new
+		// ImmutableMap.Builder<>();
+		// for (BlobExecuter be : blobExecuters) {
+		// if (be.isDrained) {
+		// builder.put(be.blobID, be.blob.getDrainData());
+		// }
+		// }
+		//
+		// try {
+		// streamNode.controllerConnection
+		// .writeObject(new SNDrainElement.DrainedData(builder.build()));
+		// } catch (IOException e) {
+		// // TODO Auto-generated catch block
+		// e.printStackTrace();
+		// }
 	}
 }

@@ -1,12 +1,8 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
-import java.util.Map;
-
-import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.Drained;
-import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedDataMap;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 
 /**
@@ -29,10 +25,7 @@ public class SNDrainProcessorImpl implements SNDrainProcessor {
 	}
 
 	@Override
-	public void process(DrainedDataMap drainedData) {
-		for (Map.Entry<Token, DrainData> entry : drainedData.drainData
-				.entrySet()) {
-			drainer.newDrainData(entry.getKey(), entry.getValue());
-		}
+	public void process(DrainedData drainedData) {
+		drainer.newDrainData(drainedData);
 	}
 }
