@@ -12,10 +12,10 @@ import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
  * TCPConnection is not thread safe.
- *
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since Oct 16, 2013
- *
+ * 
  */
 public class TCPConnection implements Connection {
 
@@ -33,8 +33,8 @@ public class TCPConnection implements Connection {
 			ooStream = new ObjectOutputStream(this.socket.getOutputStream());
 			oiStream = new ObjectInputStream(this.socket.getInputStream());
 			isconnected = true;
-			System.out.println(String.format(
-					"DEBUG: TCP connection %d has been established", count++));
+			// System.out.println(String.format(
+			// "DEBUG: TCP connection %d has been established", count++));
 		} catch (IOException iex) {
 			isconnected = false;
 			iex.printStackTrace();

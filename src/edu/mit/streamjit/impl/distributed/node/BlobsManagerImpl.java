@@ -165,7 +165,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		for (Token t : inputTokens) {
 			TCPConnectionInfo conInfo = conInfoMap.get(t);
 			inputChannelMap.put(t, new TCPInputChannel(bufferMap.get(t),
-					conProvider, conInfo, t.toString(), 1));
+					conProvider, conInfo, t.toString(), 0));
 		}
 		return inputChannelMap.build();
 	}
@@ -176,7 +176,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		for (Token t : outputTokens) {
 			TCPConnectionInfo conInfo = conInfoMap.get(t);
 			outputChannelMap.put(t, new TCPOutputChannel(bufferMap.get(t),
-					conProvider, conInfo, t.toString(), 1));
+					conProvider, conInfo, t.toString(), 0));
 		}
 		return outputChannelMap.build();
 	}
