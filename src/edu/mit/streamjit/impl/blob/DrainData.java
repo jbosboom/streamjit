@@ -70,7 +70,7 @@ public class DrainData implements Serializable {
 	/**
 	 * Returns a subset of this DrainData limited to the given set of worker
 	 * identifiers.  The returned set contains data for every token containing
-	 * one of the worker identifiers and state for all fields for each of the
+	 * down stream worker identifier and state for all fields for each of the
 	 * given identifiers.
 	 * @param workerIds the set of worker identifiers
 	 * @return a subset of this DrainData limited to the given set of
@@ -79,8 +79,7 @@ public class DrainData implements Serializable {
 	public DrainData subset(Set<Integer> workerIds) {
 		ImmutableMap.Builder<Token, ImmutableList<Object>> dataBuilder = ImmutableMap.builder();
 		for (Map.Entry<Token, ? extends List<Object>> e : data.entrySet())
-			if (workerIds.contains(e.getKey().getUpstreamIdentifier()) ||
-					workerIds.contains(e.getKey().getDownstreamIdentifier()))
+			if (workerIds.contains(e.getKey().getDownstreamIdentifier()))
 				dataBuilder.put(e.getKey(), ImmutableList.copyOf(e.getValue()));
 
 		ImmutableTable.Builder<Integer, String, Object> stateBuilder = ImmutableTable.builder();
