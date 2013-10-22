@@ -326,7 +326,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 			Object[] mergedArray = new Object[bufArray.length + exArray.length];
 			System.arraycopy(bufArray, 0, mergedArray, 0, bufArray.length);
-			System.arraycopy(extraBuffer, 0, mergedArray, bufArray.length,
+			System.arraycopy(exArray, 0, mergedArray, bufArray.length,
 					exArray.length);
 
 			this.unProcessedData = ImmutableList.copyOf(mergedArray);
