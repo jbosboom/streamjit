@@ -33,10 +33,10 @@ import edu.mit.streamjit.impl.interp.Interpreter;
 
 /**
  * This class contains all information about the current streamJit application
- * including {@link BlobGraph}, current {@link Configuration}, partitionsMachineMap1,
- * and etc. Three main classes, {@link DistributedStreamCompiler},
- * {@link Controller} and {@link OnlineTuner} will be using this class of their
- * functional purpose.
+ * including {@link BlobGraph}, current {@link Configuration},
+ * partitionsMachineMap1, and etc. Three main classes,
+ * {@link DistributedStreamCompiler}, {@link Controller} and {@link OnlineTuner}
+ * will be using this class of their functional purpose.
  * <p>
  * All member variables of this class are public, because this class is supposed
  * to be used by only trusted classes.
@@ -303,5 +303,36 @@ public class StreamJitApp {
 		if (this.blobConfiguration != null)
 			builder.addSubconfiguration("blobConfigs", this.blobConfiguration);
 		return builder.build();
+	}
+
+	/**
+	 * From aggregated drain data, get subset of it which is relevant to a
+	 * particular machine. Builds and returns machineID to DrainData map.
+	 * 
+	 * @return Drain data mapped to machines.
+	 */
+	public ImmutableMap<Integer, DrainData> getDrainData() {
+		ImmutableMap.Builder<Integer, DrainData> builder = ImmutableMap
+				.builder();
+
+		if (this.drainData != null) {
+			for (Integer machineID : partitionsMachineMap1.keySet()) {
+				List<Set<Worker<?, ?>>> blobList = partitionsMachineMap1
+						.get(machineID);
+				DrainData dd = drainData.subset(getWorkerIds(blobList));
+				builder.put(machineID, dd);
+			}
+		}
+		return builder.build();
+	}
+
+	private Set<Integer> getWorkerIds(List<Set<Worker<?, ?>>> blobList) {
+		Set<Integer> workerIds = new HashSet<>();
+		for (Set<Worker<?, ?>> blobworkers : blobList) {
+			for (Worker<?, ?> w : blobworkers) {
+				workerIds.add(Workers.getIdentifier(w));
+			}
+		}
+		return workerIds;
 	}
 }
