@@ -24,7 +24,7 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
  * @author Sumanan sumanan@mit.edu
  * @since May 29, 2013
  */
-public final class TCPOutputChannel implements BoundaryOutputChannel {
+public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private final int debugPrint;
 
@@ -44,7 +44,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private int count;
 
-	private ImmutableList<Object> unProcessedData;
+	protected ImmutableList<Object> unProcessedData;
 
 	public TCPOutputChannel(Buffer buffer, TCPConnectionProvider conProvider,
 			TCPConnectionInfo conInfo, String bufferTokenName, int debugPrint) {
@@ -60,19 +60,19 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 	}
 
 	@Override
-	public void closeConnection() throws IOException {
+	public final void closeConnection() throws IOException {
 		// tcpConnection.closeConnection();
 		tcpConnection.softClose();
 	}
 
 	@Override
-	public boolean isStillConnected() {
+	public final boolean isStillConnected() {
 		return (tcpConnection == null) ? false : tcpConnection
 				.isStillConnected();
 	}
 
 	@Override
-	public Runnable getRunnable() {
+	public final Runnable getRunnable() {
 		return new Runnable() {
 			@Override
 			public void run() {
@@ -107,7 +107,7 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 		};
 	}
 
-	public void sendData() {
+	public final void sendData() {
 		while (this.buffer.size() > 0 && !stopFlag.get()) {
 			count++;
 			try {
@@ -131,12 +131,12 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 	}
 
 	@Override
-	public int getOtherNodeID() {
+	public final int getOtherNodeID() {
 		return 0;
 	}
 
 	@Override
-	public void stop(boolean clean) {
+	public final void stop(boolean clean) {
 		if (debugPrint > 0)
 			System.out.println(Thread.currentThread().getName()
 					+ " - stop request");
@@ -192,13 +192,13 @@ public final class TCPOutputChannel implements BoundaryOutputChannel {
 	}
 
 	@Override
-	public String name() {
+	public final String name() {
 		return name;
 	}
 
 	// TODO: Huge data copying is happening in this code twice. Need to optimise
 	// this.
-	private void fillUnprocessedData() {
+	protected void fillUnprocessedData() {
 		Object[] obArray = new Object[buffer.size()];
 		buffer.readAll(obArray);
 		assert buffer.size() == 0 : String.format(
