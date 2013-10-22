@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.common;
 
+import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
@@ -17,12 +18,15 @@ public class ConfigurationString implements CTRLRMessageElement {
 
 	private static final long serialVersionUID = -5900812807902330853L;
 
-	private String jsonString;
-	private ConfigType type;
+	private final String jsonString;
+	private final ConfigType type;
+	private final DrainData drainData;
 
-	public ConfigurationString(String jsonString, ConfigType type) {
+	public ConfigurationString(String jsonString, ConfigType type,
+			DrainData drainData) {
 		this.jsonString = jsonString;
 		this.type = type;
+		this.drainData = drainData;
 	}
 
 	@Override
@@ -31,7 +35,7 @@ public class ConfigurationString implements CTRLRMessageElement {
 	}
 
 	public void process(ConfigurationStringProcessor jp) {
-		jp.process(jsonString, type);
+		jp.process(jsonString, type, drainData);
 	}
 
 	/**
@@ -43,7 +47,7 @@ public class ConfigurationString implements CTRLRMessageElement {
 	 */
 	public interface ConfigurationStringProcessor {
 
-		public void process(String cfg, ConfigType type);
+		public void process(String cfg, ConfigType type, DrainData drainData);
 
 		/**
 		 * Indicates the type of the configuration.

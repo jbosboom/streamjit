@@ -19,6 +19,7 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.BlobFactory;
+import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
@@ -53,7 +54,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 	}
 
 	@Override
-	public void process(String json, ConfigType type) {
+	public void process(String json, ConfigType type, DrainData drainData) {
 		if (type == ConfigType.STATIC) {
 			if (this.staticConfig == null) {
 				this.staticConfig = Jsonifiers.fromJson(json,
@@ -69,7 +70,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 						.println("New static configuration received...But Ignored...");
 		} else {
 			Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
-			ImmutableSet<Blob> blobSet = getBlobs(cfg, staticConfig);
+			ImmutableSet<Blob> blobSet = getBlobs(cfg, staticConfig, drainData);
 			if (blobSet != null) {
 
 				Map<Token, TCPConnectionInfo> conInfoMap = (Map<Token, TCPConnectionInfo>) cfg
@@ -83,7 +84,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 	}
 
 	private ImmutableSet<Blob> getBlobs(Configuration dyncfg,
-			Configuration stccfg) {
+			Configuration stccfg, DrainData drainData) {
 
 		PartitionParameter partParam = dyncfg.getParameter(
 				GlobalConstants.PARTITION, PartitionParameter.class);
@@ -140,7 +141,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 										workIdentifiers.toString()));
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
 
-				Blob b = bf.makeBlob(workerset, blobConfigs, 1, null);
+				Blob b = bf.makeBlob(workerset, blobConfigs, 1, drainData);
 				blobSet.add(b);
 			}
 			return blobSet.build();
