@@ -567,7 +567,7 @@ public abstract class AbstractDrainer {
 
 		private void setDrainData(DrainedData drainedData) {
 			if (this.drainData == null)
-				this.drainData = drainData;
+				this.drainData = drainedData;
 			else
 				throw new AssertionError(
 						"Multiple drain data has been received.");
