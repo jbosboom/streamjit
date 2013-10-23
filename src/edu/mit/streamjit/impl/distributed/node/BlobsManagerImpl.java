@@ -299,9 +299,10 @@ public class BlobsManagerImpl implements BlobsManager {
 				e.printStackTrace();
 			}
 
-			printDrainedStatus();
+			// printDrainedStatus();
 
 			if (this.reqDrainData) {
+				System.out.println("**********************************");
 				DrainData dd = blob.getDrainData();
 
 				ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
@@ -346,11 +347,14 @@ public class BlobsManagerImpl implements BlobsManager {
 						dd, inputDataBuilder.build(), outputDataBuilder.build());
 				try {
 					streamNode.controllerConnection.writeObject(me);
-					System.out.println("DrainData has been sent");
+					System.out.println(blobID + " DrainData has been sent");
+
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+
+				System.out.println("**********************************");
 			}
 		}
 		public Token getBlobID() {

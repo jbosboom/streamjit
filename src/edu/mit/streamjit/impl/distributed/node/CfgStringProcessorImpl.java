@@ -69,6 +69,8 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 				System.err
 						.println("New static configuration received...But Ignored...");
 		} else {
+			System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+			System.out.println("New Configuration.....");
 			Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
 			ImmutableSet<Blob> blobSet = getBlobs(cfg, staticConfig, drainData);
 			if (blobSet != null) {
@@ -134,11 +136,10 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 			for (BlobSpecifier bs : blobList) {
 				Set<Integer> workIdentifiers = bs.getWorkerIdentifiers();
-				System.out
-						.println(String
-								.format("DEBUG: %s - Following workers have been assigned to me. %s",
-										Thread.currentThread().getName(),
-										workIdentifiers.toString()));
+				// DEBUG
+				System.out.println(String.format(
+						"A new blob with workers %s has been created.",
+						workIdentifiers.toString()));
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
 
 				Blob b = bf.makeBlob(workerset, blobConfigs, 1, drainData);
