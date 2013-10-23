@@ -34,19 +34,19 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private final int debugPrint;
 
-	private Buffer buffer;
+	private final Buffer buffer;
 
 	private Buffer extraBuffer;
 
-	private TCPConnectionProvider conProvider;
+	private final TCPConnectionProvider conProvider;
 
-	private TCPConnectionInfo conInfo;
+	private final TCPConnectionInfo conInfo;
 
 	private Connection tcpConnection;
 
-	private AtomicBoolean stopFlag;
+	private final AtomicBoolean stopFlag;
 
-	private String name;
+	private final String name;
 
 	private boolean softClosed;
 
@@ -138,8 +138,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 					extraBuffer.write(obj);
 					System.err
 							.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-					System.err
-							.println("*****Writing extra data in to extra buffer*****");
+					System.err.println(name
+							+ " Writing extra data in to extra buffer");
 					System.err
 							.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 					break;
@@ -212,8 +212,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						buffer = extraBuffer;
 						System.err
 								.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-						System.err
-								.println("*****Writing extra data in to extra buffer*****");
+						System.err.println(name
+								+ " Writing extra data in to extra buffer");
 						System.err
 								.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 					}
@@ -311,6 +311,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	// TODO: Huge data copying is happening in this code three times. Need to
 	// optimise it.
 	private void fillUnprocessedData() {
+		System.out.println(name + " - Buffer size is - " + buffer.size());
 		Object[] bufArray = new Object[buffer.size()];
 		buffer.readAll(bufArray);
 		assert buffer.size() == 0 : String.format(
@@ -318,6 +319,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		if (extraBuffer == null)
 			this.unProcessedData = ImmutableList.copyOf(bufArray);
 		else {
+			System.out.println(name + " - Extra data buffer size is - "
+					+ extraBuffer.size());
 			Object[] exArray = new Object[extraBuffer.size()];
 			extraBuffer.readAll(exArray);
 			assert extraBuffer.size() == 0 : String.format(
