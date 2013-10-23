@@ -28,17 +28,17 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private final int debugPrint;
 
-	private Buffer buffer;
+	private final Buffer buffer;
 
-	private TCPConnectionProvider conProvider;
+	private final TCPConnectionProvider conProvider;
 
-	private TCPConnectionInfo conInfo;
+	private final TCPConnectionInfo conInfo;
 
 	private Connection tcpConnection;
 
-	private AtomicBoolean stopFlag;
+	private final AtomicBoolean stopFlag;
 
-	private String name;
+	private final String name;
 
 	private boolean cleanStop;
 
