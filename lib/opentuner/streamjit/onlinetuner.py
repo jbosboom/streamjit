@@ -24,8 +24,9 @@ class StreamJitMI(MeasurementInterface):
 
 	def run(self, desired_result, input, limit):
 		self.trycount = self.trycount + 1
+		print self.trycount
 		cfg = desired_result.configuration.data
-		self.niceprint(cfg)
+		#self.niceprint(cfg)
 		self.sdk.sendmsg("%s\n"%cfg)
 		msg = self.sdk.recvmsg()
 		if (msg == "exit\n"):
