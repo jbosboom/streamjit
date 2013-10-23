@@ -20,6 +20,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.compiler.Schedule;
+import edu.mit.streamjit.util.CollectionUtils;
 import static edu.mit.streamjit.util.Combinators.*;
 import edu.mit.streamjit.util.bytecode.Module;
 import java.lang.invoke.MethodHandle;
@@ -320,7 +321,9 @@ public class Compiler2 {
 		//TODO: initialState needs to be used somewhere.
 		ImmutableMap.Builder<Storage, ConcreteStorage> globalStorageBuilder = ImmutableMap.builder();
 		for (Storage s : storage) {
-			s.setSizes(externalSchedule);
+			s.computeRequirements(externalSchedule,
+					CollectionUtils.union(tokenItemsRead, tokenItemsWritten),
+					CollectionUtils.union(tokenInputIndices, tokenOutputIndices));
 			if (!s.isInternal())
 				globalStorageBuilder.put(s, new CircularArrayConcreteStorage(s.type(), s.actualCapacity(), s.throughput(),
 						new Object[0] /*TODO: new init strategy*/));

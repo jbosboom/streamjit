@@ -1,12 +1,14 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Workers;
+import java.lang.invoke.MethodHandle;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +36,18 @@ public final class Storage {
 	 * Actors.
 	 */
 	private Class<?> type;
-	private int throughput = -1, unconsumedItems = -1;
+	/**
+	 * The number of data items added to and removed from this storage during
+	 * each steady state iteration.
+	 */
+	private int throughput = -1;
+	/**
+	 * The length of the region of this storage examined during each steady state
+	 * execution; that is, the minimum number of contiguous buffered items to begin a
+	 * steady state execution.  Note this is not
+	 * TODO
+	 */
+	private ImmutableSet<Integer> readIndices;
 	public Storage(Object upstream, Object downstream) {
 		checkArgument(upstream instanceof Actor || upstream instanceof Token, upstream);
 		checkArgument(downstream instanceof Actor || downstream instanceof Token, downstream);
@@ -148,9 +161,9 @@ public final class Storage {
 		return throughput;
 	}
 
-	public int unconsumedItems() {
-		checkState(unconsumedItems != -1);
-		return unconsumedItems;
+	public ImmutableSet<Integer> readIndices() {
+		checkState(readIndices != null);
+		return readIndices;
 	}
 
 	public int actualCapacity() {
@@ -158,49 +171,73 @@ public final class Storage {
 			return throughput();
 		//This assumes truncated schedules will never force us to put an extra
 		//throughput(s) into a storage to satisfy another storage's requirement.
-		//TODO: pretty sure this is wrong
-		return Ints.checkedCast((long)(Math.ceil((throughput()+unconsumedItems())/throughput()) + 1) * throughput());
+		//TODO: this definitely is wrong
+		//return Ints.checkedCast((long)(Math.ceil((throughput()+unconsumedItems())/throughput()) + 1) * throughput());
+		throw new UnsupportedOperationException();
 	}
 
-	public void setSizes(Map<ActorGroup, Integer> externalSchedule) {
-		//TODO: 1-based/0-based adjustments here -- are they correct?
-		int pushOnePastEnd = Integer.MAX_VALUE;
-		for (Object o : upstream()) {
-			if (!(o instanceof Actor))
-				continue;
-			Actor a = (Actor)o;
-			int executions = a.group().schedule().get(a) * (isInternal() ? 1 : externalSchedule.get(a.group()));
-			for (int i = 0; i < a.outputs().size(); ++i) {
-				if (!a.outputs().get(i).equals(this)) continue;
-				int maxLogicalPush = (a.worker().getPushRates().get(i).max()-1) * executions;
-				int maxPhysicalPush = a.translateOutputIndex(i, maxLogicalPush);
-				assert maxPhysicalPush >= 0;
-				pushOnePastEnd = Math.max(pushOnePastEnd, maxPhysicalPush+1);
+	/**
+	 * Compute this storage's size requirements based on the index functions.
+	 * (This is not the actual buffer capacity, because the init schedule might
+	 * require additional buffering to meet some other storage's requirement.)
+	 * @param externalSchedule the external schedule
+	 * @param tokenSchedule the Token "schedule" (number of items read/written
+	 * per steady-state execution)
+	 * @param tokenIndexFunctions the Token index functions (read or write
+	 * depending on the Token; no Token needs both)
+	 */
+	public void computeRequirements(Map<ActorGroup, Integer> externalSchedule, Map<Token, Integer> tokenSchedule, Map<Token, MethodHandle> tokenIndexFunctions) {
+		/*
+		 * To compute the throughput, we just count the elements written; they
+		 * should be both dense and non-overlapping.  TODO: if we intrisify a
+		 * decimator by making some writes no-ops, this may not hold.
+		 */
+		throughput = 0;
+		for (Object o : upstream())
+			if (o instanceof Token)
+				throughput += tokenSchedule.get((Token)o);
+			else {
+				Actor a = (Actor)o;
+				int executions = (isInternal() ? 1 : externalSchedule.get(a.group())) * a.group().schedule().get(a);
+				for (int i = 0; i < a.outputs().size(); ++i) {
+					if (!a.outputs().get(i).equals(this)) continue;
+					throughput += a.worker().getPushRates().get(i).max() * executions;
+				}
 			}
-		}
 
-		int popOnePastEnd = Integer.MAX_VALUE, peekOnePastEnd = Integer.MAX_VALUE;
+		/**
+		 * Now find the indices that could be read during a steady state
+		 * execution. That's the initialization requirement.
+		 */
+		ImmutableSet.Builder<Integer> readIndicesBuilder = ImmutableSet.builder();
 		for (Object o : downstream()) {
-			if (!(o instanceof Actor))
-				continue;
-			Actor a = (Actor)o;
-			int executions = a.group().schedule().get(a) * (isInternal() ? 1 : externalSchedule.get(a.group()));
-			for (int i = 0; i < a.inputs().size(); ++i) {
-				if (!a.outputs().get(i).equals(this)) continue;
-				int maxLogicalPop = (a.worker().getPopRates().get(i).max()-1) * executions;
-				int maxPhysicalPop = a.translateInputIndex(i, maxLogicalPop);
-				assert maxPhysicalPop >= 0;
-				popOnePastEnd = Math.max(popOnePastEnd, maxPhysicalPop+1);
+			if (o instanceof Token) {
+				Token t = (Token)o;
+				for (int i = 0; i < tokenSchedule.get(t); ++i)
+					try {
+						readIndicesBuilder.add((Integer)tokenIndexFunctions.get(t).invoke(i));
+					} catch (Throwable ex) {
+						throw new AssertionError(ex);
+					}
+			} else {
+				Actor a = (Actor)o;
+				int executions = a.group().schedule().get(a) * (isInternal() ? 1 : externalSchedule.get(a.group()));
+				for (int i = 0; i < a.inputs().size(); ++i) {
+					if (!a.outputs().get(i).equals(this)) continue;
 
-				int maxLogicalPeek = (a.worker().getPeekRates().get(i).max()-1) * executions;
-				int maxPhysicalPeek = a.translateInputIndex(i, maxLogicalPeek);
-				assert maxPhysicalPeek >= 0;
-				peekOnePastEnd = Math.max(peekOnePastEnd, maxPhysicalPeek+1);
+					int pop = a.worker().getPopRates().get(i).max(),
+							peek = a.worker().getPeekRates().get(i).max();
+					int excessPeeks = Math.max(0, peek - pop);
+					int maxLogicalIndex = pop * executions + excessPeeks;
+					if (maxLogicalIndex == 0)
+						continue;
+
+					for (int idx = 0; idx < maxLogicalIndex; ++idx)
+						readIndicesBuilder.add(a.translateInputIndex(i, idx));
+				}
 			}
 		}
-
-		this.throughput = Math.max(pushOnePastEnd, popOnePastEnd);
-		this.unconsumedItems = Math.max(0, peekOnePastEnd - throughput);
+		this.readIndices = readIndicesBuilder.build();
 	}
 
 	@Override
