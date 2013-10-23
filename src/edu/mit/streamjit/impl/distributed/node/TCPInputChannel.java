@@ -129,7 +129,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				}
 				try {
 					// TODO: Need to tune the sleep time.
-					Thread.sleep(5);
+					Thread.sleep(100);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -199,7 +199,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 								+ obj.toString());
 					}
 					try {
-						Thread.sleep(20);
+						Thread.sleep(100);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
