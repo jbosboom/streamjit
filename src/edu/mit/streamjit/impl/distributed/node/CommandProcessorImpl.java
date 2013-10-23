@@ -7,6 +7,7 @@ import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 
 /**
  * {@link CommandProcessor} at {@link StreamNode} side.
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
@@ -22,7 +23,20 @@ public class CommandProcessorImpl implements CommandProcessor {
 		BlobsManager bm = streamNode.getBlobsManager();
 		if (bm != null) {
 			bm.start();
-			System.out.println("StraemJit app started...");
+			long heapMaxSize = Runtime.getRuntime().maxMemory();
+			long heapSize = Runtime.getRuntime().totalMemory();
+			long heapFreeSize = Runtime.getRuntime().freeMemory();
+
+			System.out
+					.println("##############################################");
+
+			System.out.println("heapMaxSize = " + heapMaxSize / 1e6);
+			System.out.println("heapSize = " + heapSize / 1e6);
+			System.out.println("heapFreeSize = " + heapFreeSize / 1e6);
+			System.out.println("StraemJit app is running...");
+			System.out
+					.println("##############################################");
+
 		} else {
 			// TODO: Need to handle this case. Need to send the error message to
 			// the controller.
