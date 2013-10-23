@@ -58,6 +58,8 @@ public class StreamJitApp {
 
 	public final String jarFilePath;
 
+	public final String name;
+
 	public BlobGraph blobGraph1;
 
 	public Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap1;
@@ -81,8 +83,9 @@ public class StreamJitApp {
 	 */
 	public Configuration blobConfiguration = null;
 
-	public StreamJitApp(String topLevelClass, Worker<?, ?> source,
+	public StreamJitApp(String name, String topLevelClass, Worker<?, ?> source,
 			Worker<?, ?> sink) {
+		this.name = name;
 		this.topLevelClass = topLevelClass;
 		this.source1 = source;
 		this.sink1 = sink;
