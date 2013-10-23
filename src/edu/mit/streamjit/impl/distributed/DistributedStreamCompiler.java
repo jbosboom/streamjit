@@ -120,8 +120,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Controller controller = new Controller();
 		controller.connect(conTypeCount);
 
-		StreamJitApp app = new StreamJitApp(stream.getClass().getName(),
-				source, sink);
+		StreamJitApp app = new StreamJitApp(stream.getClass().getSimpleName(),
+				stream.getClass().getName(), source, sink);
 
 		BlobFactory bf = new DistributedBlobFactory(noOfnodes);
 		this.cfg = bf.getDefaultConfiguration(Workers

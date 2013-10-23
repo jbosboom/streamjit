@@ -49,7 +49,7 @@ public class OnlineTuner implements Runnable {
 					File.separator, File.separator));
 
 			tuner.writeLine("program");
-			tuner.writeLine(app.topLevelClass);
+			tuner.writeLine(app.name);
 
 			tuner.writeLine("confg");
 			String s = getConfigurationString(app.blobConfiguration);
