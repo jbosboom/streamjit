@@ -119,12 +119,15 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	}
 
 	public ImmutableMap<Actor, Integer> schedule() {
+		checkState(schedule != null, "schedule not yet initialized");
 		return schedule;
 	}
 
 	public void setSchedule(ImmutableMap<Actor, Integer> schedule) {
+		checkState(this.schedule == null, "already initialized schedule");
 		for (Actor a : actors())
 			checkArgument(schedule.containsKey(a), "schedule doesn't contain actor "+a);
+		this.schedule = schedule;
 	}
 
 	@Override
