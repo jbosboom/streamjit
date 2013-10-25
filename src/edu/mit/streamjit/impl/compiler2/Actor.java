@@ -1,33 +1,21 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.*;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Table;
-import edu.mit.streamjit.api.Rate;
-import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
- * The compiler IR node for a single worker.
+ * The compiler IR for a Worker or Token.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 9/21/2013
  */
-public class Actor implements Comparable<Actor> {
-	private final Worker<?, ?> worker;
-	private final ActorArchetype archetype;
+public abstract class Actor implements Comparable<Actor> {
 	private ActorGroup group;
 	/**
 	 * The upstream and downstream Storage, one for each input or output of this
-	 * Actor.
+	 * Actor.  TokenActors will have either inputs xor outputs.
 	 */
 	private final List<Storage> upstream = new ArrayList<>(), downstream = new ArrayList<>();
 	/**
@@ -38,64 +26,10 @@ public class Actor implements Comparable<Actor> {
 	 */
 	private final List<MethodHandle> upstreamIndex = new ArrayList<>(),
 			downstreamIndex = new ArrayList<>();
-	public Actor(Worker<?, ?> worker, ActorArchetype archetype) {
-		this.worker = worker;
-		this.archetype = archetype;
+	protected Actor() {
 	}
 
-	/**
-	 * Sets up Actor connections based on the worker's predecessor/successor
-	 * relationships.
-	 */
-	public void connect(Map<Worker<?, ?>, Actor> actors, Table<Object, Object, Storage> storage) {
-		List<? extends Worker<?, ?>> predecessors = Workers.getPredecessors(worker);
-		if (predecessors.isEmpty()) {
-			Token t = Token.createOverallInputToken(worker);
-			Storage s = new Storage(t, this);
-			upstream.add(s);
-			storage.put(t, this, s);
-		}
-		for (Worker<?, ?> w : predecessors) {
-			Object pred = actors.get(w);
-			if (pred == null)
-				pred = new Token(w, worker());
-			Storage s = new Storage(pred, this);
-			upstream.add(s);
-			storage.put(pred, this, s);
-		}
-
-		List<? extends Worker<?, ?>> successors = Workers.getSuccessors(worker);
-		if (successors.isEmpty()) {
-			Token t = Token.createOverallOutputToken(worker);
-			Storage s = new Storage(this, t);
-			downstream.add(s);
-			storage.put(this, t, s);
-		}
-		for (Worker<?, ?> w : successors) {
-			Object succ = actors.get(w);
-			if (succ == null)
-				succ = new Token(worker(), w);
-			Storage s = new Storage(this, succ);
-			downstream.add(s);
-			storage.put(succ, this, s);
-		}
-
-		MethodHandle identity = MethodHandles.identity(int.class);
-		upstreamIndex.addAll(Collections.nCopies(upstream.size(), identity));
-		downstreamIndex.addAll(Collections.nCopies(downstream.size(), identity));
-	}
-
-	public int id() {
-		return Workers.getIdentifier(worker());
-	}
-
-	public Worker<?, ?> worker() {
-		return worker;
-	}
-
-	public ActorArchetype archetype() {
-		return archetype;
-	}
+	public abstract int id();
 
 	public ActorGroup group() {
 		return group;
@@ -106,14 +40,16 @@ public class Actor implements Comparable<Actor> {
 		this.group = group;
 	}
 
-	public boolean isPeeking() {
-		List<Rate> peeks = worker.getPeekRates(), pops = worker.getPopRates();
-		assert peeks.size() == pops.size();
-		for (int i = 0; i < peeks.size(); ++i)
-			if (peeks.get(i).max() == Rate.DYNAMIC || peeks.get(i).max() > pops.get(i).max())
+	public final boolean isPeeking() {
+		for (int i = 0; i < inputs().size(); ++i)
+			if (peek(i) > pop(i))
 				return true;
 		return false;
 	}
+
+	public abstract Class<?> inputType();
+
+	public abstract Class<?> outputType();
 
 	public List<Storage> inputs() {
 		return upstream;
@@ -149,13 +85,19 @@ public class Actor implements Comparable<Actor> {
 		}
 	}
 
+	public abstract int peek(int input);
+
+	public abstract int pop(int input);
+
+	public abstract int push(int output);
+
 	@Override
-	public int compareTo(Actor o) {
+	public final int compareTo(Actor o) {
 		return Integer.compare(id(), o.id());
 	}
 
 	@Override
-	public boolean equals(Object obj) {
+	public final boolean equals(Object obj) {
 		if (obj == null)
 			return false;
 		if (getClass() != obj.getClass())
@@ -167,14 +109,7 @@ public class Actor implements Comparable<Actor> {
 	}
 
 	@Override
-	public int hashCode() {
+	public final int hashCode() {
 		return id();
-	}
-
-	public static ImmutableSet<Worker<?, ?>> unwrap(Set<Actor> actors) {
-		ImmutableSet.Builder<Worker<?, ?>> builder = ImmutableSet.builder();
-		for (Actor a : actors)
-			builder.add(a.worker());
-		return builder.build();
 	}
 }

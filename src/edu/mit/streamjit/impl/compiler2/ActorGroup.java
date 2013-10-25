@@ -4,6 +4,7 @@ import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import java.util.Collections;
@@ -58,7 +59,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 
 	public boolean isStateful() {
 		for (Actor a : actors())
-			if (a.archetype().isStateful())
+			if (a instanceof WorkerActor && ((WorkerActor)a).archetype().isStateful())
 				return true;
 		return false;
 	}
@@ -67,8 +68,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		return Sets.filter(allEdges(), new Predicate<Storage>() {
 			@Override
 			public boolean apply(Storage input) {
-				return !input.hasUpstreamActor() ||
-						input.upstreamActor().group() != ActorGroup.this;
+				return Iterables.getOnlyElement(input.upstream()).group() != ActorGroup.this;
 			}
 		});
 	}
@@ -77,8 +77,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		return Sets.filter(allEdges(), new Predicate<Storage>() {
 			@Override
 			public boolean apply(Storage input) {
-				return !input.hasDownstreamActor()||
-						input.downstreamActor().group() != ActorGroup.this;
+				return Iterables.getOnlyElement(input.downstream()).group() != ActorGroup.this;
 			}
 		});
 	}
@@ -87,9 +86,8 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		return Sets.filter(allEdges(), new Predicate<Storage>() {
 			@Override
 			public boolean apply(Storage input) {
-				return input.hasUpstreamActor() && input.hasDownstreamActor() &&
-						input.upstreamActor().group() == ActorGroup.this &&
-						input.downstreamActor().group() == ActorGroup.this;
+				return Iterables.getOnlyElement(input.upstream()).group() == ActorGroup.this &&
+						Iterables.getOnlyElement(input.downstream()).group() == ActorGroup.this;
 			}
 		});
 	}
@@ -107,8 +105,9 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		ImmutableSet.Builder<ActorGroup> builder = ImmutableSet.builder();
 		for (Actor a : actors)
 			for (Storage s : a.inputs())
-				if (s.hasUpstreamActor() && s.upstreamActor().group() != this)
-					builder.add(s.upstreamActor().group());
+				for (Actor b : s.upstream())
+					if (b.group() != this)
+						builder.add(b.group());
 		return builder.build();
 	}
 
@@ -116,8 +115,9 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		ImmutableSet.Builder<ActorGroup> builder = ImmutableSet.builder();
 		for (Actor a : actors)
 			for (Storage s : a.outputs())
-				if (s.hasDownstreamActor()&& s.downstreamActor().group() != this)
-					builder.add(s.downstreamActor().group());
+				for (Actor b : s.downstream())
+					if (b.group() != this)
+						builder.add(b.group());
 		return builder.build();
 	}
 
@@ -148,7 +148,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			int begin = schedule.get(a) * iteration, end = schedule.get(a) * (iteration + 1);
 			for (int output = 0; output < a.outputs().size(); ++output)
 				if (!a.outputs().get(output).isInternal()) {
-					int push = a.worker().getPushRates().get(output).max();
+					int push = a.push(output);
 					for (int iter = begin; iter < end; ++iter)
 						for (int idx = push * iter; idx < push * (iter+1); ++idx)
 							retval.get(a.outputs().get(output)).add(a.translateOutputIndex(output, idx));

@@ -20,7 +20,6 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
-import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.compiler.Schedule;
 import edu.mit.streamjit.util.CollectionUtils;
 import static edu.mit.streamjit.util.Combinators.*;
@@ -53,39 +52,31 @@ public class Compiler2 {
 	private final DrainData initialState;
 	private final Set<Storage> storage;
 	private ImmutableMap<ActorGroup, Integer> externalSchedule;
-	private final Map<Token, MethodHandle> tokenInputIndices = new HashMap<>(), tokenOutputIndices = new HashMap<>();
-	/**
-	 * The Token "schedule": the number of items read or written per steady
-	 * state.
-	 */
-	private final Map<Token, Integer> tokenItemsRead = new HashMap<>(), tokenItemsWritten = new HashMap<>();
 	private final Module module = new Module();
 	private ImmutableMap<ActorGroup, Integer> initSchedule;
 	private ImmutableMap<Storage, ConcreteStorage> globalStorage;
 	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 		Map<Class<?>, ActorArchetype> archetypesBuilder = new HashMap<>();
-		Map<Worker<?, ?>, Actor> actorsBuilder = new HashMap<>();
+		Map<Worker<?, ?>, WorkerActor> workerActors = new HashMap<>();
 		for (Worker<?, ?> w : workers) {
 			@SuppressWarnings("unchecked")
 			Class<? extends Worker<?, ?>> wClass = (Class<? extends Worker<?, ?>>)w.getClass();
 			if (archetypesBuilder.get(wClass) == null)
 				archetypesBuilder.put(wClass, new ActorArchetype(wClass, module));
-			Actor actor = new Actor(w, archetypesBuilder.get(wClass));
-			actorsBuilder.put(w, actor);
+			WorkerActor actor = new WorkerActor(w, archetypesBuilder.get(wClass));
+			workerActors.put(w, actor);
 		}
 		this.archetypes = ImmutableSet.copyOf(archetypesBuilder.values());
-		this.actors = new TreeSet<>(actorsBuilder.values());
 
-		Table<Object, Object, Storage> storageTable = HashBasedTable.create();
-		for (Actor a : actors)
-			a.connect(actorsBuilder, storageTable);
+		Map<Token, TokenActor> tokenActors = new HashMap<>();
+		Table<Actor, Actor, Storage> storageTable = HashBasedTable.create();
+		int[] inputTokenId = new int[]{Integer.MIN_VALUE}, outputTokenId = new int[]{Integer.MAX_VALUE};
+		for (WorkerActor a : workerActors.values())
+			a.connect(ImmutableMap.copyOf(workerActors), tokenActors, storageTable, inputTokenId, outputTokenId);
+		this.actors = new TreeSet<>();
+		this.actors.addAll(workerActors.values());
+		this.actors.addAll(tokenActors.values());
 		this.storage = new HashSet<>(storageTable.values());
-		for (Object o : storageTable.rowKeySet())
-			if (o instanceof Token)
-				tokenInputIndices.put((Token)o, MethodHandles.identity(int.class));
-		for (Object o : storageTable.columnKeySet())
-			if (o instanceof Token)
-				tokenOutputIndices.put((Token)o, MethodHandles.identity(int.class));
 
 		this.config = config;
 		this.maxNumCores = maxNumCores;
@@ -98,7 +89,7 @@ public class Compiler2 {
 //		identityRemoval();
 //		splitterRemoval();
 		//joinerRemoval();
-		unbox();
+//		unbox();
 
 		initSchedule();
 		createStorage();
@@ -143,11 +134,11 @@ public class Compiler2 {
 		Schedule.Builder<ActorGroup> scheduleBuilder = Schedule.builder();
 		for (ActorGroup g : groups) {
 			for (Storage e : g.outputs()) {
-				if (!e.hasDownstreamActor())
-					continue;
-				ActorGroup other = e.downstreamActor().group();
-				int upstreamAdjust = g.schedule().get(e.upstreamActor());
-				int downstreamAdjust = other.schedule().get(e.downstreamActor());
+				Actor upstream = Iterables.getOnlyElement(e.upstream());
+				Actor downstream = Iterables.getOnlyElement(e.downstream());
+				ActorGroup other = downstream.group();
+				int upstreamAdjust = g.schedule().get(upstream);
+				int downstreamAdjust = other.schedule().get(downstream);
 				scheduleBuilder.connect(g, other)
 						.push(e.push() * upstreamAdjust)
 						.pop(e.pop() * downstreamAdjust)
@@ -160,20 +151,6 @@ public class Compiler2 {
 		} catch (Schedule.ScheduleException ex) {
 			throw new StreamCompilationFailedException("couldn't find external schedule", ex);
 		}
-
-		//Compute the Token "schedule".
-		for (ActorGroup g : groups) {
-			for (Storage s : g.inputs()) {
-				if (s.hasUpstreamActor()) continue;
-				int itemsReadFromToken = externalSchedule.get(g) * g.schedule().get(s.downstreamActor()) * s.pop();
-				tokenItemsRead.put(s.upstreamToken(), itemsReadFromToken);
-			}
-			for (Storage s : g.outputs()) {
-				if (s.hasDownstreamActor()) continue;
-				int itemsWrittenToToken = externalSchedule.get(g) * g.schedule().get(s.upstreamActor()) * s.push();
-				tokenItemsWritten.put(s.downstreamToken(), itemsWrittenToToken);
-			}
-		}
 	}
 
 	/**
@@ -182,14 +159,11 @@ public class Compiler2 {
 	private void internalSchedule(ActorGroup g) {
 		Schedule.Builder<Actor> scheduleBuilder = Schedule.builder();
 		scheduleBuilder.addAll(g.actors());
-		Map<Worker<?, ?>, Actor> map = new HashMap<>();
-		for (Actor a : g.actors())
-			map.put(a.worker(), a);
-		for (IOInfo info : IOInfo.internalEdges(map.keySet())) {
-			scheduleBuilder.connect(map.get(info.upstream()), map.get(info.downstream()))
-					.push(info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max())
-					.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max())
-					.peek(info.downstream().getPeekRates().get(info.getDownstreamChannelIndex()).max())
+		for (Storage s : g.internalEdges()) {
+			scheduleBuilder.connect(Iterables.getOnlyElement(s.upstream()), Iterables.getOnlyElement(s.downstream()))
+					.push(s.push())
+					.pop(s.pop())
+					.peek(s.peek())
 					.bufferExactly(0);
 		}
 
@@ -201,58 +175,58 @@ public class Compiler2 {
 		}
 	}
 
-	private void splitterRemoval() {
-		for (Actor splitter : ImmutableSortedSet.copyOf(actors)) {
-			List<MethodHandle> transfers = splitterTransferFunctions(splitter);
-			if (transfers == null) continue;
-			Storage survivor = Iterables.getOnlyElement(splitter.inputs());
-			MethodHandle Sin = Iterables.getOnlyElement(splitter.inputIndexFunctions());
-			for (int i = 0; i < splitter.outputs().size(); ++i) {
-				Storage victim = splitter.outputs().get(i);
-				MethodHandle t = transfers.get(i);
-				MethodHandle t2 = MethodHandles.filterReturnValue(t, Sin);
-				for (Object o : victim.downstream())
-					if (o instanceof Actor) {
-						Actor q = (Actor)o;
-						List<Storage> inputs = q.inputs();
-						List<MethodHandle> inputIndices = q.inputIndexFunctions();
-						for (int j = 0; j < inputs.size(); ++j)
-							if (inputs.get(j).equals(victim)) {
-								inputs.set(j, survivor);
-								inputIndices.set(j, MethodHandles.filterReturnValue(t2, inputIndices.get(j)));
-							}
-					} else if (o instanceof Token) {
-						Token q = (Token)o;
-						tokenInputIndices.put(q, MethodHandles.filterReturnValue(t2, tokenInputIndices.get(q)));
-					} else
-						throw new AssertionError(o);
-			}
-			removeActor(splitter);
-		}
-	}
+//	private void splitterRemoval() {
+//		for (Actor splitter : ImmutableSortedSet.copyOf(actors)) {
+//			List<MethodHandle> transfers = splitterTransferFunctions(splitter);
+//			if (transfers == null) continue;
+//			Storage survivor = Iterables.getOnlyElement(splitter.inputs());
+//			MethodHandle Sin = Iterables.getOnlyElement(splitter.inputIndexFunctions());
+//			for (int i = 0; i < splitter.outputs().size(); ++i) {
+//				Storage victim = splitter.outputs().get(i);
+//				MethodHandle t = transfers.get(i);
+//				MethodHandle t2 = MethodHandles.filterReturnValue(t, Sin);
+//				for (Object o : victim.downstream())
+//					if (o instanceof Actor) {
+//						Actor q = (Actor)o;
+//						List<Storage> inputs = q.inputs();
+//						List<MethodHandle> inputIndices = q.inputIndexFunctions();
+//						for (int j = 0; j < inputs.size(); ++j)
+//							if (inputs.get(j).equals(victim)) {
+//								inputs.set(j, survivor);
+//								inputIndices.set(j, MethodHandles.filterReturnValue(t2, inputIndices.get(j)));
+//							}
+//					} else if (o instanceof Token) {
+//						Token q = (Token)o;
+//						tokenInputIndices.put(q, MethodHandles.filterReturnValue(t2, tokenInputIndices.get(q)));
+//					} else
+//						throw new AssertionError(o);
+//			}
+//			removeActor(splitter);
+//		}
+//	}
 
-	/**
-	 * Returns transfer functions for the given splitter, or null if the actor
-	 * isn't a splitter or isn't one of the built-in splitters or for some other
-	 * reason we can't make transfer functions.
-	 *
-	 * A splitter has one transfer function for each output that maps logical
-	 * output indices to logical input indices (representing the splitter's
-	 * distribution pattern).
-	 * @param a an actor
-	 * @return transfer functions, or null
-	 */
-	private List<MethodHandle> splitterTransferFunctions(Actor a) {
-		if (a.worker() instanceof RoundrobinSplitter) {
-			//Nx, Nx + 1, Nx + 2, ..., Nx+(N-1)
-			int N = a.outputs().size();
-			ImmutableList.Builder<MethodHandle> transfer = ImmutableList.builder();
-			for (int n = 0; n < N; ++n)
-				transfer.add(add(mul(MethodHandles.identity(int.class), N), n));
-			return transfer.build();
-		} else //TODO: WeightedRoundrobinSplitter, DuplicateSplitter
-			return null;
-	}
+//	/**
+//	 * Returns transfer functions for the given splitter, or null if the actor
+//	 * isn't a splitter or isn't one of the built-in splitters or for some other
+//	 * reason we can't make transfer functions.
+//	 *
+//	 * A splitter has one transfer function for each output that maps logical
+//	 * output indices to logical input indices (representing the splitter's
+//	 * distribution pattern).
+//	 * @param a an actor
+//	 * @return transfer functions, or null
+//	 */
+//	private List<MethodHandle> splitterTransferFunctions(Actor a) {
+//		if (a.worker() instanceof RoundrobinSplitter) {
+//			//Nx, Nx + 1, Nx + 2, ..., Nx+(N-1)
+//			int N = a.outputs().size();
+//			ImmutableList.Builder<MethodHandle> transfer = ImmutableList.builder();
+//			for (int n = 0; n < N; ++n)
+//				transfer.add(add(mul(MethodHandles.identity(int.class), N), n));
+//			return transfer.build();
+//		} else //TODO: WeightedRoundrobinSplitter, DuplicateSplitter
+//			return null;
+//	}
 
 	/**
 	 * Removes an Actor from this compiler's data structures.  The Actor should
@@ -306,23 +280,23 @@ public class Compiler2 {
 //		return replacements;
 //	}
 
-	/**
-	 * Symbolically unboxes a Storage if its common type is a wrapper type and
-	 * all the connected Actors support unboxing.
-	 */
-	private void unbox() {
-		next_storage: for (Storage s : storage) {
-			Class<?> commonType = s.commonType();
-			if (!Primitives.isWrapperType(commonType)) continue;
-			for (Object o : s.upstream())
-				if (o instanceof Actor && !((Actor)o).archetype().canUnboxOutput())
-					continue next_storage;
-			for (Object o : s.downstream())
-				if (o instanceof Actor && !((Actor)o).archetype().canUnboxInput())
-					continue next_storage;
-			s.setType(Primitives.unwrap(s.commonType()));
-		}
-	}
+//	/**
+//	 * Symbolically unboxes a Storage if its common type is a wrapper type and
+//	 * all the connected Actors support unboxing.
+//	 */
+//	private void unbox() {
+//		next_storage: for (Storage s : storage) {
+//			Class<?> commonType = s.commonType();
+//			if (!Primitives.isWrapperType(commonType)) continue;
+//			for (Object o : s.upstream())
+//				if (o instanceof Actor && !((Actor)o).archetype().canUnboxOutput())
+//					continue next_storage;
+//			for (Object o : s.downstream())
+//				if (o instanceof Actor && !((Actor)o).archetype().canUnboxInput())
+//					continue next_storage;
+//			s.setType(Primitives.unwrap(s.commonType()));
+//		}
+//	}
 
 	/**
 	 * Computes the initialization schedule, which is in terms of ActorGroup
@@ -331,9 +305,7 @@ public class Compiler2 {
 	private void initSchedule() {
 		Map<Storage, Set<Integer>> requiredReadIndices = new HashMap<>();
 		for (Storage s : storage) {
-			s.computeRequirements(externalSchedule,
-					CollectionUtils.union(tokenItemsRead, tokenItemsWritten),
-					CollectionUtils.union(tokenInputIndices, tokenOutputIndices));
+			s.computeRequirements(externalSchedule);
 			requiredReadIndices.put(s, new HashSet<>(s.readIndices()));
 		}
 		//TODO: initial state will reduce the required read indices.
@@ -388,12 +360,11 @@ public class Compiler2 {
 	}
 
 	private void createStorage() {
+		//TODO: moved into initSchedule() above
 		//TODO: initialState needs to be used somewhere.
 		ImmutableMap.Builder<Storage, ConcreteStorage> globalStorageBuilder = ImmutableMap.builder();
 		for (Storage s : storage) {
-			s.computeRequirements(externalSchedule,
-					CollectionUtils.union(tokenItemsRead, tokenItemsWritten),
-					CollectionUtils.union(tokenInputIndices, tokenOutputIndices));
+			s.computeRequirements(externalSchedule);
 			if (!s.isInternal())
 				globalStorageBuilder.put(s, new CircularArrayConcreteStorage(s.type(), s.actualCapacity(), s.throughput(),
 						new Object[0] /*TODO: new init strategy*/));

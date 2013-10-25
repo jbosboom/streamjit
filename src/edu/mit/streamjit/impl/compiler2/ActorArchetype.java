@@ -397,7 +397,7 @@ public class ActorArchetype {
 	 * @param a the Actor to specialize for
 	 * @return a specialized work method
 	 */
-	public MethodHandle specialize(Actor a) {
+	public MethodHandle specialize(WorkerActor a) {
 		checkArgument(a.archetype() == this);
 		MethodHandle handle = workMethod;
 		//This relies on fields having a consistent iteration order.

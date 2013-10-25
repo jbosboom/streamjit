@@ -3,12 +3,6 @@ package edu.mit.streamjit.impl.compiler2;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import com.google.common.primitives.Ints;
-import com.google.common.primitives.Primitives;
-import edu.mit.streamjit.api.Rate;
-import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.common.Workers;
-import java.lang.invoke.MethodHandle;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +11,7 @@ import java.util.Set;
 
 /**
  * Holds information about intermediate storage in the stream graph (buffers,
- * but the name Buffer is already taken), such as the Token or Actors that read
+ * but the name Buffer is already taken), such as the Actors that read
  * and write from it.
  *
  * Rate information is only valid on an untransformed graph; Actor removal can
@@ -27,9 +21,9 @@ import java.util.Set;
  */
 public final class Storage {
 	/**
-	 * The upstream and downstream Actors or Tokens.
+	 * The upstream and downstream Actors.
 	 */
-	private final List<Object> upstream, downstream;
+	private final List<Actor> upstream, downstream;
 	/**
 	 * The type of data stored in this storage.  Initially this is Object, but
 	 * unboxing may change it to a primitive type after examining the connected
@@ -47,83 +41,48 @@ public final class Storage {
 	 * iteration, and thus determine the minimum buffering requirement.
 	 */
 	private ImmutableSet<Integer> readIndices;
-	public Storage(Object upstream, Object downstream) {
-		checkArgument(upstream instanceof Actor || upstream instanceof Token, upstream);
-		checkArgument(downstream instanceof Actor || downstream instanceof Token, downstream);
+	public Storage(Actor upstream, Actor downstream) {
 		this.upstream = Lists.newArrayList(upstream);
 		this.downstream = Lists.newArrayList(downstream);
 	}
 
-	public List<Object> upstream() {
+	public List<Actor> upstream() {
 		return upstream;
 	}
 
-	public List<Object> downstream() {
+	public List<Actor> downstream() {
 		return downstream;
 	}
 
-	public boolean hasUpstreamActor() {
-		for (Object o : upstream())
-			if (o instanceof Actor)
-				return true;
-		return false;
-	}
-
-	public Actor upstreamActor() {
-		checkState(hasUpstreamActor(), this);
-		checkState(upstream().size() == 1, this);
-		return (Actor)upstream().get(0);
-	}
-
-	public Token upstreamToken() {
-		checkState(!hasUpstreamActor(), this);
-		checkState(upstream().size() == 1, this);
-		return (Token)upstream().get(0);
-	}
-
-	public boolean hasDownstreamActor() {
-		for (Object o : downstream())
-			if (o instanceof Actor)
-				return true;
-		return false;
-	}
-
-	public Actor downstreamActor() {
-		checkState(hasDownstreamActor(), this);
-		checkState(downstream().size() == 1, this);
-		return (Actor)downstream().get(0);
-	}
-
-	public Token downstreamToken() {
-		checkState(!hasDownstreamActor(), this);
-		checkState(downstream().size() == 1, this);
-		return (Token)downstream().get(0);
-	}
-
 	public int push() {
-		int upstreamIndex = hasDownstreamActor() ? Workers.getSuccessors(upstreamActor().worker()).indexOf(upstreamActor().worker()) : 0;
-		Rate r = upstreamActor().worker().getPushRates().get(upstreamIndex);
-		assert r.isFixed() : r;
-		return r.max();
+		checkState(upstream().size() == 1, this);
+		return upstream().get(0).push(upstream().get(0).outputs().indexOf(this));
 	}
 
 	public int peek() {
-		int downstreamIndex = hasUpstreamActor() ? Workers.getPredecessors(downstreamActor().worker()).indexOf(upstreamActor().worker()) : 0;
-		Rate r = downstreamActor().worker().getPeekRates().get(downstreamIndex);
-		assert r.isFixed() : r;
-		return r.max();
+		checkState(upstream().size() == 1, this);
+		return upstream().get(0).peek(upstream().get(0).outputs().indexOf(this));
 	}
 
 	public int pop() {
-		int downstreamIndex = hasUpstreamActor() ? Workers.getPredecessors(downstreamActor().worker()).indexOf(upstreamActor().worker()) : 0;
-		Rate r = downstreamActor().worker().getPopRates().get(downstreamIndex);
-		assert r.isFixed() : r;
-		return r.max();
+		checkState(downstream().size() == 1, this);
+		return downstream().get(0).push(upstream().get(0).outputs().indexOf(this));
 	}
 
+	/**
+	 * Returns true if this Storage is internal to an ActorGroup; that is, all
+	 * Actors reading or writing it are in the same ActorGroup.
+	 * @return true iff this Storage is internal to an ActorGroup
+	 */
 	public boolean isInternal() {
-		return hasUpstreamActor() && hasDownstreamActor() &&
-				upstreamActor().group() == downstreamActor().group();
+		ActorGroup g = upstream().get(0).group();
+		for (Actor a : upstream())
+			if (a.group() != g)
+				return false;
+		for (Actor a : downstream())
+			if (a.group() != g)
+				return false;
+		return true;
 	}
 
 	public Class<?> type() {
@@ -142,12 +101,10 @@ public final class Storage {
 	 */
 	public Class<?> commonType() {
 		Set<Class<?>> types = new HashSet<>();
-		for (Object o : upstream())
-			if (o instanceof Actor)
-				types.add(((Actor)o).archetype().outputType());
-		for (Object o : downstream())
-			if (o instanceof Actor)
-				types.add(((Actor)o).archetype().inputType());
+		for (Actor a : upstream())
+			types.add(a.outputType());
+		for (Actor a : downstream())
+			types.add(a.inputType());
 		//TODO: we only really care about the case where the common types are
 		//all one (wrapper) type, so check that and return Object otherwise.
 		if (types.size() == 1)
@@ -180,60 +137,35 @@ public final class Storage {
 	 * (This is not the actual buffer capacity, because the init schedule might
 	 * require additional buffering to meet some other storage's requirement.)
 	 * @param externalSchedule the external schedule
-	 * @param tokenSchedule the Token "schedule" (number of items read/written
-	 * per steady-state execution)
-	 * @param tokenIndexFunctions the Token index functions (read or write
-	 * depending on the Token; no Token needs both)
 	 */
-	public void computeRequirements(Map<ActorGroup, Integer> externalSchedule, Map<Token, Integer> tokenSchedule, Map<Token, MethodHandle> tokenIndexFunctions) {
+	public void computeRequirements(Map<ActorGroup, Integer> externalSchedule) {
 		/*
 		 * To compute the throughput, we just count the elements written; they
 		 * should be both dense and non-overlapping.  TODO: if we intrisify a
 		 * decimator by making some writes no-ops, this may not hold.
 		 */
 		throughput = 0;
-		for (Object o : upstream())
-			if (o instanceof Token)
-				throughput += tokenSchedule.get((Token)o);
-			else {
-				Actor a = (Actor)o;
-				int executions = (isInternal() ? 1 : externalSchedule.get(a.group())) * a.group().schedule().get(a);
-				for (int i = 0; i < a.outputs().size(); ++i) {
-					if (!a.outputs().get(i).equals(this)) continue;
-					throughput += a.worker().getPushRates().get(i).max() * executions;
-				}
-			}
+		for (Actor a : upstream()) {
+			int executions = (isInternal() ? 1 : externalSchedule.get(a.group())) * a.group().schedule().get(a);
+			for (int i = 0; i < a.outputs().size(); ++i)
+				if (a.outputs().get(i).equals(this))
+					throughput += a.push(i) * executions;
+		}
 
 		/**
 		 * Now find the indices that could be read during a steady state
 		 * execution. That's the initialization requirement.
 		 */
 		ImmutableSet.Builder<Integer> readIndicesBuilder = ImmutableSet.builder();
-		for (Object o : downstream()) {
-			if (o instanceof Token) {
-				Token t = (Token)o;
-				for (int i = 0; i < tokenSchedule.get(t); ++i)
-					try {
-						readIndicesBuilder.add((Integer)tokenIndexFunctions.get(t).invoke(i));
-					} catch (Throwable ex) {
-						throw new AssertionError(ex);
-					}
-			} else {
-				Actor a = (Actor)o;
-				int executions = a.group().schedule().get(a) * (isInternal() ? 1 : externalSchedule.get(a.group()));
-				for (int i = 0; i < a.inputs().size(); ++i) {
-					if (!a.outputs().get(i).equals(this)) continue;
-
-					int pop = a.worker().getPopRates().get(i).max(),
-							peek = a.worker().getPeekRates().get(i).max();
-					int excessPeeks = Math.max(0, peek - pop);
-					int maxLogicalIndex = pop * executions + excessPeeks;
-					if (maxLogicalIndex == 0)
-						continue;
-
-					for (int idx = 0; idx < maxLogicalIndex; ++idx)
-						readIndicesBuilder.add(a.translateInputIndex(i, idx));
-				}
+		for (Actor a : downstream()) {
+			int executions = a.group().schedule().get(a) * (isInternal() ? 1 : externalSchedule.get(a.group()));
+			for (int i = 0; i < a.inputs().size(); ++i) {
+				if (!a.outputs().get(i).equals(this)) continue;
+				int pop = a.pop(i),	peek = a.peek(i);
+				int excessPeeks = Math.max(0, peek - pop);
+				int maxLogicalIndex = pop * executions + excessPeeks;
+				for (int idx = 0; idx < maxLogicalIndex; ++idx)
+					readIndicesBuilder.add(a.translateInputIndex(i, idx));
 			}
 		}
 		this.readIndices = readIndicesBuilder.build();
