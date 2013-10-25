@@ -346,7 +346,7 @@ public class Compiler2 {
 				//them * (us / them) = us; we round up.
 				int st = totalInit.get(s);
 				int them = externalSchedule.get(s);
-				downstreamReqs.add(LongMath.divide(LongMath.checkedMultiply(st, us), them, RoundingMode.UP));
+				downstreamReqs.add(LongMath.divide(LongMath.checkedMultiply(st, us), them, RoundingMode.CEILING));
 			}
 			totalInit.put(g, Ints.checkedCast(Collections.max(downstreamReqs) + actualInit.get(g)));
 		}
