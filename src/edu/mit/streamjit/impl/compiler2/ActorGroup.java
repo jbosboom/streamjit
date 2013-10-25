@@ -7,6 +7,9 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -128,6 +131,30 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		for (Actor a : actors())
 			checkArgument(schedule.containsKey(a), "schedule doesn't contain actor "+a);
 		this.schedule = schedule;
+	}
+
+	/**
+	 * Returns a map mapping each output Storage to the set of logical indices
+	 * written in that Storage during the given ActorGroup iteration.
+	 * @param iteration the iteration to simulate
+	 * @return a map of written logical indices
+	 */
+	public Map<Storage, Set<Integer>> writes(int iteration) {
+		Map<Storage, Set<Integer>> retval = new HashMap<>(outputs().size());
+		for (Storage s : outputs())
+			retval.put(s, new HashSet<Integer>());
+
+		for (Actor a : actors()) {
+			int begin = schedule.get(a) * iteration, end = schedule.get(a) * (iteration + 1);
+			for (int output = 0; output < a.outputs().size(); ++output)
+				if (!a.outputs().get(output).isInternal()) {
+					int push = a.worker().getPushRates().get(output).max();
+					for (int iter = begin; iter < end; ++iter)
+						for (int idx = push * iter; idx < push * (iter+1); ++idx)
+							retval.get(a.outputs().get(output)).add(a.translateOutputIndex(output, idx));
+				}
+		}
+		return retval;
 	}
 
 	@Override

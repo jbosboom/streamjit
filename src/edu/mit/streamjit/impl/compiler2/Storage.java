@@ -42,10 +42,9 @@ public final class Storage {
 	 */
 	private int throughput = -1;
 	/**
-	 * The length of the region of this storage examined during each steady state
-	 * execution; that is, the minimum number of contiguous buffered items to begin a
-	 * steady state execution.  Note this is not
-	 * TODO
+	 * The logical indices in this storage read by outputs in a steady-state
+	 * iteration. These values must be live at the beginning of the steady-state
+	 * iteration, and thus determine the minimum buffering requirement.
 	 */
 	private ImmutableSet<Integer> readIndices;
 	public Storage(Object upstream, Object downstream) {

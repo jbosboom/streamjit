@@ -9,6 +9,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
+import com.google.common.math.LongMath;
+import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
@@ -25,7 +27,9 @@ import static edu.mit.streamjit.util.Combinators.*;
 import edu.mit.streamjit.util.bytecode.Module;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -56,6 +60,7 @@ public class Compiler2 {
 	 */
 	private final Map<Token, Integer> tokenItemsRead = new HashMap<>(), tokenItemsWritten = new HashMap<>();
 	private final Module module = new Module();
+	private ImmutableMap<ActorGroup, Integer> initSchedule;
 	private ImmutableMap<Storage, ConcreteStorage> globalStorage;
 	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 		Map<Class<?>, ActorArchetype> archetypesBuilder = new HashMap<>();
@@ -91,10 +96,11 @@ public class Compiler2 {
 		fuse();
 		schedule();
 //		identityRemoval();
-		splitterRemoval();
+//		splitterRemoval();
 		//joinerRemoval();
 		unbox();
 
+		initSchedule();
 		createStorage();
 		return null;
 	}
@@ -113,6 +119,7 @@ public class Compiler2 {
 				ActorGroup g = it.next();
 				String paramName = String.format("fuse%d", g.id());
 				SwitchParameter<Boolean> fuseParam = config.getParameter(paramName, SwitchParameter.class, Boolean.class);
+				//TODO: initial data prevents fusion
 				if (g.isPeeking() || !fuseParam.getValue() || g.predecessorGroups().size() > 1)
 					continue;
 				ActorGroup fusedGroup = ActorGroup.fuse(g, g.predecessorGroups().iterator().next());
@@ -315,6 +322,69 @@ public class Compiler2 {
 					continue next_storage;
 			s.setType(Primitives.unwrap(s.commonType()));
 		}
+	}
+
+	/**
+	 * Computes the initialization schedule, which is in terms of ActorGroup
+	 * executions.
+	 */
+	private void initSchedule() {
+		Map<Storage, Set<Integer>> requiredReadIndices = new HashMap<>();
+		for (Storage s : storage) {
+			s.computeRequirements(externalSchedule,
+					CollectionUtils.union(tokenItemsRead, tokenItemsWritten),
+					CollectionUtils.union(tokenInputIndices, tokenOutputIndices));
+			requiredReadIndices.put(s, new HashSet<>(s.readIndices()));
+		}
+		//TODO: initial state will reduce the required read indices.
+		//TODO: what if we have more state than required for reads (due to rate
+		//lag)?  Will need to leave space for it.
+
+		/**
+		 * Actual init: iterations of each group necessary to fill the required
+		 * read indices of the output Storage.
+		 */
+		Map<ActorGroup, Integer> actualInit = new HashMap<>();
+		for (ActorGroup g : groups)
+			//TODO: this is assuming we can stop as soon as an iteration doesn't
+			//help.  Will this always be true?
+			for (int i = 0; ; ++i) {
+				boolean changed = false;
+				for (Map.Entry<Storage, Set<Integer>> e : g.writes(i).entrySet())
+					changed |= requiredReadIndices.get(e.getKey()).removeAll(e.getValue());
+				if (!changed) {
+					actualInit.put(g, i);
+					break;
+				}
+			}
+
+		/**
+		 * Total init, which is actual init plus allowances for downstream's
+		 * total init.  Computed bottom-up via reverse iteration on groups.
+		 */
+		Map<ActorGroup, Integer> totalInit = new HashMap<>();
+		for (ActorGroup g : groups.descendingSet()) {
+			if (g.successorGroups().isEmpty())
+				totalInit.put(g, actualInit.get(g));
+			long us = externalSchedule.get(g);
+			List<Long> downstreamReqs = new ArrayList<>(g.successorGroups().size());
+			for (ActorGroup s : g.successorGroups()) {
+				//I think reverse iteration guarantees bottom-up?
+				assert totalInit.containsKey(s) : g.id() + " requires " + s.id();
+				//them * (us / them) = us; we round up.
+				int st = totalInit.get(s);
+				int them = externalSchedule.get(s);
+				downstreamReqs.add(LongMath.divide(LongMath.checkedMultiply(st, us), them, RoundingMode.UP));
+			}
+			totalInit.put(g, Ints.checkedCast(Collections.max(downstreamReqs) + actualInit.get(g)));
+		}
+
+		this.initSchedule = ImmutableMap.copyOf(totalInit);
+
+		/**
+		 * TODO: Compute the memory requirement for the init schedule, and the
+		 * resulting steady-state capacities.
+		 */
 	}
 
 	private void createStorage() {
