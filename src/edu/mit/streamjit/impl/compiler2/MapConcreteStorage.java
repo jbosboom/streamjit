@@ -59,4 +59,13 @@ public final class MapConcreteStorage implements ConcreteStorage {
 	public String toString() {
 		return map.toString();
 	}
+
+	public static StorageFactory factory() {
+		return new StorageFactory() {
+			@Override
+			public ConcreteStorage make(Storage storage) {
+				return new MapConcreteStorage(storage.type());
+			}
+		};
+	}
 }
