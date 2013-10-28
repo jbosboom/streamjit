@@ -8,6 +8,13 @@ import java.lang.invoke.MethodHandle;
  *
  * Physical indices are adjusted by this storage to account for e.g. circular
  * buffers, so they might be considered "logical physical" indices.
+ *
+ * ConcreteStorage instances for internal Storage objects have read and write
+ * indices mapping to the same data items; thus, they're only useful within a
+ * single thread.  ConcreteStorage instances for external Storage must use
+ * double-buffering or other strategies to allow concurrent reads and writes,
+ * but need not perform any synchronization operations themselves, depending
+ * instead on synchronization at the end of each steady-state iteration.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 10/10/2013
  */
