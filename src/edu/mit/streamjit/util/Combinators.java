@@ -109,7 +109,7 @@ public final class Combinators {
 			handles[i] = handles[i].asType(MethodType.methodType(void.class));
 		return SEMICOLON.bindTo(handles);
 	}
-	
+
 	/**
 	 * Returns a MethodHandle that calls the given no-arg MethodHandles in
 	 * sequence, ignoring any return values.  If no handles are given, the
@@ -119,5 +119,17 @@ public final class Combinators {
 	 */
 	public static MethodHandle semicolon(List<MethodHandle> handles) {
 		return semicolon(handles.toArray(new MethodHandle[0]));
+	}
+
+	private static final MethodHandle VOID_VOID_NOP = MethodHandles.identity(Object.class)
+			.bindTo(null).asType(MethodType.methodType(void.class));
+	/**
+	 * Returns a MethodHandle that takes the given argument types, returns void,
+	 * and does nothing when called.
+	 * @param arguments the argument types
+	 * @return a no-op method handle
+	 */
+	public static MethodHandle nop(Class<?>... arguments) {
+		return MethodHandles.dropArguments(VOID_VOID_NOP, 0, arguments);
 	}
 }
