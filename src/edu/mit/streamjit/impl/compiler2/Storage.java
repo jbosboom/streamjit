@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
 import java.util.HashSet;
 import java.util.List;
@@ -40,7 +41,11 @@ public final class Storage {
 	 * iteration. These values must be live at the beginning of the steady-state
 	 * iteration, and thus determine the minimum buffering requirement.
 	 */
-	private ImmutableSet<Integer> readIndices;
+	private ImmutableSortedSet<Integer> readIndices;
+	/**
+	 * The max number of elements live in this storage during initialization.
+	 */
+	private int initCapacity = -1;
 	public Storage(Actor upstream, Actor downstream) {
 		this.upstream = Lists.newArrayList(upstream);
 		this.downstream = Lists.newArrayList(downstream);
@@ -50,8 +55,22 @@ public final class Storage {
 		return upstream;
 	}
 
+	public ImmutableSet<ActorGroup> upstreamGroups() {
+		ImmutableSet.Builder<ActorGroup> builder = ImmutableSet.builder();
+		for (Actor a : upstream())
+			builder.add(a.group());
+		return builder.build();
+	}
+
 	public List<Actor> downstream() {
 		return downstream;
+	}
+
+	public ImmutableSet<ActorGroup> downstreamGroups() {
+		ImmutableSet.Builder<ActorGroup> builder = ImmutableSet.builder();
+		for (Actor a : downstream())
+			builder.add(a.group());
+		return builder.build();
 	}
 
 	public int push() {
@@ -117,7 +136,7 @@ public final class Storage {
 		return throughput;
 	}
 
-	public ImmutableSet<Integer> readIndices() {
+	public ImmutableSortedSet<Integer> readIndices() {
 		checkState(readIndices != null);
 		return readIndices;
 	}
@@ -156,7 +175,7 @@ public final class Storage {
 		 * Now find the indices that could be read during a steady state
 		 * execution. That's the initialization requirement.
 		 */
-		ImmutableSet.Builder<Integer> readIndicesBuilder = ImmutableSet.builder();
+		ImmutableSortedSet.Builder<Integer> readIndicesBuilder = ImmutableSortedSet.naturalOrder();
 		for (Actor a : downstream()) {
 			int executions = a.group().schedule().get(a) * (isInternal() ? 1 : externalSchedule.get(a.group()));
 			for (int i = 0; i < a.inputs().size(); ++i) {
@@ -169,6 +188,15 @@ public final class Storage {
 			}
 		}
 		this.readIndices = readIndicesBuilder.build();
+	}
+
+	public int initCapacity() {
+		checkState(initCapacity != -1);
+		return initCapacity;
+	}
+
+	public void setInitCapacity(int initCapacity) {
+		this.initCapacity = initCapacity;
 	}
 
 	@Override

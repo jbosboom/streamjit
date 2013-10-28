@@ -354,9 +354,22 @@ public class Compiler2 {
 		this.initSchedule = ImmutableMap.copyOf(totalInit);
 
 		/**
-		 * TODO: Compute the memory requirement for the init schedule, and the
-		 * resulting steady-state capacities.
+		 * Compute the memory requirement for the init schedule. This is the
+		 * required read span (difference between the min and max read index),
+		 * plus throughput for each steady-state unit (or fraction thereof)
+		 * beyond the first, maximized across all writers.
 		 */
+		for (Storage s : storage) {
+			List<Long> size = new ArrayList<>(s.upstream().size());
+			for (ActorGroup writer : s.upstreamGroups())
+				size.add(LongMath.checkedMultiply(LongMath.divide(totalInit.get(writer), externalSchedule.get(writer), RoundingMode.CEILING) - 1, s.throughput()));
+			int initCapacity = Ints.checkedCast(Collections.max(size) +
+					s.readIndices().last() - s.readIndices().first());
+			s.setInitCapacity(initCapacity);
+		}
+
+		//TODO: Compute the steady-state capacities.
+		//(max(writers, rounded up) - min(readers, rounded down) + 1) * throughput
 	}
 
 	private void createStorage() {
