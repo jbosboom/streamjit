@@ -2,14 +2,24 @@ package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicate;
+import com.google.common.collect.ContiguousSet;
+import com.google.common.collect.DiscreteDomain;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
+import edu.mit.streamjit.util.Combinators;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -155,6 +165,92 @@ public class ActorGroup implements Comparable<ActorGroup> {
 				}
 		}
 		return retval;
+	}
+
+	/**
+	 * Returns a void->void MethodHandle that will run this ActorGroup for the
+	 * given iterations using the given ConcreteStorage instances.
+	 * @param iterations the range of iterations to run for
+	 * @param storage the storage being used
+	 * @return a void->void method handle
+	 */
+	public MethodHandle specialize(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage) {
+		//TokenActors are special.
+		assert FluentIterable.from(actors()).filter(TokenActor.class).isEmpty() : actors();
+
+		/**
+		 * Compute the read and write method handles for each Actor. These don't
+		 * depend on the iteration, so we can bind and reuse them.
+		 */
+		Map<Actor, MethodHandle> withRWHandlesBound = new HashMap<>();
+		for (Actor a : actors()) {
+			WorkerActor wa = (WorkerActor)a;
+			MethodHandle specialized = wa.archetype().specialize(wa);
+
+			assert a.inputs().size() > 0 : a;
+			MethodHandle read;
+			if (a.inputs().size() == 1)
+				read = storage.get(a.inputs().get(0)).readHandle();
+			else {
+				MethodHandle[] table = new MethodHandle[a.inputs().size()];
+				for (int i = 0; i < a.inputs().size(); i++)
+					table[i] = storage.get(a.inputs().get(i)).readHandle();
+				read = Combinators.tableswitch(table);
+			}
+
+			assert a.outputs().size() > 0 : a;
+			MethodHandle write;
+			if (a.outputs().size() == 1)
+				write = storage.get(a.outputs().get(0)).writeHandle();
+			else {
+				MethodHandle[] table = new MethodHandle[a.outputs().size()];
+				for (int i = 0; i < a.outputs().size(); ++i)
+					table[i] = storage.get(a.outputs().get(i)).writeHandle();
+				write = Combinators.tableswitch(table);
+			}
+
+			withRWHandlesBound.put(wa, specialized.bindTo(read).bindTo(write));
+		}
+
+		/**
+		 * Compute the initial read/write indices for each iteration, then bind
+		 * them together in sequence.  (We could also move the computation
+		 * inside the handle, but I think leaving everything explicit is better.
+		 * We could also bytecode these constants and invoke the method handle,
+		 * if bytecode gives the JVM more visibility.)
+		 *
+		 * TODO: maybe for Filters, we can use a loop since the computation is
+		 * simple and JVMs can decide whether to unroll or not.
+		 */
+		List<MethodHandle> handles = new ArrayList<>();
+		for (int iteration : ContiguousSet.create(iterations, DiscreteDomain.integers())) {
+			for (Actor a : ImmutableSortedSet.copyOf(actors())) {
+				MethodHandle base = withRWHandlesBound.get(a);
+				int subiterations = schedule.get(a);
+				for (int i = iteration*subiterations; i < (iteration+1)*subiterations; ++i) {
+					MethodHandle next = base;
+					if (a.inputs().size() == 1)
+						next = MethodHandles.insertArguments(next, 0, i * a.pop(0));
+					else {
+						int[] readIndices = new int[a.inputs().size()];
+						for (int m = 0; m < a.inputs().size(); ++m)
+							readIndices[m] = i * a.pop(m);
+						next = MethodHandles.insertArguments(next, 0, readIndices);
+					}
+
+					if (a.outputs().size() == 1)
+						next = MethodHandles.insertArguments(next, 0, i * a.push(0));
+					else {
+						int[] writeIndices = new int[a.outputs().size()];
+						for (int m = 0; m < a.outputs().size(); ++m)
+							writeIndices[m] = i * a.push(m);
+						next = MethodHandles.insertArguments(next, 0, writeIndices);
+					}
+					handles.add(next);
+				}
+			}
+		}
+		return Combinators.semicolon(handles);
 	}
 
 	@Override
