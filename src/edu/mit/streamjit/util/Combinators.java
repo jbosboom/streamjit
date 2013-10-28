@@ -6,6 +6,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Contains various combinators and other MethodHandle utilities.
@@ -80,5 +81,43 @@ public final class Combinators {
 		MethodHandle selector = METHODHANDLE_ARRAY_GETTER.bindTo(cases);
 		//Replace the index with the handle to invoke, passing it to an invoker.
 		return MethodHandles.filterArguments(MethodHandles.exactInvoker(type), 0, selector);
+	}
+
+	private static final MethodHandle SEMICOLON;
+	static {
+		try {
+			SEMICOLON = LOOKUP.findStatic(Combinators.class, "SEMICOLON",
+					MethodType.methodType(void.class, MethodHandle[].class));
+		} catch (NoSuchMethodException | IllegalAccessException ex) {
+			throw new AssertionError("Can't happen!", ex);
+		}
+	}
+	private static void _semicolon(MethodHandle... handles) throws Throwable {
+		for (MethodHandle m : handles)
+			m.invoke();
+	}
+
+	/**
+	 * Returns a MethodHandle that calls the given no-arg MethodHandles in
+	 * sequence, ignoring any return values.  If no handles are given, the
+	 * returned handle does nothing
+	 * @param handles the handles to invoke
+	 * @return a MethodHandle approximating semicolons
+	 */
+	public static MethodHandle semicolon(MethodHandle... handles) {
+		for (int i = 0; i < handles.length; ++i)
+			handles[i] = handles[i].asType(MethodType.methodType(void.class));
+		return SEMICOLON.bindTo(handles);
+	}
+	
+	/**
+	 * Returns a MethodHandle that calls the given no-arg MethodHandles in
+	 * sequence, ignoring any return values.  If no handles are given, the
+	 * returned handle does nothing
+	 * @param handles the handles to invoke
+	 * @return a MethodHandle approximating semicolons
+	 */
+	public static MethodHandle semicolon(List<MethodHandle> handles) {
+		return semicolon(handles.toArray(new MethodHandle[0]));
 	}
 }
