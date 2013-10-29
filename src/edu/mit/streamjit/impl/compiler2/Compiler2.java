@@ -376,12 +376,12 @@ public class Compiler2 {
 		//TODO: moved into initSchedule() above
 		//TODO: initialState needs to be used somewhere.
 		ImmutableMap.Builder<Storage, ConcreteStorage> globalStorageBuilder = ImmutableMap.builder();
-		for (Storage s : storage) {
-			s.computeRequirements(externalSchedule);
+		//TODO: actually want two sets of global storage, one for iteration and
+		//one for the steady-state (to minimize memory usage)
+		for (Storage s : storage)
 			if (!s.isInternal())
-				globalStorageBuilder.put(s, new CircularArrayConcreteStorage(s.type(), s.actualCapacity(), s.throughput(),
+				globalStorageBuilder.put(s, new CircularArrayConcreteStorage(s.type(), s.steadyStateCapacity(), s.throughput(),
 						new Object[0] /*TODO: new init strategy*/));
-		}
 		this.globalStorage = globalStorageBuilder.build();
 	}
 }

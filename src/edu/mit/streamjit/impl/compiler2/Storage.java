@@ -141,14 +141,18 @@ public final class Storage {
 		return readIndices;
 	}
 
-	public int actualCapacity() {
+	/**
+	 * Returns this Storage's steady-state capacity: the span of live elements
+	 * during a steady state iteration.  This includes items to be read this
+	 * iteration, items buffered for a future iteration, and space for items to
+	 * be written this iteration, and possible holes in any of the above.
+	 * @return this Storage's steady-state capacity
+	 */
+	public int steadyStateCapacity() {
 		if (isInternal())
 			return throughput();
-		//This assumes truncated schedules will never force us to put an extra
-		//throughput(s) into a storage to satisfy another storage's requirement.
-		//TODO: this definitely is wrong
-		//return Ints.checkedCast((long)(Math.ceil((throughput()+unconsumedItems())/throughput()) + 1) * throughput());
-		throw new UnsupportedOperationException();
+		//TODO: compute an actual steady-state capacity in Compiler2.initSchedule()
+		return initCapacity();
 	}
 
 	/**
