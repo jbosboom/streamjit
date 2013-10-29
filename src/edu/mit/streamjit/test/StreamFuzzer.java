@@ -62,6 +62,9 @@ import java.util.Set;
 
 /**
  * Generates random streams.
+ *
+ * TODO: this should verify DrainData, which seems to require working at the
+ * blob level, or surfacing DrainData somewhere.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 7/26/2013
  */
