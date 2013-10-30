@@ -55,6 +55,12 @@ public class Compiler2 {
 	private final Module module = new Module();
 	private ImmutableMap<ActorGroup, Integer> initSchedule;
 	private ImmutableMap<Storage, ConcreteStorage> globalStorage;
+	/**
+	 * For each Storage, the physical indices live in that Storage after the
+	 * initialization schedule.  That is, the items that must migrate to
+	 * steady-state storage.
+	 */
+	private ImmutableMap<Storage, ImmutableSortedSet<Integer>> liveAfterInit;
 	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 		Map<Class<?>, ActorArchetype> archetypesBuilder = new HashMap<>();
 		Map<Worker<?, ?>, WorkerActor> workerActors = new HashMap<>();
@@ -366,6 +372,56 @@ public class Compiler2 {
 			int initCapacity = Ints.checkedCast(Collections.max(size) +
 					s.readIndices().last() - s.readIndices().first());
 			s.setInitCapacity(initCapacity);
+		}
+
+		/**
+		 * Compute post-initialization liveness (data items written during init
+		 * that will be read in a future steady-state iteration).  These are the
+		 * items that must be moved into steady-state storage.  We compute by
+		 * building the written physical indices during the init schedule, then
+		 * building the read physical indices for future steady-state executions
+		 * and taking the intersection.
+		 *
+		 * TODO: This makes the same assumption as above, that we can stop
+		 * translating indices as soon as adding an execution doesn't change the
+		 * indices, which may not be true.
+		 */
+		Map<Storage, Set<Integer>> initWrites = new HashMap<>();
+		Map<Storage, Set<Integer>> futureReads = new HashMap<>();
+		for (Storage s : storage) {
+			initWrites.put(s, new HashSet<Integer>());
+			futureReads.put(s, new HashSet<Integer>());
+		}
+		for (ActorGroup g : groups)
+			for (int i = 0; i < initSchedule.get(g); ++i)
+				for (Map.Entry<Storage, Set<Integer>> writes : g.writes(i).entrySet())
+					initWrites.get(writes.getKey()).addAll(writes.getValue());
+		for (ActorGroup g : groups) {
+			//We run until our read indices don't intersect any of the write
+			//indices, at which point we aren't keeping any more elements live.
+			boolean progress = true;
+			for (int i = initSchedule.get(g); progress; ++i) {
+				progress = false;
+				for (Map.Entry<Storage, Set<Integer>> reads : g.reads(i).entrySet()) {
+					Storage s = reads.getKey();
+					Set<Integer> readIndices = reads.getValue();
+					Set<Integer> writeIndices = initWrites.get(s);
+					if (!Sets.intersection(readIndices, writeIndices).isEmpty()) {
+						writeIndices.addAll(readIndices);
+						progress = true;
+					}
+				}
+			}
+		}
+		ImmutableMap.Builder<Storage, ImmutableSortedSet<Integer>> liveAfterInitBuilder = ImmutableMap.builder();
+		for (Storage s : storage)
+			liveAfterInitBuilder.put(s, ImmutableSortedSet.copyOf(Sets.intersection(initWrites.get(s), futureReads.get(s))));
+		this.liveAfterInit = liveAfterInitBuilder.build();
+		//Assert we covered the required read indices.
+		for (Storage s : storage) {
+			int offset = liveAfterInit.get(s).first() - s.readIndices().first();
+			for (int i : s.readIndices())
+				assert liveAfterInit.get(s).contains(i - offset);
 		}
 
 		//TODO: Compute the steady-state capacities.
