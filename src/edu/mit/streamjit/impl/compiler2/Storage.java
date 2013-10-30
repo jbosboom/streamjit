@@ -159,6 +159,10 @@ public final class Storage {
 	 * Compute this storage's size requirements based on the index functions.
 	 * (This is not the actual buffer capacity, because the init schedule might
 	 * require additional buffering to meet some other storage's requirement.)
+	 * TODO: perhaps use ActorGroup.reads()/writes() in here?  Would duplicate
+	 * work because we only care about one Storage here, but would simplify code.
+	 * Or maybe we should move this work to Compiler2.initSchedule() so we can
+	 * compute with all Storages at once?
 	 * @param externalSchedule the external schedule
 	 */
 	public void computeRequirements(Map<ActorGroup, Integer> externalSchedule) {
