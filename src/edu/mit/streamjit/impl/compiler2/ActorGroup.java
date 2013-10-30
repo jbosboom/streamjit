@@ -145,6 +145,35 @@ public class ActorGroup implements Comparable<ActorGroup> {
 
 	/**
 	 * Returns a map mapping each output Storage to the set of physical indices
+	 * read in that Storage during the given ActorGroup iteration.
+	 * @param iteration the iteration to simulate
+	 * @return a map of read physical indices
+	 */
+	public Map<Storage, Set<Integer>> reads(int iteration) {
+		Map<Storage, Set<Integer>> retval = new HashMap<>(outputs().size());
+		for (Storage s : inputs())
+			retval.put(s, new HashSet<Integer>());
+
+		for (Actor a : actors()) {
+			int begin = schedule.get(a) * iteration, end = schedule.get(a) * (iteration + 1);
+			for (int input = 0; input < a.inputs().size(); ++input)
+				if (!a.inputs().get(input).isInternal()) {
+					//Use pop on all but last iteration, then use max(pop, peek).
+					int pop = a.pop(input);
+					for (int iter = begin; iter < end-1; ++iter)
+						for (int idx = pop * iter; idx < pop * (iter+1); ++idx)
+							retval.get(a.inputs().get(input)).add(a.translateInputIndex(input, idx));
+					int read = Math.max(a.pop(input), a.peek(input));
+					for (int iter = end-1; iter < end; ++iter)
+						for (int idx = read * iter; idx < read * (iter+1); ++idx)
+							retval.get(a.inputs().get(input)).add(a.translateInputIndex(input, idx));
+				}
+		}
+		return retval;
+	}
+
+	/**
+	 * Returns a map mapping each output Storage to the set of physical indices
 	 * written in that Storage during the given ActorGroup iteration.
 	 * @param iteration the iteration to simulate
 	 * @return a map of written physical indices
