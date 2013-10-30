@@ -34,15 +34,6 @@ public enum Command implements CTRLRMessageElement {
 		}
 	},
 	/**
-	 * Properly drain the stream blob.
-	 */
-	DRAIN {
-		@Override
-		public void process(CommandProcessor commandProcessor) {
-			commandProcessor.processDRAIN();
-		}
-	},
-	/**
 	 * This command is to ask StreamNode to exit.
 	 */
 	EXIT {
@@ -72,8 +63,6 @@ public enum Command implements CTRLRMessageElement {
 		public void processSTART();
 
 		public void processSTOP();
-
-		public void processDRAIN();
 
 		public void processEXIT();
 	}

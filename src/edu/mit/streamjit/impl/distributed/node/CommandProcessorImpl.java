@@ -65,11 +65,6 @@ public class CommandProcessorImpl implements CommandProcessor {
 	}
 
 	@Override
-	public void processDRAIN() {
-		throw new IllegalArgumentException("Suspend feature is not supported");
-	}
-
-	@Override
 	public void processEXIT() {
 		System.out.println("StreamNode is Exiting...");
 		streamNode.exit();
