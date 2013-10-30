@@ -19,7 +19,7 @@ import edu.mit.streamjit.impl.distributed.node.StreamNode;
  */
 public class TCPConnection implements Connection {
 
-	private ObjectOutput ooStream = null;
+	private ObjectOutputStream ooStream = null;
 	private ObjectInput oiStream = null;
 	private Socket socket = null;
 	private boolean isconnected = false;
@@ -46,6 +46,7 @@ public class TCPConnection implements Connection {
 		if (isStillConnected()) {
 			try {
 				ooStream.writeObject(obj);
+				ooStream.reset();
 				// System.out.println("Object send...");
 			} catch (IOException ix) {
 				// Following doesn't change when other side of the socket is
