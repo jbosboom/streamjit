@@ -43,9 +43,9 @@ import edu.mit.streamjit.impl.interp.ChannelFactory;
  */
 public class Controller {
 
-	TCPConnectionProvider conProvider;
+	private TCPConnectionProvider conProvider;
 
-	int startPortNo = 24896; // Just a random magic number.
+	private int startPortNo = 24896; // Just a random magic number.
 
 	private CommunicationManager comManager;
 
