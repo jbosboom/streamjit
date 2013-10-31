@@ -12,6 +12,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
@@ -50,9 +51,12 @@ public class StreamJitAppManager {
 
 	private Thread tailThread;
 
+	private volatile AppStatus status;
+
 	public StreamJitAppManager(Controller controller, StreamJitApp app) {
 		this.controller = controller;
 		this.app = app;
+		this.status = AppStatus.NOT_STARTED;
 		controller.newApp(app); // TODO: Find a good calling place.
 	}
 
@@ -178,7 +182,6 @@ public class StreamJitAppManager {
 
 	public void drainingFinished(boolean isFinal) {
 		System.out.println("App Manager : Draining Finished...");
-		tailChannel.reset();
 		if (tailChannel != null) {
 			tailChannel.stop();
 			try {
@@ -189,6 +192,8 @@ public class StreamJitAppManager {
 		}
 
 		if (isFinal) {
+			this.status = AppStatus.STOPPED;
+			tailChannel.reset();
 			controller.closeAll();
 		}
 	}
@@ -205,4 +210,7 @@ public class StreamJitAppManager {
 		}
 	}
 
+	public AppStatus getStatus() {
+		return status;
+	}
 }
