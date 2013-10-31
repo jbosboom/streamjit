@@ -148,7 +148,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 
-		final AbstractDrainer drainer = new DistributedDrainer(controller);
+		StreamJitAppManager manager = new StreamJitAppManager(controller, app);
+		final AbstractDrainer drainer = new DistributedDrainer(manager);
 		drainer.setBlobGraph(app.blobGraph1);
 
 		// TODO: derive a algorithm to find good buffer size and use here.
@@ -181,12 +182,11 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		app.bufferMap = bufferMapBuilder.build();
 		app.constraints = constraints;
 
-		controller.newApp(app);
-		controller.reconfigure();
+		manager.reconfigure();
 		CompiledStream cs = new DistributedCompiledStream(drainer);
 
 		if (app.blobConfiguration != null) {
-			OnlineTuner tuner = new OnlineTuner(drainer, controller, app);
+			OnlineTuner tuner = new OnlineTuner(drainer, manager, app);
 			new Thread(tuner, "OnlineTuner").start();
 		}
 		return cs;

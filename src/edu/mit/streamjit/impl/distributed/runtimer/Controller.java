@@ -9,31 +9,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.ImmutableMap;
-
-import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
-import edu.mit.streamjit.impl.distributed.HeadChannel;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
-import edu.mit.streamjit.impl.distributed.TailChannel;
-import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
-import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
-import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
-import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
-import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
@@ -72,31 +60,9 @@ public class Controller {
 	 * handle the head and tail buffers. Most of the cases ID 0 will be assigned
 	 * to the Controller.
 	 */
-	private final int controllerNodeID;
-
-	/**
-	 * A {@link BoundaryOutputChannel} for the head of the stream graph. If the
-	 * first {@link Worker} happened to fall outside the {@link Controller}, we
-	 * need to push the {@link CompiledStream}.offer() data to the first
-	 * {@link Worker} of the streamgraph.
-	 */
-	private BoundaryOutputChannel headChannel;
-
-	/**
-	 * A {@link BoundaryInputChannel} for the tail of the whole stream graph. If
-	 * the sink {@link Worker} happened to fall outside the {@link Controller},
-	 * we need to pull the sink's output in to the {@link Controller} in order
-	 * to make {@link CompiledStream} .pull() to work.
-	 */
-	private TailChannel tailChannel;
+	public final int controllerNodeID;
 
 	private Set<TCPConnectionInfo> currentConInfos;
-
-	private Thread headThread;
-
-	private Thread tailThread;
-
-	StreamJitApp app;
 
 	public Controller() {
 		this.comManager = new BlockingCommunicationManager();
@@ -142,26 +108,6 @@ public class Controller {
 	}
 
 	/**
-	 * Start the execution of the StreamJit application.
-	 */
-	public void start() {
-		if (headChannel != null) {
-			headThread = new Thread(headChannel.getRunnable(),
-					headChannel.name());
-			headThread.start();
-		}
-
-		sendToAll(Command.START);
-
-		if (tailChannel != null) {
-			tailChannel.reset();
-			tailThread = new Thread(tailChannel.getRunnable(),
-					tailChannel.name());
-			tailThread.start();
-		}
-	}
-
-	/**
 	 * Blocking call.
 	 * 
 	 * @return : A map where key is nodeID and value is number of cores in the
@@ -179,8 +125,6 @@ public class Controller {
 	}
 
 	public void newApp(StreamJitApp app) {
-		this.app = app;
-
 		Configuration.Builder builder = Configuration.builder(app
 				.getStaticConfiguration());
 
@@ -208,80 +152,7 @@ public class Controller {
 		sendToAll(json);
 	}
 
-	public void reconfigure() {
-		reconf++;
-		Configuration.Builder builder = Configuration.builder(app
-				.getDynamicConfiguration());
-
-		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = new HashMap<>();
-		Map<Token, Integer> portIdMap = new HashMap<>();
-
-		Map<Token, TCPConnectionInfo> conInfoMap = buildConInfoMap(
-				app.partitionsMachineMap1, app.source1, app.sink1);
-
-		builder.putExtraData(GlobalConstants.TOKEN_MACHINE_MAP, tokenMachineMap)
-				.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
-
-		builder.putExtraData(GlobalConstants.CONINFOMAP, conInfoMap);
-
-		Configuration cfg = builder.build();
-		String jsonStirng = cfg.toJson();
-
-		ImmutableMap<Integer, DrainData> drainDataMap = app.getDrainData();
-
-		for (StreamNodeAgent node : StreamNodeMap.values()) {
-			try {
-				ConfigurationString json = new ConfigurationString(jsonStirng,
-						ConfigType.DYNAMIC, drainDataMap.get(node.getNodeID()));
-				node.writeObject(json);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-
-		setupHeadTail1(conInfoMap, app.bufferMap,
-				Token.createOverallInputToken(app.source1),
-				Token.createOverallOutputToken(app.sink1));
-
-		start();
-	}
-
-	/**
-	 * Setup the headchannel and tailchannel.
-	 * 
-	 * @param cfg
-	 * @param bufferMap
-	 * @param headToken
-	 * @param tailToken
-	 */
-	private void setupHeadTail1(Map<Token, TCPConnectionInfo> conInfoMap,
-			ImmutableMap<Token, Buffer> bufferMap, Token headToken,
-			Token tailToken) {
-
-		TCPConnectionInfo headconInfo = conInfoMap.get(headToken);
-		assert headconInfo != null : "No head connection info exists in conInfoMap";
-		assert headconInfo.getSrcID() == controllerNodeID : "Head channel should start from the controller.";
-
-		if (!bufferMap.containsKey(headToken))
-			throw new IllegalArgumentException(
-					"No head buffer in the passed bufferMap.");
-
-		headChannel = new HeadChannel(bufferMap.get(headToken), conProvider,
-				headconInfo, "headChannel - " + headToken.toString(), 0);
-
-		TCPConnectionInfo tailconInfo = conInfoMap.get(tailToken);
-		assert tailconInfo != null : "No tail connection info exists in conInfoMap";
-		assert tailconInfo.getDstID() == controllerNodeID : "Tail channel should ends at the controller.";
-
-		if (!bufferMap.containsKey(tailToken))
-			throw new IllegalArgumentException(
-					"No tail buffer in the passed bufferMap.");
-
-		tailChannel = new TailChannel(bufferMap.get(tailToken), conProvider,
-				tailconInfo, "tailChannel - " + tailToken.toString(), 0, 10000);
-	}
-
-	private Map<Token, TCPConnectionInfo> buildConInfoMap(
+	public Map<Token, TCPConnectionInfo> buildConInfoMap(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
 			Worker<?, ?> source, Worker<?, ?> sink) {
 
@@ -367,6 +238,10 @@ public class Controller {
 		return conList;
 	}
 
+	public Map<Integer, StreamNodeAgent> getStreamNodeMap() {
+		return StreamNodeMap;
+	}
+
 	/**
 	 * @param worker
 	 * @return the machineID where on which the passed worker is assigned.
@@ -385,7 +260,7 @@ public class Controller {
 				"%s is not assigned to anyof the machines", worker));
 	}
 
-	private void sendToAll(Object object) {
+	public void sendToAll(Object object) {
 		for (StreamNodeAgent node : StreamNodeMap.values()) {
 			try {
 				node.writeObject(object);
@@ -395,61 +270,15 @@ public class Controller {
 		}
 	}
 
-	public void drainingStarted(boolean isFinal) {
-		if (headChannel != null) {
-			headChannel.stop(isFinal);
-			try {
-				headThread.join();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
+	public TCPConnectionProvider getConProvider() {
+		return conProvider;
 	}
 
-	public void drain(Token blobID, boolean isFinal) {
-		System.out.println("Drain requested to blob " + blobID);
-		if (!app.blobtoMachineMap.containsKey(blobID))
-			throw new IllegalArgumentException(blobID
-					+ " not found in the blobtoMachineMap");
-		int machineID = app.blobtoMachineMap.get(blobID);
-		StreamNodeAgent agent = StreamNodeMap.get(machineID);
+	public void closeAll() {
 		try {
-			agent.writeObject(new CTRLRDrainElement.DoDrain(blobID, !isFinal));
+			comManager.closeAllConnections();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-
-	// TODO: Temporary fix. Need to come up with a better solution to to set
-	// DrainProcessor to StreamnodeAgent's messagevisitor.
-	public void setDrainProcessor(SNDrainProcessor dp) {
-		for (StreamNodeAgent agent : StreamNodeMap.values()) {
-			agent.setDrainProcessor(dp);
-		}
-	}
-
-	public void drainingFinished(boolean isFinal) {
-		System.out.println("Controller : Draining Finished...");
-		if (tailChannel != null) {
-			tailChannel.stop();
-			try {
-				tailThread.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-
-		if (isFinal) {
-			try {
-				comManager.closeAllConnections();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	public void awaitForFixInput() throws InterruptedException {
-		tailChannel.awaitForFixInput();
 	}
 }

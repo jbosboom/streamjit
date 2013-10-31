@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
+import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 
 /**
@@ -10,22 +11,22 @@ import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor
  */
 public class DistributedDrainer extends AbstractDrainer {
 
-	Controller controller;
+	StreamJitAppManager manager;
 
-	public DistributedDrainer(Controller controller) {
-		this.controller = controller;
+	public DistributedDrainer(StreamJitAppManager manager) {
+		this.manager = manager;
 		SNDrainProcessor dp = new SNDrainProcessorImpl(this);
-		controller.setDrainProcessor(dp);
+		manager.setDrainProcessor(dp);
 	}
 
 	@Override
 	protected void drainingDone(boolean isFinal) {
-		controller.drainingFinished(isFinal);
+		manager.drainingFinished(isFinal);
 	}
 
 	@Override
 	protected void drain(Token blobID, boolean isFinal) {
-		controller.drain(blobID, isFinal);
+		manager.drain(blobID, isFinal);
 	}
 
 	@Override
@@ -35,6 +36,6 @@ public class DistributedDrainer extends AbstractDrainer {
 
 	@Override
 	protected void prepareDraining(boolean isFinal) {
-		controller.drainingStarted(isFinal);
+		manager.drainingStarted(isFinal);
 	}
 }
