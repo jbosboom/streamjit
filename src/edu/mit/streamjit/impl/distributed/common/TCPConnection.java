@@ -41,12 +41,22 @@ public class TCPConnection implements Connection {
 		}
 	}
 
+	// This is introduced to reduce the ooStream.reset(); frequency. Too many
+	// resets, i.e., reset the ooStream for every new write severely affects the
+	// performance.
+	int n = 0;
+
 	@Override
 	public void writeObject(Object obj) throws IOException {
 		if (isStillConnected()) {
 			try {
 				ooStream.writeObject(obj);
-				ooStream.reset();
+
+				// TODO: Any way to improve the performance?
+				if (n++ > 5000) {
+					n = 0;
+					ooStream.reset();
+				}
 				// System.out.println("Object send...");
 			} catch (IOException ix) {
 				// Following doesn't change when other side of the socket is
