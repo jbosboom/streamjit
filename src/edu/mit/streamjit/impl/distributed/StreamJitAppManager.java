@@ -66,7 +66,7 @@ public class StreamJitAppManager {
 		Map<Token, Integer> portIdMap = new HashMap<>();
 
 		Map<Token, TCPConnectionInfo> conInfoMap = controller.buildConInfoMap(
-				app.partitionsMachineMap1, app.source1, app.sink1);
+				app.partitionsMachineMap, app.source, app.sink);
 
 		builder.putExtraData(GlobalConstants.TOKEN_MACHINE_MAP, tokenMachineMap)
 				.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
@@ -84,9 +84,9 @@ public class StreamJitAppManager {
 			controller.send(nodeID, json);
 		}
 
-		setupHeadTail1(conInfoMap, app.bufferMap,
-				Token.createOverallInputToken(app.source1),
-				Token.createOverallOutputToken(app.sink1));
+		setupHeadTail(conInfoMap, app.bufferMap,
+				Token.createOverallInputToken(app.source),
+				Token.createOverallOutputToken(app.sink));
 
 		start();
 	}
@@ -99,7 +99,7 @@ public class StreamJitAppManager {
 	 * @param headToken
 	 * @param tailToken
 	 */
-	private void setupHeadTail1(Map<Token, TCPConnectionInfo> conInfoMap,
+	private void setupHeadTail(Map<Token, TCPConnectionInfo> conInfoMap,
 			ImmutableMap<Token, Buffer> bufferMap, Token headToken,
 			Token tailToken) {
 
