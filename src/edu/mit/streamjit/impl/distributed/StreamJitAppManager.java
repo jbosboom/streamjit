@@ -177,7 +177,8 @@ public class StreamJitAppManager {
 	}
 
 	public void drainingFinished(boolean isFinal) {
-		System.out.println("Controller : Draining Finished...");
+		System.out.println("App Manager : Draining Finished...");
+		tailChannel.reset();
 		if (tailChannel != null) {
 			tailChannel.stop();
 			try {
