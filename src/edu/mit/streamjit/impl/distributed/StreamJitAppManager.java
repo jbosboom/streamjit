@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.distributed;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,7 +22,6 @@ import edu.mit.streamjit.impl.distributed.common.ConfigurationString.Configurati
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
-import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.StreamNodeAgent;
 
 public class StreamJitAppManager {
 
@@ -80,14 +78,10 @@ public class StreamJitAppManager {
 
 		ImmutableMap<Integer, DrainData> drainDataMap = app.getDrainData();
 
-		for (StreamNodeAgent node : controller.getStreamNodeMap().values()) {
-			try {
-				ConfigurationString json = new ConfigurationString(jsonStirng,
-						ConfigType.DYNAMIC, drainDataMap.get(node.getNodeID()));
-				node.writeObject(json);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+		for (int nodeID : controller.getAllNodeIDs()) {
+			ConfigurationString json = new ConfigurationString(jsonStirng,
+					ConfigType.DYNAMIC, drainDataMap.get(nodeID));
+			controller.send(nodeID, json);
 		}
 
 		setupHeadTail1(conInfoMap, app.bufferMap,
@@ -171,13 +165,9 @@ public class StreamJitAppManager {
 		if (!app.blobtoMachineMap.containsKey(blobID))
 			throw new IllegalArgumentException(blobID
 					+ " not found in the blobtoMachineMap");
-		int machineID = app.blobtoMachineMap.get(blobID);
-		StreamNodeAgent agent = controller.getStreamNodeMap().get(machineID);
-		try {
-			agent.writeObject(new CTRLRDrainElement.DoDrain(blobID, !isFinal));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		int nodeID = app.blobtoMachineMap.get(blobID);
+		controller
+				.send(nodeID, new CTRLRDrainElement.DoDrain(blobID, !isFinal));
 	}
 
 	public void drainingFinished(boolean isFinal) {
@@ -205,9 +195,7 @@ public class StreamJitAppManager {
 	// TODO: Temporary fix. Need to come up with a better solution to to set
 	// DrainProcessor to StreamnodeAgent's messagevisitor.
 	public void setDrainProcessor(SNDrainProcessor dp) {
-		for (StreamNodeAgent agent : controller.getStreamNodeMap().values()) {
-			agent.setDrainProcessor(dp);
-		}
+		controller.setDrainProcessor(dp);
 	}
 
 	public AppStatus getStatus() {
