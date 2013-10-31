@@ -94,7 +94,7 @@ public class OnlineTuner implements Runnable {
 					DrainData drainData = drainer.getDrainData();
 
 					app.drainData = drainData;
-					drainer.setBlobGraph(app.blobGraph1);
+					drainer.setBlobGraph(app.blobGraph);
 
 					System.err.println("Reconfiguring...");
 					manager.reconfigure();

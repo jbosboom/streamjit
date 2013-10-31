@@ -52,17 +52,17 @@ public class StreamJitApp {
 	 */
 	public final String topLevelClass;
 
-	public final Worker<?, ?> source1;
+	public final Worker<?, ?> source;
 
-	public final Worker<?, ?> sink1;
+	public final Worker<?, ?> sink;
 
 	public final String jarFilePath;
 
 	public final String name;
 
-	public BlobGraph blobGraph1;
+	public BlobGraph blobGraph;
 
-	public Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap1;
+	public Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap;
 
 	public ImmutableMap<Token, Buffer> bufferMap;
 
@@ -87,8 +87,8 @@ public class StreamJitApp {
 			Worker<?, ?> sink) {
 		this.name = name;
 		this.topLevelClass = topLevelClass;
-		this.source1 = source;
-		this.sink1 = sink;
+		this.source = source;
+		this.sink = sink;
 		this.jarFilePath = this.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
 
@@ -99,8 +99,8 @@ public class StreamJitApp {
 	 * {@link Configuration}, and verifies for any cycles among blobs. If it is
 	 * a valid configuration, (i.e., no cycles among the blobs), then this
 	 * objects member variables {@link StreamJitApp#blobConfiguration},
-	 * {@link StreamJitApp#blobGraph1} and
-	 * {@link StreamJitApp#partitionsMachineMap1} will be assigned according to
+	 * {@link StreamJitApp#blobGraph} and
+	 * {@link StreamJitApp#partitionsMachineMap} will be assigned according to
 	 * the new configuration, no changes otherwise.
 	 * 
 	 * @param config
@@ -109,7 +109,7 @@ public class StreamJitApp {
 	public boolean newConfiguration(Configuration config) {
 
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
-				config, this.source1);
+				config, this.source);
 		try {
 			varifyConfiguration(partitionsMachineMap);
 		} catch (StreamCompilationFailedException ex) {
@@ -123,8 +123,8 @@ public class StreamJitApp {
 	 * Builds {@link BlobGraph} from the partitionsMachineMap, and verifies for
 	 * any cycles among blobs. If it is a valid partitionsMachineMap, (i.e., no
 	 * cycles among the blobs), then this objects member variables
-	 * {@link StreamJitApp#blobGraph1} and
-	 * {@link StreamJitApp#partitionsMachineMap1} will be assigned according to
+	 * {@link StreamJitApp#blobGraph} and
+	 * {@link StreamJitApp#partitionsMachineMap} will be assigned according to
 	 * the new configuration, no changes otherwise.
 	 * 
 	 * @param partitionsMachineMap
@@ -145,8 +145,8 @@ public class StreamJitApp {
 	 * Builds {@link BlobGraph} from the partitionsMachineMap, and verifies for
 	 * any cycles among blobs. If it is a valid partitionsMachineMap, (i.e., no
 	 * cycles among the blobs), then this objects member variables
-	 * {@link StreamJitApp#blobGraph1} and
-	 * {@link StreamJitApp#partitionsMachineMap1} will be assigned according to
+	 * {@link StreamJitApp#blobGraph} and
+	 * {@link StreamJitApp#partitionsMachineMap} will be assigned according to
 	 * the new configuration, no changes otherwise.
 	 * 
 	 * @param partitionsMachineMap
@@ -179,8 +179,8 @@ public class StreamJitApp {
 			System.err.println();
 			throw ex;
 		}
-		this.blobGraph1 = bg;
-		this.partitionsMachineMap1 = partitionsMachineMap;
+		this.blobGraph = bg;
+		this.partitionsMachineMap = partitionsMachineMap;
 	}
 
 	/**
@@ -276,7 +276,7 @@ public class StreamJitApp {
 		Configuration.Builder builder = Configuration.builder();
 
 		Map<Integer, Integer> coresPerMachine = new HashMap<>();
-		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine : partitionsMachineMap1
+		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine : partitionsMachineMap
 				.entrySet()) {
 			coresPerMachine.put(machine.getKey(), machine.getValue().size());
 		}
@@ -289,8 +289,8 @@ public class StreamJitApp {
 
 		blobtoMachineMap = new HashMap<>();
 
-		for (Integer machineID : partitionsMachineMap1.keySet()) {
-			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap1
+		for (Integer machineID : partitionsMachineMap.keySet()) {
+			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap
 					.get(machineID);
 			for (Set<Worker<?, ?>> blobWorkers : blobList) {
 				// TODO: One core per blob. Need to change this.
@@ -319,8 +319,8 @@ public class StreamJitApp {
 				.builder();
 
 		if (this.drainData != null) {
-			for (Integer machineID : partitionsMachineMap1.keySet()) {
-				List<Set<Worker<?, ?>>> blobList = partitionsMachineMap1
+			for (Integer machineID : partitionsMachineMap.keySet()) {
+				List<Set<Worker<?, ?>>> blobList = partitionsMachineMap
 						.get(machineID);
 				DrainData dd = drainData.subset(getWorkerIds(blobList));
 				builder.put(machineID, dd);
