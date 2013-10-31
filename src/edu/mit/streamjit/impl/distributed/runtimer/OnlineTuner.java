@@ -16,6 +16,7 @@ import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
+import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.tuner.OpenTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
 import edu.mit.streamjit.util.json.Jsonifiers;
@@ -28,14 +29,14 @@ import edu.mit.streamjit.util.json.Jsonifiers;
  */
 public class OnlineTuner implements Runnable {
 	AbstractDrainer drainer;
-	Controller controller;
+	StreamJitAppManager manager;
 	OpenTuner tuner;
 	StreamJitApp app;
 
-	public OnlineTuner(AbstractDrainer drainer, Controller controller,
+	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
 			StreamJitApp app) {
 		this.drainer = drainer;
-		this.controller = controller;
+		this.manager = manager;
 		this.app = app;
 		this.tuner = new TCPTuner();
 	}
@@ -95,11 +96,11 @@ public class OnlineTuner implements Runnable {
 					drainer.setBlobGraph(app.blobGraph1);
 
 					System.err.println("Reconfiguring...");
-					controller.reconfigure();
+					manager.reconfigure();
 
 					Stopwatch stopwatch = new Stopwatch();
 					stopwatch.start();
-					controller.awaitForFixInput();
+					manager.awaitForFixInput();
 					stopwatch.stop();
 					long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 
