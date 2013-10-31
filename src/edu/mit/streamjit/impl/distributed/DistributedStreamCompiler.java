@@ -150,7 +150,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		StreamJitAppManager manager = new StreamJitAppManager(controller, app);
 		final AbstractDrainer drainer = new DistributedDrainer(manager);
-		drainer.setBlobGraph(app.blobGraph1);
+		drainer.setBlobGraph(app.blobGraph);
 
 		// TODO: derive a algorithm to find good buffer size and use here.
 		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
