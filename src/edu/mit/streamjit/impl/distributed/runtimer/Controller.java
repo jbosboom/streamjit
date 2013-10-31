@@ -16,12 +16,14 @@ import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
+import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
@@ -238,8 +240,19 @@ public class Controller {
 		return conList;
 	}
 
-	public Map<Integer, StreamNodeAgent> getStreamNodeMap() {
-		return StreamNodeMap;
+	public Set<Integer> getAllNodeIDs() {
+		return StreamNodeMap.keySet();
+	}
+
+	public void send(int nodeID, CTRLRMessageElement message) {
+		assert StreamNodeMap.containsKey(nodeID) : String.format(
+				"No StreamNode with nodeID %d found", nodeID);
+		StreamNodeAgent agent = StreamNodeMap.get(nodeID);
+		try {
+			agent.writeObject(message);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -279,6 +292,14 @@ public class Controller {
 			comManager.closeAllConnections();
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+	}
+
+	// TODO: Temporary fix. Need to come up with a better solution to to set
+	// DrainProcessor to StreamnodeAgent's messagevisitor.
+	public void setDrainProcessor(SNDrainProcessor dp) {
+		for (StreamNodeAgent agent : StreamNodeMap.values()) {
+			agent.setDrainProcessor(dp);
 		}
 	}
 }
