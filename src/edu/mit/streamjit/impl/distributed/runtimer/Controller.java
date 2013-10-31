@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -23,6 +22,7 @@ import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
 import edu.mit.streamjit.impl.distributed.HeadChannel;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
+import edu.mit.streamjit.impl.distributed.TailChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
@@ -37,7 +37,6 @@ import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
-import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.StreamNodeAgent;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
@@ -452,44 +451,5 @@ public class Controller {
 
 	public void awaitForFixInput() throws InterruptedException {
 		tailChannel.awaitForFixInput();
-	}
-
-	/**
-	 * TODO: Temp fix. Change it later.
-	 */
-	private class TailChannel extends TCPInputChannel {
-
-		int limit;
-
-		int count;
-
-		CountDownLatch latch;
-
-		public TailChannel(Buffer buffer, TCPConnectionProvider conProvider,
-				TCPConnectionInfo conInfo, String bufferTokenName,
-				int debugPrint, int limit) {
-			super(buffer, conProvider, conInfo, bufferTokenName, debugPrint);
-			this.limit = limit;
-			count = 0;
-			latch = new CountDownLatch(1);
-		}
-
-		@Override
-		public void receiveData() {
-			super.receiveData();
-			count++;
-			if (count == limit)
-				latch.countDown();
-		}
-
-		private void awaitForFixInput() throws InterruptedException {
-			latch.await();
-		}
-
-		private void reset() {
-			latch.countDown();
-			latch = new CountDownLatch(1);
-			count = 0;
-		}
 	}
 }
