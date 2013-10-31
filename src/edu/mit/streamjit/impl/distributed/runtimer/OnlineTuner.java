@@ -17,6 +17,7 @@ import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
+import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.tuner.OpenTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
 import edu.mit.streamjit.util.json.Jsonifiers;
@@ -57,7 +58,7 @@ public class OnlineTuner implements Runnable {
 			tuner.writeLine(s);
 
 			System.out.println("New tune run.............");
-			while (true) {
+			while (manager.getStatus() != AppStatus.STOPPED) {
 				String pythonDict = tuner.readLine();
 				if (pythonDict.equals("Completed")) {
 					String finalConfg = tuner.readLine();
@@ -102,6 +103,9 @@ public class OnlineTuner implements Runnable {
 					stopwatch.start();
 					manager.awaitForFixInput();
 					stopwatch.stop();
+					// TODO: need to check the manager's status before passing
+					// the time. Exceptions, final drain, etc may causes app to
+					// stop executing.
 					long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 
 					System.out.println("Execution time is " + time
