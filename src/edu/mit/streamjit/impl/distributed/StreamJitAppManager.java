@@ -19,10 +19,12 @@ import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
+import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
+import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
 import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements.NewConInfo;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.Drained;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
@@ -33,12 +35,15 @@ import edu.mit.streamjit.impl.distributed.common.SNException.MakeBlobException;
 import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
+import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.StreamNodeAgent;
 
 public class StreamJitAppManager {
 
 	private SNDrainProcessor dp = null;
 
 	private SNExceptionProcessor exP = null;
+
+	private ErrorProcessor ep = null;
 
 	private final Controller controller;
 
@@ -73,6 +78,7 @@ public class StreamJitAppManager {
 		this.app = app;
 		this.status = AppStatus.NOT_STARTED;
 		this.exP = new SNExceptionProcessorImpl();
+		this.ep = new ErrorProcessorImpl();
 		controller.registerManager(this);
 		controller.newApp(app); // TODO: Find a good calling place.
 	}
@@ -227,6 +233,10 @@ public class StreamJitAppManager {
 		return exP;
 	}
 
+	public ErrorProcessor errorProcessor() {
+		return ep;
+	}
+
 	public AppStatus getStatus() {
 		return status;
 	}
@@ -307,6 +317,27 @@ public class StreamJitAppManager {
 		@Override
 		public void process(MakeBlobException mbEx) {
 
+		}
+	}
+
+	/**
+	 * {@link ErrorProcessor} at {@link Controller} side.
+	 * 
+	 * @author Sumanan sumanan@mit.edu
+	 * @since Aug 11, 2013
+	 */
+	private class ErrorProcessorImpl implements ErrorProcessor {
+
+		@Override
+		public void processFILE_NOT_FOUND() {
+		}
+
+		@Override
+		public void processWORKER_NOT_FOUND() {
+		}
+
+		@Override
+		public void processBLOB_NOT_FOUND() {
 		}
 	}
 }
