@@ -16,4 +16,6 @@ public interface CTRLRMessageVisitor {
 	public void visit(ConfigurationString json);
 
 	public void visit(CTRLRDrainElement ctrlrDrainElement);
+
+	public void visit(MiscCtrlElements miscCtrlElements);
 }
