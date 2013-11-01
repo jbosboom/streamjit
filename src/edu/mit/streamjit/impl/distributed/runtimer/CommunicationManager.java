@@ -140,7 +140,7 @@ public interface CommunicationManager {
 			mv = new SNMessageVisitorImpl(new ErrorProcessorImpl(this),
 					new SystemInfoProcessorImpl(this),
 					new AppStatusProcessorImpl(this),
-					new NodeInfoProcessorImpl(this), null);
+					new NodeInfoProcessorImpl(this));
 		}
 
 		/**
