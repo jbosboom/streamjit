@@ -25,6 +25,10 @@ public final class TokenActor extends Actor {
 		return id;
 	}
 
+	public Token token() {
+		return token;
+	}
+
 	public boolean isInput() {
 		return id < 0;
 	}
