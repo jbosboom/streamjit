@@ -70,7 +70,9 @@ public class SNMessageVisitorImpl implements SNMessageVisitor {
 
 	@Override
 	public void visit(SNException snException) {
-		snExP.process(snException);
+		assert manager != null : "StreamJitAppManager has not been set";
+		SNExceptionProcessor snExP = manager.exceptionProcessor();
+		snException.process(snExP);
 	}
 
 	public void registerManager(StreamJitAppManager manager) {
