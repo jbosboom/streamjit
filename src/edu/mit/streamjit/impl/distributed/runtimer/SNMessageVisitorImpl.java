@@ -25,17 +25,14 @@ public class SNMessageVisitorImpl implements SNMessageVisitor {
 	private final SystemInfoProcessor sip;
 	private final AppStatusProcessor ap;
 	private final NodeInfoProcessor np;
-	private final SNExceptionProcessor snExP;
 	private StreamJitAppManager manager = null;
 
 	public SNMessageVisitorImpl(ErrorProcessor ep, SystemInfoProcessor sip,
-			AppStatusProcessor ap, NodeInfoProcessor np,
-			SNExceptionProcessor snExP) {
+			AppStatusProcessor ap, NodeInfoProcessor np) {
 		this.ep = ep;
 		this.sip = sip;
 		this.ap = ap;
 		this.np = np;
-		this.snExP = snExP;
 	}
 
 	@Override
@@ -57,6 +54,7 @@ public class SNMessageVisitorImpl implements SNMessageVisitor {
 	public void visit(NodeInfo nodeInfo) {
 		np.process(nodeInfo);
 	}
+
 	@Override
 	public void visit(SNDrainElement snDrainElement) {
 		assert manager != null : "StreamJitAppManager has not been set";
