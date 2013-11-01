@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
+import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
@@ -24,17 +25,16 @@ public class SNMessageVisitorImpl implements SNMessageVisitor {
 	private final SystemInfoProcessor sip;
 	private final AppStatusProcessor ap;
 	private final NodeInfoProcessor np;
-	private final SNDrainProcessor dp;
 	private final SNExceptionProcessor snExP;
+	private StreamJitAppManager manager = null;
 
 	public SNMessageVisitorImpl(ErrorProcessor ep, SystemInfoProcessor sip,
-			AppStatusProcessor ap, NodeInfoProcessor np, SNDrainProcessor dp,
+			AppStatusProcessor ap, NodeInfoProcessor np,
 			SNExceptionProcessor snExP) {
 		this.ep = ep;
 		this.sip = sip;
 		this.ap = ap;
 		this.np = np;
-		this.dp = dp;
 		this.snExP = snExP;
 	}
 
@@ -59,11 +59,22 @@ public class SNMessageVisitorImpl implements SNMessageVisitor {
 	}
 	@Override
 	public void visit(SNDrainElement snDrainElement) {
+		assert manager != null : "StreamJitAppManager has not been set";
+		SNDrainProcessor dp = manager.drainProcessor();
+		if (dp == null) {
+			System.err.println("No drainer processor.");
+			return;
+		}
 		snDrainElement.process(dp);
 	}
 
 	@Override
 	public void visit(SNException snException) {
 		snExP.process(snException);
+	}
+
+	public void registerManager(StreamJitAppManager manager) {
+		assert manager == null : "StreamJitAppManager has already been set";
+		this.manager = manager;
 	}
 }
