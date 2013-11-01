@@ -54,13 +54,22 @@ public class Compiler2 {
 	private ImmutableMap<ActorGroup, Integer> externalSchedule;
 	private final Module module = new Module();
 	private ImmutableMap<ActorGroup, Integer> initSchedule;
-	private ImmutableMap<Storage, ConcreteStorage> globalStorage;
+	/**
+	 * ConcreteStorage instances used during initialization (bound into the
+	 * initialization code).
+	 */
+	private ImmutableMap<Storage, ConcreteStorage> initStorage;
 	/**
 	 * For each Storage, the physical indices live in that Storage after the
 	 * initialization schedule.  That is, the items that must migrate to
 	 * steady-state storage.
 	 */
 	private ImmutableMap<Storage, ImmutableSortedSet<Integer>> liveAfterInit;
+	/**
+	 * ConcreteStorage instances used during the steady-state (bound into the
+	 * steady-state code).
+	 */
+	private ImmutableMap<Storage, ConcreteStorage> steadyStateStorage;
 	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 		Map<Class<?>, ActorArchetype> archetypesBuilder = new HashMap<>();
 		Map<Worker<?, ?>, WorkerActor> workerActors = new HashMap<>();
@@ -428,16 +437,28 @@ public class Compiler2 {
 		//(max(writers, rounded up) - min(readers, rounded down) + 1) * throughput
 	}
 
+	/**
+	 * Creates initialization and steady-state ConcreteStorage.
+	 */
 	private void createStorage() {
-		//TODO: moved into initSchedule() above
-		//TODO: initialState needs to be used somewhere.
-		ImmutableMap.Builder<Storage, ConcreteStorage> globalStorageBuilder = ImmutableMap.builder();
-		//TODO: actually want two sets of global storage, one for iteration and
-		//one for the steady-state (to minimize memory usage)
+		//Initialization storage is unsynchronized.
+		ImmutableMap.Builder<Storage, ConcreteStorage> initStorageBuilder = ImmutableMap.builder();
 		for (Storage s : storage)
 			if (!s.isInternal())
-				globalStorageBuilder.put(s, new CircularArrayConcreteStorage(s.type(), s.steadyStateCapacity(), s.throughput(),
-						new Object[0] /*TODO: new init strategy*/));
-		this.globalStorage = globalStorageBuilder.build();
+				initStorageBuilder.put(s, MapConcreteStorage.factory().make(s));
+		this.initStorage = initStorageBuilder.build();
+
+		//TODO: pack in initial state here
+		//TODO: pre-allocate entries in the map by storing null/0?  (to avoid
+		//OOME during init code execution) -- maybe this should be a param to
+		//MapConcreteStorage.factory(), or just always done
+
+		//Steady-state storage is synchronized.
+		//TODO: parameterize the factory used.
+		ImmutableMap.Builder<Storage, ConcreteStorage> ssStorageBuilder = ImmutableMap.builder();
+		for (Storage s : storage)
+			if (!s.isInternal())
+				ssStorageBuilder.put(s, DoubleMapConcreteStorage.factory().make(s));
+		this.steadyStateStorage = ssStorageBuilder.build();
 	}
 }
