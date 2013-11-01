@@ -24,7 +24,7 @@ import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
-import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
+import edu.mit.streamjit.impl.distributed.common.SNException.AddressBindException;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
@@ -298,5 +298,10 @@ public class Controller {
 		for (StreamNodeAgent node : StreamNodeMap.values()) {
 			node.registerManager(manager);
 		}
+	}
+
+	public TCPConnectionInfo getNewTCPConInfo(ConnectionInfo conInfo) {
+		return new TCPConnectionInfo(conInfo.getSrcID(), conInfo.getDstID(),
+				startPortNo++);
 	}
 }

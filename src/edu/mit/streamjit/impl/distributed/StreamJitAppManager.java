@@ -1,7 +1,9 @@
 package edu.mit.streamjit.impl.distributed;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -14,21 +16,29 @@ import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
+import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
+import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements.NewConInfo;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.Drained;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
+import edu.mit.streamjit.impl.distributed.common.SNException;
+import edu.mit.streamjit.impl.distributed.common.SNException.AddressBindException;
+import edu.mit.streamjit.impl.distributed.common.SNException.MakeBlobException;
+import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 public class StreamJitAppManager {
 
 	private SNDrainProcessor dp = null;
+
+	private SNExceptionProcessor exP = null;
 
 	private final Controller controller;
 
@@ -56,10 +66,13 @@ public class StreamJitAppManager {
 
 	private volatile AppStatus status;
 
+	Map<Token, TCPConnectionInfo> conInfoMap;
+
 	public StreamJitAppManager(Controller controller, StreamJitApp app) {
 		this.controller = controller;
 		this.app = app;
 		this.status = AppStatus.NOT_STARTED;
+		this.exP = new SNExceptionProcessorImpl();
 		controller.registerManager(this);
 		controller.newApp(app); // TODO: Find a good calling place.
 	}
@@ -71,8 +84,8 @@ public class StreamJitAppManager {
 		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = new HashMap<>();
 		Map<Token, Integer> portIdMap = new HashMap<>();
 
-		Map<Token, TCPConnectionInfo> conInfoMap = controller.buildConInfoMap(
-				app.partitionsMachineMap, app.source, app.sink);
+		conInfoMap = controller.buildConInfoMap(app.partitionsMachineMap,
+				app.source, app.sink);
 
 		builder.putExtraData(GlobalConstants.TOKEN_MACHINE_MAP, tokenMachineMap)
 				.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
@@ -210,6 +223,10 @@ public class StreamJitAppManager {
 		return dp;
 	}
 
+	public SNExceptionProcessor exceptionProcessor() {
+		return exP;
+	}
+
 	public AppStatus getStatus() {
 		return status;
 	}
@@ -239,4 +256,57 @@ public class StreamJitAppManager {
 		}
 	}
 
+	private class SNExceptionProcessorImpl implements SNExceptionProcessor {
+
+		private final Object abExLock = new Object();
+
+		private Set<TCPConnectionInfo> exConInfos;
+
+		private SNExceptionProcessorImpl() {
+			exConInfos = new HashSet<>();
+		}
+
+		@Override
+		public void process(SNException ex) {
+		}
+
+		@Override
+		public void process(AddressBindException abEx) {
+			synchronized (abExLock) {
+				if (exConInfos.contains(abEx.conInfo)) {
+					System.out
+							.println("AddressBindException : Already handled...");
+					return;
+				}
+
+				Token t = null;
+				for (Map.Entry<Token, TCPConnectionInfo> entry : conInfoMap
+						.entrySet()) {
+					if (abEx.conInfo.equals(entry.getValue())) {
+						t = entry.getKey();
+						break;
+					}
+				}
+
+				if (t == null) {
+					throw new IllegalArgumentException(
+							"Illegal TCP connection - " + abEx.conInfo);
+				}
+
+				TCPConnectionInfo coninfo = controller
+						.getNewTCPConInfo(abEx.conInfo);
+
+				exConInfos.add(abEx.conInfo);
+
+				CTRLRMessageElement msg = new NewConInfo(coninfo, t);
+				controller.send(coninfo.getSrcID(), msg);
+				controller.send(coninfo.getDstID(), msg);
+			}
+		}
+
+		@Override
+		public void process(MakeBlobException mbEx) {
+
+		}
+	}
 }
