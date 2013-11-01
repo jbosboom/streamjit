@@ -15,8 +15,7 @@ public class DistributedDrainer extends AbstractDrainer {
 
 	public DistributedDrainer(StreamJitAppManager manager) {
 		this.manager = manager;
-		SNDrainProcessor dp = new SNDrainProcessorImpl(this);
-		manager.setDrainProcessor(dp);
+		manager.setDrainer(this);
 	}
 
 	@Override

@@ -16,6 +16,7 @@ import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
+import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
@@ -293,11 +294,9 @@ public class Controller {
 		}
 	}
 
-	// TODO: Temporary fix. Need to come up with a better solution to to set
-	// DrainProcessor to StreamnodeAgent's messagevisitor.
-	public void setDrainProcessor(SNDrainProcessor dp) {
-		for (StreamNodeAgent agent : StreamNodeMap.values()) {
-			agent.setDrainProcessor(dp);
+	public void registerManager(StreamJitAppManager manager) {
+		for (StreamNodeAgent node : StreamNodeMap.values()) {
+			node.registerManager(manager);
 		}
 	}
 }

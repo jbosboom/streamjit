@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
@@ -96,6 +97,8 @@ public interface CommunicationManager {
 		 */
 		private SNMessageVisitor mv;
 
+		private StreamJitAppManager manager;
+
 		/**
 		 * Assigned nodeID of the corresponding {@link StreamNode}.
 		 */
@@ -137,8 +140,7 @@ public interface CommunicationManager {
 			mv = new SNMessageVisitorImpl(new ErrorProcessorImpl(this),
 					new SystemInfoProcessorImpl(this),
 					new AppStatusProcessorImpl(this),
-					new NodeInfoProcessorImpl(this), null,
-					new SNExceptionProcessorImpl());
+					new NodeInfoProcessorImpl(this), null);
 		}
 
 		/**
@@ -271,14 +273,8 @@ public interface CommunicationManager {
 			return mv;
 		}
 
-		// TODO: Temporary fix. Need to come up with a better solution to to set
-		// DrainProcessor to messagevisitor.
-		public void setDrainProcessor(SNDrainProcessor dp) {
-			mv = new SNMessageVisitorImpl(new ErrorProcessorImpl(this),
-					new SystemInfoProcessorImpl(this),
-					new AppStatusProcessorImpl(this),
-					new NodeInfoProcessorImpl(this), dp,
-					new SNExceptionProcessorImpl());
+		public void registerManager(StreamJitAppManager manager) {
+			((SNMessageVisitorImpl) mv).registerManager(manager);
 		}
 	}
 }

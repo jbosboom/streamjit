@@ -10,6 +10,7 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
@@ -19,11 +20,15 @@ import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.Drained;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 public class StreamJitAppManager {
+
+	private SNDrainProcessor dp = null;
 
 	private final Controller controller;
 
@@ -55,6 +60,7 @@ public class StreamJitAppManager {
 		this.controller = controller;
 		this.app = app;
 		this.status = AppStatus.NOT_STARTED;
+		controller.registerManager(this);
 		controller.newApp(app); // TODO: Find a good calling place.
 	}
 
@@ -195,13 +201,42 @@ public class StreamJitAppManager {
 		tailChannel.awaitForFixInput();
 	}
 
-	// TODO: Temporary fix. Need to come up with a better solution to to set
-	// DrainProcessor to StreamnodeAgent's messagevisitor.
-	public void setDrainProcessor(SNDrainProcessor dp) {
-		controller.setDrainProcessor(dp);
+	public void setDrainer(AbstractDrainer drainer) {
+		assert dp == null : "SNDrainProcessor has already been set";
+		this.dp = new SNDrainProcessorImpl(drainer);
+	}
+
+	public SNDrainProcessor drainProcessor() {
+		return dp;
 	}
 
 	public AppStatus getStatus() {
 		return status;
 	}
+
+	/**
+	 * {@link DrainProcessor} at {@link Controller} side.
+	 * 
+	 * @author Sumanan sumanan@mit.edu
+	 * @since Aug 11, 2013
+	 */
+	private class SNDrainProcessorImpl implements SNDrainProcessor {
+
+		AbstractDrainer drainer;
+
+		public SNDrainProcessorImpl(AbstractDrainer drainer) {
+			this.drainer = drainer;
+		}
+
+		@Override
+		public void process(Drained drained) {
+			drainer.drained(drained.blobID);
+		}
+
+		@Override
+		public void process(DrainedData drainedData) {
+			drainer.newDrainData(drainedData);
+		}
+	}
+
 }
