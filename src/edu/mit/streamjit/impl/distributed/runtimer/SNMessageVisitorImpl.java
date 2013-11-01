@@ -22,14 +22,11 @@ import edu.mit.streamjit.impl.distributed.common.SystemInfo.SystemInfoProcessor;
 public class SNMessageVisitorImpl implements SNMessageVisitor {
 
 	private final SystemInfoProcessor sip;
-	private final AppStatusProcessor ap;
 	private final NodeInfoProcessor np;
 	private StreamJitAppManager manager = null;
 
-	public SNMessageVisitorImpl(SystemInfoProcessor sip, AppStatusProcessor ap,
-			NodeInfoProcessor np) {
+	public SNMessageVisitorImpl(SystemInfoProcessor sip, NodeInfoProcessor np) {
 		this.sip = sip;
-		this.ap = ap;
 		this.np = np;
 	}
 
@@ -47,6 +44,12 @@ public class SNMessageVisitorImpl implements SNMessageVisitor {
 
 	@Override
 	public void visit(AppStatus appStatus) {
+		assert manager != null : "StreamJitAppManager has not been set";
+		AppStatusProcessor ap = manager.appStatusProcessor();
+		if (ap == null) {
+			System.err.println("No AppStatusProcessor processor.");
+			return;
+		}
 		appStatus.process(ap);
 	}
 

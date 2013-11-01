@@ -137,7 +137,6 @@ public interface CommunicationManager {
 			this.nodeID = nodeID;
 			stopFlag = new AtomicBoolean(false);
 			mv = new SNMessageVisitorImpl(new SystemInfoProcessorImpl(this),
-					new AppStatusProcessorImpl(this),
 					new NodeInfoProcessorImpl(this));
 		}
 

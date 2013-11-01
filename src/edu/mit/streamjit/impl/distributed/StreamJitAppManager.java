@@ -21,6 +21,7 @@ import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
@@ -44,6 +45,8 @@ public class StreamJitAppManager {
 	private SNExceptionProcessor exP = null;
 
 	private ErrorProcessor ep = null;
+
+	private AppStatusProcessor ap = null;
 
 	private final Controller controller;
 
@@ -79,6 +82,7 @@ public class StreamJitAppManager {
 		this.status = AppStatus.NOT_STARTED;
 		this.exP = new SNExceptionProcessorImpl();
 		this.ep = new ErrorProcessorImpl();
+		this.ap = new AppStatusProcessorImpl();
 		controller.registerManager(this);
 		controller.newApp(app); // TODO: Find a good calling place.
 	}
@@ -237,6 +241,10 @@ public class StreamJitAppManager {
 		return ep;
 	}
 
+	public AppStatusProcessor appStatusProcessor() {
+		return ap;
+	}
+
 	public AppStatus getStatus() {
 		return status;
 	}
@@ -338,6 +346,35 @@ public class StreamJitAppManager {
 
 		@Override
 		public void processBLOB_NOT_FOUND() {
+		}
+	}
+
+	/**
+	 * {@link AppStatusProcessor} at {@link Controller} side.
+	 * 
+	 * @author Sumanan sumanan@mit.edu
+	 * @since Aug 11, 2013
+	 */
+	private class AppStatusProcessorImpl implements AppStatusProcessor {
+
+		@Override
+		public void processRUNNING() {
+		}
+
+		@Override
+		public void processSTOPPED() {
+		}
+
+		@Override
+		public void processERROR() {
+		}
+
+		@Override
+		public void processNOT_STARTED() {
+		}
+
+		@Override
+		public void processNO_APP() {
 		}
 	}
 }
