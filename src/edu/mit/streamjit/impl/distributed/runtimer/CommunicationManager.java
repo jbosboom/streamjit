@@ -136,9 +136,7 @@ public interface CommunicationManager {
 		public StreamNodeAgent(int nodeID) {
 			this.nodeID = nodeID;
 			stopFlag = new AtomicBoolean(false);
-			// TODO: Need to handle passing null for DrainProcessor.
-			mv = new SNMessageVisitorImpl(new ErrorProcessorImpl(this),
-					new SystemInfoProcessorImpl(this),
+			mv = new SNMessageVisitorImpl(new SystemInfoProcessorImpl(this),
 					new AppStatusProcessorImpl(this),
 					new NodeInfoProcessorImpl(this));
 		}
