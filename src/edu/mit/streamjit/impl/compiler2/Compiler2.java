@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -7,6 +8,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
 import com.google.common.math.LongMath;
@@ -70,6 +72,26 @@ public class Compiler2 {
 	 * steady-state code).
 	 */
 	private ImmutableMap<Storage, ConcreteStorage> steadyStateStorage;
+	/**
+	 * Code to run the initialization schedule.  (Initialization is
+	 * single-threaded.)
+	 */
+	private MethodHandle initCode;
+	/**
+	 * The number of elements to read or write from Buffers during the init
+	 * schedule.
+	 */
+	private ImmutableMap<Token, Integer> tokenInitSchedule;
+	/**
+	 * Code to run the steady state schedule.  The blob host takes care of
+	 * filling/flushing buffers, adjusting storage and the global barrier.
+	 */
+	private ImmutableList<MethodHandle> steadyStateCode;
+	/**
+	 * The number of elements to read or write from Buffers during one run of
+	 * the steady-state schedule.
+	 */
+	private ImmutableMap<Token, Integer> tokenSteadyStateSchedule;
 	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 		Map<Class<?>, ActorArchetype> archetypesBuilder = new HashMap<>();
 		Map<Worker<?, ?>, WorkerActor> workerActors = new HashMap<>();
@@ -108,6 +130,7 @@ public class Compiler2 {
 
 		initSchedule();
 		createStorage();
+		createCode();
 		return null;
 	}
 
@@ -460,5 +483,47 @@ public class Compiler2 {
 			if (!s.isInternal())
 				ssStorageBuilder.put(s, DoubleMapConcreteStorage.factory().make(s));
 		this.steadyStateStorage = ssStorageBuilder.build();
+	}
+
+	private void createCode() {
+		/**
+		 * During init, all (nontoken) groups are assigned to the same Core in
+		 * topological order (via the ordering on ActorGroups).  At the same
+		 * time we build the token init schedule information required by the
+		 * blob host.
+		 */
+		Core initCore = new Core(storage, initStorage, MapConcreteStorage.factory());
+		ImmutableMap.Builder<Token, Integer> tokenInitScheduleBuilder = ImmutableMap.builder();
+		for (ActorGroup g : groups)
+			if (FluentIterable.from(g.actors()).filter(TokenActor.class).isEmpty())
+				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
+			else {
+				assert g.actors().size() == 1;
+				TokenActor ta = (TokenActor)g.actors().iterator().next();
+				assert g.schedule().get(ta) == 1;
+				tokenInitScheduleBuilder.put(ta.token(), initSchedule.get(g));
+			}
+		this.initCode = initCore.code();
+		this.tokenInitSchedule = tokenInitScheduleBuilder.build();
+
+		List<Core> ssCores = new ArrayList<>(maxNumCores);
+		for (int i = 0; i < maxNumCores; ++i)
+			ssCores.add(new Core(storage, steadyStateStorage, MapConcreteStorage.factory()));
+		ImmutableMap.Builder<Token, Integer> tokenSteadyStateScheduleBuilder = ImmutableMap.builder();
+		for (ActorGroup g : groups)
+			if (FluentIterable.from(g.actors()).filter(TokenActor.class).isEmpty())
+				//TODO: use Configuration here
+				ssCores.get(0).allocate(g, Range.closedOpen(0, externalSchedule.get(g)));
+			else {
+				assert g.actors().size() == 1;
+				TokenActor ta = (TokenActor)g.actors().iterator().next();
+				assert g.schedule().get(ta) == 1;
+				tokenSteadyStateScheduleBuilder.put(ta.token(), externalSchedule.get(g));
+			}
+		ImmutableList.Builder<MethodHandle> steadyStateCodeBuilder = ImmutableList.builder();
+		for (Core c : ssCores)
+			steadyStateCodeBuilder.add(c.code());
+		this.steadyStateCode = steadyStateCodeBuilder.build();
+		this.tokenSteadyStateSchedule = tokenSteadyStateScheduleBuilder.build();
 	}
 }
