@@ -19,7 +19,6 @@ import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
-import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
@@ -36,13 +35,12 @@ import edu.mit.streamjit.impl.distributed.common.SNException.MakeBlobException;
 import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
-import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.StreamNodeAgent;
 
 public class StreamJitAppManager {
 
 	private SNDrainProcessor dp = null;
 
-	private SNExceptionProcessor exP = null;
+	private SNExceptionProcessorImpl exP = null;
 
 	private ErrorProcessor ep = null;
 
@@ -88,6 +86,7 @@ public class StreamJitAppManager {
 	}
 
 	public void reconfigure() {
+		reset();
 		Configuration.Builder builder = Configuration.builder(app
 				.getDynamicConfiguration());
 
@@ -247,6 +246,14 @@ public class StreamJitAppManager {
 
 	public AppStatus getStatus() {
 		return status;
+	}
+
+	private void reset() {
+		exP.exConInfos = new HashSet<>();
+	}
+
+	private void stop() {
+
 	}
 
 	/**
