@@ -163,7 +163,7 @@ public class StreamJitAppManager {
 	/**
 	 * Start the execution of the StreamJit application.
 	 */
-	public void start() {
+	private void start() {
 		if (headChannel != null) {
 			headThread = new Thread(headChannel.getRunnable(),
 					headChannel.name());
