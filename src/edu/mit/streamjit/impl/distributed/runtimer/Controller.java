@@ -24,12 +24,11 @@ import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
-import edu.mit.streamjit.impl.distributed.common.SNException.AddressBindException;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
-import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.StreamNodeAgent;
+import edu.mit.streamjit.impl.distributed.runtimer.StreamNodeAgent;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 
 /**
