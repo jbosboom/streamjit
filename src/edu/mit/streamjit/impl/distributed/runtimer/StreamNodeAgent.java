@@ -132,26 +132,10 @@ public abstract class StreamNodeAgent {
 	}
 
 	/**
-	 * @param nodeInfo
-	 *            the nodeInfo to set
-	 */
-	public void setNodeInfo(NodeInfo nodeInfo) {
-		this.nodeInfo = nodeInfo;
-	}
-
-	/**
 	 * @return the systemInfo
 	 */
 	public SystemInfo getSystemInfo() {
 		return systemInfo;
-	}
-
-	/**
-	 * @param systemInfo
-	 *            the systemInfo to set
-	 */
-	public void setSystemInfo(SystemInfo systemInfo) {
-		this.systemInfo = systemInfo;
 	}
 
 	/**
