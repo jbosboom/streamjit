@@ -299,8 +299,13 @@ public class Controller {
 		}
 	}
 
-	public TCPConnectionInfo getNewTCPConInfo(ConnectionInfo conInfo) {
-		return new TCPConnectionInfo(conInfo.getSrcID(), conInfo.getDstID(),
-				startPortNo++);
+	public TCPConnectionInfo getNewTCPConInfo(TCPConnectionInfo conInfo) {
+		if (currentConInfos.contains(conInfo))
+			currentConInfos.remove(conInfo);
+		TCPConnectionInfo newConinfo = new TCPConnectionInfo(
+				conInfo.getSrcID(), conInfo.getDstID(), startPortNo++);
+		currentConInfos.add(newConinfo);
+
+		return newConinfo;
 	}
 }
