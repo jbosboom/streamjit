@@ -66,11 +66,6 @@ public abstract class StreamNodeAgent {
 	private volatile NodeInfo nodeInfo;
 
 	/**
-	 * Recent {@link Error} message from the corresponding {@link StreamNode}.
-	 */
-	private volatile Error error;
-
-	/**
 	 * Recent {@link SystemInfo} from the corresponding {@link StreamNode}.
 	 */
 	private volatile SystemInfo systemInfo;
@@ -142,21 +137,6 @@ public abstract class StreamNodeAgent {
 	 */
 	public void setNodeInfo(NodeInfo nodeInfo) {
 		this.nodeInfo = nodeInfo;
-	}
-
-	/**
-	 * @return the error
-	 */
-	public Error getError() {
-		return error;
-	}
-
-	/**
-	 * @param error
-	 *            the error to set
-	 */
-	public void setError(Error error) {
-		this.error = error;
 	}
 
 	/**
