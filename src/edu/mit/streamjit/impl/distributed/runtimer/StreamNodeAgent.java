@@ -41,13 +41,14 @@ public abstract class StreamNodeAgent {
 	/**
 	 * {@link MessageVisitor} for this streamnode.
 	 */
-	private SNMessageVisitor mv;
+	private final SNMessageVisitor mv;
 
-	private NodeInfoProcessor np;
+	private final NodeInfoProcessor np;
 
-	private SystemInfoProcessor sp;
+	private final SystemInfoProcessor sp;
 
-	private StreamJitAppManager manager;
+	// TODO: Will removing volatile modifier be OK in this context?
+	private volatile StreamJitAppManager manager;
 
 	/**
 	 * Assigned nodeID of the corresponding {@link StreamNode}.
