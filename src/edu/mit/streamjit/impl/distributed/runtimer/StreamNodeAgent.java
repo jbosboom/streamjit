@@ -220,7 +220,8 @@ public abstract class StreamNodeAgent {
 	}
 
 	public void registerManager(StreamJitAppManager manager) {
-		((SNMessageVisitorImpl) mv).registerManager(manager);
+		assert manager == null : "StreamJitAppManager has already been set";
+		this.manager = manager;
 	}
 
 	private class SystemInfoProcessorImpl implements SystemInfoProcessor {
@@ -250,8 +251,6 @@ public abstract class StreamNodeAgent {
 	 * @since May 20, 2013
 	 */
 	private class SNMessageVisitorImpl implements SNMessageVisitor {
-
-		private StreamJitAppManager manager = null;
 
 		@Override
 		public void visit(Error error) {
@@ -297,11 +296,6 @@ public abstract class StreamNodeAgent {
 			assert manager != null : "StreamJitAppManager has not been set";
 			SNExceptionProcessor snExP = manager.exceptionProcessor();
 			snException.process(snExP);
-		}
-
-		public void registerManager(StreamJitAppManager manager) {
-			assert manager == null : "StreamJitAppManager has already been set";
-			this.manager = manager;
 		}
 	}
 }
