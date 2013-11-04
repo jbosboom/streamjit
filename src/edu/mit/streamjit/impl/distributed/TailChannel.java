@@ -28,7 +28,8 @@ public class TailChannel extends TCPInputChannel {
 	public void receiveData() {
 		super.receiveData();
 		count++;
-		if (count == limit)
+		// System.err.println(count);
+		if (count > limit)
 			latch.countDown();
 	}
 
