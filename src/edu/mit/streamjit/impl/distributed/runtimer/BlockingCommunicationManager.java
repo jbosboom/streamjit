@@ -14,6 +14,7 @@ import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
+import edu.mit.streamjit.impl.distributed.common.SynchronizedTCPConnection;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
@@ -70,7 +71,7 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		while (true) {
 			List<Socket> acceptedSocketList = listnerSckt.getAcceptedSockets();
 			for (Socket s : acceptedSocketList) {
-				Connection connection = new TCPConnection(s);
+				Connection connection = new SynchronizedTCPConnection(s);
 				StreamNodeAgent snAgent = new StreamNodeAgentImpl(nodeID++,
 						connection);
 				SNAgentMapbuilder.put(snAgent.getNodeID(), snAgent);
@@ -134,7 +135,7 @@ public class BlockingCommunicationManager implements CommunicationManager {
 	 * 
 	 */
 	private static class StreamNodeAgentImpl extends StreamNodeAgent {
-		Connection connection;
+		private final Connection connection;
 
 		private StreamNodeAgentImpl(int machineID, Connection connection) {
 			super(machineID);
