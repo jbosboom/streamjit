@@ -36,7 +36,6 @@ import edu.mit.streamjit.impl.distributed.common.Utils;
 public class BlobsManagerImpl implements BlobsManager {
 
 	private Set<BlobExecuter> blobExecuters;
-
 	private final StreamNode streamNode;
 	private final TCPConnectionProvider conProvider;
 	private Map<Token, TCPConnectionInfo> conInfoMap;
@@ -46,7 +45,6 @@ public class BlobsManagerImpl implements BlobsManager {
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
 			Map<Token, TCPConnectionInfo> conInfoMap, StreamNode streamNode,
 			TCPConnectionProvider conProvider) {
-
 		this.conInfoMap = conInfoMap;
 		this.streamNode = streamNode;
 		this.conProvider = conProvider;
@@ -183,7 +181,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private class BlobExecuter {
 
-		private volatile boolean isDrained;
+		private volatile int drainState;
 		private final Token blobID;
 
 		private final Blob blob;
@@ -213,7 +211,7 @@ public class BlobsManagerImpl implements BlobsManager {
 				blobThreads.add(new BlobThread(blob.getCoreCode(i)));
 			}
 
-			isDrained = false;
+			drainState = 0;
 			this.blobID = Utils.getBlobID(blob);
 		}
 
@@ -254,6 +252,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		private void doDrain(boolean reqDrainData) {
 			this.reqDrainData = reqDrainData;
+			drainState = 1;
 
 			for (BoundaryInputChannel bc : inputChannels.values()) {
 				bc.stop();
@@ -263,16 +262,17 @@ public class BlobsManagerImpl implements BlobsManager {
 				try {
 					t.join();
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
 
 			DrainCallback dcb = new DrainCallback(this);
+			drainState = 2;
 			this.blob.drain(dcb);
 		}
 
 		private void drained() {
+			drainState = 3;
 			for (BlobThread bt : blobThreads) {
 				bt.requestStop();
 			}
@@ -285,25 +285,23 @@ public class BlobsManagerImpl implements BlobsManager {
 				try {
 					t.join();
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
 
-			this.isDrained = true;
+			drainState = 4;
 			SNMessageElement drained = new SNDrainElement.Drained(blobID);
 			try {
 				streamNode.controllerConnection.writeObject(drained);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-
-			// printDrainedStatus();
+			// System.out.println("Blob " + blobID + "is drained");
 
 			if (this.reqDrainData) {
-				System.out.println("**********************************");
+				// System.out.println("**********************************");
 				DrainData dd = blob.getDrainData();
+				drainState = 5;
 
 				ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
 				ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
@@ -313,9 +311,9 @@ public class BlobsManagerImpl implements BlobsManager {
 						BoundaryChannel chanl = inputChannels.get(t);
 						ImmutableList<Object> draindata = chanl
 								.getUnprocessedData();
-						System.out.println(String.format(
-								"No of unprocessed data of %s is %d",
-								chanl.name(), draindata.size()));
+						// System.out.println(String.format(
+						// "No of unprocessed data of %s is %d",
+						// chanl.name(), draindata.size()));
 						inputDataBuilder.put(t, draindata);
 					}
 
@@ -336,9 +334,9 @@ public class BlobsManagerImpl implements BlobsManager {
 						BoundaryChannel chanl = outputChannels.get(t);
 						ImmutableList<Object> draindata = chanl
 								.getUnprocessedData();
-						System.out.println(String.format(
-								"No of unprocessed data of %s is %d",
-								chanl.name(), draindata.size()));
+						// System.out.println(String.format(
+						// "No of unprocessed data of %s is %d",
+						// chanl.name(), draindata.size()));
 						outputDataBuilder.put(t, draindata);
 					}
 				}
@@ -347,16 +345,18 @@ public class BlobsManagerImpl implements BlobsManager {
 						dd, inputDataBuilder.build(), outputDataBuilder.build());
 				try {
 					streamNode.controllerConnection.writeObject(me);
-					System.out.println(blobID + " DrainData has been sent");
+					// System.out.println(blobID + " DrainData has been sent");
+					drainState = 6;
 
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 
-				System.out.println("**********************************");
+				// System.out.println("**********************************");
 			}
+			printDrainedStatus();
 		}
+
 		public Token getBlobID() {
 			return Utils.getBlobID(blob);
 		}
@@ -394,12 +394,37 @@ public class BlobsManagerImpl implements BlobsManager {
 	private synchronized void printDrainedStatus() {
 		System.out.println("****************************************");
 		for (BlobExecuter be : blobExecuters) {
-			if (be.isDrained)
-				System.out.println(String.format("Blob %s is Drained",
-						be.blobID));
-			else
-				System.out.println(String.format("Blob %s is NOT Drained",
-						be.blobID));
+			switch (be.drainState) {
+				case 0 :
+					System.out.println(String.format("%s - No Drain Called",
+							be.blobID));
+					break;
+				case 1 :
+					System.out.println(String.format("%s - Drain Called",
+							be.blobID));
+					break;
+				case 2 :
+					System.out.println(String.format(
+							"%s - Drain Passed to Interpreter", be.blobID));
+					break;
+				case 3 :
+					System.out.println(String.format(
+							"%s - Returned from Interpreter", be.blobID));
+					break;
+				case 4 :
+					System.out.println(String.format(
+							"%s - Draining Completed. All threads stopped.",
+							be.blobID));
+					break;
+				case 5 :
+					System.out.println(String.format(
+							"%s - Processing Drain data", be.blobID));
+					break;
+				case 6 :
+					System.out.println(String.format("%s - Draindata sent",
+							be.blobID));
+					break;
+			}
 		}
 		System.out.println("****************************************");
 	}
