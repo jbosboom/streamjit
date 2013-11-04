@@ -62,12 +62,6 @@ public class Compiler2 {
 	 */
 	private ImmutableMap<Storage, ConcreteStorage> initStorage;
 	/**
-	 * For each Storage, the physical indices live in that Storage after the
-	 * initialization schedule.  That is, the items that must migrate to
-	 * steady-state storage.
-	 */
-	private ImmutableMap<Storage, ImmutableSortedSet<Integer>> liveAfterInit;
-	/**
 	 * ConcreteStorage instances used during the steady-state (bound into the
 	 * steady-state code).
 	 */
@@ -445,15 +439,12 @@ public class Compiler2 {
 				}
 			}
 		}
-		ImmutableMap.Builder<Storage, ImmutableSortedSet<Integer>> liveAfterInitBuilder = ImmutableMap.builder();
 		for (Storage s : storage)
-			liveAfterInitBuilder.put(s, ImmutableSortedSet.copyOf(Sets.intersection(initWrites.get(s), futureReads.get(s))));
-		this.liveAfterInit = liveAfterInitBuilder.build();
+			s.setIndicesLiveAfterInit(ImmutableSortedSet.copyOf(Sets.intersection(initWrites.get(s), futureReads.get(s))));
 		//Assert we covered the required read indices.
 		for (Storage s : storage) {
-			int offset = liveAfterInit.get(s).first() - s.readIndices().first();
 			for (int i : s.readIndices())
-				assert liveAfterInit.get(s).contains(i - offset);
+				assert s.indicesLiveDuringSteadyState().contains(i);
 		}
 
 		//TODO: Compute the steady-state capacities.

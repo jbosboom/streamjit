@@ -46,6 +46,16 @@ public final class Storage {
 	 * The max number of elements live in this storage during initialization.
 	 */
 	private int initCapacity = -1;
+	/**
+	 * The indices live in this storage after the initialization schedule is
+	 * complete; that is, the data that must be migrated.
+	 */
+	private ImmutableSortedSet<Integer> liveAfterInit;
+	/**
+	 * The indices live in this storage at the beginning of a steady-state
+	 * execution.
+	 */
+	private ImmutableSortedSet<Integer> liveDuringSteadyState;
 	public Storage(Actor upstream, Actor downstream) {
 		this.upstream = Lists.newArrayList(upstream);
 		this.downstream = Lists.newArrayList(downstream);
@@ -205,6 +215,25 @@ public final class Storage {
 
 	public void setInitCapacity(int initCapacity) {
 		this.initCapacity = initCapacity;
+	}
+
+	public ImmutableSortedSet<Integer> indicesLiveAfterInit() {
+		checkState(liveAfterInit != null);
+		return liveAfterInit;
+	}
+
+	public void setIndicesLiveAfterInit(ImmutableSortedSet<Integer> liveAfterInit) {
+		this.liveAfterInit = liveAfterInit;
+		int offset = liveAfterInit.first() - readIndices().first();
+		ImmutableSortedSet.Builder<Integer> b = ImmutableSortedSet.naturalOrder();
+		for (Integer i : this.liveAfterInit)
+			b.add(i-offset);
+		this.liveDuringSteadyState = b.build();
+	}
+
+	public ImmutableSortedSet<Integer> indicesLiveDuringSteadyState() {
+		checkState(liveDuringSteadyState != null);
+		return liveDuringSteadyState;
 	}
 
 	@Override
