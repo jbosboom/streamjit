@@ -105,7 +105,9 @@ public class StreamJitAppManager {
 
 		TCPConnectionInfo headconInfo = conInfoMap.get(headToken);
 		assert headconInfo != null : "No head connection info exists in conInfoMap";
-		assert headconInfo.getSrcID() == controller.controllerNodeID : "Head channel should start from the controller.";
+		assert headconInfo.getSrcID() == controller.controllerNodeID
+				|| headconInfo.getDstID() == controller.controllerNodeID : "Head channel should start from the controller. "
+				+ headconInfo;
 
 		if (!bufferMap.containsKey(headToken))
 			throw new IllegalArgumentException(
@@ -117,7 +119,9 @@ public class StreamJitAppManager {
 
 		TCPConnectionInfo tailconInfo = conInfoMap.get(tailToken);
 		assert tailconInfo != null : "No tail connection info exists in conInfoMap";
-		assert tailconInfo.getDstID() == controller.controllerNodeID : "Tail channel should ends at the controller.";
+		assert tailconInfo.getSrcID() == controller.controllerNodeID
+				|| tailconInfo.getDstID() == controller.controllerNodeID : "Tail channel should ends at the controller. "
+				+ tailconInfo;
 
 		if (!bufferMap.containsKey(tailToken))
 			throw new IllegalArgumentException(
@@ -154,14 +158,13 @@ public class StreamJitAppManager {
 			try {
 				headThread.join();
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
 	}
 
 	public void drain(Token blobID, boolean isFinal) {
-		System.out.println("Drain requested to blob " + blobID);
+		// System.out.println("Drain requested to blob " + blobID);
 		if (!app.blobtoMachineMap.containsKey(blobID))
 			throw new IllegalArgumentException(blobID
 					+ " not found in the blobtoMachineMap");
