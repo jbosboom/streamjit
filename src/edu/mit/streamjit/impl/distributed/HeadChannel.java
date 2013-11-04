@@ -67,6 +67,7 @@ public class HeadChannel extends TCPOutputChannel {
 			}
 
 			public void run() {
+				System.out.println("Input data finished");
 				drainer.startDraining(2);
 			}
 		}
