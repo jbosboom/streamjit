@@ -42,7 +42,7 @@ class streamJit:
 				cfgString = self.file.readline()
 				try:
 					cfg = configuration.getConfiguration(cfgString)
-					argv = ['--program', self.program,  '--test-limit', '500']
+					argv = ['--program', self.program,  '--test-limit', '5000']
 					onlinetuner.start(argv, cfg, self)
 				except Exception, e:
 					print "Exception occured : %s"%e
