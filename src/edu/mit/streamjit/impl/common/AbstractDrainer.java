@@ -245,7 +245,7 @@ public abstract class AbstractDrainer {
 	}
 
 	public final void awaitDrainedIntrmdiate() throws InterruptedException {
-		intermediateLatch.await();
+		// intermediateLatch.await();
 
 		// Just for debuging purpose. To make effect of this code snippet
 		// comment the above, intermediateLatch.await(), line. Otherwise no
@@ -254,12 +254,24 @@ public abstract class AbstractDrainer {
 			Thread.sleep(3000);
 			System.out.println("****************************************");
 			for (BlobNode bn : blobGraph.blobNodes.values()) {
-				if (bn.isDrained)
-					System.out.println(String.format("Blob %s is Drained",
-							bn.blobID));
-				else
-					System.out.println(String.format("Blob %s is NOT Drained",
-							bn.blobID));
+				switch (bn.drainState) {
+					case 0 :
+						System.out.println(String.format("%s - No drain call",
+								bn.blobID));
+						break;
+					case 1 :
+						System.out.println(String.format(
+								"%s - Drain requested", bn.blobID));
+						break;
+					case 2 :
+						System.out.println(String.format(
+								"%s - Drain completed", bn.blobID));
+						break;
+					case 3 :
+						System.out.println(String.format(
+								"%s - DrainData Received", bn.blobID));
+						break;
+				}
 			}
 			System.out.println("****************************************");
 		}
@@ -538,17 +550,15 @@ public abstract class AbstractDrainer {
 		 */
 		private AtomicInteger dependencyCount;
 
-		/**
-		 * Set to true iff this blob has been drained.
-		 */
-		private volatile boolean isDrained;
+		// TODO: add comments
+		private volatile int drainState;
 
 		private BlobNode(Token blob) {
 			this.blobID = blob;
 			predecessors = new ArrayList<>();
 			successors = new ArrayList<>();
 			dependencyCount = new AtomicInteger(0);
-			isDrained = false;
+			drainState = 0;
 		}
 
 		/**
@@ -557,7 +567,7 @@ public abstract class AbstractDrainer {
 		 * inform its successors as well.
 		 */
 		private void drained() {
-			isDrained = true;
+			drainState = 2;
 			for (BlobNode suc : this.successors) {
 				suc.predecessorDrained(this);
 			}
@@ -569,13 +579,15 @@ public abstract class AbstractDrainer {
 		 */
 		private void drain() {
 			checkNotNull(drainer);
+			drainState = 1;
 			drainer.drain(blobID, drainer.state == DrainerState.FINAL);
 		}
 
 		private void setDrainData(DrainedData drainedData) {
-			if (this.drainData == null)
+			if (this.drainData == null) {
 				this.drainData = drainedData;
-			else
+				drainState = 3;
+			} else
 				throw new AssertionError(
 						"Multiple drain data has been received.");
 		}
