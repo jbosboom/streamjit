@@ -311,7 +311,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	// TODO: Huge data copying is happening in this code three times. Need to
 	// optimise it.
 	private void fillUnprocessedData() {
-		System.out.println(name + " - Buffer size is - " + buffer.size());
+		// System.out.println(name + " - Buffer size is - " + buffer.size());
 		Object[] bufArray = new Object[buffer.size()];
 		buffer.readAll(bufArray);
 		assert buffer.size() == 0 : String.format(
