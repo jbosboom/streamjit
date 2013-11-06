@@ -41,6 +41,32 @@ public final class MapConcreteStorage implements ConcreteStorage {
 	}
 
 	@Override
+	public Object read(int index) {
+		try {
+			return readHandle().invoke(index);
+		} catch (Throwable ex) {
+			throw new AssertionError(ex);
+		}
+	}
+
+	@Override
+	public void write(int index, Object data) {
+		try {
+			writeHandle().invoke(index, data);
+		} catch (Throwable ex) {
+			throw new AssertionError(ex);
+		}
+	}
+
+	@Override
+	public void adjust() {
+	}
+
+	@Override
+	public void sync() {
+	}
+
+	@Override
 	public MethodHandle readHandle() {
 		return readHandle;
 	}
