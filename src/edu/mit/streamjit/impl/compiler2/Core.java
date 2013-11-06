@@ -23,6 +23,9 @@ public class Core {
 		//We make ConcreteStorage for every local storage, despite not knowing
 		//what we need yet; anything we don't use will get garbage collected
 		//when the compiler state is discarded after instantiating the Blob.
+		//TODO: this wastes space if we're assigned only part of a fissed
+		//schedule; we should wait until we're building code and can compute
+		//the space requirement.
 		ImmutableMap.Builder<Storage, ConcreteStorage> localStorageBuilder = ImmutableMap.builder();
 		for (Storage s : storage)
 			if (s.isInternal())
