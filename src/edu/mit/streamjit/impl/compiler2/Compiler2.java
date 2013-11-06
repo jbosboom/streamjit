@@ -520,7 +520,7 @@ public class Compiler2 {
 		Core initCore = new Core(storage, initStorage, MapConcreteStorage.factory());
 		ImmutableMap.Builder<Token, Integer> tokenInitScheduleBuilder = ImmutableMap.builder();
 		for (ActorGroup g : groups)
-			if (FluentIterable.from(g.actors()).filter(TokenActor.class).isEmpty())
+			if (!g.isTokenGroup())
 				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
 			else {
 				assert g.actors().size() == 1;
@@ -536,7 +536,7 @@ public class Compiler2 {
 			ssCores.add(new Core(storage, steadyStateStorage, MapConcreteStorage.factory()));
 		ImmutableMap.Builder<Token, Integer> tokenSteadyStateScheduleBuilder = ImmutableMap.builder();
 		for (ActorGroup g : groups)
-			if (FluentIterable.from(g.actors()).filter(TokenActor.class).isEmpty())
+			if (!g.isTokenGroup())
 				//TODO: use Configuration here
 				ssCores.get(0).allocate(g, Range.closedOpen(0, externalSchedule.get(g)));
 			else {

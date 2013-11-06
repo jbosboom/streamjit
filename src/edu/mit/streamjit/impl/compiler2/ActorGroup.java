@@ -56,6 +56,13 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		return actors;
 	}
 
+	public boolean isTokenGroup() {
+		for (Actor a : actors())
+			if (a instanceof TokenActor)
+				return true;
+		return false;
+	}
+
 	public int id() {
 		return Collections.min(actors()).id();
 	}
@@ -205,7 +212,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 */
 	public MethodHandle specialize(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage) {
 		//TokenActors are special.
-		assert FluentIterable.from(actors()).filter(TokenActor.class).isEmpty() : actors();
+		assert !isTokenGroup() : actors();
 
 		/**
 		 * Compute the read and write method handles for each Actor. These don't
