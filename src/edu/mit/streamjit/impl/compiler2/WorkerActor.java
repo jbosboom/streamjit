@@ -85,7 +85,7 @@ public final class WorkerActor extends Actor {
 			TokenActor ta = new TokenActor(t, outputTokenId[0]--);
 			tokens.put(t, ta);
 			Storage s = new Storage(this, ta);
-			inputs().add(s);
+			outputs().add(s);
 			storage.put(this, ta, s);
 		}
 		for (Worker<?, ?> w : successors) {
