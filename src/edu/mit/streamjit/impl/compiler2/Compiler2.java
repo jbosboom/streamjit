@@ -142,18 +142,27 @@ public class Compiler2 {
 			actorGroups.add(ActorGroup.of(a));
 
 		//Fuse as much as possible.
-		outer: do {
-			for (Iterator<ActorGroup> it = actorGroups.iterator(); it.hasNext();) {
+		just_fused: do {
+			try_fuse: for (Iterator<ActorGroup> it = actorGroups.iterator(); it.hasNext();) {
 				ActorGroup g = it.next();
+				if (g.isTokenGroup())
+					continue try_fuse;
+				for (ActorGroup pg : g.predecessorGroups())
+					if (pg.isTokenGroup())
+						continue try_fuse;
+				if (g.isPeeking() || g.predecessorGroups().size() > 1)
+					continue try_fuse;
+				//TODO: initial data prevents fusion
+
 				String paramName = String.format("fuse%d", g.id());
 				SwitchParameter<Boolean> fuseParam = config.getParameter(paramName, SwitchParameter.class, Boolean.class);
-				//TODO: initial data prevents fusion
-				if (g.isPeeking() || !fuseParam.getValue() || g.predecessorGroups().size() > 1)
-					continue;
+				if (!fuseParam.getValue())
+					continue try_fuse;
+
 				ActorGroup fusedGroup = ActorGroup.fuse(g, g.predecessorGroups().iterator().next());
 				it.remove();
 				actorGroups.add(fusedGroup);
-				continue outer;
+				continue just_fused;
 			}
 			break;
 		} while (true);
