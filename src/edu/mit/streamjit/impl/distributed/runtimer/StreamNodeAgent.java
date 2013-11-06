@@ -5,18 +5,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
+import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 import edu.mit.streamjit.impl.distributed.common.Error;
+import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
+import edu.mit.streamjit.impl.distributed.common.NodeInfo.NodeInfoProcessor;
 import edu.mit.streamjit.impl.distributed.common.Request;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.SNException;
+import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
 import edu.mit.streamjit.impl.distributed.common.SNMessageVisitor;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo;
-import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
-import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
-import edu.mit.streamjit.impl.distributed.common.NodeInfo.NodeInfoProcessor;
-import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
-import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo.SystemInfoProcessor;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
@@ -47,7 +47,13 @@ public abstract class StreamNodeAgent {
 
 	private final SystemInfoProcessor sp;
 
-	// TODO: Will removing volatile modifier be OK in this context?
+	// TODO: How to avoid volatile here. Because we set only once and read
+	// forever later. So if it is volatile, every read will need to access
+	// memory. Is there any way to avoid this?
+	// Will removing volatile modifier be OK in this context? consider
+	// using piggybacking sync or atomicreferenc with compareandset. This is
+	// actually effectively immutable/safe publication case. But how to
+	// implement it.
 	private volatile StreamJitAppManager manager;
 
 	/**
@@ -164,7 +170,7 @@ public abstract class StreamNodeAgent {
 	 * Send a object to corresponding {@link StreamNode}. While IO threads
 	 * reading the incoming messages from the stream node, controller may send
 	 * any messages through this function.
-	 * 
+	 *
 	 * @param obj
 	 * @throws IOException
 	 */
@@ -172,7 +178,7 @@ public abstract class StreamNodeAgent {
 
 	/**
 	 * Is still the connection with corresponding {@link StreamNode} is alive?
-	 * 
+	 *
 	 * @return
 	 */
 	public abstract boolean isConnected();
@@ -199,7 +205,7 @@ public abstract class StreamNodeAgent {
 
 	/**
 	 * {@link NodeInfoProcessor} at {@link StreamNode} side.
-	 * 
+	 *
 	 * @author Sumanan sumanan@mit.edu
 	 * @since Aug 11, 2013
 	 */
