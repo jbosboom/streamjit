@@ -161,8 +161,11 @@ public final class Storage {
 	public int steadyStateCapacity() {
 		if (isInternal())
 			return throughput();
-		//TODO: compute an actual steady-state capacity in Compiler2.initSchedule()
-		return initCapacity();
+		//The indices live at the beginning of the iteration, plus space for
+		//items being written.  (Some writes are into new holes, but others
+		//create new holes, so it balances out.)
+		int span = indicesLiveDuringSteadyState().last() - indicesLiveDuringSteadyState().first() + 1;
+		return span + throughput();
 	}
 
 	/**
