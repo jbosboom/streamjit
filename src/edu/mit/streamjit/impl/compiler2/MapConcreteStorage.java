@@ -1,38 +1,42 @@
 package edu.mit.streamjit.impl.compiler2;
 
-import edu.mit.streamjit.util.Combinators;
+import com.google.common.collect.ImmutableSortedSet;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * An unsynchronized ConcreteStorage implementation using a Map<Integer, T>.
- * As its adjust is a no-op, only useful as internal or initialization storage.
+ * A ConcreteStorage implementation using a Map<Integer, T>.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 10/27/2013
  */
 public final class MapConcreteStorage implements ConcreteStorage {
-	private static final MethodHandle MAP_GET, MAP_PUT;
+	private static final MethodHandle MAP_GET, MAP_PUT, ADJUST;
 	static {
 		try {
 			MAP_GET = MethodHandles.publicLookup().findVirtual(Map.class, "get", MethodType.methodType(Object.class, Object.class))
 					.asType(MethodType.methodType(Object.class, Map.class, Integer.class));
 			MAP_PUT = MethodHandles.publicLookup().findVirtual(Map.class, "put", MethodType.methodType(boolean.class, Object.class, Object.class))
 					.asType(MethodType.methodType(void.class, Map.class, Integer.class, Object.class));
+			ADJUST = MethodHandles.lookup().findVirtual(MapConcreteStorage.class, "adjust", MethodType.methodType(void.class));
 		} catch (NoSuchMethodException | IllegalAccessException ex) {
 			throw new AssertionError("Can't happen! No Map.get?", ex);
 		}
 	}
 
 	private final Class<?> type;
-	private final Map<Integer, Object> map = new HashMap<>();
-	private final MethodHandle readHandle, writeHandle;
-	public MapConcreteStorage(Class<?> type) {
-		this.type = type;
+	private final Map<Integer, Object> map = new ConcurrentHashMap<>();
+	private final MethodHandle readHandle, writeHandle, adjustHandle;
+	private final int minReadIndex, throughput;
+	public MapConcreteStorage(Storage s) {
+		this.type = s.type();
 		this.readHandle = MAP_GET.bindTo(map).asType(MethodType.methodType(type, Integer.class));
 		this.writeHandle = MAP_PUT.bindTo(map).asType(MethodType.methodType(void.class, Integer.class, type));
+		this.adjustHandle = ADJUST.bindTo(this);
+		this.minReadIndex = s.readIndices().first();
+		this.throughput = s.throughput();
 	}
 
 	@Override
@@ -60,6 +64,14 @@ public final class MapConcreteStorage implements ConcreteStorage {
 
 	@Override
 	public void adjust() {
+		//This is pretty slow, but we need them in order so we don't overwrite.
+		ImmutableSortedSet<Integer> indices = ImmutableSortedSet.copyOf(map.keySet());
+		for (int i : indices) {
+			int newReadIndex = i - throughput;
+			Object item = map.remove(i);
+			if (newReadIndex >= minReadIndex)
+				map.put(newReadIndex, item);
+		}
 	}
 
 	@Override
@@ -78,7 +90,7 @@ public final class MapConcreteStorage implements ConcreteStorage {
 
 	@Override
 	public MethodHandle adjustHandle() {
-		return Combinators.nop();
+		return adjustHandle;
 	}
 
 	@Override
@@ -90,7 +102,7 @@ public final class MapConcreteStorage implements ConcreteStorage {
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {
-				return new MapConcreteStorage(storage.type());
+				return new MapConcreteStorage(storage);
 			}
 		};
 	}

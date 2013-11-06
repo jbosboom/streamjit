@@ -472,7 +472,7 @@ public class Compiler2 {
 		ImmutableMap.Builder<Storage, ConcreteStorage> ssStorageBuilder = ImmutableMap.builder();
 		for (Storage s : storage)
 			if (!s.isInternal())
-				ssStorageBuilder.put(s, DoubleMapConcreteStorage.factory().make(s));
+				ssStorageBuilder.put(s, MapConcreteStorage.factory().make(s));
 		this.steadyStateStorage = ssStorageBuilder.build();
 	}
 
