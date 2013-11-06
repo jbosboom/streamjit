@@ -167,7 +167,7 @@ public class Compiler2 {
 			break;
 		} while (true);
 
-		this.groups = ImmutableSortedSet.copyOf(groups);
+		this.groups = ImmutableSortedSet.copyOf(actorGroups);
 	}
 
 	/**
