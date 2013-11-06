@@ -18,6 +18,7 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.SwitchPoint;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Set;
 import java.util.concurrent.Phaser;
 
@@ -55,8 +56,8 @@ public class Compiler2BlobHost implements Blob {
 	private final ImmutableList<MethodHandle> steadyStateCode;
 	private final ImmutableMap<Token, Integer> tokenInitSchedule, tokenSteadyStateSchedule;
 	private final ImmutableMap<Token, ConcreteStorage> tokenInitStorage, tokenSteadyStateStorage;
-	private final ImmutableMap<ConcreteStorage, Set<Integer>> livenessAfterInitSchedule;
-	private final ImmutableMap<ConcreteStorage, ConcreteStorage> initToSteadyStateMigration;
+	private ImmutableList<Runnable> migrationInstructions;
+	private final ImmutableList<MethodHandle> storageAdjusts;
 	/* provided by the host */
 	private ImmutableMap<Token, Buffer> buffers;
 	private final ImmutableList<Runnable> coreCode;
@@ -64,7 +65,17 @@ public class Compiler2BlobHost implements Blob {
 	private final Phaser barrier;
 	private volatile Runnable drainCallback;
 
-	public Compiler2BlobHost(ImmutableSet<Worker<?, ?>> workers, ImmutableSortedSet<Token> inputTokens, ImmutableSortedSet<Token> outputTokens, MethodHandle initCode, ImmutableList<MethodHandle> steadyStateCode, ImmutableMap<Token, Integer> tokenInitSchedule, ImmutableMap<Token, Integer> tokenSteadyStateSchedule, ImmutableMap<Token, ConcreteStorage> tokenInitStorage, ImmutableMap<Token, ConcreteStorage> tokenSteadyStateStorage, ImmutableMap<ConcreteStorage, Set<Integer>> livenessAfterInitSchedule, ImmutableMap<ConcreteStorage, ConcreteStorage> initToSteadyStateMigration) {
+	public Compiler2BlobHost(ImmutableSet<Worker<?, ?>> workers,
+			ImmutableSortedSet<Token> inputTokens,
+			ImmutableSortedSet<Token> outputTokens,
+			MethodHandle initCode,
+			ImmutableList<MethodHandle> steadyStateCode,
+			ImmutableMap<Token, Integer> tokenInitSchedule,
+			ImmutableMap<Token, Integer> tokenSteadyStateSchedule,
+			ImmutableMap<Token, ConcreteStorage> tokenInitStorage,
+			ImmutableMap<Token, ConcreteStorage> tokenSteadyStateStorage,
+			ImmutableList<Runnable> migrationInstructions,
+			ImmutableList<MethodHandle> storageAdjusts) {
 		this.workers = workers;
 		this.inputTokens = inputTokens;
 		this.outputTokens = outputTokens;
@@ -74,8 +85,8 @@ public class Compiler2BlobHost implements Blob {
 		this.tokenSteadyStateSchedule = tokenSteadyStateSchedule;
 		this.tokenInitStorage = tokenInitStorage;
 		this.tokenSteadyStateStorage = tokenSteadyStateStorage;
-		this.livenessAfterInitSchedule = livenessAfterInitSchedule;
-		this.initToSteadyStateMigration = initToSteadyStateMigration;
+		this.migrationInstructions = migrationInstructions;
+		this.storageAdjusts = storageAdjusts;
 
 		MethodHandle mainLoop = MAIN_LOOP.bindTo(this),
 				doInit = DO_INIT.bindTo(this),
@@ -206,8 +217,9 @@ public class Compiler2BlobHost implements Blob {
 				written += b.write(data, written, data.length-written);
 		}
 
-		//Migrate live data to steady-state storage.
-		//TODO
+		for (Runnable r : migrationInstructions)
+			r.run();
+		migrationInstructions = null;
 
 		SwitchPoint.invalidateAll(new SwitchPoint[]{sp1});
 	}
@@ -229,8 +241,8 @@ public class Compiler2BlobHost implements Blob {
 				written += b.write(data, written, data.length-written);
 		}
 
-		for (ConcreteStorage s : initToSteadyStateMigration.values())
-			s.adjustHandle().invokeExact();
+		for (MethodHandle h : storageAdjusts)
+			h.invokeExact();
 
 		//Fill inputs, or drain.
 		Map<Token, Object[]> inputData = new HashMap<>();

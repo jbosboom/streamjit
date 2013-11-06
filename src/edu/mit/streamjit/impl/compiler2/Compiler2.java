@@ -86,6 +86,11 @@ public class Compiler2 {
 	 * the steady-state schedule.
 	 */
 	private ImmutableMap<Token, Integer> tokenSteadyStateSchedule;
+	/**
+	 * Runnables that move live items from initialization storage to
+	 * steady-state storage.
+	 */
+	private ImmutableList<Runnable> migrationInstructions;
 	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 		Map<Class<?>, ActorArchetype> archetypesBuilder = new HashMap<>();
 		Map<Worker<?, ?>, WorkerActor> workerActors = new HashMap<>();
@@ -474,6 +479,35 @@ public class Compiler2 {
 			if (!s.isInternal())
 				ssStorageBuilder.put(s, MapConcreteStorage.factory().make(s));
 		this.steadyStateStorage = ssStorageBuilder.build();
+
+		/**
+		 * Create migration instructions: Runnables that move live items from
+		 * initialization to steady-state storage.
+		 */
+		ImmutableList.Builder<Runnable> migrationInstructionsBuilder = ImmutableList.builder();
+		for (Storage s : initStorage.keySet())
+			migrationInstructionsBuilder.add(new MigrationInstruction(
+					s, initStorage.get(s), steadyStateStorage.get(s)));
+		this.migrationInstructions = migrationInstructionsBuilder.build();
+	}
+
+	private static final class MigrationInstruction implements Runnable {
+		private final ConcreteStorage init, steady;
+		private final ImmutableSortedSet<Integer> indicesToMigrate;
+		private final int offset;
+		private MigrationInstruction(Storage storage, ConcreteStorage init, ConcreteStorage steady) {
+			this.init = init;
+			this.steady = steady;
+			this.indicesToMigrate = storage.indicesLiveAfterInit();
+			this.offset = storage.indicesLiveAfterInit().first() - storage.indicesLiveDuringSteadyState().first();
+		}
+		@Override
+		public void run() {
+			init.sync();
+			for (int i : indicesToMigrate)
+				steady.write(i - offset, init.read(i));
+			steady.sync();
+		}
 	}
 
 	private void createCode() {
