@@ -159,8 +159,10 @@ public class Compiler2 {
 				if (!fuseParam.getValue())
 					continue try_fuse;
 
-				ActorGroup fusedGroup = ActorGroup.fuse(g, g.predecessorGroups().iterator().next());
+				ActorGroup gpred = Iterables.getOnlyElement(g.predecessorGroups());
+				ActorGroup fusedGroup = ActorGroup.fuse(g, gpred);
 				it.remove();
+				actorGroups.remove(gpred);
 				actorGroups.add(fusedGroup);
 				continue just_fused;
 			}
