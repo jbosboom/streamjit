@@ -388,7 +388,8 @@ public class Compiler2 {
 			if (g.successorGroups().isEmpty())
 				totalInit.put(g, actualInit.get(g));
 			long us = externalSchedule.get(g);
-			List<Long> downstreamReqs = new ArrayList<>(g.successorGroups().size());
+			List<Long> downstreamReqs = new ArrayList<>(g.successorGroups().size() + 1);
+			downstreamReqs.add(0L); //Always at least 0.
 			for (ActorGroup s : g.successorGroups()) {
 				//I think reverse iteration guarantees bottom-up?
 				assert totalInit.containsKey(s) : g.id() + " requires " + s.id();
