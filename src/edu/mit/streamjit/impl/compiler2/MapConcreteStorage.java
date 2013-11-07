@@ -18,7 +18,7 @@ public final class MapConcreteStorage implements ConcreteStorage {
 		try {
 			MAP_GET = MethodHandles.publicLookup().findVirtual(Map.class, "get", MethodType.methodType(Object.class, Object.class))
 					.asType(MethodType.methodType(Object.class, Map.class, Integer.class));
-			MAP_PUT = MethodHandles.publicLookup().findVirtual(Map.class, "put", MethodType.methodType(boolean.class, Object.class, Object.class))
+			MAP_PUT = MethodHandles.publicLookup().findVirtual(Map.class, "put", MethodType.methodType(Object.class, Object.class, Object.class))
 					.asType(MethodType.methodType(void.class, Map.class, Integer.class, Object.class));
 			ADJUST = MethodHandles.lookup().findVirtual(MapConcreteStorage.class, "adjust", MethodType.methodType(void.class));
 		} catch (NoSuchMethodException | IllegalAccessException ex) {
