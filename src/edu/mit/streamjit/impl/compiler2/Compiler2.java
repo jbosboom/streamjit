@@ -180,6 +180,7 @@ public class Compiler2 {
 			internalSchedule(g);
 
 		Schedule.Builder<ActorGroup> scheduleBuilder = Schedule.builder();
+		scheduleBuilder.addAll(groups);
 		for (ActorGroup g : groups) {
 			for (Storage e : g.outputs()) {
 				Actor upstream = Iterables.getOnlyElement(e.upstream());
