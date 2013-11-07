@@ -30,7 +30,7 @@ public final class Storage {
 	 * unboxing may change it to a primitive type after examining the connected
 	 * Actors.
 	 */
-	private Class<?> type;
+	private Class<?> type = Object.class;
 	/**
 	 * The number of data items added to and removed from this storage during
 	 * each steady state iteration.
