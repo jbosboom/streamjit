@@ -39,21 +39,21 @@ public final class TokenActor extends Actor {
 
 	@Override
 	public int peek(int input) {
-		checkState(isInput());
+		checkState(isOutput());
 		checkElementIndex(input, inputs().size());
 		return 0;
 	}
 
 	@Override
 	public int pop(int input) {
-		checkState(isInput());
+		checkState(isOutput());
 		checkElementIndex(input, inputs().size());
 		return 1;
 	}
 
 	@Override
 	public int push(int output) {
-		checkState(isOutput());
+		checkState(isInput());
 		checkElementIndex(output, outputs().size());
 		return 1;
 	}
