@@ -293,7 +293,7 @@ public class ActorArchetype {
 		vmap.clear();
 		vmap.put(rwork.arguments().get(0), null);
 		for (int i = 1; i < rwork.arguments().size(); ++i)
-			vmap.put(rwork.arguments().get(i), rwork.arguments().get(i-1));
+			vmap.put(rwork.arguments().get(i), work.arguments().get(i-1));
 		Cloning.cloneMethod(rwork, work, vmap);
 		rwork.eraseFromParent();
 		try {
