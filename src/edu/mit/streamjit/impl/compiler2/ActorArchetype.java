@@ -74,8 +74,10 @@ public class ActorArchetype {
 		ImmutableList.Builder<java.lang.reflect.Field> fieldsBuilder = ImmutableList.builder();
 		for (Class<?> c = this.workerClass; c != Filter.class && c != Splitter.class && c != Joiner.class; c = c.getSuperclass()) {
 			for (java.lang.reflect.Field f : c.getDeclaredFields())
-				if (!java.lang.reflect.Modifier.isStatic(f.getModifiers()))
+				if (!java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
+					f.setAccessible(true);
 					fieldsBuilder.add(f);
+				}
 		}
 		this.fields = fieldsBuilder.build();
 		this.workerKlass = module.getKlass(workerClass);
