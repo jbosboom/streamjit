@@ -86,7 +86,7 @@ public final class Combinators {
 	private static final MethodHandle SEMICOLON;
 	static {
 		try {
-			SEMICOLON = LOOKUP.findStatic(Combinators.class, "SEMICOLON",
+			SEMICOLON = LOOKUP.findStatic(Combinators.class, "_semicolon",
 					MethodType.methodType(void.class, MethodHandle[].class));
 		} catch (NoSuchMethodException | IllegalAccessException ex) {
 			throw new AssertionError("Can't happen!", ex);
