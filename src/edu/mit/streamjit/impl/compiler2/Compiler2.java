@@ -461,8 +461,11 @@ public class Compiler2 {
 			s.setIndicesLiveAfterInit(ImmutableSortedSet.copyOf(Sets.intersection(initWrites.get(s), futureReads.get(s))));
 		//Assert we covered the required read indices.
 		for (Storage s : storage) {
-			for (int i : s.readIndices())
-				assert s.indicesLiveDuringSteadyState().contains(i);
+			if (s.isInternal())
+				assert s.indicesLiveDuringSteadyState().isEmpty();
+			else
+				for (int i : s.readIndices())
+					assert s.indicesLiveDuringSteadyState().contains(i);
 		}
 
 		//TODO: Compute the steady-state capacities.
