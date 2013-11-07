@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -88,6 +90,8 @@ public abstract class AbstractDrainer {
 
 	private AtomicInteger unDrainedNodes;
 
+	private ScheduledExecutorService schExecutorService;
+
 	/**
 	 * State of the drainer.
 	 */
@@ -162,8 +166,10 @@ public abstract class AbstractDrainer {
 					throw new IllegalArgumentException(
 							"Invalid draining type. type can be 0, 1, or 2.");
 			}
-
+			this.schExecutorService = Executors
+					.newSingleThreadScheduledExecutor();
 			blobGraph.getSourceBlobNode().drain();
+
 			return true;
 		} else if (state == DrainerState.FINAL) {
 			return false;
@@ -245,7 +251,7 @@ public abstract class AbstractDrainer {
 	}
 
 	public final void awaitDrainedIntrmdiate() throws InterruptedException {
-		// intermediateLatch.await();
+		intermediateLatch.await();
 
 		// Just for debuging purpose. To make effect of this code snippet
 		// comment the above, intermediateLatch.await(), line. Otherwise no
@@ -254,7 +260,7 @@ public abstract class AbstractDrainer {
 			Thread.sleep(3000);
 			System.out.println("****************************************");
 			for (BlobNode bn : blobGraph.blobNodes.values()) {
-				switch (bn.drainState) {
+				switch (bn.drainState.get()) {
 					case 0 :
 						System.out.println(String.format("%s - No drain call",
 								bn.blobID));
@@ -264,10 +270,16 @@ public abstract class AbstractDrainer {
 								"%s - Drain requested", bn.blobID));
 						break;
 					case 2 :
+						System.out
+								.println(String
+										.format("%s - Dead lock detected. Artificial drained has been called",
+												bn.blobID));
+						break;
+					case 3 :
 						System.out.println(String.format(
 								"%s - Drain completed", bn.blobID));
 						break;
-					case 3 :
+					case 4 :
 						System.out.println(String.format(
 								"%s - DrainData Received", bn.blobID));
 						break;
@@ -348,6 +360,7 @@ public abstract class AbstractDrainer {
 				state = DrainerState.NODRAINING;
 				intermediateLatch.countDown();
 			}
+			schExecutorService.shutdownNow();
 		}
 	}
 
@@ -551,14 +564,14 @@ public abstract class AbstractDrainer {
 		private AtomicInteger dependencyCount;
 
 		// TODO: add comments
-		private volatile int drainState;
+		private AtomicInteger drainState;
 
 		private BlobNode(Token blob) {
 			this.blobID = blob;
 			predecessors = new ArrayList<>();
 			successors = new ArrayList<>();
 			dependencyCount = new AtomicInteger(0);
-			drainState = 0;
+			drainState = new AtomicInteger(0);
 		}
 
 		/**
@@ -567,11 +580,14 @@ public abstract class AbstractDrainer {
 		 * inform its successors as well.
 		 */
 		private void drained() {
-			drainState = 2;
-			for (BlobNode suc : this.successors) {
-				suc.predecessorDrained(this);
+			if (drainState.compareAndSet(1, 3)) {
+				for (BlobNode suc : this.successors) {
+					suc.predecessorDrained(this);
+				}
+				drainer.drainingDone(this);
+			} else if (drainState.compareAndSet(2, 3)) {
+				drainer.drainingDone(this);
 			}
-			drainer.drainingDone(this);
 		}
 
 		/**
@@ -579,14 +595,20 @@ public abstract class AbstractDrainer {
 		 */
 		private void drain() {
 			checkNotNull(drainer);
-			drainState = 1;
+			if (!drainState.compareAndSet(0, 1)) {
+				throw new IllegalStateException(
+						"Drain of this blobNode has already been called");
+			}
 			drainer.drain(blobID, drainer.state == DrainerState.FINAL);
+			// TODO: Verify the waiting time is reasonable.
+			drainer.schExecutorService.schedule(deadLockHandler(), 3000,
+					TimeUnit.MILLISECONDS);
 		}
 
 		private void setDrainData(DrainedData drainedData) {
 			if (this.drainData == null) {
 				this.drainData = drainedData;
-				drainState = 3;
+				drainState.set(4);
 			} else
 				throw new AssertionError(
 						"Multiple drain data has been received.");
@@ -634,6 +656,23 @@ public abstract class AbstractDrainer {
 		private void setDrainer(AbstractDrainer drainer) {
 			checkNotNull(drainer);
 			this.drainer = drainer;
+		}
+
+		private Runnable deadLockHandler() {
+			Runnable r = new Runnable() {
+
+				@Override
+				public void run() {
+					if (drainState.compareAndSet(1, 2)) {
+						for (BlobNode suc : successors) {
+							suc.predecessorDrained(BlobNode.this);
+						}
+						System.out
+								.println("deadLockHandler: Deadlock during draining has been handled");
+					}
+				}
+			};
+			return r;
 		}
 	}
 
