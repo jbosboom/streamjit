@@ -71,7 +71,7 @@ public final class StoreInst extends Instruction {
 			checkArgument(v.getType() instanceof FieldType);
 		} else if (i == 1) {
 			RegularType type = ((FieldType)getLocation().getType()).getFieldType();
-			checkArgument(v.getType().isSubtypeOf(type));
+			checkArgument(v.getType().isSubtypeOf(type), "%s (%s) not compatible with %s", v, v.getType(), type);
 		} else if (i == 2) {
 			Field f = (Field)getLocation();
 			if (f != null) {
