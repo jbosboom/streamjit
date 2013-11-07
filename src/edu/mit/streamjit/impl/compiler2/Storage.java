@@ -89,13 +89,13 @@ public final class Storage {
 	}
 
 	public int peek() {
-		checkState(upstream().size() == 1, this);
-		return upstream().get(0).peek(upstream().get(0).outputs().indexOf(this));
+		checkState(downstream().size() == 1, this);
+		return downstream().get(0).peek(downstream().get(0).inputs().indexOf(this));
 	}
 
 	public int pop() {
 		checkState(downstream().size() == 1, this);
-		return downstream().get(0).push(upstream().get(0).outputs().indexOf(this));
+		return downstream().get(0).pop(downstream().get(0).inputs().indexOf(this));
 	}
 
 	/**
