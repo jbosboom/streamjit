@@ -65,8 +65,9 @@ public abstract class Actor implements Comparable<Actor> {
 
 	public int translateInputIndex(int input, int logicalIndex) {
 		checkArgument(logicalIndex >= 0);
+		MethodHandle idxFxn = inputIndexFunctions().get(input);
 		try {
-			return (int)inputIndexFunctions().get(input).invokeExact(logicalIndex);
+			return (int)idxFxn.invokeExact(logicalIndex);
 		} catch (Throwable ex) {
 			throw new AssertionError(String.format("index functions should not throw; translateInputIndex(%d, %d)", input, logicalIndex), ex);
 		}
@@ -78,8 +79,9 @@ public abstract class Actor implements Comparable<Actor> {
 
 	public int translateOutputIndex(int output, int logicalIndex) {
 		checkArgument(logicalIndex >= 0);
+		MethodHandle idxFxn = outputIndexFunctions().get(output);
 		try {
-			return (int)outputIndexFunctions().get(output).invokeExact(logicalIndex);
+			return (int)idxFxn.invokeExact(logicalIndex);
 		} catch (Throwable ex) {
 			throw new AssertionError(String.format("index functions should not throw; translateOutputtIndex(%d, %d)", output, logicalIndex), ex);
 		}
