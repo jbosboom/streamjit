@@ -2,6 +2,8 @@ package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 
 /**
  * An Actor encapsulating a Token, either input xor output.
@@ -18,6 +20,11 @@ public final class TokenActor extends Actor {
 	public TokenActor(Token token, int id) {
 		this.token = token;
 		this.id = id;
+		MethodHandle identity = MethodHandles.identity(int.class);
+		if (isOutput())
+			inputIndexFunctions().add(identity);
+		else
+			outputIndexFunctions().add(identity);
 	}
 
 	@Override
