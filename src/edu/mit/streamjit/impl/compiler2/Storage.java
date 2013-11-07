@@ -200,7 +200,7 @@ public final class Storage {
 		for (Actor a : downstream()) {
 			int executions = a.group().schedule().get(a) * (isInternal() ? 1 : externalSchedule.get(a.group()));
 			for (int i = 0; i < a.inputs().size(); ++i) {
-				if (!a.outputs().get(i).equals(this)) continue;
+				if (!a.inputs().get(i).equals(this)) continue;
 				int pop = a.pop(i),	peek = a.peek(i);
 				int excessPeeks = Math.max(0, peek - pop);
 				int maxLogicalIndex = pop * executions + excessPeeks;
