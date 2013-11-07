@@ -451,7 +451,7 @@ public class Compiler2 {
 					Set<Integer> readIndices = reads.getValue();
 					Set<Integer> writeIndices = initWrites.get(s);
 					if (!Sets.intersection(readIndices, writeIndices).isEmpty()) {
-						writeIndices.addAll(readIndices);
+						futureReads.get(s).addAll(readIndices);
 						progress = true;
 					}
 				}
