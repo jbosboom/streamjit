@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  *
@@ -46,6 +47,7 @@ import java.util.TreeSet;
  * @since 9/22/2013
  */
 public class Compiler2 {
+	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<ActorArchetype> archetypes;
 	private final NavigableSet<Actor> actors;
 	private ImmutableSortedSet<ActorGroup> groups;
@@ -527,6 +529,11 @@ public class Compiler2 {
 	}
 
 	private void createCode() {
+		String packageName = "compiler"+PACKAGE_NUMBER.getAndDecrement();
+		ModuleClassLoader mcl = new ModuleClassLoader(module);
+		for (ActorArchetype archetype : archetypes)
+			archetype.generateCode(packageName, mcl);
+
 		/**
 		 * During init, all (nontoken) groups are assigned to the same Core in
 		 * topological order (via the ordering on ActorGroups).  At the same
