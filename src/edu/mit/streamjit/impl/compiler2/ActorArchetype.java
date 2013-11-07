@@ -203,12 +203,12 @@ public class ActorArchetype {
 		return true;
 	}
 
-	public void generateCode(String packagePrefix, ModuleClassLoader loader) {
+	public void generateCode(String packageName, ModuleClassLoader loader) {
 		if (workMethod != null)
 			return;
 
 		Module module = workerKlass.getParent();
-		Klass archetypeKlass = new Klass(workerKlass.getName()+"Archetype",
+		Klass archetypeKlass = new Klass(packageName + "." + workerKlass.getName()+"Archetype",
 				module.getKlass(Object.class),
 				ImmutableList.<Klass>of(),
 				module);
