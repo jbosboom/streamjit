@@ -65,6 +65,7 @@ public final class WorkerActor extends Actor {
 			tokens.put(t, ta);
 			Storage s = new Storage(ta, this);
 			inputs().add(s);
+			ta.outputs().add(s);
 			storage.put(ta, this, s);
 		}
 		for (Worker<?, ?> w : predecessors) {
@@ -76,6 +77,8 @@ public final class WorkerActor extends Actor {
 			}
 			Storage s = new Storage(pred, this);
 			inputs().add(s);
+			if (pred instanceof TokenActor)
+				pred.outputs().add(s);
 			storage.put(pred, this, s);
 		}
 
@@ -86,6 +89,7 @@ public final class WorkerActor extends Actor {
 			tokens.put(t, ta);
 			Storage s = new Storage(this, ta);
 			outputs().add(s);
+			ta.inputs().add(s);
 			storage.put(this, ta, s);
 		}
 		for (Worker<?, ?> w : successors) {
@@ -97,6 +101,8 @@ public final class WorkerActor extends Actor {
 			}
 			Storage s = new Storage(this, succ);
 			outputs().add(s);
+			if (succ instanceof TokenActor)
+				succ.inputs().add(s);
 			storage.put(this, succ, s);
 		}
 
