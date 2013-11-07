@@ -97,7 +97,7 @@ public final class WorkerActor extends Actor {
 			}
 			Storage s = new Storage(this, succ);
 			outputs().add(s);
-			storage.put(succ, this, s);
+			storage.put(this, succ, s);
 		}
 
 		MethodHandle identity = MethodHandles.identity(int.class);
