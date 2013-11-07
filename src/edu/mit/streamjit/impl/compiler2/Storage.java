@@ -227,11 +227,15 @@ public final class Storage {
 
 	public void setIndicesLiveAfterInit(ImmutableSortedSet<Integer> liveAfterInit) {
 		this.liveAfterInit = liveAfterInit;
-		int offset = liveAfterInit.first() - readIndices().first();
-		ImmutableSortedSet.Builder<Integer> b = ImmutableSortedSet.naturalOrder();
-		for (Integer i : this.liveAfterInit)
-			b.add(i-offset);
-		this.liveDuringSteadyState = b.build();
+		if (this.liveAfterInit.isEmpty())
+			this.liveDuringSteadyState = ImmutableSortedSet.of();
+		else {
+			int offset = liveAfterInit.first() - readIndices().first();
+			ImmutableSortedSet.Builder<Integer> b = ImmutableSortedSet.naturalOrder();
+			for (Integer i : this.liveAfterInit)
+				b.add(i-offset);
+			this.liveDuringSteadyState = b.build();
+		}
 	}
 
 	public ImmutableSortedSet<Integer> indicesLiveDuringSteadyState() {
