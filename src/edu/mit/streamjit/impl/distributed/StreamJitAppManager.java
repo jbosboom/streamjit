@@ -204,7 +204,7 @@ public class StreamJitAppManager {
 	public void drainingFinished(boolean isFinal) {
 		System.out.println("App Manager : Draining Finished...");
 		if (tailChannel != null) {
-			tailChannel.stop();
+			tailChannel.stop(isFinal);
 			try {
 				tailThread.join();
 			} catch (InterruptedException e) {

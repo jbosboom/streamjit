@@ -46,6 +46,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private final AtomicBoolean stopFlag;
 
+	private volatile boolean isFinal;
+
 	private final String name;
 
 	private boolean softClosed;
@@ -68,6 +70,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		this.extraBuffer = null;
 		this.unProcessedData = null;
 		this.isClosed = false;
+		this.isFinal = false;
 		count = 0;
 	}
 
@@ -133,13 +136,14 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				if (stopFlag.get() && ++bufFullCount > 5) {
+				if (stopFlag.get() && !isFinal && ++bufFullCount > 5) {
 					this.extraBuffer = new ExtraBuffer();
 					extraBuffer.write(obj);
 					System.err
 							.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-					System.err.println(name
-							+ " receiveData:Writing extra data in to extra buffer");
+					System.err
+							.println(name
+									+ " receiveData:Writing extra data in to extra buffer");
 					System.err
 							.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 					break;
@@ -204,7 +208,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						e.printStackTrace();
 					}
 
-					if (++bufFullCount > 5) {
+					if (!isFinal && ++bufFullCount > 5) {
 						assert buffer != this.extraBuffer : "ExtraBuffer is full. This shouldn't be the case.";
 						assert this.extraBuffer == null : "Extra buffer has already been created.";
 						this.extraBuffer = new ExtraBuffer();
@@ -212,8 +216,9 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						buffer = extraBuffer;
 						System.err
 								.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-						System.err.println(name
-								+ " finalReceive:Writing extra data in to extra buffer");
+						System.err
+								.println(name
+										+ " finalReceive:Writing extra data in to extra buffer");
 						System.err
 								.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 					}
@@ -259,7 +264,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	}
 
 	@Override
-	public void stop() {
+	public void stop(boolean isFinal) {
+		this.isFinal = isFinal;
 		this.stopFlag.set(true);
 	}
 
