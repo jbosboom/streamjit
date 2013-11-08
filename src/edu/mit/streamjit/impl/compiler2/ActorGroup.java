@@ -226,22 +226,26 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			assert a.inputs().size() > 0 : a;
 			MethodHandle read;
 			if (a.inputs().size() == 1)
-				read = storage.get(a.inputs().get(0)).readHandle();
+				read = MethodHandles.filterArguments(storage.get(a.inputs().get(0)).readHandle(),
+						0, a.inputIndexFunctions().get(0));
 			else {
 				MethodHandle[] table = new MethodHandle[a.inputs().size()];
 				for (int i = 0; i < a.inputs().size(); i++)
-					table[i] = storage.get(a.inputs().get(i)).readHandle();
+					table[i] = MethodHandles.filterArguments(storage.get(a.inputs().get(i)).readHandle(),
+							0, a.inputIndexFunctions().get(i));
 				read = Combinators.tableswitch(table);
 			}
 
 			assert a.outputs().size() > 0 : a;
 			MethodHandle write;
 			if (a.outputs().size() == 1)
-				write = storage.get(a.outputs().get(0)).writeHandle();
+				write = MethodHandles.filterArguments(storage.get(a.outputs().get(0)).writeHandle(),
+						0, a.outputIndexFunctions().get(0));
 			else {
 				MethodHandle[] table = new MethodHandle[a.outputs().size()];
 				for (int i = 0; i < a.outputs().size(); ++i)
-					table[i] = storage.get(a.outputs().get(i)).writeHandle();
+					table[i] = MethodHandles.filterArguments(storage.get(a.outputs().get(i)).writeHandle(),
+							0, a.outputIndexFunctions().get(i));
 				write = Combinators.tableswitch(table);
 			}
 
