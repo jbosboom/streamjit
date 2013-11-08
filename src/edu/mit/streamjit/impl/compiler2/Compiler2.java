@@ -134,7 +134,7 @@ public class Compiler2 {
 		initSchedule();
 		createStorage();
 		createCode();
-		return null;
+		return instantiateBlob();
 	}
 
 	/**
@@ -603,5 +603,37 @@ public class Compiler2 {
 			steadyStateCodeBuilder.add(c.code());
 		this.steadyStateCode = steadyStateCodeBuilder.build();
 		this.tokenSteadyStateSchedule = tokenSteadyStateScheduleBuilder.build();
+	}
+
+	/**
+	 * Creates the blob host.  This mostly involves shuffling our state into the
+	 * form the blob host wants.
+	 * @return the blob
+	 */
+	public Blob instantiateBlob() {
+		ImmutableSet.Builder<Worker<?, ?>> workers = ImmutableSet.builder();
+		ImmutableSortedSet.Builder<Token> inputTokens = ImmutableSortedSet.naturalOrder(),
+				outputTokens = ImmutableSortedSet.naturalOrder();
+		ImmutableMap.Builder<Token, ConcreteStorage> tokenInitStorage = ImmutableMap.builder(),
+				tokenSteadyStateStorage = ImmutableMap.builder();
+		for (Actor a : actors)
+			if (a instanceof WorkerActor)
+				workers.add(((WorkerActor)a).worker());
+			else {
+				TokenActor ta = (TokenActor)a;
+				(ta.isInput() ? inputTokens : outputTokens).add(ta.token());
+				Storage s = ta.isInput() ? Iterables.getOnlyElement(ta.outputs()) : Iterables.getOnlyElement(ta.inputs());
+				tokenInitStorage.put(ta.token(), initStorage.get(s));
+				tokenSteadyStateStorage.put(ta.token(), steadyStateStorage.get(s));
+			}
+		ImmutableList.Builder<MethodHandle> storageAdjusts = ImmutableList.builder();
+		for (ConcreteStorage s : steadyStateStorage.values())
+			storageAdjusts.add(s.adjustHandle());
+		return new Compiler2BlobHost(workers.build(), inputTokens.build(), outputTokens.build(),
+				initCode, steadyStateCode,
+				tokenInitSchedule, tokenSteadyStateSchedule,
+				tokenInitStorage.build(), tokenSteadyStateStorage.build(),
+				migrationInstructions,
+				storageAdjusts.build());
 	}
 }
