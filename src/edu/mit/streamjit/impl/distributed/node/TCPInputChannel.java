@@ -139,7 +139,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 					System.err
 							.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 					System.err.println(name
-							+ " Writing extra data in to extra buffer");
+							+ " receiveData:Writing extra data in to extra buffer");
 					System.err
 							.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 					break;
@@ -186,7 +186,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			try {
 				Object obj = tcpConnection.readObject();
 				count++;
-				if (debugPrint == 3) {
+				if (debugPrint == 2) {
 					System.out.println(Thread.currentThread().getName()
 							+ " finalReceive - " + obj.toString());
 				}
@@ -213,7 +213,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						System.err
 								.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 						System.err.println(name
-								+ " Writing extra data in to extra buffer");
+								+ " finalReceive:Writing extra data in to extra buffer");
 						System.err
 								.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 					}
