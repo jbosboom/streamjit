@@ -212,7 +212,7 @@ public abstract class AbstractDrainer {
 			if (drainData == null)
 				drainData = node.drainData.drainData;
 			else
-				drainData.merge(node.drainData.drainData);
+				drainData = drainData.merge(node.drainData.drainData);
 		}
 
 		ImmutableMap.Builder<Token, ImmutableList<Object>> dataBuilder = ImmutableMap
