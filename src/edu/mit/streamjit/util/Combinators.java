@@ -18,13 +18,14 @@ public final class Combinators {
 
 	private static final Lookup LOOKUP = MethodHandles.lookup();
 	private static final MethodType INT_INT_TO_INT = MethodType.methodType(int.class, int.class, int.class);
-	private static final MethodHandle ADD, SUB, MUL, DIV, MOD;
+	private static final MethodHandle ADD, SUB, MUL, DIV, REM, MOD;
 	static {
 		try {
 			ADD = LOOKUP.findStatic(Combinators.class, "_add", INT_INT_TO_INT);
 			SUB = LOOKUP.findStatic(Combinators.class, "_sub", INT_INT_TO_INT);
 			MUL = LOOKUP.findStatic(Combinators.class, "_mul", INT_INT_TO_INT);
 			DIV = LOOKUP.findStatic(Combinators.class, "_div", INT_INT_TO_INT);
+			REM = LOOKUP.findStatic(Combinators.class, "_rem", INT_INT_TO_INT);
 			MOD = LOOKUP.findStatic(Combinators.class, "_mod", INT_INT_TO_INT);
 		} catch (NoSuchMethodException | IllegalAccessException ex) {
 			throw new AssertionError("Can't happen!", ex);
@@ -42,8 +43,12 @@ public final class Combinators {
 	private static int _div(int x, int y) {
 		return x / y;
 	}
-	private static int _mod(int x, int y) {
+	private static int _rem(int x, int y) {
 		return x % y;
+	}
+	private static int _mod(int x, int y) {
+		int r = x % y;
+		return r >= 0 ? r : r + y;
 	}
 	private static MethodHandle _filterIntIntToInt(MethodHandle target, MethodHandle filter, int filterSecondArg) {
 		return MethodHandles.filterReturnValue(target, MethodHandles.insertArguments(filter, 1, filterSecondArg));
@@ -60,6 +65,9 @@ public final class Combinators {
 	}
 	public static MethodHandle div(MethodHandle x, int y) {
 		return _filterIntIntToInt(x, DIV, y);
+	}
+	public static MethodHandle rem(MethodHandle x, int y) {
+		return _filterIntIntToInt(x, REM, y);
 	}
 	public static MethodHandle mod(MethodHandle x, int y) {
 		return _filterIntIntToInt(x, MOD, y);
