@@ -40,7 +40,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private final String name;
 
-	private boolean cleanStop;
+	private volatile boolean isFinal;
 
 	private int count;
 
@@ -52,7 +52,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 		this.conProvider = conProvider;
 		this.conInfo = conInfo;
 		this.stopFlag = new AtomicBoolean(false);
-		this.cleanStop = false;
+		this.isFinal = false;
 		this.name = "TCPOutputChannel - " + bufferTokenName;
 		this.debugPrint = debugPrint;
 		this.unProcessedData = null;
@@ -86,7 +86,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 				while (!stopFlag.get())
 					sendData();
 
-				if (cleanStop)
+				if (isFinal)
 					finalSend();
 
 				try {
@@ -100,7 +100,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 				if (debugPrint > 0) {
 					System.err.println(Thread.currentThread().getName()
 							+ " - Exiting...");
-					System.out.println("cleanStop " + cleanStop);
+					System.out.println("isFinal " + isFinal);
 					System.out.println("stopFlag " + stopFlag.get());
 				}
 			}
@@ -136,11 +136,11 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 	}
 
 	@Override
-	public final void stop(boolean clean) {
+	public final void stop(boolean isFinal) {
 		if (debugPrint > 0)
 			System.out.println(Thread.currentThread().getName()
 					+ " - stop request");
-		this.cleanStop = clean;
+		this.isFinal = isFinal;
 		this.stopFlag.set(true);
 	}
 
