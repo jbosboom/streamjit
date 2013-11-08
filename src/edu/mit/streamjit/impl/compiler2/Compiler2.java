@@ -469,7 +469,7 @@ public class Compiler2 {
 				assert s.indicesLiveDuringSteadyState().isEmpty();
 			else
 				for (int i : s.readIndices())
-					assert s.indicesLiveDuringSteadyState().contains(i);
+					assert s.indicesLiveDuringSteadyState().contains(i) : s + ": " + i + " not in " + s.indicesLiveDuringSteadyState();
 		}
 
 		//TODO: Compute the steady-state capacities.
