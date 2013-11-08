@@ -27,6 +27,7 @@ import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.Combinators.*;
 import edu.mit.streamjit.util.bytecode.Module;
+import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.math.RoundingMode;
