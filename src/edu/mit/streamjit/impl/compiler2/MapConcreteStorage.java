@@ -17,9 +17,9 @@ public final class MapConcreteStorage implements ConcreteStorage {
 	static {
 		try {
 			MAP_GET = MethodHandles.publicLookup().findVirtual(Map.class, "get", MethodType.methodType(Object.class, Object.class))
-					.asType(MethodType.methodType(Object.class, Map.class, Integer.class));
+					.asType(MethodType.methodType(Object.class, Map.class, int.class));
 			MAP_PUT = MethodHandles.publicLookup().findVirtual(Map.class, "put", MethodType.methodType(Object.class, Object.class, Object.class))
-					.asType(MethodType.methodType(void.class, Map.class, Integer.class, Object.class));
+					.asType(MethodType.methodType(void.class, Map.class, int.class, Object.class));
 			ADJUST = MethodHandles.lookup().findVirtual(MapConcreteStorage.class, "adjust", MethodType.methodType(void.class));
 		} catch (NoSuchMethodException | IllegalAccessException ex) {
 			throw new AssertionError("Can't happen! No Map.get?", ex);
@@ -32,8 +32,8 @@ public final class MapConcreteStorage implements ConcreteStorage {
 	private final int minReadIndex, throughput;
 	public MapConcreteStorage(Storage s) {
 		this.type = s.type();
-		this.readHandle = MAP_GET.bindTo(map).asType(MethodType.methodType(type, Integer.class));
-		this.writeHandle = MAP_PUT.bindTo(map).asType(MethodType.methodType(void.class, Integer.class, type));
+		this.readHandle = MAP_GET.bindTo(map).asType(MethodType.methodType(type, int.class));
+		this.writeHandle = MAP_PUT.bindTo(map).asType(MethodType.methodType(void.class, int.class, type));
 		this.adjustHandle = ADJUST.bindTo(this);
 		this.minReadIndex = s.readIndices().first();
 		this.throughput = s.throughput();
