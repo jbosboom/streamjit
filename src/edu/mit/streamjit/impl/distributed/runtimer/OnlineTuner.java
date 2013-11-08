@@ -124,6 +124,12 @@ public class OnlineTuner implements Runnable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+
+		try {
+			drainer.dumpDraindataStatistics();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**

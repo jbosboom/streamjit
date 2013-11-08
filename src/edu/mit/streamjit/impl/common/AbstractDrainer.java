@@ -2,6 +2,8 @@ package edu.mit.streamjit.impl.common;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -64,6 +66,8 @@ import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
  */
 public abstract class AbstractDrainer {
 
+	private Map<Token, List<Integer>> drainDataStatistics;
+
 	/**
 	 * Blob graph of the stream application that needs to be drained.
 	 */
@@ -100,6 +104,7 @@ public abstract class AbstractDrainer {
 	public AbstractDrainer() {
 		state = DrainerState.NODRAINING;
 		finalLatch = new CountDownLatch(1);
+		drainDataStatistics = new HashMap<>();
 	}
 
 	/**
@@ -229,10 +234,30 @@ public abstract class AbstractDrainer {
 					.build());
 		}
 
+		Map<Token, ? extends List<Object>> data = dataBuilder.build();
+		for (Token t : data.keySet()) {
+			if (!drainDataStatistics.containsKey(t))
+				drainDataStatistics.put(t, new ArrayList<Integer>());
+			drainDataStatistics.get(t).add(data.get(t).size());
+		}
 		ImmutableTable<Integer, String, Object> state = ImmutableTable.of();
-		DrainData draindata1 = new DrainData(dataBuilder.build(), state);
+		DrainData draindata1 = new DrainData(data, state);
 		drainData = drainData.merge(draindata1);
 		return drainData;
+	}
+
+	public void dumpDraindataStatistics() throws IOException {
+		FileWriter writer = new FileWriter("DrainDataStatistics.txt");
+		for (Token t : drainDataStatistics.keySet()) {
+			writer.write(t.toString());
+			writer.write(" - ");
+			for (Integer i : drainDataStatistics.get(t)) {
+				writer.write(i.toString() + '\n');
+			}
+			writer.write('\n');
+		}
+		writer.flush();
+		writer.close();
 	}
 
 	/**
