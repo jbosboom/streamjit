@@ -37,10 +37,10 @@ public final class Combinators {
 		return x - y;
 	}
 	private static int _mul(int x, int y) {
-		return x % y;
+		return x * y;
 	}
 	private static int _div(int x, int y) {
-		return x % y;
+		return x / y;
 	}
 	private static int _mod(int x, int y) {
 		return x % y;
