@@ -1,13 +1,12 @@
 package edu.mit.streamjit.impl.distributed.node;
 
-import static com.google.common.base.Preconditions.*;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,21 +18,21 @@ import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecifier;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
-import edu.mit.streamjit.impl.common.MessageConstraint;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
  * {@link ConfigurationStringProcessor} at {@link StreamNode} side.
- * 
+ *
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
@@ -83,13 +82,14 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 		if (streamGraph != null) {
 			ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
 			streamGraph.visit(primitiveConnector);
-			Worker<?, ?> source = (Worker<?, ?>) primitiveConnector.getSource();
+			Worker<?, ?> source = primitiveConnector.getSource();
 
 			List<BlobSpecifier> blobList = partParam
 					.getBlobsOnMachine(streamNode.getNodeID());
 
 			ImmutableSet.Builder<Blob> blobSet = ImmutableSet.builder();
 
+			BlobFactory bf = new Interpreter.InterpreterBlobFactory();
 			for (BlobSpecifier bs : blobList) {
 				Set<Integer> workIdentifiers = bs.getWorkerIdentifiers();
 				System.out
@@ -98,10 +98,8 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 										Thread.currentThread().getName(),
 										workIdentifiers.toString()));
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
-				// TODO: Need to partitions the workerset to threads. Now just
-				// running in a single thread..
-				Blob b = new Interpreter(workerset,
-						Collections.<MessageConstraint> emptyList(), cfg);
+
+				Blob b = bf.makeBlob(workerset, cfg, 1, null);
 				blobSet.add(b);
 			}
 			return blobSet.build();
@@ -111,7 +109,7 @@ public class SNCfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	/**
 	 * Gets a Stream Graph from a jar file.
-	 * 
+	 *
 	 * @param jarFilePath
 	 * @param topStreamClassName
 	 * @return : StreamGraph
