@@ -133,7 +133,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				if (stopFlag.get() && bufFullCount++ > 5) {
+				if (stopFlag.get() && ++bufFullCount > 5) {
 					this.extraBuffer = new ExtraBuffer();
 					extraBuffer.write(obj);
 					System.err
@@ -204,7 +204,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						e.printStackTrace();
 					}
 
-					if (bufFullCount++ > 5) {
+					if (++bufFullCount > 5) {
 						assert buffer != this.extraBuffer : "ExtraBuffer is full. This shouldn't be the case.";
 						assert this.extraBuffer == null : "Extra buffer has already been created.";
 						this.extraBuffer = new ExtraBuffer();
