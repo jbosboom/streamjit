@@ -35,6 +35,16 @@ public class DrainData implements Serializable {
 		this.state = ImmutableTable.copyOf(state);
 	}
 
+	public ImmutableMap<Token, ImmutableList<Object>> getData()
+	{
+		return data;
+	}
+
+	public ImmutableTable<Integer, String, Object> getState()
+	{
+		return state;
+	}
+
 	public ImmutableList<Object> getData(Token token) {
 		return data.get(token);
 	}
