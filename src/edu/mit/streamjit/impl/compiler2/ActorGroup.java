@@ -165,14 +165,12 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			int begin = schedule.get(a) * iteration, end = schedule.get(a) * (iteration + 1);
 			for (int input = 0; input < a.inputs().size(); ++input)
 				if (!a.inputs().get(input).isInternal()) {
-					//Use pop on all but last iteration, then use max(pop, peek).
-					int pop = a.pop(input);
-					for (int iter = begin; iter < end-1; ++iter)
-						for (int idx = pop * iter; idx < pop * (iter+1); ++idx)
-							retval.get(a.inputs().get(input)).add(a.translateInputIndex(input, idx));
-					int read = Math.max(a.pop(input), a.peek(input));
-					for (int iter = end-1; iter < end; ++iter)
-						for (int idx = read * iter; idx < read * (iter+1); ++idx)
+					//In each iteration, our index starts at however many items
+					//we've previously popped, and goes until the elements we pop
+					//or peek in this iteration, whichever is greater.
+					int pop = a.pop(input), read = Math.max(pop, a.peek(input));
+					for (int iter = begin; iter < end; ++iter)
+						for (int idx = pop * iter; idx < (pop * iter) + read; ++idx)
 							retval.get(a.inputs().get(input)).add(a.translateInputIndex(input, idx));
 				}
 		}
