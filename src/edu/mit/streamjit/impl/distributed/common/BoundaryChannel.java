@@ -64,8 +64,12 @@ public interface BoundaryChannel {
 		 * intermediate kernel buffer. In this case, before exiting, extraBuffer
 		 * should be filled with all unconsumed data in the kernel buffer.
 		 * </p>
+		 * 
+		 * @param isFinal
+		 *            : If true, don't create extraBuffer. Wait and push all
+		 *            received data in to the actual buffer.
 		 */
-		void stop();
+		void stop(boolean isFinal);
 
 		/**
 		 * Receive data from other node.
@@ -86,14 +90,14 @@ public interface BoundaryChannel {
 	public interface BoundaryOutputChannel extends BoundaryChannel {
 
 		/**
-		 * Stop sending. If clean is true, send all data in the buffer before
+		 * Stop sending. If isFinal is true, send all data in the buffer before
 		 * stop. Else just stop and leave the buffer as it is. i.e., call
 		 * stop(true) for final stop. call stop(false) for onlinetuning's
 		 * intermediate stop.
 		 * 
-		 * @param clean
+		 * @param isFinal
 		 */
-		void stop(boolean clean);
+		void stop(boolean isFinal);
 
 		/**
 		 * Send data to other node.
