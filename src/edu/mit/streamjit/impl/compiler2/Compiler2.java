@@ -24,6 +24,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.compiler.Schedule;
 import edu.mit.streamjit.util.CollectionUtils;
+import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.Combinators.*;
 import edu.mit.streamjit.util.bytecode.Module;
 import java.lang.invoke.MethodHandle;
@@ -534,6 +535,8 @@ public class Compiler2 {
 		for (ActorArchetype archetype : archetypes)
 			archetype.generateCode(packageName, mcl);
 
+		//TODO: index function adjustments to avoid initial state items.
+
 		/**
 		 * During init, all (nontoken) groups are assigned to the same Core in
 		 * topological order (via the ordering on ActorGroups).  At the same
@@ -553,6 +556,32 @@ public class Compiler2 {
 			}
 		this.initCode = initCore.code();
 		this.tokenInitSchedule = tokenInitScheduleBuilder.build();
+
+		/**
+		 * Adjust output index functions to avoid overwriting items in external
+		 * storage.  For any actor writing to external storage, we find the
+		 * first item that doesn't hit the live index set and add that many
+		 * (making that logical item 0 for writers).
+		 *
+		 * We don't use index functions after this so we don't need to save and
+		 * restore the old functions.
+		 */
+		for (Actor a : actors) {
+			for (int i = 0; i < a.outputs().size(); ++i) {
+				Storage s = a.outputs().get(i);
+				if (s.isInternal())
+					continue;
+				ImmutableSortedSet<Integer> liveIndices = s.indicesLiveDuringSteadyState();
+				int offset = 0;
+				while (liveIndices.contains(a.translateOutputIndex(i, offset)))
+					++offset;
+				//Check future indices are also open (e.g., that we aren't
+				//alternating hole/not-hole).
+				for (int check = 0; check < 100; ++check)
+					assert !liveIndices.contains(a.translateOutputIndex(i, offset + check)) : check;
+				a.outputIndexFunctions().set(i, Combinators.add(a.outputIndexFunctions().get(i), offset));
+			}
+		}
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
 		for (int i = 0; i < maxNumCores; ++i)
