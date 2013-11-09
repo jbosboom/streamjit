@@ -16,13 +16,19 @@ import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
+import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
+import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.compiler.Schedule;
+import edu.mit.streamjit.test.Benchmark;
+import edu.mit.streamjit.test.Benchmarker;
+import edu.mit.streamjit.test.apps.fmradio.FMRadio;
+import edu.mit.streamjit.test.sanity.PipelineSanity;
 import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.Combinators.*;
@@ -635,5 +641,12 @@ public class Compiler2 {
 				tokenInitStorage.build(), tokenSteadyStateStorage.build(),
 				migrationInstructions,
 				storageAdjusts.build());
+	}
+
+	public static void main(String[] args) {
+		StreamCompiler sc = new BlobHostStreamCompiler(new Compiler2BlobFactory());
+//		Benchmark bm = new PipelineSanity.Add15();
+		Benchmark bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
+		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);
 	}
 }
