@@ -303,6 +303,11 @@ public class BlobsManagerImpl implements BlobsManager {
 				DrainData dd = blob.getDrainData();
 				drainState = 5;
 
+				for (Token t : dd.getData().keySet()) {
+					System.out.println("From Blob: " + t.toString() + " - "
+							+ dd.getData().get(t).size());
+				}
+
 				ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
 				ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
 
@@ -311,9 +316,9 @@ public class BlobsManagerImpl implements BlobsManager {
 						BoundaryChannel chanl = inputChannels.get(t);
 						ImmutableList<Object> draindata = chanl
 								.getUnprocessedData();
-						// System.out.println(String.format(
-						// "No of unprocessed data of %s is %d",
-						// chanl.name(), draindata.size()));
+						System.out.println(String.format(
+								"No of unprocessed data of %s is %d",
+								chanl.name(), draindata.size()));
 						inputDataBuilder.put(t, draindata);
 					}
 
@@ -334,9 +339,9 @@ public class BlobsManagerImpl implements BlobsManager {
 						BoundaryChannel chanl = outputChannels.get(t);
 						ImmutableList<Object> draindata = chanl
 								.getUnprocessedData();
-						// System.out.println(String.format(
-						// "No of unprocessed data of %s is %d",
-						// chanl.name(), draindata.size()));
+						System.out.println(String.format(
+								"No of unprocessed data of %s is %d",
+								chanl.name(), draindata.size()));
 						outputDataBuilder.put(t, draindata);
 					}
 				}
@@ -354,7 +359,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 				// System.out.println("**********************************");
 			}
-			printDrainedStatus();
+			// printDrainedStatus();
 		}
 
 		public Token getBlobID() {
