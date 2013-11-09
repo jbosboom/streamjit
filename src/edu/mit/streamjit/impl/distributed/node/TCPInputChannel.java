@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.EOFException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OptionalDataException;
 import java.util.ArrayDeque;
@@ -31,6 +32,8 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
  * @since May 29, 2013
  */
 public class TCPInputChannel implements BoundaryInputChannel {
+
+	private final FileWriter writer;
 
 	private final int debugPrint;
 
@@ -72,6 +75,18 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		this.isClosed = false;
 		this.isFinal = false;
 		count = 0;
+
+		FileWriter w = null;
+		if (this.debugPrint == 5) {
+			try {
+				w = new FileWriter(name, true);
+				w.write("---------------------------------\n");
+			} catch (IOException e) {
+				w = null;
+				e.printStackTrace();
+			}
+		}
+		writer = w;
 	}
 
 	@Override
@@ -110,6 +125,15 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
+
+				if (writer != null) {
+					try {
+						writer.flush();
+						writer.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
 			}
 		};
 	}
@@ -120,9 +144,15 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		try {
 			Object obj = tcpConnection.readObject();
 			count++;
+
 			if (debugPrint == 3) {
 				System.out.println(Thread.currentThread().getName() + " - "
 						+ obj.toString());
+			}
+
+			if (writer != null) {
+				writer.write(obj.toString());
+				writer.write('\n');
 			}
 
 			while (!this.buffer.write(obj)) {
@@ -160,6 +190,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			softClosed = true;
 		} catch (EOFException e) {
 			// Other side is closed.
+			System.out
+					.println("receiveData:Closing by EOFExp. Not by softClose");
 			stopFlag.set(true);
 		} catch (IOException e) {
 			// TODO: Verify the program quality. Try to reconnect until it
@@ -190,12 +222,19 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			try {
 				Object obj = tcpConnection.readObject();
 				count++;
+
 				if (debugPrint == 2) {
 					System.out.println(Thread.currentThread().getName()
 							+ " finalReceive - " + obj.toString());
 				}
 
+				if (writer != null) {
+					writer.write(obj.toString());
+					writer.write('\n');
+				}
+
 				hasData = true;
+
 				while (!buffer.write(obj)) {
 					if (debugPrint == 3) {
 						System.out.println(Thread.currentThread().getName()
@@ -236,6 +275,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				softClosed = true;
 				hasData = false;
 			} catch (IOException e) {
+				System.out
+						.println("finalReceive:Closing by IOException. Not by softClose.");
 				hasData = false;
 			}
 		} while (hasData);
