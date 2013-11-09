@@ -66,7 +66,14 @@ import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
  */
 public abstract class AbstractDrainer {
 
-	private Map<Token, List<Integer>> drainDataStatistics;
+	/**
+	 * This is added for debugging purpose. Just logs the size of the drain data
+	 * on each channel for every draining. Calling
+	 * AbstractDrainer#dumpDraindataStatistics() will write down the statistics
+	 * into a file. This map and all related lines may be removed after system
+	 * got stable.
+	 */
+	private Map<Token, List<Integer>> drainDataStatistics = null;
 
 	/**
 	 * Blob graph of the stream application that needs to be drained.
@@ -104,7 +111,6 @@ public abstract class AbstractDrainer {
 	public AbstractDrainer() {
 		state = DrainerState.NODRAINING;
 		finalLatch = new CountDownLatch(1);
-		drainDataStatistics = new HashMap<>();
 	}
 
 	/**
@@ -206,6 +212,9 @@ public abstract class AbstractDrainer {
 	// TODO: Too many unnecessary data copies are taking place at here, inside
 	// the DrainData constructor and DrainData.merge(). Need to optimise these
 	// all.
+	/**
+	 * @return Aggregated DrainData after the draining.
+	 */
 	public final DrainData getDrainData() {
 		DrainData drainData = null;
 		Map<Token, ImmutableList<Object>> boundaryInputData = new HashMap<>();
@@ -234,19 +243,43 @@ public abstract class AbstractDrainer {
 					.build());
 		}
 
-		Map<Token, ? extends List<Object>> data = dataBuilder.build();
-		for (Token t : data.keySet()) {
-			if (!drainDataStatistics.containsKey(t))
-				drainDataStatistics.put(t, new ArrayList<Integer>());
-			drainDataStatistics.get(t).add(data.get(t).size());
-		}
 		ImmutableTable<Integer, String, Object> state = ImmutableTable.of();
-		DrainData draindata1 = new DrainData(data, state);
+		DrainData draindata1 = new DrainData(dataBuilder.build(), state);
 		drainData = drainData.merge(draindata1);
+
+		if (drainDataStatistics == null) {
+			drainDataStatistics = new HashMap<>();
+			for (Token t : drainData.getData().keySet()) {
+				drainDataStatistics.put(t, new ArrayList<Integer>());
+			}
+		}
+
+		for (Token t : drainData.getData().keySet()) {
+			System.out.print("Aggregated data: " + t.toString() + " - "
+					+ drainData.getData().get(t).size() + " - ");
+			for (Object o : drainData.getData().get(t)) {
+				System.out.print(o.toString() + ", ");
+			}
+			System.out.print('\n');
+
+			drainDataStatistics.get(t).add(drainData.getData().get(t).size());
+		}
+
 		return drainData;
 	}
 
+	/**
+	 * logs the size of the drain data on each channel for every draining and
+	 * writes down the statistics into a file.
+	 * 
+	 * @throws IOException
+	 */
 	public void dumpDraindataStatistics() throws IOException {
+		if (drainDataStatistics == null) {
+			System.err.println("drainDataStatistics is null");
+			return;
+		}
+
 		FileWriter writer = new FileWriter("DrainDataStatistics.txt");
 		for (Token t : drainDataStatistics.keySet()) {
 			writer.write(t.toString());
