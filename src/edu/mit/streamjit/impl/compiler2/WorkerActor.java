@@ -75,11 +75,14 @@ public final class WorkerActor extends Actor {
 				pred = new TokenActor(t, inputTokenId[0]++);
 				tokens.put(t, (TokenActor)pred);
 			}
-			Storage s = new Storage(pred, this);
+			Storage s = storage.get(pred, this);
+			if (s == null) {
+				s = new Storage(pred, this);
+				storage.put(pred, this, s);
+			}
 			inputs().add(s);
 			if (pred instanceof TokenActor)
 				pred.outputs().add(s);
-			storage.put(pred, this, s);
 		}
 
 		List<? extends Worker<?, ?>> successors = Workers.getSuccessors(worker);
@@ -99,11 +102,14 @@ public final class WorkerActor extends Actor {
 				succ = new TokenActor(t, outputTokenId[0]--);
 				tokens.put(t, (TokenActor)succ);
 			}
-			Storage s = new Storage(this, succ);
+			Storage s = storage.get(this, succ);
+			if (s == null) {
+				s = new Storage(this, succ);
+				storage.put(this, succ, s);
+			}
 			outputs().add(s);
 			if (succ instanceof TokenActor)
 				succ.inputs().add(s);
-			storage.put(this, succ, s);
 		}
 
 		MethodHandle identity = MethodHandles.identity(int.class);
