@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,6 +26,8 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
  * @since May 29, 2013
  */
 public class TCPOutputChannel implements BoundaryOutputChannel {
+
+	FileWriter writer;
 
 	private final int debugPrint;
 
@@ -57,6 +60,18 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 		this.debugPrint = debugPrint;
 		this.unProcessedData = null;
 		count = 0;
+
+		FileWriter w = null;
+		if (this.debugPrint == 5) {
+			try {
+				w = new FileWriter(name, true);
+				w.write("---------------------------------\n");
+			} catch (IOException e) {
+				w = null;
+				e.printStackTrace();
+			}
+		}
+		writer = w;
 	}
 
 	@Override
@@ -96,6 +111,14 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 				}
 
 				fillUnprocessedData();
+				if (writer != null) {
+					try {
+						writer.flush();
+						writer.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
 
 				if (debugPrint > 0) {
 					System.err.println(Thread.currentThread().getName()
@@ -109,15 +132,20 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	public final void sendData() {
 		while (this.buffer.size() > 0 && !stopFlag.get()) {
-			count++;
 			try {
+				Object obj = buffer.read();
+				tcpConnection.writeObject(obj);
+				count++;
+
 				if (debugPrint == 3) {
-					Object o = buffer.read();
 					System.out.println(Thread.currentThread().getName() + " - "
-							+ o.toString());
-					tcpConnection.writeObject(o);
-				} else
-					tcpConnection.writeObject(buffer.read());
+							+ obj.toString());
+				}
+
+				if (writer != null) {
+					writer.write(obj.toString());
+					writer.write('\n');
+				}
 			} catch (IOException e) {
 				System.err
 						.println("TCP Output Channel. WriteObject exception.");
@@ -150,17 +178,21 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 	 */
 	private void finalSend() {
 		while (this.buffer.size() > 0) {
-			count++;
 			try {
-				// System.out.println(Thread.currentThread().getName() +
-				// " buffer.size()" + this.buffer.size());
+				Object o = buffer.read();
+				tcpConnection.writeObject(o);
+				count++;
+
 				if (debugPrint == 3) {
-					Object o = buffer.read();
 					System.out.println(Thread.currentThread().getName()
 							+ " FinalSend - " + o.toString());
-					tcpConnection.writeObject(o);
-				} else
-					tcpConnection.writeObject(buffer.read());
+				}
+
+				if (writer != null) {
+					writer.write(o.toString());
+					writer.write('\n');
+				}
+
 			} catch (IOException e) {
 				System.err.println("TCP Output Channel. finalSend exception.");
 			}
