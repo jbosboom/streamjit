@@ -69,8 +69,10 @@ public final class MapConcreteStorage implements ConcreteStorage {
 		for (int i : indices) {
 			int newReadIndex = i - throughput;
 			Object item = map.remove(i);
-			if (newReadIndex >= minReadIndex)
-				map.put(newReadIndex, item);
+			if (newReadIndex >= minReadIndex) {
+				Object overwrote = map.put(newReadIndex, item);
+				assert overwrote == null : newReadIndex;
+			}
 		}
 	}
 
