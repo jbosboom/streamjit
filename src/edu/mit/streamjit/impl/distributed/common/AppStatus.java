@@ -58,6 +58,24 @@ public enum AppStatus implements SNMessageElement {
 		public void process(AppStatusProcessor apstatusProcessor) {
 			apstatusProcessor.processNO_APP();
 		}
+	},
+	/**
+	 * Blobs are compiled. Ready for execution.
+	 */
+	COMPILED {
+		@Override
+		public void process(AppStatusProcessor apstatusProcessor) {
+			apstatusProcessor.processCOMPILED();
+		}
+	},
+	/**
+	 * Compile time error/exception. Mainly due to illegal configuration.
+	 */
+	COMPILATION_ERROR {
+		@Override
+		public void process(AppStatusProcessor apstatusProcessor) {
+			apstatusProcessor.processCOMPILATION_ERROR();
+		}
 	};
 
 	@Override
@@ -85,5 +103,9 @@ public enum AppStatus implements SNMessageElement {
 		public void processNOT_STARTED();
 
 		public void processNO_APP();
+
+		public void processCOMPILED();
+
+		public void processCOMPILATION_ERROR();
 	}
 }
