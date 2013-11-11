@@ -26,14 +26,13 @@ import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecifier;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
+import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
-import edu.mit.streamjit.impl.distributed.common.SNException;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
-import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
@@ -148,17 +147,22 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 					Blob b = bf.makeBlob(workerset, blobConfigs, 1, drainData);
 					blobSet.add(b);
 				} catch (Exception ex) {
-					Token blobID = Utils.getblobID(workerset);
 					try {
 						streamNode.controllerConnection
-								.writeObject(new SNException.MakeBlobException(
-										blobID));
+								.writeObject(AppStatus.COMPILATION_ERROR);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
 					return null;
 				}
 			}
+
+			try {
+				streamNode.controllerConnection.writeObject(AppStatus.COMPILED);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
 			return blobSet.build();
 		} else
 			return null;
