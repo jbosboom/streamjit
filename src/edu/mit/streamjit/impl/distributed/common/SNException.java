@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.distributed.common;
 
-import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 
 public class SNException implements SNMessageElement {
