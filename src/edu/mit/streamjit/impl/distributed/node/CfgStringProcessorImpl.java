@@ -75,14 +75,28 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 			Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
 			ImmutableSet<Blob> blobSet = getBlobs(cfg, staticConfig, drainData);
 			if (blobSet != null) {
+				try {
+					streamNode.controllerConnection
+							.writeObject(AppStatus.COMPILED);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 
 				Map<Token, TCPConnectionInfo> conInfoMap = (Map<Token, TCPConnectionInfo>) cfg
 						.getExtraData(GlobalConstants.CONINFOMAP);
 
 				streamNode.setBlobsManager(new BlobsManagerImpl(blobSet,
 						conInfoMap, streamNode, conProvider));
-			} else
+			} else {
+				try {
+					streamNode.controllerConnection
+							.writeObject(AppStatus.COMPILATION_ERROR);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+
 				System.out.println("Couldn't get the blobset....");
+			}
 		}
 	}
 
@@ -147,20 +161,8 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 					Blob b = bf.makeBlob(workerset, blobConfigs, 1, drainData);
 					blobSet.add(b);
 				} catch (Exception ex) {
-					try {
-						streamNode.controllerConnection
-								.writeObject(AppStatus.COMPILATION_ERROR);
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
 					return null;
 				}
-			}
-
-			try {
-				streamNode.controllerConnection.writeObject(AppStatus.COMPILED);
-			} catch (IOException e) {
-				e.printStackTrace();
 			}
 
 			return blobSet.build();
