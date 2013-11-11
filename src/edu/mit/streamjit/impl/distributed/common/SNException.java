@@ -26,22 +26,10 @@ public class SNException implements SNMessageElement {
 		}
 	}
 
-	public static final class MakeBlobException extends SNException {
-		private static final long serialVersionUID = 1L;
-
-		public final Token blobID;
-
-		public MakeBlobException(Token blobID) {
-			this.blobID = blobID;
-		}
-	}
-
 	public interface SNExceptionProcessor {
 
 		public void process(SNException ex);
 
 		public void process(AddressBindException abEx);
-
-		public void process(MakeBlobException mbEx);
 	}
 }
