@@ -4,11 +4,14 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
+import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
 import edu.mit.streamjit.util.MethodHandlePhaser;
 import java.lang.invoke.MethodHandle;
@@ -16,10 +19,12 @@ import java.lang.invoke.MethodHandleProxies;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.SwitchPoint;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
-import java.util.NavigableSet;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Phaser;
 
 /**
@@ -54,11 +59,40 @@ public class Compiler2BlobHost implements Blob {
 	private final ImmutableSortedSet<Token> inputTokens, outputTokens;
 	private final MethodHandle initCode;
 	private final ImmutableList<MethodHandle> steadyStateCode;
-	private final ImmutableMap<Token, Integer> tokenInitSchedule, tokenSteadyStateSchedule;
-	private final ImmutableMap<Token, ConcreteStorage> tokenInitStorage, tokenSteadyStateStorage;
-	private ImmutableList<Runnable> migrationInstructions;
 	private final ImmutableList<MethodHandle> storageAdjusts;
+	/**
+	 * Instructions to load items for the init schedule.  unload() will
+	 * unload all items, as the init schedule only runs if all reads can
+	 * be satisfied.
+	 */
+	public ImmutableList<ReadInstruction> initReadInstructions;
+	/**
+	 * Instructions to write output from the init schedule.
+	 */
+	public ImmutableList<WriteInstruction> initWriteInstructions;
+	/**
+	 * Instructions to move items from init storage to steady-state storage.
+	 */
+	public ImmutableList<Runnable> migrationInstructions;
+	/**
+	 * Instructions to load items for the steady-state schedule.  unload()
+	 * will only unload items loaded by load(); the drain instructions will
+	 * retrieve any unconsumed items in the storage.
+	 */
+	public final ImmutableList<ReadInstruction> readInstructions;
+	/**
+	 * Instructions to write output from the steady-state schedule.
+	 */
+	public final ImmutableList<WriteInstruction> writeInstructions;
+	/**
+	 * Instructions to extract items from steady-state storage for transfer
+	 * to a DrainData object.  For input storage, this only extracts
+	 * unconsumed items (items at live indices except the last throughput
+	 * indices, which are covered by the read instructions' unload()).
+	 */
+	public final ImmutableList<DrainInstruction> drainInstructions;
 	/* provided by the host */
+	private final ImmutableMap<Token, Integer> minimumBufferCapacity;
 	private ImmutableMap<Token, Buffer> buffers;
 	private final ImmutableList<Runnable> coreCode;
 	private final SwitchPoint sp1 = new SwitchPoint(), sp2 = new SwitchPoint();
@@ -70,23 +104,37 @@ public class Compiler2BlobHost implements Blob {
 			ImmutableSortedSet<Token> outputTokens,
 			MethodHandle initCode,
 			ImmutableList<MethodHandle> steadyStateCode,
-			ImmutableMap<Token, Integer> tokenInitSchedule,
-			ImmutableMap<Token, Integer> tokenSteadyStateSchedule,
-			ImmutableMap<Token, ConcreteStorage> tokenInitStorage,
-			ImmutableMap<Token, ConcreteStorage> tokenSteadyStateStorage,
-			ImmutableList<Runnable> migrationInstructions,
-			ImmutableList<MethodHandle> storageAdjusts) {
+			ImmutableList<MethodHandle> storageAdjusts,
+			List<ReadInstruction> initReadInstructions,
+			List<WriteInstruction> initWriteInstructions,
+			List<Runnable> migrationInstructions,
+			List<ReadInstruction> readInstructions,
+			List<WriteInstruction> writeInstructions,
+			List<DrainInstruction> drainInstructions) {
 		this.workers = workers;
 		this.inputTokens = inputTokens;
 		this.outputTokens = outputTokens;
 		this.initCode = initCode;
 		this.steadyStateCode = steadyStateCode;
-		this.tokenInitSchedule = tokenInitSchedule;
-		this.tokenSteadyStateSchedule = tokenSteadyStateSchedule;
-		this.tokenInitStorage = tokenInitStorage;
-		this.tokenSteadyStateStorage = tokenSteadyStateStorage;
-		this.migrationInstructions = migrationInstructions;
 		this.storageAdjusts = storageAdjusts;
+		this.initReadInstructions = ImmutableList.copyOf(initReadInstructions);
+		this.initWriteInstructions = ImmutableList.copyOf(initWriteInstructions);
+		this.migrationInstructions = ImmutableList.copyOf(migrationInstructions);
+		this.readInstructions = ImmutableList.copyOf(readInstructions);
+		this.writeInstructions = ImmutableList.copyOf(writeInstructions);
+		this.drainInstructions = ImmutableList.copyOf(drainInstructions);
+
+		List<Map<Token, Integer>> capacityRequirements = new ArrayList<>();
+		for (ReadInstruction i : Iterables.concat(this.initReadInstructions, this.readInstructions))
+			capacityRequirements.add(i.getMinimumBufferCapacity());
+		for (WriteInstruction i : Iterables.concat(this.initWriteInstructions, this.writeInstructions))
+			capacityRequirements.add(i.getMinimumBufferCapacity());
+		this.minimumBufferCapacity = CollectionUtils.<Token, Integer>union(new Maps.EntryTransformer<Token, List<Integer>, Integer>() {
+			@Override
+			public Integer transformEntry(Token key, List<Integer> value) {
+				return Collections.max(value);
+			}
+		}, capacityRequirements);
 
 		MethodHandle mainLoop = MAIN_LOOP.bindTo(this),
 				doInit = DO_INIT.bindTo(this),
@@ -119,11 +167,9 @@ public class Compiler2BlobHost implements Blob {
 
 	@Override
 	public int getMinimumBufferCapacity(Token token) {
-		if (inputTokens.contains(token))
-			return Math.max(tokenInitSchedule.get(token), tokenSteadyStateSchedule.get(token));
-		if (outputTokens.contains(token))
-			return 1;
-		throw new IllegalArgumentException(token.toString()+" not an input or output of this blob");
+		if (!inputTokens.contains(token) && !outputTokens.contains(token))
+			throw new IllegalArgumentException(token.toString()+" not an input or output of this blob");
+		return minimumBufferCapacity.get(token);
 	}
 
 	@Override
@@ -138,6 +184,11 @@ public class Compiler2BlobHost implements Blob {
 			builder.put(t, b);
 		}
 		this.buffers = builder.build();
+
+		for (ReadInstruction i : Iterables.concat(this.initReadInstructions, this.readInstructions))
+			i.init(this.buffers);
+		for (WriteInstruction i : Iterables.concat(this.initWriteInstructions, this.writeInstructions))
+			i.init(this.buffers);
 	}
 
 	@Override
@@ -169,29 +220,17 @@ public class Compiler2BlobHost implements Blob {
 			throw ex;
 		}
 		barrier.arriveAndAwaitAdvance();
+		System.out.println("looped "+System.currentTimeMillis());
 	}
 
 	private void doInit() throws Throwable {
-		//Fill inputs, or drain.  We read into the map, only committing into
-		//ConcreteStorage after all reads complete.
-		Map<Token, Object[]> initData = new HashMap<>();
-		for (Token t : inputTokens) {
-			int items = tokenInitSchedule.get(t);
-			Buffer b = buffers.get(t);
-			Object[] data = new Object[items];
-			while (!b.readAll(data))
+		for (int i = 0; i < initReadInstructions.size(); ++i) {
+			ReadInstruction inst = initReadInstructions.get(i);
+			while (!inst.load())
 				if (isDraining()) {
-					doDrain(/* TODO liveness */);
+					doDrain(/* TODO liveness: initReadInstructions.subList(0, i) */);
 					return;
 				}
-			initData.put(t, data);
-		}
-		for (Token t : inputTokens) {
-			Object[] data = initData.get(t);
-			ConcreteStorage storage = tokenInitStorage.get(t);
-			MethodHandle mh = storage.writeHandle();
-			for (int i = 0; i < data.length; ++i)
-				mh.invokeExact(i, data[i]);
 		}
 
 		try {
@@ -201,77 +240,85 @@ public class Compiler2BlobHost implements Blob {
 			throw ex;
 		}
 
-		//Write outputs, if any.
-		for (Token t : outputTokens) {
-			int items = tokenInitSchedule.get(t);
-			if (items == 0)
-				continue;
-			ConcreteStorage storage = tokenInitStorage.get(t);
-			MethodHandle mh = storage.readHandle();
-			Buffer b = buffers.get(t);
-			Object[] data = new Object[items];
-			for (int i = 0; i < data.length; ++i)
-				data[i] = mh.invokeExact(i);
-			int written = 0;
-			while (written != data.length)
-				written += b.write(data, written, data.length-written);
-		}
+		for (WriteInstruction inst : initWriteInstructions)
+			inst.run();
 
 		for (Runnable r : migrationInstructions)
 			r.run();
+
+		//Show the GC we won't use these anymore.
+		initReadInstructions = null;
+		initWriteInstructions = null;
 		migrationInstructions = null;
 
 		SwitchPoint.invalidateAll(new SwitchPoint[]{sp1});
 	}
 
 	private void doAdjust() throws Throwable {
-		//Write outputs.
-		for (Token t : outputTokens) {
-			int items = tokenSteadyStateSchedule.get(t);
-			if (items == 0)
-				continue;
-			ConcreteStorage storage = tokenSteadyStateStorage.get(t);
-			MethodHandle mh = storage.readHandle();
-			Buffer b = buffers.get(t);
-			Object[] data = new Object[items];
-			for (int i = 0; i < data.length; ++i)
-				data[i] = mh.invokeExact(i);
-			int written = 0;
-			while (written != data.length)
-				written += b.write(data, written, data.length-written);
+		System.out.println("begin adjust");
+		for (int i = 0; i < readInstructions.size(); ++i) {
+			ReadInstruction inst = readInstructions.get(i);
+			System.out.println("reading "+inst);
+			while (!inst.load())
+				if (isDraining()) {
+					doDrain(/* TODO liveness: readInstructions.subList(0, i) */);
+					System.out.println("returning after draining");
+					return;
+				}
+			System.out.println("got read "+inst);
+		}
+
+		for (WriteInstruction inst : writeInstructions) {
+			System.out.println("writing "+inst);
+			inst.run();
+			System.out.println("got write "+inst);
 		}
 
 		for (MethodHandle h : storageAdjusts)
 			h.invokeExact();
-
-		//Fill inputs, or drain.
-		Map<Token, Object[]> inputData = new HashMap<>();
-		for (Token t : inputTokens) {
-			int items = tokenSteadyStateSchedule.get(t);
-			Buffer b = buffers.get(t);
-			Object[] data = new Object[items];
-			while (!b.readAll(data))
-				if (isDraining()) {
-					doDrain(/* TODO liveness */);
-					return;
-				}
-			inputData.put(t, data);
-		}
-		for (Token t : inputTokens) {
-			Object[] data = inputData.get(t);
-			ConcreteStorage storage = tokenSteadyStateStorage.get(t);
-			MethodHandle mh = storage.writeHandle();
-			for (int i = 0; i < data.length; ++i)
-				mh.invokeExact(i, data[i]);
-		}
+		System.out.println("end adjust");
 	}
 
 	private void doDrain() {
+		System.out.println("begin drain");
 		//TODO: actually implement this (live items in ConcreteStorage + uncommitted reads)
+		SwitchPoint.invalidateAll(new SwitchPoint[]{sp1, sp2});
 		drainCallback.run();
+		System.out.println("end drain");
 	}
 
 	private boolean isDraining() {
 		return drainCallback != null;
+	}
+
+	public static interface ReadInstruction {
+		public void init(Map<Token, Buffer> buffers);
+		public Map<Token, Integer> getMinimumBufferCapacity();
+		/**
+		 * Loads data items from a Buffer into ConcreteStorage.  Returns true
+		 * if the load was successful.  This operation is atomic; either all the
+		 * data items are loaded (and load() returns true), or none are and it
+		 * returns false.
+		 * @return true iff the load succeeded.
+		 */
+		public boolean load();
+		/**
+		 * Retrieves data items from a ConcreteStorage.  To be called only after
+		 * load() returns true, before executing a steady-state iteration.  This
+		 * method only retrieves items loaded by load(); a drain instruction
+		 * will retrieve other data.
+		 * @return
+		 */
+		public Map<Token, Object[]> unload();
+	}
+
+	public static interface WriteInstruction extends Runnable {
+		public void init(Map<Token, Buffer> buffers);
+		public Map<Token, Integer> getMinimumBufferCapacity();
+	}
+
+	public static interface DrainInstruction extends Callable<Map<Token, Object[]>> {
+		@Override
+		public Map<Token, Object[]> call();
 	}
 }

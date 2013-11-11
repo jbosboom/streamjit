@@ -20,11 +20,15 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.compiler.Schedule;
+import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.DrainInstruction;
+import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.ReadInstruction;
+import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.WriteInstruction;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
@@ -82,25 +86,16 @@ public class Compiler2 {
 	 */
 	private MethodHandle initCode;
 	/**
-	 * The number of elements to read or write from Buffers during the init
-	 * schedule.
-	 */
-	private ImmutableMap<Token, Integer> tokenInitSchedule;
-	/**
 	 * Code to run the steady state schedule.  The blob host takes care of
 	 * filling/flushing buffers, adjusting storage and the global barrier.
 	 */
 	private ImmutableList<MethodHandle> steadyStateCode;
-	/**
-	 * The number of elements to read or write from Buffers during one run of
-	 * the steady-state schedule.
-	 */
-	private ImmutableMap<Token, Integer> tokenSteadyStateSchedule;
-	/**
-	 * Runnables that move live items from initialization storage to
-	 * steady-state storage.
-	 */
-	private ImmutableList<Runnable> migrationInstructions;
+	private final List<ReadInstruction> initReadInstructions = new ArrayList<>();
+	private final List<WriteInstruction> initWriteInstructions = new ArrayList<>();
+	private final List<Runnable> migrationInstructions = new ArrayList<>();
+	private final List<ReadInstruction> readInstructions = new ArrayList<>();
+	private final List<WriteInstruction> writeInstructions = new ArrayList<>();
+	private final List<DrainInstruction> drainInstructions = new ArrayList<>();
 	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
 		Map<Class<?>, ActorArchetype> archetypesBuilder = new HashMap<>();
 		Map<Worker<?, ?>, WorkerActor> workerActors = new HashMap<>();
@@ -510,11 +505,9 @@ public class Compiler2 {
 		 * Create migration instructions: Runnables that move live items from
 		 * initialization to steady-state storage.
 		 */
-		ImmutableList.Builder<Runnable> migrationInstructionsBuilder = ImmutableList.builder();
 		for (Storage s : initStorage.keySet())
-			migrationInstructionsBuilder.add(new MigrationInstruction(
+			migrationInstructions.add(new MigrationInstruction(
 					s, initStorage.get(s), steadyStateStorage.get(s)));
-		this.migrationInstructions = migrationInstructionsBuilder.build();
 	}
 
 	private static final class MigrationInstruction implements Runnable {
@@ -551,7 +544,6 @@ public class Compiler2 {
 		 * blob host.
 		 */
 		Core initCore = new Core(storage, initStorage, MapConcreteStorage.factory());
-		ImmutableMap.Builder<Token, Integer> tokenInitScheduleBuilder = ImmutableMap.builder();
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
@@ -559,10 +551,14 @@ public class Compiler2 {
 				assert g.actors().size() == 1;
 				TokenActor ta = (TokenActor)g.actors().iterator().next();
 				assert g.schedule().get(ta) == 1;
-				tokenInitScheduleBuilder.put(ta.token(), initSchedule.get(g));
+				ConcreteStorage storage = initStorage.get(Iterables.getOnlyElement(ta.isInput() ? g.outputs() : g.inputs()));
+				int executions = initSchedule.get(g);
+				if (ta.isInput())
+					initReadInstructions.add(new TokenReadInstruction(g, storage, executions));
+				else
+					initWriteInstructions.add(new TokenWriteInstruction(g, storage, executions));
 			}
 		this.initCode = initCore.code();
-		this.tokenInitSchedule = tokenInitScheduleBuilder.build();
 
 		/**
 		 * Adjust output index functions to avoid overwriting items in external
@@ -593,7 +589,6 @@ public class Compiler2 {
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
 		for (int i = 0; i < maxNumCores; ++i)
 			ssCores.add(new Core(storage, steadyStateStorage, MapConcreteStorage.factory()));
-		ImmutableMap.Builder<Token, Integer> tokenSteadyStateScheduleBuilder = ImmutableMap.builder();
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				//TODO: use Configuration here
@@ -602,13 +597,130 @@ public class Compiler2 {
 				assert g.actors().size() == 1;
 				TokenActor ta = (TokenActor)g.actors().iterator().next();
 				assert g.schedule().get(ta) == 1;
-				tokenSteadyStateScheduleBuilder.put(ta.token(), externalSchedule.get(g));
+				ConcreteStorage storage = steadyStateStorage.get(Iterables.getOnlyElement(ta.isInput() ? g.outputs() : g.inputs()));
+				int executions = externalSchedule.get(g);
+				if (ta.isInput())
+					readInstructions.add(new TokenReadInstruction(g, storage, executions));
+				else
+					writeInstructions.add(new TokenWriteInstruction(g, storage, executions));
 			}
 		ImmutableList.Builder<MethodHandle> steadyStateCodeBuilder = ImmutableList.builder();
 		for (Core c : ssCores)
 			steadyStateCodeBuilder.add(c.code());
 		this.steadyStateCode = steadyStateCodeBuilder.build();
-		this.tokenSteadyStateSchedule = tokenSteadyStateScheduleBuilder.build();
+	}
+
+	/**
+	 * TODO: consider using read/write handles instead of read(), write()?
+	 * TODO: if the index function is a contiguous range and the storage is
+	 * backed by an array, allow the storage to readAll directly into its array
+	 */
+	private static final class TokenReadInstruction implements ReadInstruction {
+		private final Token token;
+		private final MethodHandle idxFxn;
+		private final ConcreteStorage storage;
+		private final int count;
+		private Buffer buffer;
+		private TokenReadInstruction(ActorGroup tokenGroup, ConcreteStorage storage, int executions) {
+			assert tokenGroup.isTokenGroup();
+			TokenActor actor = (TokenActor)Iterables.getOnlyElement(tokenGroup.actors());
+			assert actor.isInput();
+
+			this.token = actor.token();
+			this.idxFxn = Iterables.getOnlyElement(actor.outputIndexFunctions());
+			this.storage = storage;
+			this.count = executions;
+		}
+		@Override
+		public void init(Map<Token, Buffer> buffers) {
+			this.buffer = buffers.get(token);
+			if (buffer == null)
+				throw new IllegalArgumentException("no buffer for "+token);
+		}
+		@Override
+		public Map<Token, Integer> getMinimumBufferCapacity() {
+			return ImmutableMap.of(token, count);
+		}
+		@Override
+		public boolean load() {
+			Object[] data = new Object[count];
+			if (!buffer.readAll(data))
+				return false;
+			for (int i = 0; i < data.length; ++i) {
+				int idx;
+				try {
+					idx = (int)idxFxn.invokeExact(i);
+				} catch (Throwable ex) {
+					throw new AssertionError("Can't happen! Index functions should not throw", ex);
+				}
+				storage.write(idx, data[i]);
+			}
+			storage.sync();
+			return true;
+		}
+		@Override
+		public Map<Token, Object[]> unload() {
+			Object[] data = new Object[count];
+			for (int i = 0; i < data.length; ++i) {
+				int idx;
+				try {
+					idx = (int)idxFxn.invokeExact(i);
+				} catch (Throwable ex) {
+					throw new AssertionError("Can't happen! Index functions should not throw", ex);
+				}
+				data[i] = storage.read(idx);
+			}
+			return ImmutableMap.of(token, data);
+		}
+	}
+
+	/**
+	 * TODO: consider using read handles instead of read()?
+	 * TODO: if the index function is a contiguous range and the storage is
+	 * backed by an array, allow the storage to writeAll directly from its array
+	 */
+	private static final class TokenWriteInstruction implements WriteInstruction {
+		private final Token token;
+		private final MethodHandle idxFxn;
+		private final ConcreteStorage storage;
+		private final int count;
+		private Buffer buffer;
+		private TokenWriteInstruction(ActorGroup tokenGroup, ConcreteStorage storage, int executions) {
+			assert tokenGroup.isTokenGroup();
+			TokenActor actor = (TokenActor)Iterables.getOnlyElement(tokenGroup.actors());
+			assert actor.isOutput();
+
+			this.token = actor.token();
+			this.idxFxn = Iterables.getOnlyElement(actor.inputIndexFunctions());
+			this.storage = storage;
+			this.count = executions;
+		}
+		@Override
+		public void init(Map<Token, Buffer> buffers) {
+			this.buffer = buffers.get(token);
+			if (buffer == null)
+				throw new IllegalArgumentException("no buffer for "+token);
+		}
+		@Override
+		public Map<Token, Integer> getMinimumBufferCapacity() {
+			return ImmutableMap.of(token, count);
+		}
+		@Override
+		public void run() {
+			Object[] data = new Object[count];
+			for (int i = 0; i < count; ++i) {
+				int idx;
+				try {
+					idx = (int)idxFxn.invokeExact(i);
+				} catch (Throwable ex) {
+					throw new AssertionError("Can't happen! Index functions should not throw", ex);
+				}
+				data[i] = storage.read(idx);
+			}
+			for (int written = 0; written != data.length;) {
+				written += buffer.write(data, written, data.length-written);
+			}
+		}
 	}
 
 	/**
@@ -637,10 +749,9 @@ public class Compiler2 {
 			storageAdjusts.add(s.adjustHandle());
 		return new Compiler2BlobHost(workers.build(), inputTokens.build(), outputTokens.build(),
 				initCode, steadyStateCode,
-				tokenInitSchedule, tokenSteadyStateSchedule,
-				tokenInitStorage.build(), tokenSteadyStateStorage.build(),
-				migrationInstructions,
-				storageAdjusts.build());
+				storageAdjusts.build(),
+				initReadInstructions, initWriteInstructions, migrationInstructions,
+				readInstructions, writeInstructions, drainInstructions);
 	}
 
 	public static void main(String[] args) {
