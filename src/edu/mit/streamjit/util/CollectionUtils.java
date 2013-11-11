@@ -1,8 +1,13 @@
 package edu.mit.streamjit.util;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableTable;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,6 +33,55 @@ public final class CollectionUtils {
 		builder.putAll(first);
 		for (Map<? extends K, ? extends V> m : more)
 			builder.putAll(m);
+		return builder.build();
+	}
+
+	/**
+	 * Returns the union of the given maps, using the given function to merge
+	 * values for the same key.  The function is called for all keys with a list
+	 * of the values of the maps in the order the maps were given.  Maps that do
+	 * not contain the key are not represented in the list.  The function's
+	 * return value is used as the value in the union map.
+	 * @param <K> the key type of the returned map
+	 * @param <V> the value type of the returned map
+	 * @param merger the function used to merge values for the same key
+	 * @param first the first map
+	 * @param more more maps
+	 * @return a map containing all the keys in the given maps
+	 */
+	@SafeVarargs
+	public static <K, V> ImmutableMap<K, V> union(Maps.EntryTransformer<? super K, ? super List<? super V>, ? extends V> merger, Map<? extends K, ? extends V> first, Map<? extends K, ? extends V>... more) {
+		return union(merger, Lists.asList(first, more));
+	}
+
+	/**
+	 * Returns the union of the given maps, using the given function to merge
+	 * values for the same key.  The function is called for all keys with a list
+	 * of the values of the maps in the order the maps were given.  Maps that do
+	 * not contain the key are not represented in the list.  The function's
+	 * return value is used as the value in the union map.
+	 * TODO: the generics don't seem right here; I should be able to use e.g.
+	 * a Collection<Comparable> in place of List<Integer> for the middle arg.
+	 * Note that the above overload permits that and forwards to this one!
+	 * @param <K> the key type of the returned map
+	 * @param <V> the value type of the returned map
+	 * @param merger the function used to merge values for the same key
+	 * @param maps the maps
+	 * @return a map containing all the keys in the given maps
+	 */
+	public static <K, V> ImmutableMap<K, V> union(Maps.EntryTransformer<? super K, ? super List<V>, ? extends V> merger, List<? extends Map<? extends K, ? extends V>> maps) {
+		ImmutableSet.Builder<K> keys = ImmutableSet.builder();
+		for (Map<? extends K, ? extends V> m : maps)
+			keys.addAll(m.keySet());
+
+		ImmutableMap.Builder<K, V> builder = ImmutableMap.builder();
+		for (K k : keys.build()) {
+			ImmutableList.Builder<V> values = ImmutableList.builder();
+			for (Map<? extends K, ? extends V> m : maps)
+				if (m.containsKey(k))
+					values.add(m.get(k));
+			builder.put(k, merger.transformEntry(k, values.build()));
+		}
 		return builder.build();
 	}
 
