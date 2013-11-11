@@ -80,6 +80,29 @@ public final class Datasets {
 		});
 	}
 
+	public static <I> Input<I> limit(final int n, final Input<I> input) {
+		return InputBufferFactory.wrap(new InputBufferFactory() {
+			@Override
+			public Buffer createReadableBuffer(final int readerMinSize) {
+				return new AbstractReadOnlyBuffer() {
+					private Buffer buffer = InputBufferFactory.unwrap(input).createReadableBuffer(readerMinSize);
+					private int size = Math.min(buffer.size(), n);
+					@Override
+					public Object read() {
+						if (size == 0)
+							return null;
+						--size;
+						return buffer.read();
+					}
+					@Override
+					public int size() {
+						return size;
+					}
+				};
+			}
+		});
+	}
+
 	public static <I> Input<I> lazyInput(Supplier<? extends Input<? extends I>> supplier) {
 		final Supplier<? extends Input<? extends I>> memoized = Suppliers.memoize(supplier);
 		return InputBufferFactory.wrap(new InputBufferFactory() {
