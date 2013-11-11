@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -31,7 +32,6 @@ import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.SNException;
 import edu.mit.streamjit.impl.distributed.common.SNException.AddressBindException;
-import edu.mit.streamjit.impl.distributed.common.SNException.MakeBlobException;
 import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
@@ -44,7 +44,7 @@ public class StreamJitAppManager {
 
 	private ErrorProcessor ep = null;
 
-	private AppStatusProcessor ap = null;
+	private AppStatusProcessorImpl apStsPro = null;
 
 	private final Controller controller;
 
@@ -80,12 +80,13 @@ public class StreamJitAppManager {
 		this.status = AppStatus.NOT_STARTED;
 		this.exP = new SNExceptionProcessorImpl();
 		this.ep = new ErrorProcessorImpl();
-		this.ap = new AppStatusProcessorImpl();
+		this.apStsPro = new AppStatusProcessorImpl(controller.getAllNodeIDs()
+				.size());
 		controller.registerManager(this);
 		controller.newApp(app); // TODO: Find a good calling place.
 	}
 
-	public void reconfigure() {
+	public boolean reconfigure() {
 		reset();
 		Configuration.Builder builder = Configuration.builder(app
 				.getDynamicConfiguration());
@@ -116,9 +117,13 @@ public class StreamJitAppManager {
 				Token.createOverallInputToken(app.source),
 				Token.createOverallOutputToken(app.sink));
 
-		start();
-	}
+		boolean isCompiled = apStsPro.waitForCompilation();
 
+		if (isCompiled)
+			start();
+
+		return isCompiled;
+	}
 	/**
 	 * Setup the headchannel and tailchannel.
 	 * 
@@ -241,7 +246,7 @@ public class StreamJitAppManager {
 	}
 
 	public AppStatusProcessor appStatusProcessor() {
-		return ap;
+		return apStsPro;
 	}
 
 	public AppStatus getStatus() {
@@ -250,6 +255,7 @@ public class StreamJitAppManager {
 
 	private void reset() {
 		exP.exConInfos = new HashSet<>();
+		apStsPro.reset();
 	}
 
 	private void stop() {
@@ -328,11 +334,6 @@ public class StreamJitAppManager {
 				controller.send(coninfo.getDstID(), msg);
 			}
 		}
-
-		@Override
-		public void process(MakeBlobException mbEx) {
-
-		}
 	}
 
 	/**
@@ -364,6 +365,16 @@ public class StreamJitAppManager {
 	 */
 	private class AppStatusProcessorImpl implements AppStatusProcessor {
 
+		private CountDownLatch compileLatch;
+
+		private boolean compilationError;
+
+		private final int noOfnodes;
+
+		private AppStatusProcessorImpl(int noOfnodes) {
+			this.noOfnodes = noOfnodes;
+		}
+
 		@Override
 		public void processRUNNING() {
 		}
@@ -382,6 +393,31 @@ public class StreamJitAppManager {
 
 		@Override
 		public void processNO_APP() {
+		}
+
+		@Override
+		public void processCOMPILED() {
+			compileLatch.countDown();
+		}
+
+		@Override
+		public void processCOMPILATION_ERROR() {
+			this.compilationError = true;
+			compileLatch.countDown();
+		}
+
+		private void reset() {
+			compileLatch = new CountDownLatch(noOfnodes);
+			this.compilationError = false;
+		}
+
+		private boolean waitForCompilation() {
+			try {
+				compileLatch.await();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			return !this.compilationError;
 		}
 	}
 }

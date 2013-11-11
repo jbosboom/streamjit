@@ -100,20 +100,25 @@ public class OnlineTuner implements Runnable {
 					drainer.setBlobGraph(app.blobGraph);
 
 					System.err.println("Reconfiguring...");
-					manager.reconfigure();
+					if (manager.reconfigure()) {
+						Stopwatch stopwatch = new Stopwatch();
+						stopwatch.start();
+						manager.awaitForFixInput();
+						stopwatch.stop();
+						// TODO: need to check the manager's status before
+						// passing
+						// the time. Exceptions, final drain, etc may causes app
+						// to
+						// stop executing.
+						long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 
-					Stopwatch stopwatch = new Stopwatch();
-					stopwatch.start();
-					manager.awaitForFixInput();
-					stopwatch.stop();
-					// TODO: need to check the manager's status before passing
-					// the time. Exceptions, final drain, etc may causes app to
-					// stop executing.
-					long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
-
-					System.out.println("Execution time is " + time
-							+ " milli seconds");
-					tuner.writeLine(new Double(time).toString());
+						System.out.println("Execution time is " + time
+								+ " milli seconds");
+						tuner.writeLine(new Double(time).toString());
+					} else {
+						tuner.writeLine("-1");
+						continue;
+					}
 				} catch (Exception ex) {
 					System.err
 							.println("Couldn't compile the stream graph with this configuration");
@@ -131,7 +136,6 @@ public class OnlineTuner implements Runnable {
 			e.printStackTrace();
 		}
 	}
-
 	/**
 	 * Creates a new {@link Configuration} from the received python dictionary
 	 * string. This is not a good way to do.
