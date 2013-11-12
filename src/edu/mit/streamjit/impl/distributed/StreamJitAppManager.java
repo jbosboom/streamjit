@@ -50,6 +50,8 @@ public class StreamJitAppManager {
 
 	private final StreamJitApp app;
 
+	private boolean isRunning;
+
 	/**
 	 * A {@link BoundaryOutputChannel} for the head of the stream graph. If the
 	 * first {@link Worker} happened to fall outside the {@link Controller}, we
@@ -84,6 +86,7 @@ public class StreamJitAppManager {
 				.size());
 		controller.registerManager(this);
 		controller.newApp(app); // TODO: Find a good calling place.
+		isRunning = false;
 	}
 
 	public boolean reconfigure() {
@@ -119,8 +122,12 @@ public class StreamJitAppManager {
 
 		boolean isCompiled = apStsPro.waitForCompilation();
 
-		if (isCompiled)
+		if (isCompiled) {
 			start();
+			isRunning = true;
+		} else {
+			isRunning = false;
+		}
 
 		return isCompiled;
 	}
@@ -162,13 +169,16 @@ public class StreamJitAppManager {
 
 		tailChannel = new TailChannel(bufferMap.get(tailToken),
 				controller.getConProvider(), tailconInfo, "tailChannel - "
-						+ tailToken.toString(), 0, 10000);
+						+ tailToken.toString(), 0, 1000);
 	}
 
 	/**
 	 * Start the execution of the StreamJit application.
 	 */
 	private void start() {
+		if (isRunning)
+			throw new IllegalStateException("Application is already running.");
+
 		if (headChannel != null) {
 			headThread = new Thread(headChannel.getRunnable(),
 					headChannel.name());
@@ -183,6 +193,10 @@ public class StreamJitAppManager {
 					tailChannel.name());
 			tailThread.start();
 		}
+	}
+
+	public boolean isRunning() {
+		return isRunning;
 	}
 
 	public void drainingStarted(boolean isFinal) {
@@ -222,6 +236,7 @@ public class StreamJitAppManager {
 			tailChannel.reset();
 			controller.closeAll();
 		}
+		isRunning = false;
 	}
 
 	public void awaitForFixInput() throws InterruptedException {
@@ -402,6 +417,7 @@ public class StreamJitAppManager {
 
 		@Override
 		public void processCOMPILATION_ERROR() {
+			System.err.println("Compilation error");
 			this.compilationError = true;
 			compileLatch.countDown();
 		}
