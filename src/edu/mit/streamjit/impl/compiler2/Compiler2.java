@@ -530,7 +530,7 @@ public class Compiler2 {
 	}
 
 	private void createCode() {
-		String packageName = "compiler"+PACKAGE_NUMBER.getAndDecrement();
+		String packageName = "compiler"+PACKAGE_NUMBER.getAndIncrement();
 		ModuleClassLoader mcl = new ModuleClassLoader(module);
 		for (ActorArchetype archetype : archetypes)
 			archetype.generateCode(packageName, mcl);
