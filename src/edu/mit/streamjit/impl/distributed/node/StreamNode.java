@@ -35,7 +35,7 @@ public class StreamNode extends Thread {
 								// more handy.
 	private CTRLRMessageVisitor mv;
 
-	private BlobsManager blobsManager;
+	private volatile BlobsManager blobsManager;
 
 	private boolean run; // As we assume that all controller communication and
 							// the MessageElement processing is managed by
@@ -65,10 +65,7 @@ public class StreamNode extends Thread {
 	private StreamNode(Connection connection) {
 		super("Stream Node");
 		this.controllerConnection = connection;
-		this.mv = new CTRLRMessageVisitorImpl(new CommandProcessorImpl(this),
-				new RequestProcessorImpl(this),
-				new CfgStringProcessorImpl(this), new CTRLRDrainProcessorImpl(
-						this), new MiscCtrlElementProcessorImpl(this));
+		this.mv = new CTRLRMessageVisitorImpl(this);
 		this.run = true;
 	}
 
