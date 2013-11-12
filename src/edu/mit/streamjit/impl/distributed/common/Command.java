@@ -32,15 +32,6 @@ public enum Command implements CTRLRMessageElement {
 		public void process(CommandProcessor commandProcessor) {
 			commandProcessor.processSTOP();
 		}
-	},
-	/**
-	 * This command is to ask StreamNode to exit.
-	 */
-	EXIT {
-		@Override
-		public void process(CommandProcessor commandProcessor) {
-			commandProcessor.processEXIT();
-		}
 	};
 
 	@Override
@@ -64,6 +55,5 @@ public enum Command implements CTRLRMessageElement {
 
 		public void processSTOP();
 
-		public void processEXIT();
 	}
 }

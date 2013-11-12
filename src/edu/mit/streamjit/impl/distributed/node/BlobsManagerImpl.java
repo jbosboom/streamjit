@@ -538,11 +538,5 @@ public class BlobsManagerImpl implements BlobsManager {
 				e.printStackTrace();
 			}
 		}
-
-		@Override
-		public void processEXIT() {
-			System.out.println("StreamNode is Exiting...");
-			streamNode.exit();
-		}
 	}
 }

@@ -9,10 +9,10 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
 
-import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Request;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.SynchronizedTCPConnection;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
@@ -186,7 +186,7 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		public void close() {
 			try {
 				SNAgent.stopRequest();
-				connection.writeObject(Command.EXIT);
+				connection.writeObject(Request.EXIT);
 				connection.closeConnection();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
