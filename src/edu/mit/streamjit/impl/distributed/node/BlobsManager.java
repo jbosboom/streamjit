@@ -3,6 +3,8 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.util.Set;
 
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
+import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 
 /**
  * {@link BlobsManager} is the main dispatcher for all blobs. Received commands
@@ -31,6 +33,10 @@ public interface BlobsManager {
 	 * Drain the blob identified by the token.
 	 */
 	public void drain(Token blobID, boolean reqDrainData);
-	
+
 	public void reqDrainedData(Set<Token> blobSet);
+
+	public CTRLRDrainProcessor getDrainProcessor();
+
+	public CommandProcessor getCommandProcessor();
 }
