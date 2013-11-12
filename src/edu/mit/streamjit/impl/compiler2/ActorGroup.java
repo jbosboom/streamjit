@@ -12,6 +12,8 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
+import edu.mit.streamjit.api.Joiner;
+import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.util.Combinators;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -223,29 +225,25 @@ public class ActorGroup implements Comparable<ActorGroup> {
 
 			assert a.inputs().size() > 0 : a;
 			MethodHandle read;
-			if (a.inputs().size() == 1)
-				read = MethodHandles.filterArguments(storage.get(a.inputs().get(0)).readHandle(),
-						0, a.inputIndexFunctions().get(0));
-			else {
+			if (wa.worker() instanceof Joiner) {
 				MethodHandle[] table = new MethodHandle[a.inputs().size()];
 				for (int i = 0; i < a.inputs().size(); i++)
 					table[i] = MethodHandles.filterArguments(storage.get(a.inputs().get(i)).readHandle(),
 							0, a.inputIndexFunctions().get(i));
 				read = Combinators.tableswitch(table);
-			}
+			} else read = MethodHandles.filterArguments(storage.get(a.inputs().get(0)).readHandle(),
+					0, a.inputIndexFunctions().get(0));
 
 			assert a.outputs().size() > 0 : a;
 			MethodHandle write;
-			if (a.outputs().size() == 1)
-				write = MethodHandles.filterArguments(storage.get(a.outputs().get(0)).writeHandle(),
-						0, a.outputIndexFunctions().get(0));
-			else {
+			if (wa.worker() instanceof Splitter) {
 				MethodHandle[] table = new MethodHandle[a.outputs().size()];
 				for (int i = 0; i < a.outputs().size(); ++i)
 					table[i] = MethodHandles.filterArguments(storage.get(a.outputs().get(i)).writeHandle(),
 							0, a.outputIndexFunctions().get(i));
 				write = Combinators.tableswitch(table);
-			}
+			} else write = MethodHandles.filterArguments(storage.get(a.outputs().get(0)).writeHandle(),
+					0, a.outputIndexFunctions().get(0));
 
 			withRWHandlesBound.put(wa, specialized.bindTo(read).bindTo(write));
 		}
@@ -267,18 +265,20 @@ public class ActorGroup implements Comparable<ActorGroup> {
 				int subiterations = schedule.get(a);
 				for (int i = iteration*subiterations; i < (iteration+1)*subiterations; ++i) {
 					MethodHandle next = base;
-					if (a.inputs().size() == 1)
+					if (next.type().parameterType(0).equals(int.class)) {
+						assert a.inputs().size() == 1;
 						next = MethodHandles.insertArguments(next, 0, i * a.pop(0));
-					else {
+					} else {
 						int[] readIndices = new int[a.inputs().size()];
 						for (int m = 0; m < a.inputs().size(); ++m)
 							readIndices[m] = i * a.pop(m);
 						next = MethodHandles.insertArguments(next, 0, readIndices);
 					}
 
-					if (a.outputs().size() == 1)
+					if (next.type().parameterType(0).equals(int.class)) {
+						assert a.outputs().size() == 1;
 						next = MethodHandles.insertArguments(next, 0, i * a.push(0));
-					else {
+					} else {
 						int[] writeIndices = new int[a.outputs().size()];
 						for (int m = 0; m < a.outputs().size(); ++m)
 							writeIndices[m] = i * a.push(m);
