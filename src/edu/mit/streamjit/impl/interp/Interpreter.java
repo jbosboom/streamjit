@@ -408,11 +408,15 @@ public class Interpreter implements Blob {
 					Channel unsatChannel = Workers.getInputChannels(current).get(channel);
 					Buffer buffer = inputBuffers.get(unsatChannel);
 					//TODO: compute how much and use readAll()
-					Object item = buffer.read();
-					if (item != null) {
-						unsatChannel.push(item);
-						continue recurse; //try again
-					} else
+					if (buffer.size() > 0) {
+						Object item = buffer.read();
+						if (item != null) {
+							unsatChannel.push(item);
+							continue recurse; //try again
+						} else
+							return false; //Couldn't fire.
+					}
+					else
 						return false; //Couldn't fire.
 				}
 
