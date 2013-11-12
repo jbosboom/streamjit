@@ -129,7 +129,7 @@ public class Compiler2BlobHost implements Blob {
 			capacityRequirements.add(i.getMinimumBufferCapacity());
 		for (WriteInstruction i : Iterables.concat(this.initWriteInstructions, this.writeInstructions))
 			capacityRequirements.add(i.getMinimumBufferCapacity());
-		this.minimumBufferCapacity = CollectionUtils.<Token, Integer>union(new Maps.EntryTransformer<Token, List<Integer>, Integer>() {
+		this.minimumBufferCapacity = CollectionUtils.union(new Maps.EntryTransformer<Token, List<Integer>, Integer>() {
 			@Override
 			public Integer transformEntry(Token key, List<Integer> value) {
 				return Collections.max(value);

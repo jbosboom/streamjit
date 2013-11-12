@@ -44,13 +44,14 @@ public final class CollectionUtils {
 	 * return value is used as the value in the union map.
 	 * @param <K> the key type of the returned map
 	 * @param <V> the value type of the returned map
+	 * @param <X> the value type of the input map(s)
 	 * @param merger the function used to merge values for the same key
 	 * @param first the first map
 	 * @param more more maps
 	 * @return a map containing all the keys in the given maps
 	 */
 	@SafeVarargs
-	public static <K, V> ImmutableMap<K, V> union(Maps.EntryTransformer<? super K, ? super List<? super V>, ? extends V> merger, Map<? extends K, ? extends V> first, Map<? extends K, ? extends V>... more) {
+	public static <K, V, X> ImmutableMap<K, V> union(Maps.EntryTransformer<? super K, ? super List<? super X>, ? extends V> merger, Map<? extends K, ? extends X> first, Map<? extends K, ? extends X>... more) {
 		return union(merger, Lists.asList(first, more));
 	}
 
@@ -65,19 +66,20 @@ public final class CollectionUtils {
 	 * Note that the above overload permits that and forwards to this one!
 	 * @param <K> the key type of the returned map
 	 * @param <V> the value type of the returned map
+	 * @param <X> the value type of the input map(s)
 	 * @param merger the function used to merge values for the same key
 	 * @param maps the maps
 	 * @return a map containing all the keys in the given maps
 	 */
-	public static <K, V> ImmutableMap<K, V> union(Maps.EntryTransformer<? super K, ? super List<V>, ? extends V> merger, List<? extends Map<? extends K, ? extends V>> maps) {
+	public static <K, V, X> ImmutableMap<K, V> union(Maps.EntryTransformer<? super K, ? super List<X>, ? extends V> merger, List<? extends Map<? extends K, ? extends X>> maps) {
 		ImmutableSet.Builder<K> keys = ImmutableSet.builder();
-		for (Map<? extends K, ? extends V> m : maps)
+		for (Map<? extends K, ? extends X> m : maps)
 			keys.addAll(m.keySet());
 
 		ImmutableMap.Builder<K, V> builder = ImmutableMap.builder();
 		for (K k : keys.build()) {
-			ImmutableList.Builder<V> values = ImmutableList.builder();
-			for (Map<? extends K, ? extends V> m : maps)
+			ImmutableList.Builder<X> values = ImmutableList.builder();
+			for (Map<? extends K, ? extends X> m : maps)
 				if (m.containsKey(k))
 					values.add(m.get(k));
 			builder.put(k, merger.transformEntry(k, values.build()));
