@@ -91,4 +91,13 @@ public class CircularArrayConcreteStorage implements ConcreteStorage {
 	private int index(int physicalIndex) {
 		return IntMath.mod(physicalIndex + head, capacity);
 	}
+
+	public static StorageFactory factory() {
+		return new StorageFactory() {
+			@Override
+			public ConcreteStorage make(Storage storage) {
+				return new CircularArrayConcreteStorage(storage);
+			}
+		};
+	}
 }
