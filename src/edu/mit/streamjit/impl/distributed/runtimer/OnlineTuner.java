@@ -81,23 +81,25 @@ public class OnlineTuner implements Runnable {
 						continue;
 					}
 
-					boolean state = drainer.startDraining(0);
-					if (!state) {
-						System.err
-								.println("Final drain has already been called. no more tuning.");
-						tuner.writeLine("exit");
-						break;
+					if (manager.isRunning()) {
+						boolean state = drainer.startDraining(0);
+						if (!state) {
+							System.err
+									.println("Final drain has already been called. no more tuning.");
+							tuner.writeLine("exit");
+							break;
+						}
+
+						System.err.println("awaitDrainedIntrmdiate");
+						drainer.awaitDrainedIntrmdiate();
+
+						// System.err.println("awaitDrainData...");
+						drainer.awaitDrainData();
+						DrainData drainData = drainer.getDrainData();
+
+						app.drainData = drainData;
+						drainer.setBlobGraph(app.blobGraph);
 					}
-
-					System.err.println("awaitDrainedIntrmdiate");
-					drainer.awaitDrainedIntrmdiate();
-
-					// System.err.println("awaitDrainData...");
-					drainer.awaitDrainData();
-					DrainData drainData = drainer.getDrainData();
-
-					app.drainData = drainData;
-					drainer.setBlobGraph(app.blobGraph);
 
 					System.err.println("Reconfiguring...");
 					if (manager.reconfigure()) {
