@@ -107,10 +107,8 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 				Integer id = streamNode.controllerConnection.readObject();
 				streamNode.setNodeID(id);
 			} catch (ClassNotFoundException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -121,9 +119,14 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 			try {
 				streamNode.controllerConnection.writeObject(myInfo);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+		}
+
+		@Override
+		public void processEXIT() {
+			System.out.println("StreamNode is Exiting...");
+			streamNode.exit();
 		}
 	}
 }

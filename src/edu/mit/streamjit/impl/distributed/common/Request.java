@@ -52,6 +52,15 @@ public enum Request implements CTRLRMessageElement {
 		public void process(RequestProcessor reqProcessor) {
 			reqProcessor.processNodeInfo();
 		}
+	},
+	/**
+	 * This command is to ask StreamNode to exit.
+	 */
+	EXIT {
+		@Override
+		public void process(RequestProcessor reqProcessor) {
+			reqProcessor.processEXIT();
+		}
 	};
 
 	@Override
@@ -76,5 +85,7 @@ public enum Request implements CTRLRMessageElement {
 		public void processMachineID();
 
 		public void processNodeInfo();
+
+		public void processEXIT();
 	}
 }
