@@ -79,13 +79,18 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 	}
 
-	@Override
+	/**
+	 * Start and execute the blobs. This function should be responsible to
+	 * manage all CPU and I/O threads those are related to the {@link Blob}s.
+	 */
 	public void start() {
 		for (BlobExecuter be : blobExecuters)
 			be.start();
 	}
-
-	@Override
+	/**
+	 * Stop all {@link Blob}s if running. No effect if a {@link Blob} is already
+	 * stopped.
+	 */
 	public void stop() {
 		for (BlobExecuter be : blobExecuters)
 			be.stop();
@@ -393,7 +398,9 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 	}
 
-	@Override
+	/**
+	 * Drain the blob identified by the token.
+	 */
 	public void drain(Token blobID, boolean reqDrainData) {
 		for (BlobExecuter be : blobExecuters) {
 			if (be.getBlobID().equals(blobID)) {
@@ -446,7 +453,6 @@ public class BlobsManagerImpl implements BlobsManager {
 		System.out.println("****************************************");
 	}
 
-	@Override
 	public void reqDrainedData(Set<Token> blobSet) {
 		// ImmutableMap.Builder<Token, DrainData> builder = new
 		// ImmutableMap.Builder<>();
@@ -485,7 +491,8 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		@Override
 		public void process(DrainDataRequest drnDataReq) {
-			reqDrainedData(drnDataReq.blobsSet);
+			System.err.println("Not expected in current situation");
+			// reqDrainedData(drnDataReq.blobsSet);
 		}
 
 		@Override
