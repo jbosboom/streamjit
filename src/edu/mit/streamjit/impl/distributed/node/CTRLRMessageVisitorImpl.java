@@ -29,9 +29,9 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 
 	public CTRLRMessageVisitorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
-		this.rp = new RequestProcessorImpl(streamNode);
+		this.rp = new RequestProcessorImpl();
 		this.jp = new CfgStringProcessorImpl(streamNode);
-		this.miscProcessor = new MiscCtrlElementProcessorImpl(streamNode);
+		this.miscProcessor = new MiscCtrlElementProcessorImpl();
 	}
 
 	@Override
@@ -76,12 +76,6 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 			implements
 				MiscCtrlElementProcessor {
 
-		private final StreamNode streamNode;
-
-		MiscCtrlElementProcessorImpl(StreamNode streamNode) {
-			this.streamNode = streamNode;
-		}
-
 		@Override
 		public void process(NewConInfo newConInfo) {
 			// TODO
@@ -96,12 +90,6 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 	 * @since May 27, 2013
 	 */
 	public class RequestProcessorImpl implements RequestProcessor {
-
-		StreamNode streamNode;
-
-		RequestProcessorImpl(StreamNode streamNode) {
-			this.streamNode = streamNode;
-		}
 
 		@Override
 		public void processAPPStatus() {
