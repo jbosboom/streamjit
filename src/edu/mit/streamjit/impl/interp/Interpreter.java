@@ -112,7 +112,8 @@ public class Interpreter implements Blob {
 			Workers.getOutputChannels(info.upstream()).set(info.getUpstreamChannelIndex(), channel);
 			Workers.getInputChannels(info.downstream()).set(info.getDownstreamChannelIndex(), channel);
 			if (initialState != null) {
-				for (Object o : initialState.getData(info.token()))
+				ImmutableList<Object> data = initialState.getData(info.token());
+				for (Object o : data != null ? data : ImmutableList.of())
 					channel.push(o);
 			}
 		}
@@ -143,9 +144,11 @@ public class Interpreter implements Blob {
 
 				//Only fill input channels -- any existing output will be used
 				//as input in the downstream blob.
-				if (initialState != null)
-					for (Object o : initialState.getData(info.token()))
+				if (initialState != null) {
+					ImmutableList<Object> data = initialState.getData(info.token());
+					for (Object o : data != null ? data : ImmutableList.of())
 						channel.push(o);
+				}
 			}
 		}
 
