@@ -1,9 +1,12 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -11,6 +14,7 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
+import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
 import edu.mit.streamjit.util.MethodHandlePhaser;
@@ -20,12 +24,14 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.SwitchPoint;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Phaser;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The actual blob produced by a Compiler2.
@@ -98,6 +104,7 @@ public class Compiler2BlobHost implements Blob {
 	private final SwitchPoint sp1 = new SwitchPoint(), sp2 = new SwitchPoint();
 	private final Phaser barrier;
 	private volatile Runnable drainCallback;
+	private volatile DrainData drainData;
 
 	public Compiler2BlobHost(ImmutableSet<Worker<?, ?>> workers,
 			ImmutableSortedSet<Token> inputTokens,
@@ -208,8 +215,7 @@ public class Compiler2BlobHost implements Blob {
 
 	@Override
 	public DrainData getDrainData() {
-		//TODO
-		return null;
+		return drainData;
 	}
 
 	private void mainLoop(MethodHandle coreCode) throws Throwable {
@@ -227,7 +233,7 @@ public class Compiler2BlobHost implements Blob {
 			ReadInstruction inst = initReadInstructions.get(i);
 			while (!inst.load())
 				if (isDraining()) {
-					doDrain(/* TODO liveness: initReadInstructions.subList(0, i) */);
+					doDrain(initReadInstructions.subList(0, i), ImmutableList.<DrainInstruction>of());
 					return;
 				}
 		}
@@ -258,7 +264,7 @@ public class Compiler2BlobHost implements Blob {
 			ReadInstruction inst = readInstructions.get(i);
 			while (!inst.load())
 				if (isDraining()) {
-					doDrain(/* TODO liveness: readInstructions.subList(0, i) */);
+					doDrain(readInstructions.subList(0, i), drainInstructions);
 					return;
 				}
 		}
@@ -271,8 +277,57 @@ public class Compiler2BlobHost implements Blob {
 			h.invokeExact();
 	}
 
-	private void doDrain() {
-		//TODO: actually implement this (live items in ConcreteStorage + uncommitted reads)
+	/**
+	 * Extracts elements from storage and puts them in a DrainData for an
+	 * interpreter blob.
+	 * TODO: extract stateful filter state, probably with an extra
+	 * DrainInstruction method or possibly a new instruction class
+	 * @param reads read instructions whose load() completed (thus requiring
+	 * unload())
+	 * @param drains drain instructions, if we're in the steady-state, or an
+	 * empty list if we didn't complete init
+	 */
+	private void doDrain(List<ReadInstruction> reads, List<DrainInstruction> drains) {
+		List<Map<Token, Object[]>> data = new ArrayList<>(reads.size() + drains.size());
+		for (ReadInstruction i : reads)
+			data.add(i.unload());
+		for (DrainInstruction i : drains)
+			data.add(i.call());
+		ImmutableMap<Token, List<Object>> mergedData = CollectionUtils.union(new Maps.EntryTransformer<Token, List<Object[]>, List<Object>>() {
+			@Override
+			public List<Object> transformEntry(Token key, List<Object[]> value) {
+				ImmutableList.Builder<Object> builder = ImmutableList.builder();
+				for (Object[] v : value)
+					builder.addAll(Arrays.asList(v));
+				return builder.build();
+			}
+		}, data);
+		//We have to write our output; the interpreter won't do it for us.
+		Predicate<Token> isOutput = Predicates.in(getOutputs());
+		for (Map.Entry<Token, List<Object>> e : Maps.filterKeys(mergedData, isOutput).entrySet()) {
+			Buffer b = buffers.get(e.getKey());
+			Object[] d = e.getValue().toArray();
+			for (int written = 0; written < d.length;)
+				written += b.write(d, written, d.length-written);
+		}
+		DrainData forInterp = new DrainData(Maps.filterKeys(mergedData, Predicates.not(isOutput)),
+				ImmutableTable.<Integer, String, Object>of());
+
+		Interpreter.InterpreterBlobFactory interpFactory = new Interpreter.InterpreterBlobFactory();
+		Blob interp = interpFactory.makeBlob(workers, interpFactory.getDefaultConfiguration(workers), 1, forInterp);
+		interp.installBuffers(buffers);
+		Runnable interpCode = interp.getCoreCode(0);
+		final AtomicBoolean interpFinished = new AtomicBoolean();
+		interp.drain(new Runnable() {
+			@Override
+			public void run() {
+				interpFinished.set(true);
+			}
+		});
+		while (!interpFinished.get())
+			interpCode.run();
+		this.drainData = interp.getDrainData();
+
 		SwitchPoint.invalidateAll(new SwitchPoint[]{sp1, sp2});
 		drainCallback.run();
 	}

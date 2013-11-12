@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.collect.ContiguousSet;
+import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
@@ -25,6 +27,7 @@ import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
+import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.compiler.Schedule;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.DrainInstruction;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.ReadInstruction;
@@ -505,6 +508,39 @@ public class Compiler2 {
 		for (Storage s : initStorage.keySet())
 			migrationInstructions.add(new MigrationInstruction(
 					s, initStorage.get(s), steadyStateStorage.get(s)));
+
+		/**
+		 * Create drain instructions, which collect live items from steady-state
+		 * storage when draining.
+		 */
+		for (Actor a : actors) {
+			for (int i = 0; i < a.inputs().size(); ++i) {
+				Storage s = a.inputs().get(i);
+				if (s.isInternal()) continue;
+				ImmutableSortedSet<Integer> liveIndices = s.indicesLiveDuringSteadyState();
+				ImmutableSortedSet.Builder<Integer> drainableIndicesBuilder = ImmutableSortedSet.naturalOrder();
+				for (int logicalIndex = 0; ; ++logicalIndex) {
+					int physicalIndex = a.translateInputIndex(i, logicalIndex);
+					if (liveIndices.contains(physicalIndex))
+						drainableIndicesBuilder.add(physicalIndex);
+					else break; //TODO: assumes strong monotonicity. maybe needs to look at SS iteration units?
+				}
+				ImmutableSortedSet<Integer> drainableIndices = drainableIndicesBuilder.build();
+				if (drainableIndices.isEmpty()) continue;
+				//If the indices are contiguous, minimize storage by storing them as a range.
+				if (drainableIndices.last() - drainableIndices.first() + 1 == drainableIndices.size())
+					drainableIndices = ContiguousSet.create(Range.closed(drainableIndices.first(), drainableIndices.last()), DiscreteDomain.integers());
+
+				Token token;
+				if (a instanceof WorkerActor) {
+					Worker<?, ?> w = ((WorkerActor)a).worker();
+					token = a.id() == 0 ? Token.createOverallInputToken(w) :
+							new Token(Workers.getPredecessors(w).get(i), w);
+				} else
+					token = ((TokenActor)a).token();
+				drainInstructions.add(new XDrainInstruction(token, steadyStateStorage.get(s), drainableIndices));
+			}
+		}
 	}
 
 	private static final class MigrationInstruction implements Runnable {
@@ -523,6 +559,27 @@ public class Compiler2 {
 			for (int i : indicesToMigrate)
 				steady.write(i - offset, init.read(i));
 			steady.sync();
+		}
+	}
+
+	/**
+	 * The X doesn't stand for anything.  I just needed a different name.
+	 */
+	private static final class XDrainInstruction implements DrainInstruction {
+		private final Token token;
+		private final ConcreteStorage storage;
+		private final ImmutableSortedSet<Integer> indices;
+		private XDrainInstruction(Token token, ConcreteStorage storage, ImmutableSortedSet<Integer> indices) {
+			this.token = token;
+			this.storage = storage;
+			this.indices = indices;
+		}
+		@Override
+		public Map<Token, Object[]> call() {
+			Object[] data = new Object[indices.size()];
+			for (int i : indices)
+				data[i] = storage.read(i);
+			return ImmutableMap.of(token, data);
 		}
 	}
 
