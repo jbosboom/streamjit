@@ -472,9 +472,6 @@ public class Compiler2 {
 				for (int i : s.readIndices())
 					assert s.indicesLiveDuringSteadyState().contains(i) : s + ": " + i + " not in " + s.indicesLiveDuringSteadyState();
 		}
-
-		//TODO: Compute the steady-state capacities.
-		//(max(writers, rounded up) - min(readers, rounded down) + 1) * throughput
 	}
 
 	/**
