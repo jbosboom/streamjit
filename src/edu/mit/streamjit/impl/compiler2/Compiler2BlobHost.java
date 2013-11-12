@@ -220,7 +220,6 @@ public class Compiler2BlobHost implements Blob {
 			throw ex;
 		}
 		barrier.arriveAndAwaitAdvance();
-		System.out.println("looped "+System.currentTimeMillis());
 	}
 
 	private void doInit() throws Throwable {
@@ -255,36 +254,27 @@ public class Compiler2BlobHost implements Blob {
 	}
 
 	private void doAdjust() throws Throwable {
-		System.out.println("begin adjust");
 		for (int i = 0; i < readInstructions.size(); ++i) {
 			ReadInstruction inst = readInstructions.get(i);
-			System.out.println("reading "+inst);
 			while (!inst.load())
 				if (isDraining()) {
 					doDrain(/* TODO liveness: readInstructions.subList(0, i) */);
-					System.out.println("returning after draining");
 					return;
 				}
-			System.out.println("got read "+inst);
 		}
 
 		for (WriteInstruction inst : writeInstructions) {
-			System.out.println("writing "+inst);
 			inst.run();
-			System.out.println("got write "+inst);
 		}
 
 		for (MethodHandle h : storageAdjusts)
 			h.invokeExact();
-		System.out.println("end adjust");
 	}
 
 	private void doDrain() {
-		System.out.println("begin drain");
 		//TODO: actually implement this (live items in ConcreteStorage + uncommitted reads)
 		SwitchPoint.invalidateAll(new SwitchPoint[]{sp1, sp2});
 		drainCallback.run();
-		System.out.println("end drain");
 	}
 
 	private boolean isDraining() {
