@@ -160,6 +160,10 @@ public class TCPInputChannel implements BoundaryInputChannel {
 					System.out.println(Thread.currentThread().getName()
 							+ " Buffer FULL - " + obj.toString());
 				}
+				if (writer != null) {
+					writer.write("receiveData:Buffer FULL");
+					writer.write('\n');
+				}
 				try {
 					// TODO: Need to tune the sleep time.
 					Thread.sleep(100);
@@ -241,6 +245,12 @@ public class TCPInputChannel implements BoundaryInputChannel {
 								+ " finalReceive:Buffer FULL - "
 								+ obj.toString());
 					}
+
+					if (writer != null) {
+						writer.write("finalReceive:Buffer FULL");
+						writer.write('\n');
+					}
+
 					try {
 						Thread.sleep(100);
 					} catch (InterruptedException e) {
