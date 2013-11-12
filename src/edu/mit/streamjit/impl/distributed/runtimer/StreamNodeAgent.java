@@ -191,7 +191,7 @@ public abstract class StreamNodeAgent {
 	}
 
 	public void registerManager(StreamJitAppManager manager) {
-		assert manager == null : "StreamJitAppManager has already been set";
+		assert this.manager == null : "StreamJitAppManager has already been set";
 		this.manager = manager;
 	}
 
