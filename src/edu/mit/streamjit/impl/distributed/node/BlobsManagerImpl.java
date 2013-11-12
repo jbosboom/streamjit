@@ -20,6 +20,11 @@ import edu.mit.streamjit.impl.common.BlobThread;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DoDrain;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainDataRequest;
+import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
+import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
@@ -40,6 +45,10 @@ public class BlobsManagerImpl implements BlobsManager {
 	private final TCPConnectionProvider conProvider;
 	private Map<Token, TCPConnectionInfo> conInfoMap;
 
+	private final CTRLRDrainProcessor drainProcessor;
+
+	private final CommandProcessor cmdProcessor;
+
 	private final ImmutableMap<Token, Buffer> bufferMap;
 
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
@@ -48,6 +57,9 @@ public class BlobsManagerImpl implements BlobsManager {
 		this.conInfoMap = conInfoMap;
 		this.streamNode = streamNode;
 		this.conProvider = conProvider;
+
+		this.cmdProcessor = new CommandProcessorImpl(streamNode);
+		this.drainProcessor = new CTRLRDrainProcessorImpl(streamNode);
 
 		bufferMap = createBufferMap(blobSet);
 
@@ -452,4 +464,110 @@ public class BlobsManagerImpl implements BlobsManager {
 		// e.printStackTrace();
 		// }
 	}
+
+	public CTRLRDrainProcessor getDrainProcessor() {
+		return drainProcessor;
+	}
+
+	public CommandProcessor getCommandProcessor() {
+		return cmdProcessor;
+	}
+
+	/**
+	 * Implementation of {@link DrainProcessor} at {@link StreamNode} side. All
+	 * appropriate response logic to successfully perform the draining is
+	 * implemented here.
+	 * 
+	 * @author Sumanan sumanan@mit.edu
+	 * @since Jul 30, 2013
+	 */
+	public class CTRLRDrainProcessorImpl implements CTRLRDrainProcessor {
+
+		StreamNode streamNode;
+
+		public CTRLRDrainProcessorImpl(StreamNode streamNode) {
+			this.streamNode = streamNode;
+		}
+
+		@Override
+		public void process(DrainDataRequest drnDataReq) {
+			streamNode.getBlobsManager().reqDrainedData(drnDataReq.blobsSet);
+		}
+
+		@Override
+		public void process(DoDrain drain) {
+			streamNode.getBlobsManager()
+					.drain(drain.blobID, drain.reqDrainData);
+		}
+	}
+
+	/**
+	 * {@link CommandProcessor} at {@link StreamNode} side.
+	 * 
+	 * @author Sumanan sumanan@mit.edu
+	 * @since May 27, 2013
+	 */
+	public class CommandProcessorImpl implements CommandProcessor {
+		StreamNode streamNode;
+
+		public CommandProcessorImpl(StreamNode streamNode) {
+			this.streamNode = streamNode;
+		}
+
+		@Override
+		public void processSTART() {
+			BlobsManager bm = streamNode.getBlobsManager();
+			if (bm != null) {
+				bm.start();
+				long heapMaxSize = Runtime.getRuntime().maxMemory();
+				long heapSize = Runtime.getRuntime().totalMemory();
+				long heapFreeSize = Runtime.getRuntime().freeMemory();
+
+				System.out
+						.println("##############################################");
+
+				System.out.println("heapMaxSize = " + heapMaxSize / 1e6);
+				System.out.println("heapSize = " + heapSize / 1e6);
+				System.out.println("heapFreeSize = " + heapFreeSize / 1e6);
+				System.out.println("StraemJit app is running...");
+				System.out
+						.println("##############################################");
+
+			} else {
+				// TODO: Need to handle this case. Need to send the error
+				// message to
+				// the controller.
+				System.out
+						.println("Couldn't start the blobs...BlobsManager is null.");
+			}
+		}
+
+		@Override
+		public void processSTOP() {
+			BlobsManager bm = streamNode.getBlobsManager();
+			if (bm != null) {
+				bm.stop();
+				System.out.println("StraemJit app stopped...");
+				try {
+					streamNode.controllerConnection
+							.writeObject(AppStatus.STOPPED);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			} else {
+				// TODO: Need to handle this case. Need to send the error
+				// message to
+				// the controller.
+				System.out
+						.println("Couldn't stop the blobs...BlobsManager is null.");
+			}
+		}
+
+		@Override
+		public void processEXIT() {
+			System.out.println("StreamNode is Exiting...");
+			streamNode.exit();
+		}
+	}
+
 }
