@@ -255,12 +255,12 @@ public abstract class AbstractDrainer {
 		}
 
 		for (Token t : drainData.getData().keySet()) {
-			System.out.print("Aggregated data: " + t.toString() + " - "
-					+ drainData.getData().get(t).size() + " - ");
-			for (Object o : drainData.getData().get(t)) {
-				System.out.print(o.toString() + ", ");
-			}
-			System.out.print('\n');
+			// System.out.print("Aggregated data: " + t.toString() + " - "
+			// + drainData.getData().get(t).size() + " - ");
+			// for (Object o : drainData.getData().get(t)) {
+			// System.out.print(o.toString() + ", ");
+			// }
+			// System.out.print('\n');
 
 			drainDataStatistics.get(t).add(drainData.getData().get(t).size());
 		}
