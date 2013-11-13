@@ -487,7 +487,7 @@ public class Compiler2 {
 		ImmutableMap.Builder<Storage, ConcreteStorage> initStorageBuilder = ImmutableMap.builder();
 		for (Storage s : storage)
 			if (!s.isInternal())
-				initStorageBuilder.put(s, MapConcreteStorage.factory().make(s));
+				initStorageBuilder.put(s, CircularArrayConcreteStorage.factory().make(s));
 		this.initStorage = initStorageBuilder.build();
 
 		//TODO: pack in initial state here
@@ -500,7 +500,7 @@ public class Compiler2 {
 		ImmutableMap.Builder<Storage, ConcreteStorage> ssStorageBuilder = ImmutableMap.builder();
 		for (Storage s : storage)
 			if (!s.isInternal())
-				ssStorageBuilder.put(s, MapConcreteStorage.factory().make(s));
+				ssStorageBuilder.put(s, CircularArrayConcreteStorage.factory().make(s));
 		this.steadyStateStorage = ssStorageBuilder.build();
 
 		/**
@@ -599,7 +599,7 @@ public class Compiler2 {
 		 * time we build the token init schedule information required by the
 		 * blob host.
 		 */
-		Core initCore = new Core(storage, initStorage, MapConcreteStorage.factory());
+		Core initCore = new Core(storage, initStorage, CircularArrayConcreteStorage.factory());
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
@@ -644,7 +644,7 @@ public class Compiler2 {
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
 		for (int i = 0; i < maxNumCores; ++i)
-			ssCores.add(new Core(storage, steadyStateStorage, MapConcreteStorage.factory()));
+			ssCores.add(new Core(storage, steadyStateStorage, CircularArrayConcreteStorage.factory()));
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				allocateGroup(g, ssCores);
