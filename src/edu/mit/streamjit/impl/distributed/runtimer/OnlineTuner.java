@@ -29,17 +29,19 @@ import edu.mit.streamjit.util.json.Jsonifiers;
  * @since Oct 8, 2013
  */
 public class OnlineTuner implements Runnable {
-	AbstractDrainer drainer;
-	StreamJitAppManager manager;
-	OpenTuner tuner;
-	StreamJitApp app;
+	private final AbstractDrainer drainer;
+	private final StreamJitAppManager manager;
+	private final OpenTuner tuner;
+	private final StreamJitApp app;
+	private final boolean needTermination;
 
 	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
-			StreamJitApp app) {
+			StreamJitApp app, boolean needTermination) {
 		this.drainer = drainer;
 		this.manager = manager;
 		this.app = app;
 		this.tuner = new TCPTuner();
+		this.needTermination = needTermination;
 	}
 
 	@Override
@@ -66,7 +68,10 @@ public class OnlineTuner implements Runnable {
 				if (pythonDict.equals("Completed")) {
 					String finalConfg = tuner.readLine();
 					System.out.println("Tuning finished");
-					drainer.startDraining(1);
+					if (needTermination)
+						drainer.startDraining(1);
+					else
+						runForever(finalConfg);
 					break;
 				}
 
@@ -138,6 +143,55 @@ public class OnlineTuner implements Runnable {
 			e.printStackTrace();
 		}
 	}
+
+	/**
+	 * TODO: Just copied from the run method. Try to avoid duplicate code.
+	 * 
+	 * @param pythonDict
+	 */
+	private void runForever(String pythonDict) {
+		System.out.println("runForever");
+		Configuration config = rebuildConfiguraion(pythonDict,
+				app.blobConfiguration);
+		try {
+			if (!app.newConfiguration(config)) {
+				System.err.println("Invalid final configuration.");
+				return;
+			}
+
+			if (manager.isRunning()) {
+				boolean state = drainer.startDraining(0);
+				if (!state) {
+					System.err
+							.println("Final drain has already been called. no more tuning.");
+					return;
+				}
+
+				System.err.println("awaitDrainedIntrmdiate");
+				drainer.awaitDrainedIntrmdiate();
+
+				// System.err.println("awaitDrainData...");
+				drainer.awaitDrainData();
+				DrainData drainData = drainer.getDrainData();
+
+				app.drainData = drainData;
+				drainer.setBlobGraph(app.blobGraph);
+			}
+
+			System.err.println("Reconfiguring...");
+			boolean var = manager.reconfigure();
+			if (var) {
+				System.out
+						.println("Application is running with the final configuration.");
+			} else {
+				System.err.println("Invalid final configuration.");
+			}
+		} catch (Exception ex) {
+			System.err
+					.println("Couldn't compile the stream graph with this configuration");
+		}
+	}
+
 	/**
 	 * Creates a new {@link Configuration} from the received python dictionary
 	 * string. This is not a good way to do.
