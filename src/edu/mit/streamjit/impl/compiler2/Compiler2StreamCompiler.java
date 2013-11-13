@@ -51,6 +51,6 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 
 	@Override
 	public String toString() {
-		return String.format("CompilerStreamCompiler (%d cores %d mult)", maxNumCores, multiplier);
+		return String.format("Compiler2StreamCompiler (%d cores %d mult)", maxNumCores, multiplier);
 	}
 }
