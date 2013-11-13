@@ -61,7 +61,7 @@ public class OnlineTuner implements Runnable {
 			tuner.writeLine(s);
 
 			System.out.println("New tune run.............");
-			while (manager.getStatus() != AppStatus.STOPPED) {
+			while (true) {
 				String pythonDict = tuner.readLine();
 				if (pythonDict == null)
 					break;
