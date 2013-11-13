@@ -32,7 +32,8 @@ public final class Compiler2BlobFactory implements BlobFactory {
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
 		Configuration.Builder builder = Configuration.builder();
 		for (Worker<?, ?> w : workers)
-			builder.addParameter(Configuration.SwitchParameter.create("fuse"+Workers.getIdentifier(w), true));
+			if (!Workers.isPeeking(w))
+				builder.addParameter(Configuration.SwitchParameter.create("fuse"+Workers.getIdentifier(w), true));
 		//One IntParameter for each worker (possibly they're all separate nodes)
 		//and each core to determine how many multiples to put on that core.
 		for (Worker<?, ?> w : workers)
