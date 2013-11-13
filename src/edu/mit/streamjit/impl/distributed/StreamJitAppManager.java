@@ -169,7 +169,7 @@ public class StreamJitAppManager {
 
 		tailChannel = new TailChannel(bufferMap.get(tailToken),
 				controller.getConProvider(), tailconInfo, "tailChannel - "
-						+ tailToken.toString(), 0, 1000);
+						+ tailToken.toString(), 0, 100000);
 	}
 
 	/**
@@ -273,8 +273,10 @@ public class StreamJitAppManager {
 		apStsPro.reset();
 	}
 
-	private void stop() {
-
+	public void stop() {
+		this.status = AppStatus.STOPPED;
+		tailChannel.reset();
+		controller.closeAll();
 	}
 
 	/**
