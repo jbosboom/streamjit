@@ -63,4 +63,9 @@ public class Core {
 	public ImmutableMap<Storage, ConcreteStorage> localStorage() {
 		return allStorage;
 	}
+
+	@Override
+	public String toString() {
+		return allocations.toString();
+	}
 }
