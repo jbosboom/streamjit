@@ -66,25 +66,10 @@ public class OnlineTuner implements Runnable {
 				if (pythonDict == null)
 					break;
 
+				// At the end of the tuning, Opentuner will send "Completed"
+				// msg. This means no more tuning.
 				if (pythonDict.equals("Completed")) {
-					String finalConfg = tuner.readLine();
-					System.out.println("Tuning finished");
-					saveFinalConfg(finalConfg);
-					if (needTermination) {
-						if (manager.isRunning()) {
-							drainer.startDraining(1);
-							System.err.println("awaitDrainedIntrmdiate");
-							try {
-								drainer.awaitDrainedIntrmdiate();
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-							}
-						} else {
-							manager.stop();
-						}
-					} else {
-						runForever(finalConfg);
-					}
+					handleTermination();
 					break;
 				}
 
@@ -158,7 +143,34 @@ public class OnlineTuner implements Runnable {
 	}
 
 	/**
-	 * TODO: Just copied from the run method. Try to avoid duplicate code.
+	 * Just excerpted from run() method for better readability.
+	 * 
+	 * @throws IOException
+	 */
+	private void handleTermination() throws IOException {
+		String finalConfg = tuner.readLine();
+		System.out.println("Tuning finished");
+		saveFinalConfg(finalConfg);
+		if (needTermination) {
+			if (manager.isRunning()) {
+				drainer.startDraining(1);
+				System.err.println("awaitDrainedIntrmdiate");
+				try {
+					drainer.awaitDrainedIntrmdiate();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			} else {
+				manager.stop();
+			}
+		} else {
+			runForever(finalConfg);
+		}
+	}
+
+	/**
+	 * TODO: Just copied from the run method. Code duplication between this
+	 * method and the run() method. Try to avoid duplicate code.
 	 * 
 	 * @param pythonDict
 	 */
@@ -259,6 +271,13 @@ public class OnlineTuner implements Runnable {
 		return builder.build();
 	}
 
+	/**
+	 * TODO: This method is totally unnecessary if we remove the usage of the
+	 * name "class" in side {@link Configuration}.
+	 * 
+	 * @param cfg
+	 * @return
+	 */
 	private String getConfigurationString(Configuration cfg) {
 		String s = Jsonifiers.toJson(cfg).toString();
 		String s1 = s.replaceAll("__class__", "ttttt");
