@@ -105,9 +105,9 @@ public class OnlineTuner implements Runnable {
 						DrainData drainData = drainer.getDrainData();
 
 						app.drainData = drainData;
-						drainer.setBlobGraph(app.blobGraph);
 					}
 
+					drainer.setBlobGraph(app.blobGraph);
 					System.err.println("Reconfiguring...");
 					if (manager.reconfigure()) {
 						Stopwatch stopwatch = new Stopwatch();
