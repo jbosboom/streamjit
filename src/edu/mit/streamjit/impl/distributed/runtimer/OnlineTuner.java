@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -68,6 +69,7 @@ public class OnlineTuner implements Runnable {
 				if (pythonDict.equals("Completed")) {
 					String finalConfg = tuner.readLine();
 					System.out.println("Tuning finished");
+					saveFinalConfg(finalConfg);
 					if (needTermination)
 						drainer.startDraining(1);
 					else
@@ -252,5 +254,24 @@ public class OnlineTuner implements Runnable {
 		String s2 = s1.replaceAll("class", "javaClassPath");
 		String s3 = s2.replaceAll("ttttt", "__class__");
 		return s3;
+	}
+
+	/**
+	 * @param finalCfg
+	 *            : Python dictionary
+	 */
+	private void saveFinalConfg(String finalCfg) {
+		Configuration config = rebuildConfiguraion(finalCfg,
+				app.blobConfiguration);
+		String json = config.toJson();
+		try {
+			FileWriter writer = new FileWriter(
+					String.format("%s.cfg", app.name), false);
+			writer.write(json);
+			writer.flush();
+			writer.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }
