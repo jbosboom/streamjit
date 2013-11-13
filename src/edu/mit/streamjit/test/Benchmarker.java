@@ -28,6 +28,7 @@ import edu.mit.streamjit.impl.common.CheckVisitor;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
+import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.util.CountingExecutorCompletionService;
@@ -198,8 +199,9 @@ public final class Benchmarker {
 //				benchmark.instantiate().visit(new CheckVisitor());
 
 			StreamCompiler[] compilers = {
-				new DebugStreamCompiler(),
-				new CompilerStreamCompiler(),
+//				new DebugStreamCompiler(),
+//				new CompilerStreamCompiler(),
+				new Compiler2StreamCompiler(),
 //				new CompilerStreamCompiler().multiplier(10),
 //				new CompilerStreamCompiler().multiplier(100),
 //				new CompilerStreamCompiler().multiplier(1000),
