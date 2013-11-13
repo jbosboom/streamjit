@@ -197,8 +197,13 @@ public class Interpreter implements Blob {
 		ImmutableMap.Builder<Channel<?>, Buffer> inputBufferBuilder = ImmutableMap.builder(), outputBufferBuilder = ImmutableMap.builder();
 		for (IOInfo info : ioinfo) {
 			Buffer buffer = buffers.get(info.token());
-			if (buffer != null)
-				(info.isInput() ? inputBufferBuilder : outputBufferBuilder).put(info.channel(), buffer);
+			if (buffer == null)
+				throw new IllegalArgumentException("no buffer for "+info.token());
+			if (buffer.capacity() < getMinimumBufferCapacity(info.token()))
+				throw new IllegalArgumentException(String.format(
+						"buffer for %s has capacity %d, but minimum is %d",
+						info.token(), buffer.capacity(), getMinimumBufferCapacity(info.token())));
+			(info.isInput() ? inputBufferBuilder : outputBufferBuilder).put(info.channel(), buffer);
 		}
 		this.inputBuffers = inputBufferBuilder.build();
 		this.outputBuffers = outputBufferBuilder.build();

@@ -188,6 +188,10 @@ public class Compiler2BlobHost implements Blob {
 			Buffer b = buffers.get(t);
 			if (b == null)
 				throw new IllegalArgumentException("no buffer for token "+t);
+			if (b.capacity() < getMinimumBufferCapacity(t))
+				throw new IllegalArgumentException(String.format(
+						"buffer for %s has capacity %d, but minimum is %d",
+						t, b.capacity(), getMinimumBufferCapacity(t)));
 			builder.put(t, b);
 		}
 		this.buffers = builder.build();
