@@ -158,7 +158,10 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Buffer tail = OutputBufferFactory.unwrap(output).createWritableBuffer(
 				1000);
 
-		if (input instanceof ManualInput)
+		boolean needTermination;
+
+		if (input instanceof ManualInput) {
+			needTermination = false;
 			InputBufferFactory
 					.setManualInputDelegate(
 							(ManualInput<I>) input,
@@ -169,7 +172,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 									drainer.startDraining(2);
 								}
 							});
-		else {
+		} else {
+			needTermination = true;
 			head = new HeadBuffer(head, drainer);
 		}
 
@@ -186,7 +190,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		CompiledStream cs = new DistributedCompiledStream(drainer);
 
 		if (app.blobConfiguration != null) {
-			OnlineTuner tuner = new OnlineTuner(drainer, manager, app);
+			OnlineTuner tuner = new OnlineTuner(drainer, manager, app,
+					needTermination);
 			new Thread(tuner, "OnlineTuner").start();
 		}
 		return cs;
