@@ -487,7 +487,7 @@ public class Compiler2 {
 		ImmutableMap.Builder<Storage, ConcreteStorage> initStorageBuilder = ImmutableMap.builder();
 		for (Storage s : storage)
 			if (!s.isInternal())
-				initStorageBuilder.put(s, CircularArrayConcreteStorage.factory().make(s));
+				initStorageBuilder.put(s, MapConcreteStorage.factory().make(s));
 		this.initStorage = initStorageBuilder.build();
 
 		//TODO: pack in initial state here
@@ -599,7 +599,7 @@ public class Compiler2 {
 		 * time we build the token init schedule information required by the
 		 * blob host.
 		 */
-		Core initCore = new Core(storage, initStorage, CircularArrayConcreteStorage.factory());
+		Core initCore = new Core(storage, initStorage, MapConcreteStorage.factory());
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
