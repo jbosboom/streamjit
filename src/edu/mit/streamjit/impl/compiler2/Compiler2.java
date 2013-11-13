@@ -812,7 +812,7 @@ public class Compiler2 {
 	}
 
 	public static void main(String[] args) {
-		StreamCompiler sc = new BlobHostStreamCompiler(new Compiler2BlobFactory());
+		StreamCompiler sc = new Compiler2StreamCompiler().multiplier(1000).maxNumCores(8);
 //		Benchmark bm = new PipelineSanity.Add15();
 		Benchmark bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
 		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);
