@@ -31,9 +31,6 @@ import java.util.Queue;
  * Tests that splitjoins using the built-in splitters order their elements
  * properly.
  *
- * TODO: we run the simulator even if we aren't going to run any of the
- * benchmarks.  We'll need to do that lazily at some point.
- *
  * TODO: the splitjoin simulator should be refactored into a splitter simulator
  * and joiner simulator, so we can plug any of the splitters with any of the
  * joiners.  Right now we have a copy for the duplicate splitter.
@@ -76,30 +73,38 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 
 	private static Benchmark rr_rr(int width, int splitRate, int joinRate) {
 		String name = String.format("RR(%d) x %dw x RR(%d)", splitRate, width, joinRate);
+		Dataset dataset = Datasets.allIntsInRange(0, 1_000_000);
+		dataset = dataset.withOutput(Datasets.lazyInput(RoundrobinSimulator.create(dataset.input(), width, splitRate, joinRate)));
 		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new RoundrobinSplitterSupplier(splitRate), new RoundrobinJoinerSupplier(joinRate)),
-				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRate, joinRate));
+				dataset);
 	}
 
 	private static Benchmark wrr_rr(int width, int[] splitRates, int joinRate) {
 		String name = String.format("WRR(%s) x %dw x RR(%d)", Arrays.toString(splitRates), width, joinRate);
+		Dataset dataset = Datasets.allIntsInRange(0, 1_000_000);
+		dataset = dataset.withOutput(Datasets.lazyInput(RoundrobinSimulator.create(dataset.input(), width, splitRates, joinRate)));
 		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new WeightedRoundrobinSplitterSupplier(splitRates), new RoundrobinJoinerSupplier(joinRate)),
-				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRates, joinRate));
+				dataset);
 	}
 
 	private static Benchmark rr_wrr(int width, int splitRate, int[] joinRates) {
 		String name = String.format("RR(%d) x %dw x WRR(%s)", splitRate, width, Arrays.toString(joinRates));
+		Dataset dataset = Datasets.allIntsInRange(0, 1_000_000);
+		dataset = dataset.withOutput(Datasets.lazyInput(RoundrobinSimulator.create(dataset.input(), width, splitRate, joinRates)));
 		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new RoundrobinSplitterSupplier(splitRate), new WeightedRoundrobinJoinerSupplier(joinRates)),
-				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRate, joinRates));
+				dataset);
 	}
 
 	private static Benchmark wrr_wrr(int width, int[] splitRates, int[] joinRates) {
 		String name = String.format("WRR(%s) x %dw x WRR(%s)", Arrays.toString(splitRates), width, Arrays.toString(joinRates));
+		Dataset dataset = Datasets.allIntsInRange(0, 1_000_000);
+		dataset = dataset.withOutput(Datasets.lazyInput(RoundrobinSimulator.create(dataset.input(), width, splitRates, joinRates)));
 		return new SuppliedBenchmark(name,
 				new SplitjoinSupplier(width, new WeightedRoundrobinSplitterSupplier(splitRates), new WeightedRoundrobinJoinerSupplier(joinRates)),
-				simulateRoundrobin(Datasets.allIntsInRange(0, 1_000_000), width, splitRates, joinRates));
+				dataset);
 	}
 
 	private static Benchmark dup_rr(int width, int joinRate) {
@@ -192,55 +197,60 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 		}
 	}
 
-	/**
-	 * Simulates a roundrobin splitjoin, returning a Dataset with reference
-	 * output.
-	 */
-	private static Dataset simulateRoundrobin(Dataset dataset, int width, int splitRate, int joinRate) {
-		int[] splitRates = new int[width], joinRates = new int[width];
-		Arrays.fill(splitRates, splitRate);
-		Arrays.fill(joinRates, joinRate);
-		return simulateRoundrobin(dataset, width, splitRates, joinRates);
-	}
-
-	private static Dataset simulateRoundrobin(Dataset dataset, int width, int[] splitRates, int joinRate) {
-		int[] joinRates = new int[width];
-		Arrays.fill(joinRates, joinRate);
-		return simulateRoundrobin(dataset, width, splitRates, joinRates);
-	}
-
-	private static Dataset simulateRoundrobin(Dataset dataset, int width, int splitRate, int[] joinRates) {
-		int[] splitRates = new int[width];
-		Arrays.fill(splitRates, splitRate);
-		return simulateRoundrobin(dataset, width, splitRates, joinRates);
-	}
-
-	/**
-	 * Simulates a weighted roundrobin splitjoin, returning a Dataset with
-	 * reference output.
-	 */
-	private static Dataset simulateRoundrobin(Dataset dataset, int width, int[] splitRates, int[] joinRates) {
-		List<Queue<Object>> bins = new ArrayList<>(width);
-		for (int i = 0; i < width; ++i)
-			bins.add(new ArrayDeque<>());
-
-		int splitReq = 0;
-		for (int i : splitRates)
-			splitReq += i;
-
-		Buffer buffer = InputBufferFactory.unwrap(dataset.input()).createReadableBuffer(splitReq);
-		while (buffer.size() >= splitReq)
-			for (int i = 0; i < bins.size(); ++i)
-				for (int j = 0; j < splitRates[i]; ++j)
-					bins.get(i).add(buffer.read());
-
-		List<Object> output = new ArrayList<>();
-		while (ready(bins, joinRates)) {
-			for (int i = 0; i < bins.size(); ++i)
-				for (int j = 0; j < joinRates[i]; ++j)
-					output.add(bins.get(i).remove());
+	private static final class RoundrobinSimulator<T> implements Supplier<Input<T>> {
+		private final Input<T> input;
+		private final int width;
+		private final int[] splitRates, joinRates;
+		public static <T> RoundrobinSimulator<T> create(Input<T> input, int width, int splitRate, int joinRate) {
+			int[] splitRates = new int[width], joinRates = new int[width];
+			Arrays.fill(splitRates, splitRate);
+			Arrays.fill(joinRates, joinRate);
+			return create(input, width, splitRates, joinRates);
 		}
-		return dataset.withOutput(Input.fromIterable(output));
+		public static <T> RoundrobinSimulator<T> create(Input<T> input, int width, int[] splitRates, int joinRate) {
+			int[] joinRates = new int[width];
+			Arrays.fill(joinRates, joinRate);
+			return create(input, width, splitRates, joinRates);
+		}
+		public static <T> RoundrobinSimulator<T> create(Input<T> input, int width, int splitRate, int[] joinRates) {
+			int[] splitRates = new int[width];
+			Arrays.fill(splitRates, splitRate);
+			return create(input, width, splitRates, joinRates);
+		}
+		public static <T> RoundrobinSimulator<T> create(Input<T> input, int width, int[] splitRates, int[] joinRates) {
+			return new RoundrobinSimulator<>(input, width, splitRates, joinRates);
+		}
+		private RoundrobinSimulator(Input<T> input, int width, int[] splitRates, int[] joinRates) {
+			this.input = input;
+			this.width = width;
+			this.splitRates = splitRates;
+			this.joinRates = joinRates;
+		}
+		@Override
+		@SuppressWarnings("unchecked")
+		public Input<T> get() {
+			List<Queue<Object>> bins = new ArrayList<>(width);
+			for (int i = 0; i < width; ++i)
+				bins.add(new ArrayDeque<>());
+
+			int splitReq = 0;
+			for (int i : splitRates)
+				splitReq += i;
+
+			Buffer buffer = InputBufferFactory.unwrap(input).createReadableBuffer(splitReq);
+			while (buffer.size() >= splitReq)
+				for (int i = 0; i < bins.size(); ++i)
+					for (int j = 0; j < splitRates[i]; ++j)
+						bins.get(i).add(buffer.read());
+
+			List<Object> output = new ArrayList<>();
+			while (ready(bins, joinRates)) {
+				for (int i = 0; i < bins.size(); ++i)
+					for (int j = 0; j < joinRates[i]; ++j)
+						output.add(bins.get(i).remove());
+			}
+			return (Input<T>)Input.fromIterable(output);
+		}
 	}
 
 	private static final class DuplicateSimulator<T> implements Supplier<Input<T>> {
