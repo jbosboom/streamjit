@@ -47,6 +47,15 @@ public class Core {
 	}
 
 	/**
+	 * Returns true iff this Core is empty (has no allocations) and thus doesn't
+	 * need to generate or run code.
+	 * @return true iff this core is empty
+	 */
+	public boolean isEmpty() {
+		return allocations.isEmpty();
+	}
+
+	/**
 	 * Returns the ConcreteStorage instances allocated for internal Storage by
 	 * this core.
 	 * @return local ConcreteStorage instances

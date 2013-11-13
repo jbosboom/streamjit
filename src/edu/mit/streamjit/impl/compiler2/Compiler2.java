@@ -660,7 +660,8 @@ public class Compiler2 {
 			}
 		ImmutableList.Builder<MethodHandle> steadyStateCodeBuilder = ImmutableList.builder();
 		for (Core c : ssCores)
-			steadyStateCodeBuilder.add(c.code());
+			if (!c.isEmpty())
+				steadyStateCodeBuilder.add(c.code());
 		this.steadyStateCode = steadyStateCodeBuilder.build();
 	}
 
