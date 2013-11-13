@@ -647,8 +647,7 @@ public class Compiler2 {
 			ssCores.add(new Core(storage, steadyStateStorage, MapConcreteStorage.factory()));
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
-				//TODO: use Configuration here
-				ssCores.get(0).allocate(g, Range.closedOpen(0, externalSchedule.get(g)));
+				allocateGroup(g, ssCores);
 			else {
 				assert g.actors().size() == 1;
 				TokenActor ta = (TokenActor)g.actors().iterator().next();
@@ -665,6 +664,35 @@ public class Compiler2 {
 			if (!c.isEmpty())
 				steadyStateCodeBuilder.add(c.code());
 		this.steadyStateCode = steadyStateCodeBuilder.build();
+	}
+
+	/**
+	 * Allocates executions of the given group to the given cores (i.e.,
+	 * performs data-parallel fission).
+	 * @param g the group to fiss
+	 * @param cores the cores to fiss over, subject to the configuration
+	 */
+	private void allocateGroup(ActorGroup g, List<Core> cores) {
+		Range<Integer> toBeAllocated = Range.closedOpen(0, externalSchedule.get(g));
+		for (int core = 0; core < cores.size() && !toBeAllocated.isEmpty(); ++core) {
+			String name = String.format("node%dcore%diter", g.id(), core);
+			IntParameter parameter = config.getParameter(name, IntParameter.class);
+			if (parameter == null || parameter.getValue() == 0) continue;
+
+			//If the node is stateful, we must put all allocations on the
+			//same core. Arbitrarily pick the first core with an allocation.
+			//(If no cores have an allocation, we'll put them on core 0 below.)
+			int min = toBeAllocated.lowerEndpoint();
+			Range<Integer> allocation = g.isStateful() ? toBeAllocated :
+					toBeAllocated.intersection(Range.closedOpen(min, min + parameter.getValue()));
+			cores.get(core).allocate(g, allocation);
+			toBeAllocated = Range.closedOpen(allocation.upperEndpoint(), toBeAllocated.upperEndpoint());
+		}
+
+		//If we have iterations left over not assigned to a core,
+		//arbitrarily put them on core 0.
+		if (!toBeAllocated.isEmpty())
+			cores.get(0).allocate(g, toBeAllocated);
 	}
 
 	/**
