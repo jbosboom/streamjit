@@ -70,10 +70,21 @@ public class OnlineTuner implements Runnable {
 					String finalConfg = tuner.readLine();
 					System.out.println("Tuning finished");
 					saveFinalConfg(finalConfg);
-					if (needTermination)
-						drainer.startDraining(1);
-					else
+					if (needTermination) {
+						if (manager.isRunning()) {
+							drainer.startDraining(1);
+							System.err.println("awaitDrainedIntrmdiate");
+							try {
+								drainer.awaitDrainedIntrmdiate();
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+							}
+						} else {
+							manager.stop();
+						}
+					} else {
 						runForever(finalConfg);
+					}
 					break;
 				}
 
