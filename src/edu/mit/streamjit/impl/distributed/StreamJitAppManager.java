@@ -129,7 +129,7 @@ public class StreamJitAppManager {
 			isRunning = false;
 		}
 
-		return isCompiled;
+		return isRunning;
 	}
 	/**
 	 * Setup the headchannel and tailchannel.
