@@ -26,6 +26,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.compiler.Schedule;
@@ -203,6 +204,7 @@ public class Compiler2 {
 						.bufferExactly(0);
 			}
 		}
+		scheduleBuilder.multiply(config.getParameter("multiplier", IntParameter.class).getValue());
 		try {
 			externalSchedule = scheduleBuilder.build().getSchedule();
 		} catch (Schedule.ScheduleException ex) {
