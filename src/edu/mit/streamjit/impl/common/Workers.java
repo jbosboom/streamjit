@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.common;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.interp.Message;
@@ -217,6 +218,20 @@ public abstract class Workers {
 		}
 
 		return StreamPosition.INCOMPARABLE;
+	}
+
+	/**
+	 * Returns true iff the given worker is peeking (has max peek rate greater
+	 * than max pop rate on at least one channel).
+	 * @param worker the worker
+	 * @return true iff this worker peeks
+	 */
+	public static boolean isPeeking(Worker<?, ?> worker) {
+		for (int i = 0; i < worker.getPeekRates().size(); ++i)
+			if (worker.getPeekRates().get(i).max() == Rate.DYNAMIC ||
+					worker.getPeekRates().get(i).max() > worker.getPopRates().get(i).max())
+				return true;
+		return false;
 	}
 
 	//<editor-fold defaultstate="collapsed" desc="Friend pattern support">
