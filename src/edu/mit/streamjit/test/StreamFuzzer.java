@@ -34,6 +34,7 @@ import edu.mit.streamjit.impl.common.TestFilters.Batcher;
 import edu.mit.streamjit.impl.common.TestFilters.Multiplier;
 import edu.mit.streamjit.impl.common.TestFilters.PeekingAdder;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
+import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.impl.interp.InterpreterStreamCompiler;
 import edu.mit.streamjit.util.ConstructorSupplier;
@@ -342,7 +343,7 @@ public final class StreamFuzzer {
 			);
 	public static void main(String[] args) throws InterruptedException, IOException {
 		StreamCompiler debugSC = new InterpreterStreamCompiler();
-		StreamCompiler compilerSC = new CompilerStreamCompiler();
+		StreamCompiler compilerSC = new Compiler2StreamCompiler();
 		Set<FuzzElement> completedCases = new HashSet<>();
 		int generated;
 		int duplicatesSkipped = 0;
@@ -414,7 +415,7 @@ public final class StreamFuzzer {
 		values.put("dataset", "Datasets.allIntsInRange(0, 1000)");
 		values.put("instantiate", fuzzTest.toJava());
 		values.put("referenceCompiler", "new "+InterpreterStreamCompiler.class.getCanonicalName()+"()");
-		values.put("testCompiler", "new "+CompilerStreamCompiler.class.getCanonicalName()+"()");
+		values.put("testCompiler", "new "+Compiler2StreamCompiler.class.getCanonicalName()+"()");
 		StringBuffer sb = new StringBuffer();
 		template.replace(values, sb);
 
