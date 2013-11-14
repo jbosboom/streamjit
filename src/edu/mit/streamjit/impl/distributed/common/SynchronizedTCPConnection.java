@@ -15,8 +15,13 @@ public class SynchronizedTCPConnection extends TCPConnection {
 	private final Object writeLock = new Object();
 	private final Object readLock = new Object();
 
+	/**
+	 * TODO: Need to expose resetCount outside.
+	 * 
+	 * @param socket
+	 */
 	public SynchronizedTCPConnection(Socket socket) {
-		super(socket);
+		super(socket, 50);
 	}
 
 	@Override
