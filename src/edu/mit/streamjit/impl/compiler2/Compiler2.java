@@ -72,6 +72,7 @@ public class Compiler2 {
 	private final Configuration config;
 	private final int maxNumCores;
 	private final DrainData initialState;
+	private final ImmutableMap<Token, ImmutableList<Object>> initialStateDataMap;
 	private final Set<Storage> storage;
 	private ImmutableMap<ActorGroup, Integer> externalSchedule;
 	private final Module module = new Module();
@@ -128,6 +129,7 @@ public class Compiler2 {
 		this.config = config;
 		this.maxNumCores = maxNumCores;
 		this.initialState = initialState;
+		ImmutableMap.Builder<Token, ImmutableList<Object>> initialStateDataMapBuilder = ImmutableMap.builder();
 		if (initialState != null) {
 			for (Table.Cell<Actor, Actor, Storage> cell : storageTable.cellSet()) {
 				Token tok;
@@ -139,10 +141,13 @@ public class Compiler2 {
 					tok = new Token(((WorkerActor)cell.getRowKey()).worker(),
 							((WorkerActor)cell.getColumnKey()).worker());
 				ImmutableList<Object> data = initialState.getData(tok);
-				if (data != null && !data.isEmpty())
+				if (data != null && !data.isEmpty()) {
+					initialStateDataMapBuilder.put(tok, data);
 					cell.getValue().initialData().add(Pair.make(data, MethodHandles.identity(int.class)));
+				}
 			}
 		}
+		this.initialStateDataMap = initialStateDataMapBuilder.build();
 	}
 
 	public Blob compile() {
@@ -178,7 +183,9 @@ public class Compiler2 {
 						continue try_fuse;
 				if (g.isPeeking() || g.predecessorGroups().size() > 1)
 					continue try_fuse;
-				//TODO: initial data prevents fusion
+				for (Storage s : g.inputs())
+					if (!s.initialData().isEmpty())
+						continue try_fuse;
 
 				String paramName = String.format("fuse%d", g.id());
 				SwitchParameter<Boolean> fuseParam = config.getParameter(paramName, SwitchParameter.class, Boolean.class);
@@ -393,6 +400,7 @@ public class Compiler2 {
 
 		initSchedule();
 		this.initStorage = createExternalStorage(MapConcreteStorage.factory());
+		initReadInstructions.add(new InitDataReadInstruction(initStorage, initialStateDataMap));
 
 		/**
 		 * During init, all (nontoken) groups are assigned to the same Core in
@@ -596,9 +604,24 @@ public class Compiler2 {
 			s.computeRequirements(externalSchedule);
 			requiredReadIndices.put(s, new HashSet<>(s.readIndices()));
 		}
-		//TODO: initial state will reduce the required read indices.
-		//TODO: what if we have more state than required for reads (due to rate
-		//lag)?  Will need to leave space for it.
+
+		/**
+		 * Initial state reduces the required read indices.  We'll need the
+		 * before-init liveness later, so we keep it around to avoid computing
+		 * it twice.
+		 *
+		 * TODO: if we have more init data than required for reads, we might
+		 * consider trying to drain the extra data rather than keep it around
+		 * during the steady state.  We will drain it when we finally drain (at
+		 * the end of the blob lifetime), so it would only persist for one
+		 * configuration in the online tuning setting.
+		 */
+		Map<Storage, Set<Integer>> initLiveness = new HashMap<>();
+		for (Storage s : storage) {
+			ImmutableSortedSet<Integer> liveBeforeInit = s.indicesLiveBeforeInit();
+			initLiveness.put(s, liveBeforeInit);
+			requiredReadIndices.get(s).removeAll(liveBeforeInit);
+		}
 
 		/**
 		 * Actual init: iterations of each group necessary to fill the required
@@ -647,6 +670,11 @@ public class Compiler2 {
 		 * required read span (difference between the min and max read index),
 		 * plus throughput for each steady-state unit (or fraction thereof)
 		 * beyond the first, maximized across all writers.
+		 *
+		 * TODO: what if we have more init data than required reads?
+		 * TODO: given that we use MapConcreteStorage during init anyway, should
+		 * we bother with computing an init capacity?  (We can use any
+		 * dynamically-expanding ConcreteStorage, not necessarily a Map.)
 		 */
 		for (Storage s : storage) {
 			List<Long> size = new ArrayList<>(s.upstream().size());
@@ -659,11 +687,12 @@ public class Compiler2 {
 
 		/**
 		 * Compute post-initialization liveness (data items written during init
-		 * that will be read in a future steady-state iteration).  These are the
-		 * items that must be moved into steady-state storage.  We compute by
-		 * building the written physical indices during the init schedule, then
-		 * building the read physical indices for future steady-state executions
-		 * and taking the intersection.
+		 * that will be read in a future steady-state iteration). These are the
+		 * items that must be moved into steady-state storage. We compute by
+		 * building the written physical indices during the init schedule
+		 * (including initial data items), then building the read physical
+		 * indices for future steady-state executions and taking the
+		 * intersection.
 		 *
 		 * TODO: This makes the same assumption as above, that we can stop
 		 * translating indices as soon as adding an execution doesn't change the
@@ -672,7 +701,7 @@ public class Compiler2 {
 		Map<Storage, Set<Integer>> initWrites = new HashMap<>();
 		Map<Storage, Set<Integer>> futureReads = new HashMap<>();
 		for (Storage s : storage) {
-			initWrites.put(s, new HashSet<Integer>());
+			initWrites.put(s, new HashSet<>(initLiveness.get(s)));
 			futureReads.put(s, new HashSet<Integer>());
 		}
 		for (ActorGroup g : groups)
@@ -858,6 +887,58 @@ public class Compiler2 {
 			for (int written = 0; written != data.length;) {
 				written += buffer.write(data, written, data.length-written);
 			}
+		}
+	}
+
+	/**
+	 * Writes initial data into init storage, or "unloads" it (just returning it
+	 * as it was in the DrainData, not actually reading the storage) if we drain
+	 * during init.  (Any remaining data after init will be migrated as normal.)
+	 * There's only one of these per blob because it returns all the data, and
+	 * it should be the first initReadInstruction.
+	 */
+	private static final class InitDataReadInstruction implements ReadInstruction {
+		private final ImmutableMap<ConcreteStorage, ImmutableList<Pair<ImmutableList<Object>, MethodHandle>>> toWrite;
+		private final ImmutableMap<Token, ImmutableList<Object>> initialStateDataMap;
+		private InitDataReadInstruction(Map<Storage, ConcreteStorage> initStorage, ImmutableMap<Token, ImmutableList<Object>> initialStateDataMap) {
+			ImmutableMap.Builder<ConcreteStorage, ImmutableList<Pair<ImmutableList<Object>, MethodHandle>>> toWriteBuilder = ImmutableMap.builder();
+			for (Map.Entry<Storage, ConcreteStorage> e : initStorage.entrySet()) {
+				Storage s = e.getKey();
+				if (s.isInternal()) continue;
+				if (s.initialData().isEmpty()) continue;
+				toWriteBuilder.put(e.getValue(), ImmutableList.copyOf(s.initialData()));
+			}
+			this.toWrite = toWriteBuilder.build();
+			this.initialStateDataMap = initialStateDataMap;
+		}
+		@Override
+		public void init(Map<Token, Buffer> buffers) {
+		}
+		@Override
+		public Map<Token, Integer> getMinimumBufferCapacity() {
+			return ImmutableMap.of();
+		}
+		@Override
+		public boolean load() {
+			for (Map.Entry<ConcreteStorage, ImmutableList<Pair<ImmutableList<Object>, MethodHandle>>> e : toWrite.entrySet())
+				for (Pair<ImmutableList<Object>, MethodHandle> p : e.getValue())
+					for (int i = 0; i < p.first.size(); ++i) {
+						int idx;
+						try {
+							idx = (int)p.second.invokeExact(i);
+						} catch (Throwable ex) {
+							throw new AssertionError("Can't happen! Index functions should not throw", ex);
+						}
+						e.getKey().write(idx, p.first.get(i));
+					}
+			return true;
+		}
+		@Override
+		public Map<Token, Object[]> unload() {
+			Map<Token, Object[]> r = new HashMap<>();
+			for (Map.Entry<Token, ImmutableList<Object>> e : initialStateDataMap.entrySet())
+				r.put(e.getKey(), e.getValue().toArray());
+			return r;
 		}
 	}
 
