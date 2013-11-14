@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.base.Function;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.FluentIterable;
@@ -152,9 +153,9 @@ public class Compiler2 {
 		//joinerRemoval();
 //		unbox();
 
-		initSchedule();
-		createStorage();
-		createCode();
+		generateArchetypalCode();
+		createInitCode();
+		createSteadyStateCode();
 		return instantiateBlob();
 	}
 
@@ -250,6 +251,7 @@ public class Compiler2 {
 		}
 	}
 
+	//<editor-fold defaultstate="collapsed" desc="Unimplemented optimization stuff">
 //	private void splitterRemoval() {
 //		for (Actor splitter : ImmutableSortedSet.copyOf(actors)) {
 //			List<MethodHandle> transfers = splitterTransferFunctions(splitter);
@@ -372,6 +374,217 @@ public class Compiler2 {
 //			s.setType(Primitives.unwrap(s.commonType()));
 //		}
 //	}
+	//</editor-fold>
+
+	private void generateArchetypalCode() {
+		String packageName = "compiler"+PACKAGE_NUMBER.getAndIncrement();
+		ModuleClassLoader mcl = new ModuleClassLoader(module);
+		for (ActorArchetype archetype : archetypes)
+			archetype.generateCode(packageName, mcl);
+	}
+
+	private void createInitCode() {
+		ImmutableMap<Actor, ImmutableList<MethodHandle>> indexFxnBackup = adjustOutputIndexFunctions(new Function<Storage, Set<Integer>>() {
+			@Override
+			public Set<Integer> apply(Storage input) {
+				return input.indicesLiveBeforeInit();
+			}
+		});
+
+		initSchedule();
+		this.initStorage = createExternalStorage(MapConcreteStorage.factory());
+
+		/**
+		 * During init, all (nontoken) groups are assigned to the same Core in
+		 * topological order (via the ordering on ActorGroups).  At the same
+		 * time we build the token init schedule information required by the
+		 * blob host.
+		 */
+		Core initCore = new Core(storage, initStorage, MapConcreteStorage.factory());
+		for (ActorGroup g : groups)
+			if (!g.isTokenGroup())
+				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
+			else {
+				assert g.actors().size() == 1;
+				TokenActor ta = (TokenActor)g.actors().iterator().next();
+				assert g.schedule().get(ta) == 1;
+				ConcreteStorage storage = initStorage.get(Iterables.getOnlyElement(ta.isInput() ? g.outputs() : g.inputs()));
+				int executions = initSchedule.get(g);
+				if (ta.isInput())
+					initReadInstructions.add(new TokenReadInstruction(g, storage, executions));
+				else
+					initWriteInstructions.add(new TokenWriteInstruction(g, storage, executions));
+			}
+		this.initCode = initCore.code();
+
+		restoreOutputIndexFunctions(indexFxnBackup);
+	}
+
+	private void createSteadyStateCode() {
+		ImmutableMap<Actor, ImmutableList<MethodHandle>> indexFxnBackup = adjustOutputIndexFunctions(new Function<Storage, Set<Integer>>() {
+			@Override
+			public Set<Integer> apply(Storage input) {
+				return input.indicesLiveDuringSteadyState();
+			}
+		});
+
+		this.steadyStateStorage = createExternalStorage(CircularArrayConcreteStorage.factory());
+
+		List<Core> ssCores = new ArrayList<>(maxNumCores);
+		for (int i = 0; i < maxNumCores; ++i)
+			ssCores.add(new Core(storage, steadyStateStorage, CircularArrayConcreteStorage.factory()));
+		for (ActorGroup g : groups)
+			if (!g.isTokenGroup())
+				allocateGroup(g, ssCores);
+			else {
+				assert g.actors().size() == 1;
+				TokenActor ta = (TokenActor)g.actors().iterator().next();
+				assert g.schedule().get(ta) == 1;
+				ConcreteStorage storage = steadyStateStorage.get(Iterables.getOnlyElement(ta.isInput() ? g.outputs() : g.inputs()));
+				int executions = externalSchedule.get(g);
+				if (ta.isInput())
+					readInstructions.add(new TokenReadInstruction(g, storage, executions));
+				else
+					writeInstructions.add(new TokenWriteInstruction(g, storage, executions));
+			}
+		ImmutableList.Builder<MethodHandle> steadyStateCodeBuilder = ImmutableList.builder();
+		for (Core c : ssCores)
+			if (!c.isEmpty())
+				steadyStateCodeBuilder.add(c.code());
+		this.steadyStateCode = steadyStateCodeBuilder.build();
+
+		/**
+		 * Create migration instructions: Runnables that move live items from
+		 * initialization to steady-state storage.
+		 */
+		for (Storage s : initStorage.keySet())
+			migrationInstructions.add(new MigrationInstruction(
+					s, initStorage.get(s), steadyStateStorage.get(s)));
+
+		createDrainInstructions();
+
+		restoreOutputIndexFunctions(indexFxnBackup);
+	}
+
+	/**
+	 * Allocates executions of the given group to the given cores (i.e.,
+	 * performs data-parallel fission).
+	 * @param g the group to fiss
+	 * @param cores the cores to fiss over, subject to the configuration
+	 */
+	private void allocateGroup(ActorGroup g, List<Core> cores) {
+		Range<Integer> toBeAllocated = Range.closedOpen(0, externalSchedule.get(g));
+		for (int core = 0; core < cores.size() && !toBeAllocated.isEmpty(); ++core) {
+			String name = String.format("node%dcore%diter", g.id(), core);
+			IntParameter parameter = config.getParameter(name, IntParameter.class);
+			if (parameter == null || parameter.getValue() == 0) continue;
+
+			//If the node is stateful, we must put all allocations on the
+			//same core. Arbitrarily pick the first core with an allocation.
+			//(If no cores have an allocation, we'll put them on core 0 below.)
+			int min = toBeAllocated.lowerEndpoint();
+			Range<Integer> allocation = g.isStateful() ? toBeAllocated :
+					toBeAllocated.intersection(Range.closedOpen(min, min + parameter.getValue()));
+			cores.get(core).allocate(g, allocation);
+			toBeAllocated = Range.closedOpen(allocation.upperEndpoint(), toBeAllocated.upperEndpoint());
+		}
+
+		//If we have iterations left over not assigned to a core,
+		//arbitrarily put them on core 0.
+		if (!toBeAllocated.isEmpty())
+			cores.get(0).allocate(g, toBeAllocated);
+	}
+
+	/**
+	 * Create drain instructions, which collect live items from steady-state
+	 * storage when draining.
+	 */
+	private void createDrainInstructions() {
+		for (Actor a : actors) {
+			for (int i = 0; i < a.inputs().size(); ++i) {
+				Storage s = a.inputs().get(i);
+				if (s.isInternal()) continue;
+				ImmutableSortedSet<Integer> liveIndices = s.indicesLiveDuringSteadyState();
+				ImmutableSortedSet.Builder<Integer> drainableIndicesBuilder = ImmutableSortedSet.naturalOrder();
+				for (int logicalIndex = 0; ; ++logicalIndex) {
+					int physicalIndex = a.translateInputIndex(i, logicalIndex);
+					if (liveIndices.contains(physicalIndex))
+						drainableIndicesBuilder.add(physicalIndex);
+					else break; //TODO: assumes strong monotonicity. maybe needs to look at SS iteration units?
+				}
+				ImmutableSortedSet<Integer> drainableIndices = drainableIndicesBuilder.build();
+				if (drainableIndices.isEmpty()) continue;
+				//If the indices are contiguous, minimize storage by storing them as a range.
+				if (drainableIndices.last() - drainableIndices.first() + 1 == drainableIndices.size())
+					drainableIndices = ContiguousSet.create(Range.closed(drainableIndices.first(), drainableIndices.last()), DiscreteDomain.integers());
+
+				Token token;
+				if (a instanceof WorkerActor) {
+					Worker<?, ?> w = ((WorkerActor)a).worker();
+					token = a.id() == 0 ? Token.createOverallInputToken(w) :
+							new Token(Workers.getPredecessors(w).get(i), w);
+				} else
+					token = ((TokenActor)a).token();
+				drainInstructions.add(new XDrainInstruction(token, steadyStateStorage.get(s), drainableIndices));
+			}
+		}
+	}
+
+	//<editor-fold defaultstate="collapsed" desc="Output index function adjust/restore">
+	/**
+	 * Adjust output index functions to avoid overwriting items in external
+	 * storage.  For any actor writing to external storage, we find the
+	 * first item that doesn't hit the live index set and add that many
+	 * (making that logical item 0 for writers).
+	 * @param liveIndexExtractor a function that computes the relevant live
+	 * index set for the given external storage
+	 * @return the old output index functions, to be restored later
+	 */
+	private ImmutableMap<Actor, ImmutableList<MethodHandle>> adjustOutputIndexFunctions(Function<Storage, Set<Integer>> liveIndexExtractor) {
+		ImmutableMap.Builder<Actor, ImmutableList<MethodHandle>> backup = ImmutableMap.builder();
+		for (Actor a : actors) {
+			backup.put(a, ImmutableList.copyOf(a.outputIndexFunctions()));
+			for (int i = 0; i < a.outputs().size(); ++i) {
+				Storage s = a.outputs().get(i);
+				if (s.isInternal())
+					continue;
+				Set<Integer> liveIndices = liveIndexExtractor.apply(s);
+				assert liveIndices != null : s +" "+liveIndexExtractor;
+				int offset = 0;
+				while (liveIndices.contains(a.translateOutputIndex(i, offset)))
+					++offset;
+				//Check future indices are also open (e.g., that we aren't
+				//alternating hole/not-hole).
+				for (int check = 0; check < 100; ++check)
+					assert !liveIndices.contains(a.translateOutputIndex(i, offset + check)) : check;
+				a.outputIndexFunctions().set(i, Combinators.add(a.outputIndexFunctions().get(i), offset));
+			}
+		}
+		return backup.build();
+	}
+
+	/**
+	 * Restores output index functions from a backup returned from
+	 * {@link #adjustOutputIndexFunctions(com.google.common.base.Function)}.
+	 * @param backup the backup to restore
+	 */
+	private void restoreOutputIndexFunctions(ImmutableMap<Actor, ImmutableList<MethodHandle>> backup) {
+		for (Actor a : actors) {
+			ImmutableList<MethodHandle> oldFxns = backup.get(a);
+			assert oldFxns != null : "no backup for "+a;
+			assert oldFxns.size() == a.outputIndexFunctions().size() : "backup for "+a+" is wrong size";
+			Collections.copy(a.outputIndexFunctions(), oldFxns);
+		}
+	}
+	//</editor-fold>
+
+	private ImmutableMap<Storage, ConcreteStorage> createExternalStorage(StorageFactory factory) {
+		ImmutableMap.Builder<Storage, ConcreteStorage> builder = ImmutableMap.builder();
+		for (Storage s : storage)
+			if (!s.isInternal())
+				builder.put(s, factory.make(s));
+		return builder.build();
+	}
 
 	/**
 	 * Computes the initialization schedule, which is in terms of ActorGroup
@@ -495,72 +708,6 @@ public class Compiler2 {
 		}
 	}
 
-	/**
-	 * Creates initialization and steady-state ConcreteStorage.
-	 */
-	private void createStorage() {
-		//Initialization storage is unsynchronized.
-		ImmutableMap.Builder<Storage, ConcreteStorage> initStorageBuilder = ImmutableMap.builder();
-		for (Storage s : storage)
-			if (!s.isInternal())
-				initStorageBuilder.put(s, MapConcreteStorage.factory().make(s));
-		this.initStorage = initStorageBuilder.build();
-
-		//TODO: pack in initial state here
-		//TODO: pre-allocate entries in the map by storing null/0?  (to avoid
-		//OOME during init code execution) -- maybe this should be a param to
-		//MapConcreteStorage.factory(), or just always done
-
-		//Steady-state storage is synchronized.
-		//TODO: parameterize the factory used.
-		ImmutableMap.Builder<Storage, ConcreteStorage> ssStorageBuilder = ImmutableMap.builder();
-		for (Storage s : storage)
-			if (!s.isInternal())
-				ssStorageBuilder.put(s, CircularArrayConcreteStorage.factory().make(s));
-		this.steadyStateStorage = ssStorageBuilder.build();
-
-		/**
-		 * Create migration instructions: Runnables that move live items from
-		 * initialization to steady-state storage.
-		 */
-		for (Storage s : initStorage.keySet())
-			migrationInstructions.add(new MigrationInstruction(
-					s, initStorage.get(s), steadyStateStorage.get(s)));
-
-		/**
-		 * Create drain instructions, which collect live items from steady-state
-		 * storage when draining.
-		 */
-		for (Actor a : actors) {
-			for (int i = 0; i < a.inputs().size(); ++i) {
-				Storage s = a.inputs().get(i);
-				if (s.isInternal()) continue;
-				ImmutableSortedSet<Integer> liveIndices = s.indicesLiveDuringSteadyState();
-				ImmutableSortedSet.Builder<Integer> drainableIndicesBuilder = ImmutableSortedSet.naturalOrder();
-				for (int logicalIndex = 0; ; ++logicalIndex) {
-					int physicalIndex = a.translateInputIndex(i, logicalIndex);
-					if (liveIndices.contains(physicalIndex))
-						drainableIndicesBuilder.add(physicalIndex);
-					else break; //TODO: assumes strong monotonicity. maybe needs to look at SS iteration units?
-				}
-				ImmutableSortedSet<Integer> drainableIndices = drainableIndicesBuilder.build();
-				if (drainableIndices.isEmpty()) continue;
-				//If the indices are contiguous, minimize storage by storing them as a range.
-				if (drainableIndices.last() - drainableIndices.first() + 1 == drainableIndices.size())
-					drainableIndices = ContiguousSet.create(Range.closed(drainableIndices.first(), drainableIndices.last()), DiscreteDomain.integers());
-
-				Token token;
-				if (a instanceof WorkerActor) {
-					Worker<?, ?> w = ((WorkerActor)a).worker();
-					token = a.id() == 0 ? Token.createOverallInputToken(w) :
-							new Token(Workers.getPredecessors(w).get(i), w);
-				} else
-					token = ((TokenActor)a).token();
-				drainInstructions.add(new XDrainInstruction(token, steadyStateStorage.get(s), drainableIndices));
-			}
-		}
-	}
-
 	private static final class MigrationInstruction implements Runnable {
 		private final ConcreteStorage init, steady;
 		private final ImmutableSortedSet<Integer> indicesToMigrate;
@@ -599,116 +746,6 @@ public class Compiler2 {
 				data[i] = storage.read(i);
 			return ImmutableMap.of(token, data);
 		}
-	}
-
-	private void createCode() {
-		String packageName = "compiler"+PACKAGE_NUMBER.getAndIncrement();
-		ModuleClassLoader mcl = new ModuleClassLoader(module);
-		for (ActorArchetype archetype : archetypes)
-			archetype.generateCode(packageName, mcl);
-
-		//TODO: index function adjustments to avoid initial state items.
-
-		/**
-		 * During init, all (nontoken) groups are assigned to the same Core in
-		 * topological order (via the ordering on ActorGroups).  At the same
-		 * time we build the token init schedule information required by the
-		 * blob host.
-		 */
-		Core initCore = new Core(storage, initStorage, MapConcreteStorage.factory());
-		for (ActorGroup g : groups)
-			if (!g.isTokenGroup())
-				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
-			else {
-				assert g.actors().size() == 1;
-				TokenActor ta = (TokenActor)g.actors().iterator().next();
-				assert g.schedule().get(ta) == 1;
-				ConcreteStorage storage = initStorage.get(Iterables.getOnlyElement(ta.isInput() ? g.outputs() : g.inputs()));
-				int executions = initSchedule.get(g);
-				if (ta.isInput())
-					initReadInstructions.add(new TokenReadInstruction(g, storage, executions));
-				else
-					initWriteInstructions.add(new TokenWriteInstruction(g, storage, executions));
-			}
-		this.initCode = initCore.code();
-
-		/**
-		 * Adjust output index functions to avoid overwriting items in external
-		 * storage.  For any actor writing to external storage, we find the
-		 * first item that doesn't hit the live index set and add that many
-		 * (making that logical item 0 for writers).
-		 *
-		 * We don't use index functions after this so we don't need to save and
-		 * restore the old functions.
-		 */
-		for (Actor a : actors) {
-			for (int i = 0; i < a.outputs().size(); ++i) {
-				Storage s = a.outputs().get(i);
-				if (s.isInternal())
-					continue;
-				ImmutableSortedSet<Integer> liveIndices = s.indicesLiveDuringSteadyState();
-				int offset = 0;
-				while (liveIndices.contains(a.translateOutputIndex(i, offset)))
-					++offset;
-				//Check future indices are also open (e.g., that we aren't
-				//alternating hole/not-hole).
-				for (int check = 0; check < 100; ++check)
-					assert !liveIndices.contains(a.translateOutputIndex(i, offset + check)) : check;
-				a.outputIndexFunctions().set(i, Combinators.add(a.outputIndexFunctions().get(i), offset));
-			}
-		}
-
-		List<Core> ssCores = new ArrayList<>(maxNumCores);
-		for (int i = 0; i < maxNumCores; ++i)
-			ssCores.add(new Core(storage, steadyStateStorage, CircularArrayConcreteStorage.factory()));
-		for (ActorGroup g : groups)
-			if (!g.isTokenGroup())
-				allocateGroup(g, ssCores);
-			else {
-				assert g.actors().size() == 1;
-				TokenActor ta = (TokenActor)g.actors().iterator().next();
-				assert g.schedule().get(ta) == 1;
-				ConcreteStorage storage = steadyStateStorage.get(Iterables.getOnlyElement(ta.isInput() ? g.outputs() : g.inputs()));
-				int executions = externalSchedule.get(g);
-				if (ta.isInput())
-					readInstructions.add(new TokenReadInstruction(g, storage, executions));
-				else
-					writeInstructions.add(new TokenWriteInstruction(g, storage, executions));
-			}
-		ImmutableList.Builder<MethodHandle> steadyStateCodeBuilder = ImmutableList.builder();
-		for (Core c : ssCores)
-			if (!c.isEmpty())
-				steadyStateCodeBuilder.add(c.code());
-		this.steadyStateCode = steadyStateCodeBuilder.build();
-	}
-
-	/**
-	 * Allocates executions of the given group to the given cores (i.e.,
-	 * performs data-parallel fission).
-	 * @param g the group to fiss
-	 * @param cores the cores to fiss over, subject to the configuration
-	 */
-	private void allocateGroup(ActorGroup g, List<Core> cores) {
-		Range<Integer> toBeAllocated = Range.closedOpen(0, externalSchedule.get(g));
-		for (int core = 0; core < cores.size() && !toBeAllocated.isEmpty(); ++core) {
-			String name = String.format("node%dcore%diter", g.id(), core);
-			IntParameter parameter = config.getParameter(name, IntParameter.class);
-			if (parameter == null || parameter.getValue() == 0) continue;
-
-			//If the node is stateful, we must put all allocations on the
-			//same core. Arbitrarily pick the first core with an allocation.
-			//(If no cores have an allocation, we'll put them on core 0 below.)
-			int min = toBeAllocated.lowerEndpoint();
-			Range<Integer> allocation = g.isStateful() ? toBeAllocated :
-					toBeAllocated.intersection(Range.closedOpen(min, min + parameter.getValue()));
-			cores.get(core).allocate(g, allocation);
-			toBeAllocated = Range.closedOpen(allocation.upperEndpoint(), toBeAllocated.upperEndpoint());
-		}
-
-		//If we have iterations left over not assigned to a core,
-		//arbitrarily put them on core 0.
-		if (!toBeAllocated.isEmpty())
-			cores.get(0).allocate(g, toBeAllocated);
 	}
 
 	/**
