@@ -23,11 +23,23 @@ public class TCPConnection implements Connection {
 	private ObjectInput oiStream = null;
 	private Socket socket = null;
 	private boolean isconnected = false;
+	private final int resetCount;
 
 	// For debugging purpose: Just to count the number of TCP connections made.
 	private static int count = 0;
 
 	public TCPConnection(Socket socket) {
+		this(socket, 5000);
+	}
+
+	/**
+	 * @param socket
+	 * @param resetCount
+	 *            reset the {@link ObjectOutputStream} after this no of sends.
+	 *            To avoid out of memory error.
+	 */
+	public TCPConnection(Socket socket, int resetCount) {
+		this.resetCount = resetCount;
 		try {
 			this.socket = socket;
 			ooStream = new ObjectOutputStream(this.socket.getOutputStream());
@@ -53,7 +65,7 @@ public class TCPConnection implements Connection {
 				ooStream.writeObject(obj);
 
 				// TODO: Any way to improve the performance?
-				if (n++ > 5000) {
+				if (n++ > resetCount) {
 					n = 0;
 					ooStream.reset();
 				}
