@@ -40,6 +40,7 @@ import edu.mit.streamjit.test.sanity.PipelineSanity;
 import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.Combinators.*;
+import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.bytecode.Module;
 import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
 import java.lang.invoke.MethodHandle;
@@ -126,6 +127,21 @@ public class Compiler2 {
 		this.config = config;
 		this.maxNumCores = maxNumCores;
 		this.initialState = initialState;
+		if (initialState != null) {
+			for (Table.Cell<Actor, Actor, Storage> cell : storageTable.cellSet()) {
+				Token tok;
+				if (cell.getRowKey() instanceof TokenActor)
+					tok = ((TokenActor)cell.getRowKey()).token();
+				else if (cell.getColumnKey() instanceof TokenActor)
+					tok = ((TokenActor)cell.getColumnKey()).token();
+				else
+					tok = new Token(((WorkerActor)cell.getRowKey()).worker(),
+							((WorkerActor)cell.getColumnKey()).worker());
+				ImmutableList<Object> data = initialState.getData(tok);
+				if (data != null && !data.isEmpty())
+					cell.getValue().initialData().add(Pair.make(data, MethodHandles.identity(int.class)));
+			}
+		}
 	}
 
 	public Blob compile() {

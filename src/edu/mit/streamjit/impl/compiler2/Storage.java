@@ -1,9 +1,14 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
+import edu.mit.streamjit.util.Pair;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +36,13 @@ public final class Storage {
 	 * Actors.
 	 */
 	private Class<?> type = Object.class;
+	/**
+	 * The initial data in this Storage.  The MethodHandle is a write index
+	 * function that specifies where the corresponding item in the list goes.
+	 * Due to these transformations, items in a later pair might precede items
+	 * in an earlier pair.
+	 */
+	private final List<Pair<ImmutableList<Object>, MethodHandle>> initialData = new ArrayList<>();
 	/**
 	 * The number of data items added to and removed from this storage during
 	 * each steady state iteration.
@@ -112,6 +124,10 @@ public final class Storage {
 			if (a.group() != g)
 				return false;
 		return true;
+	}
+
+	public List<Pair<ImmutableList<Object>, MethodHandle>> initialData() {
+		return initialData;
 	}
 
 	public Class<?> type() {
