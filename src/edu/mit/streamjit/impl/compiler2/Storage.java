@@ -130,6 +130,24 @@ public final class Storage {
 		return initialData;
 	}
 
+	/**
+	 * Returns a set containing the indices live before the initialization
+	 * schedule; that is, the indices holding initial data.  The set is
+	 * recomputed on each call, so should be kept in a local variable.
+	 * @return the indices holding initial data
+	 */
+	public ImmutableSortedSet<Integer> indicesLiveBeforeInit() {
+		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+		for (Pair<ImmutableList<Object>, MethodHandle> p : initialData())
+			for (int i = 0; i < p.first.size(); ++i)
+				try {
+					builder.add((int)p.second.invokeExact(i));
+				} catch (Throwable ex) {
+					throw new AssertionError("index functions should not throw", ex);
+				}
+		return builder.build();
+	}
+
 	public Class<?> type() {
 		return type;
 	}
