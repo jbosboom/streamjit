@@ -70,6 +70,7 @@ public class StreamNode extends Thread {
 	}
 
 	public void run() {
+		System.out.println("Connected with Controller.");
 		while (run) {
 			try {
 				CTRLRMessageElement me = controllerConnection.readObject();
