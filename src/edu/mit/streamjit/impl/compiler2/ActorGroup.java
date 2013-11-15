@@ -331,25 +331,14 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			work.invokeExact(i * pop, i * push);
 	}
 
+	/**
+	 * This is inconsistent with equals, but we should never have two distinct
+	 * ActorGroup objects with the same id, so we'll never notice the
+	 * inconsistency.  (We used to have equals() and hashCode() by id, but actor
+	 * removal would then change the hash code and screw up maps.)
+	 */
 	@Override
 	public int compareTo(ActorGroup o) {
 		return Integer.compare(id(), o.id());
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		final ActorGroup other = (ActorGroup)obj;
-		if (id() != other.id())
-			return false;
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		return id();
 	}
 }
