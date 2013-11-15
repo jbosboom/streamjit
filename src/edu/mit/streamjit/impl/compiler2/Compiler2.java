@@ -66,6 +66,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Compiler2 {
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
+	private final ImmutableSet<Worker<?, ?>> workers;
 	private final ImmutableSet<ActorArchetype> archetypes;
 	private final NavigableSet<Actor> actors;
 	private ImmutableSortedSet<ActorGroup> groups;
@@ -104,6 +105,7 @@ public class Compiler2 {
 	private final List<WriteInstruction> writeInstructions = new ArrayList<>();
 	private final List<DrainInstruction> drainInstructions = new ArrayList<>();
 	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
+		this.workers = ImmutableSet.copyOf(workers);
 		Map<Class<?>, ActorArchetype> archetypesBuilder = new HashMap<>();
 		Map<Worker<?, ?>, WorkerActor> workerActors = new HashMap<>();
 		for (Worker<?, ?> w : workers) {
@@ -948,25 +950,20 @@ public class Compiler2 {
 	 * @return the blob
 	 */
 	public Blob instantiateBlob() {
-		ImmutableSet.Builder<Worker<?, ?>> workers = ImmutableSet.builder();
 		ImmutableSortedSet.Builder<Token> inputTokens = ImmutableSortedSet.naturalOrder(),
 				outputTokens = ImmutableSortedSet.naturalOrder();
 		ImmutableMap.Builder<Token, ConcreteStorage> tokenInitStorage = ImmutableMap.builder(),
 				tokenSteadyStateStorage = ImmutableMap.builder();
-		for (Actor a : actors)
-			if (a instanceof WorkerActor)
-				workers.add(((WorkerActor)a).worker());
-			else {
-				TokenActor ta = (TokenActor)a;
-				(ta.isInput() ? inputTokens : outputTokens).add(ta.token());
-				Storage s = ta.isInput() ? Iterables.getOnlyElement(ta.outputs()) : Iterables.getOnlyElement(ta.inputs());
-				tokenInitStorage.put(ta.token(), initStorage.get(s));
-				tokenSteadyStateStorage.put(ta.token(), steadyStateStorage.get(s));
-			}
+		for (TokenActor ta : Iterables.filter(actors, TokenActor.class)) {
+			(ta.isInput() ? inputTokens : outputTokens).add(ta.token());
+			Storage s = ta.isInput() ? Iterables.getOnlyElement(ta.outputs()) : Iterables.getOnlyElement(ta.inputs());
+			tokenInitStorage.put(ta.token(), initStorage.get(s));
+			tokenSteadyStateStorage.put(ta.token(), steadyStateStorage.get(s));
+		}
 		ImmutableList.Builder<MethodHandle> storageAdjusts = ImmutableList.builder();
 		for (ConcreteStorage s : steadyStateStorage.values())
 			storageAdjusts.add(s.adjustHandle());
-		return new Compiler2BlobHost(workers.build(), inputTokens.build(), outputTokens.build(),
+		return new Compiler2BlobHost(workers, inputTokens.build(), outputTokens.build(),
 				initCode, steadyStateCode,
 				storageAdjusts.build(),
 				initReadInstructions, initWriteInstructions, migrationInstructions,
