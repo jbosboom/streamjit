@@ -85,23 +85,26 @@ public final class Combinators {
 		return MethodHandles.filterArguments(MethodHandles.exactInvoker(type), 0, selector);
 	}
 
-	private static final MethodHandle SEMICOLON = findStatic(LOOKUP, Combinators.class, "_semicolon", void.class, MethodHandle[].class);
-	private static void _semicolon(MethodHandle... handles) throws Throwable {
-		for (MethodHandle m : handles)
-			m.invoke();
-	}
-
 	/**
-	 * Returns a MethodHandle that calls the given no-arg MethodHandles in
-	 * sequence, ignoring any return values.  If no handles are given, the
-	 * returned handle does nothing
+	 * Returns a MethodHandle that calls the given method handles in sequence,
+	 * ignoring their return values.  The given handles must all take the same
+	 * parameters.  They may have any return type, but any returned values will
+	 * be ignored.  If no handles are given, the returned handle does nothing.
 	 * @param handles the handles to invoke
 	 * @return a MethodHandle approximating semicolons
 	 */
 	public static MethodHandle semicolon(MethodHandle... handles) {
-		for (int i = 0; i < handles.length; ++i)
-			handles[i] = handles[i].asType(MethodType.methodType(void.class));
-		return SEMICOLON.bindTo(handles);
+		if (handles.length == 0)
+			return nop();
+		MethodType type = handles[0].type().changeReturnType(void.class);
+		if (handles.length == 1)
+			return handles[0].asType(type);
+		MethodHandle chain = nop(type.parameterArray());
+		for (int i = handles.length-1; i >= 0; --i) {
+			checkArgument(handles[i].type().parameterList().equals(type.parameterList()), "Type mismatch in "+Arrays.toString(handles));
+			chain = MethodHandles.foldArguments(chain, handles[i].asType(type));
+		}
+		return chain;
 	}
 
 	/**
