@@ -76,4 +76,9 @@ public final class TokenActor extends Actor {
 		//TODO: throw if isInput()?
 		return Object.class;
 	}
+
+	@Override
+	public String toString() {
+		return String.format("%s@%d[%s]", getClass().getSimpleName(), id(), token);
+	}
 }

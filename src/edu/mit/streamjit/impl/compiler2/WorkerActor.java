@@ -141,4 +141,9 @@ public final class WorkerActor extends Actor {
 	public Class<?> outputType() {
 		return archetype().outputType();
 	}
+
+	@Override
+	public String toString() {
+		return String.format("%s@%d[%s]", getClass().getSimpleName(), id(), worker);
+	}
 }
