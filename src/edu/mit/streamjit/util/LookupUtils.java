@@ -8,6 +8,9 @@ import java.lang.invoke.MethodType;
  * Convenience methods for MethodHandle.Lookup methods that must succeed.  This
  * allows initializing static variables without requiring a static initializer
  * block to catch the exceptions that will never be thrown anyway.
+ *
+ * TODO: allow omitting the container class, assuming it's the lookup class
+ * TODO: allow omitting types, look reflectively for the one thing with that name
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/14/2013
  */
