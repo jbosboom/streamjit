@@ -288,10 +288,10 @@ public class Compiler2 {
 							survivor.downstream().add(a);
 						}
 				}
+				//TODO: victim initial data
 				storage.remove(victim);
 			}
 			removeActor(splitter);
-			System.out.println("removed "+splitter);
 		}
 	}
 
