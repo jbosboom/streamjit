@@ -773,8 +773,9 @@ public class Compiler2 {
 		@Override
 		public Map<Token, Object[]> call() {
 			Object[] data = new Object[indices.size()];
+			int idx = 0;
 			for (int i : indices)
-				data[i] = storage.read(i);
+				data[idx++] = storage.read(i);
 			return ImmutableMap.of(token, data);
 		}
 	}
