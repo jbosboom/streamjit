@@ -1,6 +1,7 @@
 package edu.mit.streamjit.util;
 
 import static com.google.common.base.Preconditions.*;
+import static edu.mit.streamjit.util.LookupUtils.findStatic;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
@@ -18,19 +19,12 @@ public final class Combinators {
 
 	private static final Lookup LOOKUP = MethodHandles.lookup();
 	private static final MethodType INT_INT_TO_INT = MethodType.methodType(int.class, int.class, int.class);
-	private static final MethodHandle ADD, SUB, MUL, DIV, REM, MOD;
-	static {
-		try {
-			ADD = LOOKUP.findStatic(Combinators.class, "_add", INT_INT_TO_INT);
-			SUB = LOOKUP.findStatic(Combinators.class, "_sub", INT_INT_TO_INT);
-			MUL = LOOKUP.findStatic(Combinators.class, "_mul", INT_INT_TO_INT);
-			DIV = LOOKUP.findStatic(Combinators.class, "_div", INT_INT_TO_INT);
-			REM = LOOKUP.findStatic(Combinators.class, "_rem", INT_INT_TO_INT);
-			MOD = LOOKUP.findStatic(Combinators.class, "_mod", INT_INT_TO_INT);
-		} catch (NoSuchMethodException | IllegalAccessException ex) {
-			throw new AssertionError("Can't happen!", ex);
-		}
-	}
+	private static final MethodHandle ADD = findStatic(LOOKUP, Combinators.class, "_add", INT_INT_TO_INT);
+	private static final MethodHandle SUB = findStatic(LOOKUP, Combinators.class, "_sub", INT_INT_TO_INT);
+	private static final MethodHandle MUL = findStatic(LOOKUP, Combinators.class, "_mul", INT_INT_TO_INT);
+	private static final MethodHandle DIV = findStatic(LOOKUP, Combinators.class, "_div", INT_INT_TO_INT);
+	private static final MethodHandle REM = findStatic(LOOKUP, Combinators.class, "_rem", INT_INT_TO_INT);
+	private static final MethodHandle MOD = findStatic(LOOKUP, Combinators.class, "_mod", INT_INT_TO_INT);
 	private static int _add(int x, int y) {
 		return x + y;
 	}
@@ -91,15 +85,7 @@ public final class Combinators {
 		return MethodHandles.filterArguments(MethodHandles.exactInvoker(type), 0, selector);
 	}
 
-	private static final MethodHandle SEMICOLON;
-	static {
-		try {
-			SEMICOLON = LOOKUP.findStatic(Combinators.class, "_semicolon",
-					MethodType.methodType(void.class, MethodHandle[].class));
-		} catch (NoSuchMethodException | IllegalAccessException ex) {
-			throw new AssertionError("Can't happen!", ex);
-		}
-	}
+	private static final MethodHandle SEMICOLON = findStatic(LOOKUP, Combinators.class, "_semicolon", void.class, MethodHandle[].class);
 	private static void _semicolon(MethodHandle... handles) throws Throwable {
 		for (MethodHandle m : handles)
 			m.invoke();

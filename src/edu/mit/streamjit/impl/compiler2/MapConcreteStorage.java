@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.collect.ImmutableSortedSet;
+import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -13,19 +14,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * @since 10/27/2013
  */
 public final class MapConcreteStorage implements ConcreteStorage {
-	private static final MethodHandle MAP_GET, MAP_PUT, ADJUST;
-	static {
-		try {
-			MAP_GET = MethodHandles.publicLookup().findVirtual(Map.class, "get", MethodType.methodType(Object.class, Object.class))
-					.asType(MethodType.methodType(Object.class, Map.class, int.class));
-			MAP_PUT = MethodHandles.publicLookup().findVirtual(Map.class, "put", MethodType.methodType(Object.class, Object.class, Object.class))
-					.asType(MethodType.methodType(void.class, Map.class, int.class, Object.class));
-			ADJUST = MethodHandles.lookup().findVirtual(MapConcreteStorage.class, "adjust", MethodType.methodType(void.class));
-		} catch (NoSuchMethodException | IllegalAccessException ex) {
-			throw new AssertionError("Can't happen! No Map.get?", ex);
-		}
-	}
-
+	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+	private static final MethodHandle MAP_GET = findVirtual(LOOKUP, Map.class, "get", Object.class, Object.class)
+			.asType(MethodType.methodType(Object.class, Map.class, int.class));
+	private static final MethodHandle MAP_PUT = findVirtual(LOOKUP, Map.class, "put", Object.class, Object.class, Object.class)
+			.asType(MethodType.methodType(void.class, Map.class, int.class, Object.class));
+	private static final MethodHandle ADJUST = findVirtual(LOOKUP, MapConcreteStorage.class, "adjust", void.class);
 	private final Class<?> type;
 	private final Map<Integer, Object> map = new ConcurrentHashMap<>();
 	private final MethodHandle readHandle, writeHandle, adjustHandle;

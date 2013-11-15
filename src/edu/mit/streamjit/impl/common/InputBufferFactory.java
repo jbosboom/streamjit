@@ -5,9 +5,11 @@ import com.google.common.reflect.Reflection;
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.impl.blob.Buffer;
+import static edu.mit.streamjit.util.LookupUtils.findConstructor;
+import static edu.mit.streamjit.util.LookupUtils.findGetter;
+import static edu.mit.streamjit.util.LookupUtils.findSetter;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 
 /**
  *
@@ -54,12 +56,8 @@ public abstract class InputBufferFactory {
 		static {
 			Reflection.initialize(Input.class);
 			assert INPUT_LOOKUP != null;
-			try {
-				getInputBufferFactory = INPUT_LOOKUP.findGetter(Input.class, "input", InputBufferFactory.class);
-				newInput = INPUT_LOOKUP.findConstructor(Input.class, MethodType.methodType(void.class, InputBufferFactory.class));
-			} catch (NoSuchFieldException | IllegalAccessException | NoSuchMethodException ex) {
-				throw new RuntimeException(ex);
-			}
+			getInputBufferFactory = findGetter(INPUT_LOOKUP, Input.class, "input", InputBufferFactory.class);
+			newInput = findConstructor(INPUT_LOOKUP, Input.class, InputBufferFactory.class);
 		}
 	}
 	private static final class ManualInputHolder {
@@ -67,11 +65,7 @@ public abstract class InputBufferFactory {
 		static {
 			Reflection.initialize(ManualInput.class);
 			assert MANUALINPUT_LOOKUP != null;
-			try {
-				setManualInputDelegate = MANUALINPUT_LOOKUP.findSetter(ManualInput.class, "delegate", ManualInputDelegate.class);
-			} catch (NoSuchFieldException | IllegalAccessException ex) {
-				throw new RuntimeException(ex);
-			}
+			setManualInputDelegate = findSetter(MANUALINPUT_LOOKUP, ManualInput.class, "delegate", ManualInputDelegate.class);
 		}
 	}
 

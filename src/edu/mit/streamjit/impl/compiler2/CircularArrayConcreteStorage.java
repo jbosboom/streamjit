@@ -1,10 +1,10 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.math.IntMath;
+import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
-import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 
 /**
@@ -14,15 +14,8 @@ import java.lang.reflect.Array;
  */
 public class CircularArrayConcreteStorage implements ConcreteStorage {
 	private static final Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle INDEX, ADJUST;
-	static {
-		try {
-			INDEX = LOOKUP.findVirtual(CircularArrayConcreteStorage.class, "index", MethodType.methodType(int.class, int.class));
-			ADJUST = LOOKUP.findVirtual(CircularArrayConcreteStorage.class, "adjust", MethodType.methodType(void.class));
-		} catch (NoSuchMethodException | IllegalAccessException ex) {
-			throw new AssertionError(ex);
-		}
-	}
+	private static final MethodHandle INDEX = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "index", int.class, int.class);
+	private static final MethodHandle ADJUST = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "adjust", void.class);;
 	private final Object array;
 	private final int capacity, throughput;
 	private int head;

@@ -17,11 +17,12 @@ import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
+import static edu.mit.streamjit.util.LookupUtils.findConstructor;
+import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import edu.mit.streamjit.util.MethodHandlePhaser;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandleProxies;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.invoke.SwitchPoint;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,23 +41,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class Compiler2BlobHost implements Blob {
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle MAIN_LOOP, DO_INIT, DO_ADJUST, THROW_NEW_ASSERTION_ERROR;
-	static {
-		try {
-			MAIN_LOOP = LOOKUP.findVirtual(Compiler2BlobHost.class, "mainLoop",
-					MethodType.methodType(void.class, MethodHandle.class));
-			DO_INIT = LOOKUP.findVirtual(Compiler2BlobHost.class, "doInit",
-					MethodType.methodType(void.class));
-			DO_ADJUST = LOOKUP.findVirtual(Compiler2BlobHost.class, "doAdjust",
-					MethodType.methodType(void.class));
-
-			MethodHandle newAssertionError = LOOKUP.findConstructor(AssertionError.class, MethodType.methodType(void.class, Object.class));
-			MethodHandle throwAE = MethodHandles.throwException(void.class, AssertionError.class);
-			THROW_NEW_ASSERTION_ERROR = MethodHandles.filterReturnValue(newAssertionError, throwAE);
-		} catch (NoSuchMethodException | IllegalAccessException ex) {
-			throw new AssertionError("Can't happen!", ex);
-		}
-	}
+	private static final MethodHandle MAIN_LOOP = findVirtual(LOOKUP, Compiler2BlobHost.class, "mainLoop", void.class, MethodHandle.class);
+	private static final MethodHandle DO_INIT = findVirtual(LOOKUP, Compiler2BlobHost.class, "doInit", void.class);
+	private static final MethodHandle DO_ADJUST = findVirtual(LOOKUP, Compiler2BlobHost.class, "doAdjust", void.class);
+	private static final MethodHandle THROW_NEW_ASSERTION_ERROR = MethodHandles.filterReturnValue(
+			findConstructor(LOOKUP, AssertionError.class, Object.class),
+			MethodHandles.throwException(void.class, AssertionError.class));
 	private static final MethodHandle NOP = Combinators.nop();
 	private static final MethodHandle MAIN_LOOP_NOP = MethodHandles.insertArguments(MAIN_LOOP, 1, NOP);
 
