@@ -18,6 +18,7 @@ import com.google.common.math.IntMath;
 import com.google.common.math.LongMath;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
+import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamCompiler;
@@ -321,7 +322,9 @@ public class Compiler2 {
 			for (int x = 0; x < a.outputs().size(); ++x)
 				transfer.add(MethodHandles.insertArguments(ROUNDROBIN_TRANSFER_FUNCTION, 0, weights[x], weightPrefixSum[x], N));
 			return transfer.build();
-		} else //TODO: DuplicateSplitter
+		} else if (a.worker() instanceof DuplicateSplitter) {
+			return Collections.nCopies(a.outputs().size(), MethodHandles.identity(int.class));
+		} else
 			return null;
 	}
 
