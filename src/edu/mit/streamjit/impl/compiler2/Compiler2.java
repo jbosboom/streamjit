@@ -38,6 +38,7 @@ import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
 import edu.mit.streamjit.test.sanity.PipelineSanity;
+import edu.mit.streamjit.test.sanity.SplitjoinComputeSanity;
 import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.Combinators.*;
@@ -156,7 +157,7 @@ public class Compiler2 {
 		fuse();
 		schedule();
 //		identityRemoval();
-//		splitterRemoval();
+		splitterRemoval();
 		//joinerRemoval();
 //		unbox();
 
@@ -260,59 +261,57 @@ public class Compiler2 {
 		}
 	}
 
-	//<editor-fold defaultstate="collapsed" desc="Unimplemented optimization stuff">
-//	private void splitterRemoval() {
-//		for (Actor splitter : ImmutableSortedSet.copyOf(actors)) {
-//			List<MethodHandle> transfers = splitterTransferFunctions(splitter);
-//			if (transfers == null) continue;
-//			Storage survivor = Iterables.getOnlyElement(splitter.inputs());
-//			MethodHandle Sin = Iterables.getOnlyElement(splitter.inputIndexFunctions());
-//			for (int i = 0; i < splitter.outputs().size(); ++i) {
-//				Storage victim = splitter.outputs().get(i);
-//				MethodHandle t = transfers.get(i);
-//				MethodHandle t2 = MethodHandles.filterReturnValue(t, Sin);
-//				for (Object o : victim.downstream())
-//					if (o instanceof Actor) {
-//						Actor q = (Actor)o;
-//						List<Storage> inputs = q.inputs();
-//						List<MethodHandle> inputIndices = q.inputIndexFunctions();
-//						for (int j = 0; j < inputs.size(); ++j)
-//							if (inputs.get(j).equals(victim)) {
-//								inputs.set(j, survivor);
-//								inputIndices.set(j, MethodHandles.filterReturnValue(t2, inputIndices.get(j)));
-//							}
-//					} else if (o instanceof Token) {
-//						Token q = (Token)o;
-//						tokenInputIndices.put(q, MethodHandles.filterReturnValue(t2, tokenInputIndices.get(q)));
-//					} else
-//						throw new AssertionError(o);
-//			}
-//			removeActor(splitter);
-//		}
-//	}
+	private void splitterRemoval() {
+		for (WorkerActor splitter : FluentIterable.from(ImmutableSortedSet.copyOf(actors)).filter(WorkerActor.class)) {
+			List<MethodHandle> transfers = splitterTransferFunctions(splitter);
+			if (transfers == null) continue;
+			Storage survivor = Iterables.getOnlyElement(splitter.inputs());
+			//Remove all instances of splitter, not just the first.
+			survivor.downstream().removeAll(ImmutableList.of(splitter));
+			MethodHandle Sin = Iterables.getOnlyElement(splitter.inputIndexFunctions());
+			for (int i = 0; i < splitter.outputs().size(); ++i) {
+				Storage victim = splitter.outputs().get(i);
+				MethodHandle t = transfers.get(i);
+				MethodHandle t2 = MethodHandles.filterReturnValue(t, Sin);
+				for (Actor a : victim.downstream()) {
+					List<Storage> inputs = a.inputs();
+					List<MethodHandle> inputIndices = a.inputIndexFunctions();
+					for (int j = 0; j < inputs.size(); ++j)
+						if (inputs.get(j).equals(victim)) {
+							inputs.set(j, survivor);
+							inputIndices.set(j, MethodHandles.filterReturnValue(t2, inputIndices.get(j)));
+							survivor.downstream().add(a);
+						}
+				}
+				storage.remove(victim);
+			}
+			removeActor(splitter);
+			System.out.println("removed "+splitter);
+		}
+	}
 
-//	/**
-//	 * Returns transfer functions for the given splitter, or null if the actor
-//	 * isn't a splitter or isn't one of the built-in splitters or for some other
-//	 * reason we can't make transfer functions.
-//	 *
-//	 * A splitter has one transfer function for each output that maps logical
-//	 * output indices to logical input indices (representing the splitter's
-//	 * distribution pattern).
-//	 * @param a an actor
-//	 * @return transfer functions, or null
-//	 */
-//	private List<MethodHandle> splitterTransferFunctions(Actor a) {
-//		if (a.worker() instanceof RoundrobinSplitter) {
-//			//Nx, Nx + 1, Nx + 2, ..., Nx+(N-1)
-//			int N = a.outputs().size();
-//			ImmutableList.Builder<MethodHandle> transfer = ImmutableList.builder();
-//			for (int n = 0; n < N; ++n)
-//				transfer.add(add(mul(MethodHandles.identity(int.class), N), n));
-//			return transfer.build();
-//		} else //TODO: WeightedRoundrobinSplitter, DuplicateSplitter
-//			return null;
-//	}
+	/**
+	 * Returns transfer functions for the given splitter, or null if the actor
+	 * isn't a splitter or isn't one of the built-in splitters or for some other
+	 * reason we can't make transfer functions.
+	 *
+	 * A splitter has one transfer function for each output that maps logical
+	 * output indices to logical input indices (representing the splitter's
+	 * distribution pattern).
+	 * @param a an actor
+	 * @return transfer functions, or null
+	 */
+	private List<MethodHandle> splitterTransferFunctions(WorkerActor a) {
+		if (a.worker() instanceof RoundrobinSplitter) {
+			//Nx, Nx + 1, Nx + 2, ..., Nx+(N-1)
+			int N = a.outputs().size();
+			ImmutableList.Builder<MethodHandle> transfer = ImmutableList.builder();
+			for (int n = 0; n < N; ++n)
+				transfer.add(add(mul(MethodHandles.identity(int.class), N), n));
+			return transfer.build();
+		} else //TODO: WeightedRoundrobinSplitter, DuplicateSplitter
+			return null;
+	}
 
 	/**
 	 * Removes an Actor from this compiler's data structures.  The Actor should
@@ -332,6 +331,7 @@ public class Compiler2 {
 		}
 	}
 
+	//<editor-fold defaultstate="collapsed" desc="Unimplemented optimization stuff">
 //	/**
 //	 * Removes Identity instances from the graph, unless doing so would make the
 //	 * graph empty.
@@ -972,9 +972,10 @@ public class Compiler2 {
 	}
 
 	public static void main(String[] args) {
-		StreamCompiler sc = new Compiler2StreamCompiler().multiplier(1000).maxNumCores(8);
+		StreamCompiler sc = new Compiler2StreamCompiler();
 //		Benchmark bm = new PipelineSanity.Add15();
-		Benchmark bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
+//		Benchmark bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
+		Benchmark bm = new SplitjoinComputeSanity.MultiplyBenchmark();
 		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);
 	}
 }
