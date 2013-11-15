@@ -14,12 +14,14 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
+import com.google.common.math.IntMath;
 import com.google.common.math.LongMath;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.api.WeightedRoundrobinSplitter;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
@@ -42,6 +44,7 @@ import edu.mit.streamjit.test.sanity.SplitjoinComputeSanity;
 import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.Combinators.*;
+import static edu.mit.streamjit.util.LookupUtils.findStatic;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.bytecode.Module;
 import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
@@ -66,6 +69,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @since 9/22/2013
  */
 public class Compiler2 {
+	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
 	private final ImmutableSet<ActorArchetype> archetypes;
@@ -302,15 +306,29 @@ public class Compiler2 {
 	 * @return transfer functions, or null
 	 */
 	private List<MethodHandle> splitterTransferFunctions(WorkerActor a) {
-		if (a.worker() instanceof RoundrobinSplitter) {
-			//Nx, Nx + 1, Nx + 2, ..., Nx+(N-1)
-			int N = a.outputs().size();
+		if (a.worker() instanceof RoundrobinSplitter || a.worker() instanceof WeightedRoundrobinSplitter) {
+			int[] weights = new int[a.outputs().size()];
+			for (int i = 0; i < weights.length; ++i)
+				weights[i] = a.push(i);
+			int[] weightPrefixSum = new int[weights.length + 1];
+			for (int i = 1; i < weightPrefixSum.length; ++i)
+				weightPrefixSum[i] = weightPrefixSum[i-1] + weights[i-1];
+			int N = weightPrefixSum[weightPrefixSum.length-1];
+			//t_x(i) = N(i/w[x]) + sum_0_x-1{w} + (i mod w[x])
+			//where the first two terms select a "window" and the third is the
+			//index into that window.
 			ImmutableList.Builder<MethodHandle> transfer = ImmutableList.builder();
-			for (int n = 0; n < N; ++n)
-				transfer.add(add(mul(MethodHandles.identity(int.class), N), n));
+			for (int x = 0; x < a.outputs().size(); ++x)
+				transfer.add(MethodHandles.insertArguments(ROUNDROBIN_TRANSFER_FUNCTION, 0, weights[x], weightPrefixSum[x], N));
 			return transfer.build();
-		} else //TODO: WeightedRoundrobinSplitter, DuplicateSplitter
+		} else //TODO: DuplicateSplitter
 			return null;
+	}
+
+	private final MethodHandle ROUNDROBIN_TRANSFER_FUNCTION = findStatic(LOOKUP, Compiler2.class, "_roundrobinTransferFunction", int.class, int.class, int.class, int.class, int.class);
+	//TODO: build this directly out of MethodHandles?
+	private static int _roundrobinTransferFunction(int weight, int prefixSum, int N, int i) {
+		return N*(i/weight) + prefixSum + IntMath.mod(i, weight);
 	}
 
 	/**
