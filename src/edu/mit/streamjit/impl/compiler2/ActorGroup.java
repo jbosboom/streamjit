@@ -87,21 +87,23 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	}
 
 	public Set<Storage> inputs() {
-		return Sets.filter(allEdges(), new Predicate<Storage>() {
-			@Override
-			public boolean apply(Storage input) {
-				return Iterables.getOnlyElement(input.upstream()).group() != ActorGroup.this;
-			}
-		});
+		ImmutableSet.Builder<Storage> builder = ImmutableSet.builder();
+		for (Actor a : actors())
+			for (Storage s : a.inputs())
+				for (Actor producer : s.upstream())
+					if (producer.group() != this)
+						builder.add(s);
+		return builder.build();
 	}
 
 	public Set<Storage> outputs() {
-		return Sets.filter(allEdges(), new Predicate<Storage>() {
-			@Override
-			public boolean apply(Storage input) {
-				return Iterables.getOnlyElement(input.downstream()).group() != ActorGroup.this;
-			}
-		});
+		ImmutableSet.Builder<Storage> builder = ImmutableSet.builder();
+		for (Actor a : actors())
+			for (Storage s : a.outputs())
+				for (Actor consumer : s.downstream())
+					if (consumer.group() != this)
+						builder.add(s);
+		return builder.build();
 	}
 
 	public Set<Storage> internalEdges() {
