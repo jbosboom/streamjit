@@ -236,16 +236,21 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 				e1.printStackTrace();
 			}
 			// System.exit(0);
+		} catch (InstantiationException iex) {
+			System.err.println("InstantiationException exception.");
+			System.err
+					.println("Please ensure the top level StreamJit application" +
+							" class is public and have no argument constructor.");
+			iex.printStackTrace();
 		} catch (Exception e) {
-			e.printStackTrace();
 			System.out.println("Couldn't find the toplevel worker.");
+			e.printStackTrace();
 
 			// TODO: Try catch inside a catch block. Good practice???
 			try {
 				streamNode.controllerConnection
 						.writeObject(Error.WORKER_NOT_FOUND);
 			} catch (IOException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 		}
