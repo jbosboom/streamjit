@@ -372,10 +372,6 @@ public class StreamJitAppManager {
 			System.err
 					.println("No top level class in the jar file. Terminating...");
 		}
-
-		@Override
-		public void processBLOB_NOT_FOUND() {
-		}
 	}
 
 	/**
