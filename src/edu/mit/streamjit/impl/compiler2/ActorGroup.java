@@ -90,9 +90,8 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		ImmutableSet.Builder<Storage> builder = ImmutableSet.builder();
 		for (Actor a : actors())
 			for (Storage s : a.inputs())
-				for (Actor producer : s.upstream())
-					if (producer.group() != this)
-						builder.add(s);
+				if (!s.isInternal())
+					builder.add(s);
 		return builder.build();
 	}
 
@@ -100,9 +99,8 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		ImmutableSet.Builder<Storage> builder = ImmutableSet.builder();
 		for (Actor a : actors())
 			for (Storage s : a.outputs())
-				for (Actor consumer : s.downstream())
-					if (consumer.group() != this)
-						builder.add(s);
+				if (!s.isInternal())
+					builder.add(s);
 		return builder.build();
 	}
 
