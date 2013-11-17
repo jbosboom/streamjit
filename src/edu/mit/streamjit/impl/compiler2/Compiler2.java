@@ -756,7 +756,7 @@ public class Compiler2 {
 				assert s.indicesLiveDuringSteadyState().isEmpty();
 			else
 				for (int i : s.readIndices())
-					assert s.indicesLiveDuringSteadyState().contains(i) : s + ": " + i + " not in " + s.indicesLiveDuringSteadyState();
+					assert s.indicesLiveDuringSteadyState().contains(i) : s + ": " + i + " from " + s.readIndices() + " not in " + s.indicesLiveDuringSteadyState();
 		}
 	}
 
