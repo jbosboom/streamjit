@@ -34,9 +34,9 @@ import java.util.Set;
  * @since 9/22/2013
  */
 public class ActorGroup implements Comparable<ActorGroup> {
-	private ImmutableSet<Actor> actors;
+	private ImmutableSortedSet<Actor> actors;
 	private ImmutableMap<Actor, Integer> schedule;
-	private ActorGroup(ImmutableSet<Actor> actors) {
+	private ActorGroup(ImmutableSortedSet<Actor> actors) {
 		this.actors = actors;
 		for (Actor a : actors)
 			a.setGroup(this);
@@ -44,16 +44,16 @@ public class ActorGroup implements Comparable<ActorGroup> {
 
 	public static ActorGroup of(Actor actor) {
 		assert actor.group() == null : actor.group();
-		return new ActorGroup(ImmutableSet.of(actor));
+		return new ActorGroup(ImmutableSortedSet.of(actor));
 	}
 
 	public static ActorGroup fuse(ActorGroup first, ActorGroup second) {
-		return new ActorGroup(ImmutableSet.<Actor>builder().addAll(first.actors()).addAll(second.actors()).build());
+		return new ActorGroup(ImmutableSortedSet.<Actor>naturalOrder().addAll(first.actors()).addAll(second.actors()).build());
 	}
 
 	public void remove(Actor a) {
 		assert actors.contains(a) : a;
-		actors = ImmutableSet.copyOf(Sets.difference(actors, ImmutableSet.of(a)));
+		actors = ImmutableSortedSet.copyOf(Sets.difference(actors, ImmutableSet.of(a)));
 		schedule = ImmutableMap.copyOf(Maps.difference(schedule, ImmutableMap.of(a, 0)).entriesOnlyOnLeft());
 	}
 
@@ -338,5 +338,10 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	@Override
 	public int compareTo(ActorGroup o) {
 		return Integer.compare(id(), o.id());
+	}
+
+	@Override
+	public String toString() {
+		return "ActorGroup@"+id()+actors();
 	}
 }
