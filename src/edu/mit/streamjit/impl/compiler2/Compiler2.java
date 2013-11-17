@@ -652,13 +652,17 @@ public class Compiler2 {
 		 */
 		Map<ActorGroup, Integer> actualInit = new HashMap<>();
 		for (ActorGroup g : groups)
-			//TODO: this is assuming we can stop as soon as an iteration doesn't
-			//help.  Will this always be true?
+			//Iterate until min(writes) > max(required reads) across all
+			//storage.  This is a weaker monotonicity requirement than before,
+			//when we assumed we could stop as soon as there were no changes.
 			for (int i = 0; ; ++i) {
-				boolean changed = false;
-				for (Map.Entry<Storage, Set<Integer>> e : g.writes(i).entrySet())
-					changed |= requiredReadIndices.get(e.getKey()).removeAll(e.getValue());
-				if (!changed) {
+				boolean canStop = true;
+				for (Map.Entry<Storage, Set<Integer>> e : g.writes(i).entrySet()) {
+					Set<Integer> writes = e.getValue(), requiredReads = requiredReadIndices.get(e.getKey());
+					canStop &= requiredReads.isEmpty() || Collections.min(writes) > Collections.max(requiredReads);
+					requiredReads.removeAll(writes);
+				}
+				if (canStop) {
 					actualInit.put(g, i);
 					break;
 				}
