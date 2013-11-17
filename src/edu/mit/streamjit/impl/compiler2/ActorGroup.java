@@ -156,13 +156,13 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	}
 
 	/**
-	 * Returns a map mapping each output Storage to the set of physical indices
+	 * Returns a map mapping each input Storage to the set of physical indices
 	 * read in that Storage during the given ActorGroup iteration.
 	 * @param iteration the iteration to simulate
 	 * @return a map of read physical indices
 	 */
 	public Map<Storage, Set<Integer>> reads(int iteration) {
-		Map<Storage, Set<Integer>> retval = new HashMap<>(outputs().size());
+		Map<Storage, Set<Integer>> retval = new HashMap<>(inputs().size());
 		for (Storage s : inputs())
 			retval.put(s, new HashSet<Integer>());
 
