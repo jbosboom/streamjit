@@ -226,6 +226,7 @@ public abstract class StreamNodeAgent {
 		@Override
 		public void visit(Error error) {
 			assert manager != null : "StreamJitAppManager has not been set";
+			System.err.println("Node " + nodeID + ": Error.");
 			ErrorProcessor ep = manager.errorProcessor();
 			error.process(ep);
 		}

@@ -363,10 +363,14 @@ public class StreamJitAppManager {
 
 		@Override
 		public void processFILE_NOT_FOUND() {
+			System.err
+					.println("No application jar file in streamNode. Terminating...");
 		}
 
 		@Override
 		public void processWORKER_NOT_FOUND() {
+			System.err
+					.println("No top level class in the jar file. Terminating...");
 		}
 
 		@Override
