@@ -29,7 +29,7 @@ public final class MapConcreteStorage implements ConcreteStorage {
 		this.readHandle = MAP_GET.bindTo(map).asType(MethodType.methodType(type, int.class));
 		this.writeHandle = MAP_PUT.bindTo(map).asType(MethodType.methodType(void.class, int.class, type));
 		this.adjustHandle = ADJUST.bindTo(this);
-		this.minReadIndex = s.readIndices().first();
+		this.minReadIndex = s.readIndices().isEmpty() ? Integer.MAX_VALUE : s.readIndices().first();
 		this.throughput = s.throughput();
 	}
 

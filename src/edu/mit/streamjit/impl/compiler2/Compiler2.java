@@ -708,7 +708,7 @@ public class Compiler2 {
 			for (ActorGroup writer : s.upstreamGroups())
 				size.add(LongMath.checkedMultiply(LongMath.divide(totalInit.get(writer), externalSchedule.get(writer), RoundingMode.CEILING) - 1, s.throughput()));
 			int initCapacity = Ints.checkedCast(Collections.max(size) +
-					s.readIndices().last() - s.readIndices().first());
+					(s.readIndices().isEmpty() ? 0 : s.readIndices().last() - s.readIndices().first()));
 			s.setInitCapacity(initCapacity);
 		}
 
