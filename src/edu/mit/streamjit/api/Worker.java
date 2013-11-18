@@ -143,6 +143,11 @@ public abstract class Worker<I, O> implements StreamElement<I, O> {
 		this.identifier = identifier;
 	}
 
+	@Override
+	public String toString() {
+		return getClass().getSimpleName() + "@" + (identifier != -1 ? identifier : hashCode());
+	}
+
 	//<editor-fold defaultstate="collapsed" desc="Friend pattern support (see impl.common.Workers)">
 	private static class WorkersFriend extends edu.mit.streamjit.impl.common.Workers {
 		@Override
