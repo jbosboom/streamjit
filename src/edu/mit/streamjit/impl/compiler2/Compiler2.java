@@ -70,6 +70,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @since 9/22/2013
  */
 public class Compiler2 {
+	public static final ImmutableSet<Class<?>> REMOVABLE_SPLITTERS = ImmutableSet.<Class<?>>of(
+			RoundrobinSplitter.class, WeightedRoundrobinSplitter.class, DuplicateSplitter.class);
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
@@ -268,8 +270,10 @@ public class Compiler2 {
 
 	private void splitterRemoval() {
 		for (WorkerActor splitter : FluentIterable.from(ImmutableSortedSet.copyOf(actors)).filter(WorkerActor.class)) {
+			SwitchParameter<Boolean> param = config.getParameter("remove_splitter"+splitter.id(), SwitchParameter.class, Boolean.class);
+			if (param == null || !param.getValue()) continue;
+
 			List<MethodHandle> transfers = splitterTransferFunctions(splitter);
-			if (transfers == null) continue;
 			Storage survivor = Iterables.getOnlyElement(splitter.inputs());
 			//Remove all instances of splitter, not just the first.
 			survivor.downstream().removeAll(ImmutableList.of(splitter));
@@ -296,9 +300,7 @@ public class Compiler2 {
 	}
 
 	/**
-	 * Returns transfer functions for the given splitter, or null if the actor
-	 * isn't a splitter or isn't one of the built-in splitters or for some other
-	 * reason we can't make transfer functions.
+	 * Returns transfer functions for the given splitter.
 	 *
 	 * A splitter has one transfer function for each output that maps logical
 	 * output indices to logical input indices (representing the splitter's
@@ -307,6 +309,7 @@ public class Compiler2 {
 	 * @return transfer functions, or null
 	 */
 	private List<MethodHandle> splitterTransferFunctions(WorkerActor a) {
+		assert REMOVABLE_SPLITTERS.contains(a.worker().getClass()) : a.worker().getClass();
 		if (a.worker() instanceof RoundrobinSplitter || a.worker() instanceof WeightedRoundrobinSplitter) {
 			int[] weights = new int[a.outputs().size()];
 			for (int i = 0; i < weights.length; ++i)
@@ -325,7 +328,7 @@ public class Compiler2 {
 		} else if (a.worker() instanceof DuplicateSplitter) {
 			return Collections.nCopies(a.outputs().size(), MethodHandles.identity(int.class));
 		} else
-			return null;
+			throw new AssertionError();
 	}
 
 	private final MethodHandle ROUNDROBIN_TRANSFER_FUNCTION = findStatic(LOOKUP, Compiler2.class, "_roundrobinTransferFunction", int.class, int.class, int.class, int.class, int.class);
