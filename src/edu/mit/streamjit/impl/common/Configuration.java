@@ -335,6 +335,8 @@ public final class Configuration {
 	 */
 	public <U, T extends GenericParameter<?>, V extends GenericParameter<U>> V getParameter(String name, Class<T> parameterType, Class<U> typeParameterType) {
 		T parameter = getParameter(name, parameterType);
+		if (parameter == null)
+			return null;
 		//This must be an exact match.
 		if (parameter.getGenericParameter() != typeParameterType)
 			throw new ClassCastException("Type parameter type mismatch: "+parameter.getGenericParameter() +" != "+typeParameterType);
