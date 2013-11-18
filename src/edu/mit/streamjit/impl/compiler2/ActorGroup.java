@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -252,81 +253,98 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		}
 
 		/**
-		 * Compute the initial read/write indices for each iteration, then bind
-		 * them together in sequence.  (We could also move the computation
-		 * inside the handle, but I think leaving everything explicit is better.
-		 * We could also bytecode these constants and invoke the method handle,
-		 * if bytecode gives the JVM more visibility.)
+		 * Make loop handles for each Actor that execute the iteration given as
+		 * an argument, then bind them together in an outer loop body that
+		 * executes all the iterations.  Before the outer loop we must also
+		 * reinitialize the splitter/joiner index arrays to their initial
+		 * values.
 		 *
-		 * TODO: loops for splitters and joiners.  Will need to copy the array
-		 * before the loop, but can rely on the work method to update it (note
-		 * this changes the work method!)
-		 *
-		 * TODO: currently we have one handle per iteration, which isn't great
-		 * either.  should be an outer loop somehow.
+		 * TODO: this is a very fine-grained execution.  We could trade code
+		 * cache for data cache by unrolling, executing each actor for N
+		 * iterations worth before proceeding to the next actor.
 		 */
-		List<MethodHandle> handles = new ArrayList<>();
-		for (int iteration : ContiguousSet.create(iterations, DiscreteDomain.integers())) {
-			for (Actor a : ImmutableSortedSet.copyOf(actors())) {
-				MethodHandle base = withRWHandlesBound.get(a);
-				if (((WorkerActor)a).worker() instanceof Filter)
-					handles.addAll(filterLoopSubiteration(a, base, iteration));
-				else
-					handles.addAll(genericSubiteration(a, base, iteration));
-			}
+		List<MethodHandle> loopHandles = new ArrayList<>(actors().size());
+		Map<int[], int[]> requiredCopies = new LinkedHashMap<>();
+		for (Actor a : actors())
+			loopHandles.add(makeWorkerLoop((WorkerActor)a, withRWHandlesBound.get(a), iterations.lowerEndpoint(), requiredCopies));
+		int[][] copies = new int[requiredCopies.size()*2][];
+		int i = 0;
+		for (Map.Entry<int[], int[]> e : requiredCopies.entrySet()) {
+			copies[i++] = e.getKey();
+			copies[i++] = e.getValue();
 		}
-		return Combinators.semicolon(handles);
+		return MethodHandles.insertArguments(OVERALL_GROUP_LOOP, 0,
+				copies, Combinators.semicolon(loopHandles), iterations.lowerEndpoint(), iterations.upperEndpoint());
 	}
 
 	/**
-	 * Implements subiterations of the given actor.  This handles all actors but
-	 * generates lots of method handles (i.e., uses lots of memory).
+	 * Makes the loop for the given actor, which implements one group execution.
 	 * @param a the actor
-	 * @param base the base method handle (with read and write handles bound)
-	 * @param iteration the current ActorGroup iteration
-	 * @return handle(s) implementing subiterations of the given actor
+	 * @param base the specialized work method with read/write handles bound;
+	 * takes two int or int[] parameters
+	 * @param firstIteration the first iteration to execute, for computing the
+	 * initial contents of index arrays
+	 * @param requiredCopies accumulates the copies required to reinitialize the
+	 * index arrays
+	 * @return a MethodHandle taking one int parameter
 	 */
-	private List<MethodHandle> genericSubiteration(Actor a, MethodHandle base, int iteration) {
-		ImmutableList.Builder<MethodHandle> handles = ImmutableList.builder();
+	private MethodHandle makeWorkerLoop(WorkerActor a, MethodHandle base, int firstIteration, Map<int[], int[]> requiredCopies) {
 		int subiterations = schedule.get(a);
-		for (int i = iteration*subiterations; i < (iteration+1)*subiterations; ++i) {
-			MethodHandle next = base;
-			if (next.type().parameterType(0).equals(int.class)) {
-				assert a.inputs().size() == 1;
-				next = MethodHandles.insertArguments(next, 0, i * a.pop(0));
-			} else {
-				int[] readIndices = new int[a.inputs().size()];
-				for (int m = 0; m < a.inputs().size(); ++m)
-					readIndices[m] = i * a.pop(m);
-				next = MethodHandles.insertArguments(next, 0, readIndices);
-			}
-
-			if (next.type().parameterType(0).equals(int.class)) {
-				assert a.outputs().size() == 1;
-				next = MethodHandles.insertArguments(next, 0, i * a.push(0));
-			} else {
-				int[] writeIndices = new int[a.outputs().size()];
-				for (int m = 0; m < a.outputs().size(); ++m)
-					writeIndices[m] = i * a.push(m);
-				next = MethodHandles.insertArguments(next, 0, writeIndices);
-			}
-			handles.add(next);
+		Object pop, push;
+		if (base.type().parameterType(0).equals(int.class)) {
+			assert a.inputs().size() == 1;
+			pop = a.pop(0);
+		} else {
+			int[] readIndices = new int[a.inputs().size()];
+			for (int m = 0; m < a.inputs().size(); ++m)
+				readIndices[m] = firstIteration * a.pop(m);
+			pop = readIndices.clone();
+			requiredCopies.put(readIndices, (int[])pop);
 		}
-		return handles.build();
+		if (base.type().parameterType(1).equals(int.class)) {
+			assert a.outputs().size() == 1;
+			push = a.push(0);
+		} else {
+			int[] writeIndices = new int[a.outputs().size()];
+			for (int m = 0; m < a.outputs().size(); ++m)
+				writeIndices[m] = firstIteration * a.push(m);
+			push = writeIndices.clone();
+			requiredCopies.put(writeIndices, (int[])push);
+		}
+		MethodHandle loopHandle;
+		if (a.worker() instanceof Filter)
+			loopHandle = FILTER_LOOP;
+		else if (a.worker() instanceof Splitter)
+			loopHandle = SPLITTER_LOOP;
+		else if (a.worker() instanceof Joiner)
+			loopHandle = JOINER_LOOP;
+		else
+			throw new AssertionError(a);
+		return MethodHandles.insertArguments(loopHandle, 0, base, subiterations, pop, push);
 	}
 
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final MethodHandle FILTER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_filterLoop", void.class, MethodHandle.class, int.class, int.class, int.class, int.class);
-	private List<MethodHandle> filterLoopSubiteration(Actor a, MethodHandle base, int iteration) {
-		return ImmutableList.of(MethodHandles.insertArguments(FILTER_LOOP, 0, base, iteration, schedule.get(a), a.pop(0), a.push(0)));
-	}
-
-	/**
-	 * The loop combinator for a filter work function.
-	 */
-	private static void _filterLoop(MethodHandle work, int iteration, int subiterations, int pop, int push) throws Throwable {
+	private static final MethodHandle SPLITTER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_splitterLoop", void.class, MethodHandle.class, int.class, int.class, int[].class, int.class);
+	private static final MethodHandle JOINER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_joinerLoop", void.class, MethodHandle.class, int.class, int[].class, int.class, int.class);
+	private static final MethodHandle OVERALL_GROUP_LOOP = findStatic(LOOKUP, ActorGroup.class, "_overallGroupLoop", void.class, int[][].class, MethodHandle.class, int.class, int.class);
+	private static void _filterLoop(MethodHandle work, int subiterations, int pop, int push, int iteration) throws Throwable {
 		for (int i = iteration*subiterations; i < (iteration+1)*subiterations; ++i)
 			work.invokeExact(i * pop, i * push);
+	}
+	private static void _splitterLoop(MethodHandle work, int subiterations, int pop, int[] writeIndices, int iteration) throws Throwable {
+		for (int i = iteration*subiterations; i < (iteration+1)*subiterations; ++i)
+			work.invokeExact(i * pop, writeIndices);
+	}
+	private static void _joinerLoop(MethodHandle work, int subiterations, int[] readIndices, int push, int iteration) throws Throwable {
+		for (int i = iteration*subiterations; i < (iteration+1)*subiterations; ++i)
+			work.invokeExact(readIndices, i * push);
+	}
+	private static void _overallGroupLoop(int[][] indexArrays, MethodHandle loopBody, int begin, int end) throws Throwable {
+		for (int i = 0; i < indexArrays.length; i += 2)
+			System.arraycopy(indexArrays[i], 0, indexArrays[i+1], 0, indexArrays[i].length);
+		for (int i = begin; i < end; ++i)
+			loopBody.invokeExact(i);
 	}
 
 	/**

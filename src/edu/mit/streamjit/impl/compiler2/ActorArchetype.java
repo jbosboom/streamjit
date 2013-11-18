@@ -319,14 +319,16 @@ public class ActorArchetype {
 		LocalVariable var = new LocalVariable(arg.getType(), localVarName, block.getParent());
 		Value toStore = arg;
 
-		if (arg.getType() instanceof ArrayType) {
-			ArrayLengthInst ali = new ArrayLengthInst(arg);
-			block.instructions().add(ali);
-			Method copyOf = module.getKlass(Arrays.class).getMethod("copyOf", module.types().getMethodType(arg.getType(), arg.getType(), module.types().getRegularType(int.class)));
-			Instruction copyOfCall = new CallInst(copyOf, arg, ali);
-			block.instructions().add(copyOfCall);
-			toStore = copyOfCall;
-		}
+		//Actually, we don't copy; we now depend on updates being preserved
+		//until the next iteration.  See ActorGroup.specialize().
+//		if (arg.getType() instanceof ArrayType) {
+//			ArrayLengthInst ali = new ArrayLengthInst(arg);
+//			block.instructions().add(ali);
+//			Method copyOf = module.getKlass(Arrays.class).getMethod("copyOf", module.types().getMethodType(arg.getType(), arg.getType(), module.types().getRegularType(int.class)));
+//			Instruction copyOfCall = new CallInst(copyOf, arg, ali);
+//			block.instructions().add(copyOfCall);
+//			toStore = copyOfCall;
+//		}
 
 		StoreInst store = new StoreInst(var, toStore);
 		block.instructions().add(store);
