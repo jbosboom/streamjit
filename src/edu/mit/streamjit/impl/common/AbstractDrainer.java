@@ -28,6 +28,7 @@ import com.google.common.collect.Sets;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
+import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
@@ -311,7 +312,7 @@ public abstract class AbstractDrainer {
 	public final void awaitDrainedIntrmdiate() throws InterruptedException {
 		intermediateLatch.await();
 
-		// Just for debuging purpose. To make effect of this code snippet
+		// Just for debugging purpose. To make effect of this code snippet
 		// comment the above, intermediateLatch.await(), line. Otherwise no
 		// effect.
 		while (intermediateLatch.getCount() != 0) {
@@ -345,6 +346,16 @@ public abstract class AbstractDrainer {
 			}
 			System.out.println("****************************************");
 		}
+	}
+
+	/**
+	 * In any case, if the application could not be executed (may be due to
+	 * {@link Error}), {@link StreamCompiler} or appropriate class can call this
+	 * method to release the main thread.
+	 */
+	public void stop() {
+		assert state != DrainerState.INTERMEDIATE : "DrainerState.NODRAINING or DrainerState.FINAL is expected.";
+		this.finalLatch.countDown();
 	}
 
 	/**

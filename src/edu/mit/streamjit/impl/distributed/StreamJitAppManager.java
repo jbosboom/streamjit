@@ -38,7 +38,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 public class StreamJitAppManager {
 
-	private SNDrainProcessor dp = null;
+	private SNDrainProcessorImpl dp = null;
 
 	private SNExceptionProcessorImpl exP = null;
 
@@ -277,6 +277,7 @@ public class StreamJitAppManager {
 		this.status = AppStatus.STOPPED;
 		tailChannel.reset();
 		controller.closeAll();
+		dp.drainer.stop();
 	}
 
 	/**
@@ -365,12 +366,14 @@ public class StreamJitAppManager {
 		public void processFILE_NOT_FOUND() {
 			System.err
 					.println("No application jar file in streamNode. Terminating...");
+			stop();
 		}
 
 		@Override
 		public void processWORKER_NOT_FOUND() {
 			System.err
 					.println("No top level class in the jar file. Terminating...");
+			stop();
 		}
 	}
 
