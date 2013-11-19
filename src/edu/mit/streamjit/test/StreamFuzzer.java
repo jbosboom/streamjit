@@ -147,6 +147,9 @@ public final class StreamFuzzer {
 
 	private static final ImmutableList<FuzzSplitter> SPLITTERS = ImmutableList.<FuzzSplitter>builder()
 			.add(new FuzzSplitter(RoundrobinSplitter.class, ImmutableList.of()))
+			.add(new FuzzSplitter(RoundrobinSplitter.class, ImmutableList.of(2)))
+			.add(new FuzzSplitter(RoundrobinSplitter.class, ImmutableList.of(3)))
+			.add(new FuzzSplitter(RoundrobinSplitter.class, ImmutableList.of(4)))
 			.add(new FuzzSplitter(DuplicateSplitter.class, ImmutableList.of()))
 			.build();
 	private static FuzzSplitter makeSplitter() {
