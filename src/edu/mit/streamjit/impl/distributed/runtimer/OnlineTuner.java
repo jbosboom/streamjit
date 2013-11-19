@@ -296,7 +296,7 @@ public class OnlineTuner implements Runnable {
 		String json = config.toJson();
 		try {
 			FileWriter writer = new FileWriter(
-					String.format("%s.cfg", app.name), false);
+					String.format("final_%s.cfg", app.name), false);
 			writer.write(json);
 			writer.flush();
 			writer.close();
