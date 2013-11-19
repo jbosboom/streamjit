@@ -455,12 +455,25 @@ public class Compiler2 {
 	}
 
 	private void createSteadyStateCode() {
-		ImmutableMap<Actor, ImmutableList<MethodHandle>> indexFxnBackup = adjustOutputIndexFunctions(new Function<Storage, Set<Integer>>() {
-			@Override
-			public Set<Integer> apply(Storage input) {
-				return input.indicesLiveDuringSteadyState();
+		for (Storage s : storage) {
+			if (s.isInternal()) continue;
+			int offset = s.indicesLiveAfterInit().first() - s.readIndices().first();
+			for (Actor a : ImmutableSet.copyOf(s.upstream())) {
+				int executions = initSchedule.get(a.group()) * a.group().schedule().get(a);
+				for (int i = 0; i < a.outputs().size(); ++i)
+					if (a.outputs().get(i).equals(s)) {
+						int itemsWritten = a.push(i) * executions;
+						System.out.println(a+" "+i+" "+itemsWritten+" "+offset);
+//						TODO: do we need backups?
+						a.outputIndexFunctions().set(i,
+								MethodHandles.filterReturnValue(
+										MethodHandles.filterArguments(a.outputIndexFunctions().get(i), 0, Combinators.add(MethodHandles.identity(int.class), itemsWritten)),
+										Combinators.sub(MethodHandles.identity(int.class), offset)
+								)
+						);
+					}
 			}
-		});
+		}
 
 		this.steadyStateStorage = createExternalStorage(CircularArrayConcreteStorage.factory());
 
@@ -496,8 +509,6 @@ public class Compiler2 {
 					s, initStorage.get(s), steadyStateStorage.get(s)));
 
 		createDrainInstructions();
-
-		restoreOutputIndexFunctions(indexFxnBackup);
 	}
 
 	/**
