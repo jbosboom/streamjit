@@ -670,7 +670,7 @@ public abstract class AbstractDrainer {
 			}
 			drainer.drain(blobID, drainer.state == DrainerState.FINAL);
 			// TODO: Verify the waiting time is reasonable.
-			drainer.schExecutorService.schedule(deadLockHandler(), 3000,
+			drainer.schExecutorService.schedule(deadLockHandler(), 6000,
 					TimeUnit.MILLISECONDS);
 		}
 
