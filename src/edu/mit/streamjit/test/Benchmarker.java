@@ -445,13 +445,14 @@ public final class Benchmarker {
 				} else {
 					Object e = expected.read();
 					if (!Objects.equals(e, t)) {
-						if (current == null) {
+						if (current == null) { //continue or begin
 							current = new Extent(index, new ArrayList<>(), new ArrayList<>());
 							extents.add(current);
 						}
 						current.expected.add(e);
 						current.actual.add(t);
-					}
+					} else if (current != null) //correct; end extent if one's open
+						current = null;
 				}
 				++index;
 				return true;
