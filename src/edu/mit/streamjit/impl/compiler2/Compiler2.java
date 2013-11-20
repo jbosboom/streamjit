@@ -297,7 +297,7 @@ public class Compiler2 {
 			int downstreamAdjust = downstream.group().schedule().get(downstream);
 			int throughput, excessPeeks;
 			//TODO: avoid double-buffering token groups here?
-			if (actorsToBeRemoved.contains(downstream))
+			if (actorsToBeRemoved.contains(downstream) && false)
 				throughput = excessPeeks = 0;
 			else {
 				throughput = s.push() * upstreamAdjust * externalSchedule.get(upstream.group());
