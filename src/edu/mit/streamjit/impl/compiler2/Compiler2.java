@@ -236,7 +236,10 @@ public class Compiler2 {
 	private void schedule() {
 		for (ActorGroup g : groups)
 			internalSchedule(g);
+		externalSchedule();
+	}
 
+	private void externalSchedule() {
 		Schedule.Builder<ActorGroup> scheduleBuilder = Schedule.builder();
 		scheduleBuilder.addAll(groups);
 		for (ActorGroup g : groups) {
