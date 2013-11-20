@@ -521,6 +521,20 @@ public class Compiler2 {
 						);
 					}
 			}
+
+			for (Actor a : ImmutableSet.copyOf(s.downstream())) {
+				int executions = initSchedule.get(a.group()) * a.group().schedule().get(a);
+				for (int i = 0; i < a.inputs().size(); ++i)
+					if (a.inputs().get(i).equals(s)) {
+						int itemsRead = a.pop(i) * (executions);
+						a.inputIndexFunctions().set(i,
+								MethodHandles.filterReturnValue(
+										MethodHandles.filterArguments(a.inputIndexFunctions().get(i), 0, Combinators.add(MethodHandles.identity(int.class), itemsRead)),
+										Combinators.sub(MethodHandles.identity(int.class), offset)
+								)
+						);
+					}
+			}
 		}
 
 		this.steadyStateStorage = createExternalStorage(CircularArrayConcreteStorage.factory());
