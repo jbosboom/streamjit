@@ -164,21 +164,21 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 */
 	public Map<Storage, Set<Integer>> reads(int iteration) {
 		Map<Storage, Set<Integer>> retval = new HashMap<>(inputs().size());
-		for (Storage s : inputs())
-			retval.put(s, new HashSet<Integer>());
-
 		for (Actor a : actors()) {
 			int begin = schedule.get(a) * iteration, end = schedule.get(a) * (iteration + 1);
-			for (int input = 0; input < a.inputs().size(); ++input)
-				if (!a.inputs().get(input).isInternal()) {
-					//In each iteration, our index starts at however many items
-					//we've previously popped, and goes until the elements we pop
-					//or peek in this iteration, whichever is greater.
-					int pop = a.pop(input), read = Math.max(pop, a.peek(input));
-					for (int iter = begin; iter < end; ++iter)
-						for (int idx = pop * iter; idx < (pop * iter) + read; ++idx)
-							retval.get(a.inputs().get(input)).add(a.translateInputIndex(input, idx));
-				}
+			for (int input = 0; input < a.inputs().size(); ++input) {
+				Storage s = a.inputs().get(input);
+				Set<Integer> indices = retval.get(s);
+				if (indices == null)
+					retval.put(s, indices = new HashSet<>());
+				//In each iteration, our index starts at however many items
+				//we've previously popped, and goes until the elements we pop
+				//or peek in this iteration, whichever is greater.
+				int pop = a.pop(input), read = Math.max(pop, a.peek(input));
+				for (int iter = begin; iter < end; ++iter)
+					for (int idx = pop * iter; idx < (pop * iter) + read; ++idx)
+						indices.add(a.translateInputIndex(input, idx));
+			}
 		}
 		return retval;
 	}
@@ -191,18 +191,18 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 */
 	public Map<Storage, Set<Integer>> writes(int iteration) {
 		Map<Storage, Set<Integer>> retval = new HashMap<>(outputs().size());
-		for (Storage s : outputs())
-			retval.put(s, new HashSet<Integer>());
-
 		for (Actor a : actors()) {
 			int begin = schedule.get(a) * iteration, end = schedule.get(a) * (iteration + 1);
-			for (int output = 0; output < a.outputs().size(); ++output)
-				if (!a.outputs().get(output).isInternal()) {
-					int push = a.push(output);
-					for (int iter = begin; iter < end; ++iter)
-						for (int idx = push * iter; idx < push * (iter+1); ++idx)
-							retval.get(a.outputs().get(output)).add(a.translateOutputIndex(output, idx));
-				}
+			for (int output = 0; output < a.outputs().size(); ++output) {
+				Storage s = a.outputs().get(output);
+				Set<Integer> indices = retval.get(s);
+				if (indices == null)
+					retval.put(s, indices = new HashSet<>());
+				int push = a.push(output);
+				for (int iter = begin; iter < end; ++iter)
+					for (int idx = push * iter; idx < push * (iter+1); ++idx)
+						indices.add(a.translateOutputIndex(output, idx));
+			}
 		}
 		return retval;
 	}
