@@ -237,6 +237,7 @@ public class Compiler2 {
 		for (ActorGroup g : groups)
 			internalSchedule(g);
 		externalSchedule();
+		initSchedule();
 	}
 
 	private void externalSchedule() {
@@ -283,6 +284,38 @@ public class Compiler2 {
 			g.setSchedule(schedule.getSchedule());
 		} catch (Schedule.ScheduleException ex) {
 			throw new StreamCompilationFailedException("couldn't find internal schedule for group "+g.id(), ex);
+		}
+	}
+
+	private void initSchedule() {
+		Schedule.Builder<ActorGroup> scheduleBuilder = Schedule.builder();
+		scheduleBuilder.addAll(groups);
+		for (Storage s : storage) {
+			if (s.isInternal()) continue;
+			Actor upstream = Iterables.getOnlyElement(s.upstream()), downstream = Iterables.getOnlyElement(s.downstream());
+			int upstreamAdjust = upstream.group().schedule().get(upstream);
+			int downstreamAdjust = downstream.group().schedule().get(downstream);
+			int throughput, excessPeeks;
+			//TODO: avoid double-buffering token groups here?
+			if (actorsToBeRemoved.contains(downstream))
+				throughput = excessPeeks = 0;
+			else {
+				throughput = s.push() * upstreamAdjust * externalSchedule.get(upstream.group());
+				excessPeeks = Math.max(s.peek() - s.pop(), 0);
+			}
+			int initialDataSize = Iterables.getOnlyElement(s.initialData(), new Pair<>(ImmutableList.<Object>of(), (MethodHandle)null)).first.size();
+			scheduleBuilder.connect(upstream.group(), downstream.group())
+					.push(s.push() * upstreamAdjust)
+					.pop(s.pop() * downstreamAdjust)
+					.peek(s.peek() * downstreamAdjust)
+					.bufferAtLeast(throughput + excessPeeks - initialDataSize);
+		}
+
+		try {
+			Schedule<ActorGroup> schedule = scheduleBuilder.build();
+			this.initSchedule = schedule.getSchedule();
+		} catch (Schedule.ScheduleException ex) {
+			throw new StreamCompilationFailedException("couldn't find init schedule", ex);
 		}
 	}
 
@@ -440,7 +473,7 @@ public class Compiler2 {
 			}
 		});
 
-		initSchedule();
+		computeLiveness();
 		this.initStorage = createExternalStorage(MapConcreteStorage.factory());
 		initReadInstructions.add(new InitDataReadInstruction(initStorage, initialStateDataMap));
 
@@ -479,7 +512,6 @@ public class Compiler2 {
 				for (int i = 0; i < a.outputs().size(); ++i)
 					if (a.outputs().get(i).equals(s)) {
 						int itemsWritten = a.push(i) * executions;
-						System.out.println(a+" "+i+" "+itemsWritten+" "+offset);
 //						TODO: do we need backups?
 						a.outputIndexFunctions().set(i,
 								MethodHandles.filterReturnValue(
@@ -648,15 +680,11 @@ public class Compiler2 {
 	}
 
 	/**
-	 * Computes the initialization schedule, which is in terms of ActorGroup
-	 * executions.
+	 * Computes liveness information based on the schedules.
 	 */
-	private void initSchedule() {
-		Map<Storage, Set<Integer>> requiredReadIndices = new HashMap<>();
-		for (Storage s : storage) {
+	private void computeLiveness() {
+		for (Storage s : storage)
 			s.computeRequirements(externalSchedule);
-			requiredReadIndices.put(s, new HashSet<>(s.readIndices()));
-		}
 
 		/**
 		 * Initial state reduces the required read indices.  We'll need the
@@ -670,57 +698,8 @@ public class Compiler2 {
 		 * configuration in the online tuning setting.
 		 */
 		Map<Storage, Set<Integer>> initLiveness = new HashMap<>();
-		for (Storage s : storage) {
-			ImmutableSortedSet<Integer> liveBeforeInit = s.indicesLiveBeforeInit();
-			initLiveness.put(s, liveBeforeInit);
-			requiredReadIndices.get(s).removeAll(liveBeforeInit);
-		}
-
-		/**
-		 * Actual init: iterations of each group necessary to fill the required
-		 * read indices of the output Storage.
-		 */
-		Map<ActorGroup, Integer> actualInit = new HashMap<>();
-		for (ActorGroup g : groups)
-			//Iterate until min(writes) > max(required reads) across all
-			//storage.  This is a weaker monotonicity requirement than before,
-			//when we assumed we could stop as soon as there were no changes.
-			for (int i = 0; ; ++i) {
-				boolean canStop = true;
-				for (Map.Entry<Storage, Set<Integer>> e : g.writes(i).entrySet()) {
-					Set<Integer> writes = e.getValue(), requiredReads = requiredReadIndices.get(e.getKey());
-					canStop &= requiredReads.isEmpty() || Collections.min(writes) > Collections.max(requiredReads);
-					requiredReads.removeAll(writes);
-				}
-				if (canStop) {
-					actualInit.put(g, i);
-					break;
-				}
-			}
-
-		/**
-		 * Total init, which is actual init plus allowances for downstream's
-		 * total init.  Computed bottom-up via reverse iteration on groups.
-		 */
-		Map<ActorGroup, Integer> totalInit = new HashMap<>();
-		for (ActorGroup g : groups.descendingSet()) {
-			if (g.successorGroups().isEmpty())
-				totalInit.put(g, actualInit.get(g));
-			long us = externalSchedule.get(g);
-			List<Long> downstreamReqs = new ArrayList<>(g.successorGroups().size() + 1);
-			downstreamReqs.add(0L); //Always at least 0.
-			for (ActorGroup s : g.successorGroups()) {
-				//I think reverse iteration guarantees bottom-up?
-				assert totalInit.containsKey(s) : g.id() + " requires " + s.id();
-				//them * (us / them) = us; we round up.
-				int st = totalInit.get(s);
-				int them = externalSchedule.get(s);
-				downstreamReqs.add(LongMath.divide(LongMath.checkedMultiply(st, us), them, RoundingMode.CEILING));
-			}
-			totalInit.put(g, Ints.checkedCast(Collections.max(downstreamReqs) + actualInit.get(g)));
-		}
-
-		this.initSchedule = ImmutableMap.copyOf(totalInit);
+		for (Storage s : storage)
+			initLiveness.put(s, s.indicesLiveBeforeInit());
 
 		/**
 		 * Compute the memory requirement for the init schedule. This is the
@@ -736,7 +715,7 @@ public class Compiler2 {
 		for (Storage s : storage) {
 			List<Long> size = new ArrayList<>(s.upstream().size());
 			for (ActorGroup writer : s.upstreamGroups())
-				size.add(LongMath.checkedMultiply(LongMath.divide(totalInit.get(writer), externalSchedule.get(writer), RoundingMode.CEILING) - 1, s.throughput()));
+				size.add(LongMath.checkedMultiply(LongMath.divide(initSchedule.get(writer), externalSchedule.get(writer), RoundingMode.CEILING) - 1, s.throughput()));
 			int initCapacity = Ints.checkedCast(Collections.max(size) +
 					(s.readIndices().isEmpty() ? 0 : s.readIndices().last() - s.readIndices().first()));
 			s.setInitCapacity(initCapacity);
