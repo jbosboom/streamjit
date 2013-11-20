@@ -42,8 +42,8 @@ public final class Compiler2BlobFactory implements BlobFactory {
 				builder.addParameter(new Configuration.IntParameter(name, 0, 1_000_000, 1));
 			}
 		for (Worker<?, ?> w : workers)
-			if (Compiler2.REMOVABLE_SPLITTERS.contains(w.getClass()))
-				builder.addParameter(Configuration.SwitchParameter.create("remove_splitter"+Workers.getIdentifier(w), true));
+			if (Compiler2.REMOVABLE_WORKERS.contains(w.getClass()))
+				builder.addParameter(Configuration.SwitchParameter.create("remove"+Workers.getIdentifier(w), true));
 		return builder.addParameter(new Configuration.IntParameter("multiplier", 1, 1000000, 1))
 				.build();
 	}

@@ -20,6 +20,7 @@ import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.RoundrobinSplitter;
+import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.WeightedRoundrobinSplitter;
@@ -70,7 +71,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @since 9/22/2013
  */
 public class Compiler2 {
-	public static final ImmutableSet<Class<?>> REMOVABLE_SPLITTERS = ImmutableSet.<Class<?>>of(
+	public static final ImmutableSet<Class<?>> REMOVABLE_WORKERS = ImmutableSet.<Class<?>>of(
 			RoundrobinSplitter.class, WeightedRoundrobinSplitter.class, DuplicateSplitter.class);
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
@@ -78,6 +79,7 @@ public class Compiler2 {
 	private final ImmutableSet<ActorArchetype> archetypes;
 	private final NavigableSet<Actor> actors;
 	private ImmutableSortedSet<ActorGroup> groups;
+	private ImmutableSortedSet<WorkerActor> actorsToBeRemoved;
 	private final Configuration config;
 	private final int maxNumCores;
 	private final DrainData initialState;
@@ -161,6 +163,7 @@ public class Compiler2 {
 	}
 
 	public Blob compile() {
+		findRemovals();
 		fuse();
 		schedule();
 //		identityRemoval();
@@ -172,6 +175,18 @@ public class Compiler2 {
 		createInitCode();
 		createSteadyStateCode();
 		return instantiateBlob();
+	}
+
+	private void findRemovals() {
+		ImmutableSortedSet.Builder<WorkerActor> builder = ImmutableSortedSet.naturalOrder();
+		for (WorkerActor a : Iterables.filter(actors, WorkerActor.class)) {
+			SwitchParameter<Boolean> param = config.getParameter("remove"+a.id(), SwitchParameter.class, Boolean.class);
+			if (param != null && param.getValue()) {
+				assert REMOVABLE_WORKERS.contains(a.worker().getClass()) : a;
+				builder.add(a);
+			}
+		}
+		this.actorsToBeRemoved = builder.build();
 	}
 
 	/**
@@ -269,10 +284,8 @@ public class Compiler2 {
 	}
 
 	private void splitterRemoval() {
-		for (WorkerActor splitter : FluentIterable.from(ImmutableSortedSet.copyOf(actors)).filter(WorkerActor.class)) {
-			SwitchParameter<Boolean> param = config.getParameter("remove_splitter"+splitter.id(), SwitchParameter.class, Boolean.class);
-			if (param == null || !param.getValue()) continue;
-
+		for (WorkerActor splitter : actorsToBeRemoved) {
+			if (!(splitter.worker() instanceof Splitter)) continue;
 			List<MethodHandle> transfers = splitterTransferFunctions(splitter);
 			Storage survivor = Iterables.getOnlyElement(splitter.inputs());
 			//Remove all instances of splitter, not just the first.
@@ -309,7 +322,7 @@ public class Compiler2 {
 	 * @return transfer functions, or null
 	 */
 	private List<MethodHandle> splitterTransferFunctions(WorkerActor a) {
-		assert REMOVABLE_SPLITTERS.contains(a.worker().getClass()) : a.worker().getClass();
+		assert REMOVABLE_WORKERS.contains(a.worker().getClass()) : a.worker().getClass();
 		if (a.worker() instanceof RoundrobinSplitter || a.worker() instanceof WeightedRoundrobinSplitter) {
 			int[] weights = new int[a.outputs().size()];
 			for (int i = 0; i < weights.length; ++i)
