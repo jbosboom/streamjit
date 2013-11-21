@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ContiguousSet;
@@ -23,7 +24,6 @@ import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -157,30 +157,46 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	}
 
 	/**
+	 * Returns the physical indices read from the given storage during the given
+	 * group iteration.
+	 * @param s the storage being read from
+	 * @param iteration the group iteration number
+	 * @return the physical indices read
+	 */
+	public ImmutableSortedSet<Integer> reads(Storage s, int iteration) {
+		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+		for (Actor a : actors())
+			builder.addAll(a.reads(s, Range.closedOpen(iteration * schedule.get(a), (iteration+1) * schedule.get(a))));
+		return builder.build();
+	}
+
+	/**
 	 * Returns a map mapping each input Storage to the set of physical indices
 	 * read in that Storage during the given ActorGroup iteration.
 	 * @param iteration the iteration to simulate
 	 * @return a map of read physical indices
 	 */
-	public Map<Storage, Set<Integer>> reads(int iteration) {
-		Map<Storage, Set<Integer>> retval = new HashMap<>(inputs().size());
-		for (Actor a : actors()) {
-			int begin = schedule.get(a) * iteration, end = schedule.get(a) * (iteration + 1);
-			for (int input = 0; input < a.inputs().size(); ++input) {
-				Storage s = a.inputs().get(input);
-				Set<Integer> indices = retval.get(s);
-				if (indices == null)
-					retval.put(s, indices = new HashSet<>());
-				//In each iteration, our index starts at however many items
-				//we've previously popped, and goes until the elements we pop
-				//or peek in this iteration, whichever is greater.
-				int pop = a.pop(input), read = Math.max(pop, a.peek(input));
-				for (int iter = begin; iter < end; ++iter)
-					for (int idx = pop * iter; idx < (pop * iter) + read; ++idx)
-						indices.add(a.translateInputIndex(input, idx));
+	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> reads(final int iteration) {
+		return Maps.toMap(inputs(), new Function<Storage, ImmutableSortedSet<Integer>>() {
+			@Override
+			public ImmutableSortedSet<Integer> apply(Storage input) {
+				return reads(input, iteration);
 			}
-		}
-		return retval;
+		});
+	}
+
+	/**
+	 * Returns the physical indices written to the given storage during the
+	 * given group iteration.
+	 * @param s the storage being written to
+	 * @param iteration the group iteration number
+	 * @return the physical indices written
+	 */
+	public ImmutableSortedSet<Integer> writes(Storage s, int iteration) {
+		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+		for (Actor a : actors())
+			builder.addAll(a.writes(s, Range.closedOpen(iteration * schedule.get(a), (iteration+1) * schedule.get(a))));
+		return builder.build();
 	}
 
 	/**
@@ -189,22 +205,13 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * @param iteration the iteration to simulate
 	 * @return a map of written physical indices
 	 */
-	public Map<Storage, Set<Integer>> writes(int iteration) {
-		Map<Storage, Set<Integer>> retval = new HashMap<>(outputs().size());
-		for (Actor a : actors()) {
-			int begin = schedule.get(a) * iteration, end = schedule.get(a) * (iteration + 1);
-			for (int output = 0; output < a.outputs().size(); ++output) {
-				Storage s = a.outputs().get(output);
-				Set<Integer> indices = retval.get(s);
-				if (indices == null)
-					retval.put(s, indices = new HashSet<>());
-				int push = a.push(output);
-				for (int iter = begin; iter < end; ++iter)
-					for (int idx = push * iter; idx < push * (iter+1); ++idx)
-						indices.add(a.translateOutputIndex(output, idx));
+	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> writes(final int iteration) {
+		return Maps.toMap(outputs(), new Function<Storage, ImmutableSortedSet<Integer>>() {
+			@Override
+			public ImmutableSortedSet<Integer> apply(Storage output) {
+				return writes(output, iteration);
 			}
-		}
-		return retval;
+		});
 	}
 
 	/**
