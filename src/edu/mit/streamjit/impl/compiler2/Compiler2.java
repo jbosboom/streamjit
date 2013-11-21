@@ -19,10 +19,13 @@ import com.google.common.math.LongMath;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.api.DuplicateSplitter;
+import edu.mit.streamjit.api.Joiner;
+import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
 import edu.mit.streamjit.api.WeightedRoundrobinSplitter;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
@@ -73,7 +76,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Compiler2 {
 	public static final ImmutableSet<Class<?>> REMOVABLE_WORKERS = ImmutableSet.<Class<?>>of(
-			RoundrobinSplitter.class, WeightedRoundrobinSplitter.class, DuplicateSplitter.class);
+			RoundrobinSplitter.class, WeightedRoundrobinSplitter.class, DuplicateSplitter.class,
+			RoundrobinJoiner.class, WeightedRoundrobinJoiner.class);
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
@@ -169,7 +173,7 @@ public class Compiler2 {
 		schedule();
 //		identityRemoval();
 		splitterRemoval();
-		//joinerRemoval();
+		joinerRemoval();
 //		unbox();
 
 		generateArchetypalCode();
@@ -377,6 +381,59 @@ public class Compiler2 {
 			return transfer.build();
 		} else if (a.worker() instanceof DuplicateSplitter) {
 			return Collections.nCopies(a.outputs().size(), MethodHandles.identity(int.class));
+		} else
+			throw new AssertionError();
+	}
+
+	private void joinerRemoval() {
+		for (WorkerActor joiner : actorsToBeRemoved) {
+			if (!(joiner.worker() instanceof Joiner)) continue;
+			List<MethodHandle> transfers = joinerTransferFunctions(joiner);
+			Storage survivor = Iterables.getOnlyElement(joiner.outputs());
+			//Remove all instances of joiner, not just the first.
+			survivor.upstream().removeAll(ImmutableList.of(joiner));
+			MethodHandle Jout = Iterables.getOnlyElement(joiner.outputIndexFunctions());
+			for (int i = 0; i < joiner.inputs().size(); ++i) {
+				Storage victim = joiner.inputs().get(i);
+				MethodHandle t = transfers.get(i);
+//				MethodHandle t2 = MethodHandles.filterReturnValue(t, Jout);
+				for (Actor a : victim.upstream()) {
+					List<Storage> outputs = a.outputs();
+					List<MethodHandle> outputIndices = a.outputIndexFunctions();
+					for (int j = 0; j < outputs.size(); ++j)
+						if (outputs.get(j).equals(victim)) {
+							outputs.set(j, survivor);
+//							outputIndices.set(j, MethodHandles.filterReturnValue(t2, outputIndices.get(j)));
+							outputIndices.set(j, MethodHandles.filterReturnValue(MethodHandles.filterReturnValue(Jout, t), outputIndices.get(j)));
+							survivor.upstream().add(a);
+						}
+				}
+				//TODO: victim initial data
+				storage.remove(victim);
+			}
+			System.out.println("removed "+joiner);
+			removeActor(joiner);
+		}
+	}
+
+	private List<MethodHandle> joinerTransferFunctions(WorkerActor a) {
+		assert REMOVABLE_WORKERS.contains(a.worker().getClass()) : a.worker().getClass();
+		if (a.worker() instanceof RoundrobinJoiner || a.worker() instanceof WeightedRoundrobinJoiner) {
+			//TODO: factor out this duplicate code -- all we need is the weights array
+			int[] weights = new int[a.inputs().size()];
+			for (int i = 0; i < weights.length; ++i)
+				weights[i] = a.pop(i);
+			int[] weightPrefixSum = new int[weights.length + 1];
+			for (int i = 1; i < weightPrefixSum.length; ++i)
+				weightPrefixSum[i] = weightPrefixSum[i-1] + weights[i-1];
+			int N = weightPrefixSum[weightPrefixSum.length-1];
+			//t_x(i) = N(i/w[x]) + sum_0_x-1{w} + (i mod w[x])
+			//where the first two terms select a "window" and the third is the
+			//index into that window.
+			ImmutableList.Builder<MethodHandle> transfer = ImmutableList.builder();
+			for (int x = 0; x < a.inputs().size(); ++x)
+				transfer.add(MethodHandles.insertArguments(ROUNDROBIN_TRANSFER_FUNCTION, 0, weights[x], weightPrefixSum[x], N));
+			return transfer.build();
 		} else
 			throw new AssertionError();
 	}
