@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.distributed;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -127,6 +129,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		this.cfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(source));
 
+		// this.cfg = readConfiguration(stream.getClass().getSimpleName());
 		if (cfg == null) {
 			Integer[] machineIds = new Integer[this.noOfnodes];
 			for (int i = 0; i < machineIds.length; i++) {
@@ -195,6 +198,19 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			new Thread(tuner, "OnlineTuner").start();
 		}
 		return cs;
+	}
+
+	private Configuration readConfiguration(String simpeName) {
+		String name = String.format("%s.cfg", simpeName);
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(name));
+			String json = reader.readLine();
+			reader.close();
+			return Configuration.fromJson(json);
+		} catch (Exception ex) {
+			System.err.println("File reader error");
+		}
+		return null;
 	}
 
 	private <I, O> Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
