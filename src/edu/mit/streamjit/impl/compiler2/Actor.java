@@ -66,60 +66,6 @@ public abstract class Actor implements Comparable<Actor> {
 		return downstream;
 	}
 
-	public List<MethodHandle> inputIndexFunctions() {
-		return upstreamIndex;
-	}
-
-	public int translateInputIndex(int input, int logicalIndex) {
-		checkArgument(logicalIndex >= 0);
-		MethodHandle idxFxn = inputIndexFunctions().get(input);
-		try {
-			return (int)idxFxn.invokeExact(logicalIndex);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("index functions should not throw; translateInputIndex(%d, %d)", input, logicalIndex), ex);
-		}
-	}
-
-	public ImmutableSortedSet<Integer> translateInputIndices(final int input, Set<Integer> logicalIndices) {
-		return ImmutableSortedSet.copyOf(Collections2.transform(logicalIndices, new Function<Integer, Integer>() {
-			@Override
-			public Integer apply(Integer index) {
-				return translateInputIndex(input, index);
-			}
-		}));
-	}
-
-	public ImmutableSortedSet<Integer> translateInputIndices(final int input, Range<Integer> logicalIndices) {
-		return translateInputIndices(input, ContiguousSet.create(logicalIndices, DiscreteDomain.integers()));
-	}
-
-	public List<MethodHandle> outputIndexFunctions() {
-		return downstreamIndex;
-	}
-
-	public int translateOutputIndex(int output, int logicalIndex) {
-		checkArgument(logicalIndex >= 0);
-		MethodHandle idxFxn = outputIndexFunctions().get(output);
-		try {
-			return (int)idxFxn.invokeExact(logicalIndex);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("index functions should not throw; translateOutputtIndex(%d, %d)", output, logicalIndex), ex);
-		}
-	}
-
-	public ImmutableSortedSet<Integer> translateOutputIndices(final int input, Set<Integer> logicalIndices) {
-		return ImmutableSortedSet.copyOf(Collections2.transform(logicalIndices, new Function<Integer, Integer>() {
-			@Override
-			public Integer apply(Integer index) {
-				return translateOutputIndex(input, index);
-			}
-		}));
-	}
-
-	public ImmutableSortedSet<Integer> translateOutputIndices(final int input, Range<Integer> logicalIndices) {
-		return translateOutputIndices(input, ContiguousSet.create(logicalIndices, DiscreteDomain.integers()));
-	}
-
 	public abstract int peek(int input);
 
 	public abstract int pop(int input);
@@ -246,6 +192,60 @@ public abstract class Actor implements Comparable<Actor> {
 	 */
 	public ContiguousSet<Integer> pushes(int output, Range<Integer> iterations) {
 		return pushes(output, ContiguousSet.create(iterations, DiscreteDomain.integers()));
+	}
+
+	public List<MethodHandle> inputIndexFunctions() {
+		return upstreamIndex;
+	}
+
+	public int translateInputIndex(int input, int logicalIndex) {
+		checkArgument(logicalIndex >= 0);
+		MethodHandle idxFxn = inputIndexFunctions().get(input);
+		try {
+			return (int)idxFxn.invokeExact(logicalIndex);
+		} catch (Throwable ex) {
+			throw new AssertionError(String.format("index functions should not throw; translateInputIndex(%d, %d)", input, logicalIndex), ex);
+		}
+	}
+
+	public ImmutableSortedSet<Integer> translateInputIndices(final int input, Set<Integer> logicalIndices) {
+		return ImmutableSortedSet.copyOf(Collections2.transform(logicalIndices, new Function<Integer, Integer>() {
+			@Override
+			public Integer apply(Integer index) {
+				return translateInputIndex(input, index);
+			}
+		}));
+	}
+
+	public ImmutableSortedSet<Integer> translateInputIndices(final int input, Range<Integer> logicalIndices) {
+		return translateInputIndices(input, ContiguousSet.create(logicalIndices, DiscreteDomain.integers()));
+	}
+
+	public List<MethodHandle> outputIndexFunctions() {
+		return downstreamIndex;
+	}
+
+	public int translateOutputIndex(int output, int logicalIndex) {
+		checkArgument(logicalIndex >= 0);
+		MethodHandle idxFxn = outputIndexFunctions().get(output);
+		try {
+			return (int)idxFxn.invokeExact(logicalIndex);
+		} catch (Throwable ex) {
+			throw new AssertionError(String.format("index functions should not throw; translateOutputtIndex(%d, %d)", output, logicalIndex), ex);
+		}
+	}
+
+	public ImmutableSortedSet<Integer> translateOutputIndices(final int input, Set<Integer> logicalIndices) {
+		return ImmutableSortedSet.copyOf(Collections2.transform(logicalIndices, new Function<Integer, Integer>() {
+			@Override
+			public Integer apply(Integer index) {
+				return translateOutputIndex(input, index);
+			}
+		}));
+	}
+
+	public ImmutableSortedSet<Integer> translateOutputIndices(final int input, Range<Integer> logicalIndices) {
+		return translateOutputIndices(input, ContiguousSet.create(logicalIndices, DiscreteDomain.integers()));
 	}
 
 	public ImmutableSortedSet<Integer> reads(int input, int iteration) {
