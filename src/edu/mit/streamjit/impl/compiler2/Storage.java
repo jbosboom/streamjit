@@ -50,18 +50,13 @@ public final class Storage {
 	 */
 	private int throughput = -1;
 	/**
-	/**
-	 * The max number of elements live in this storage during initialization.
+	 * The span of the indices live during a steady-state iteration.
 	 */
-	private int initCapacity = -1;
+	private int steadyStateCapacity = -1;
 	/**
-	 * The indices live in this storage after the initialization schedule is
-	 * complete; that is, the data that must be migrated.
-	 */
-	private ImmutableSortedSet<Integer> liveAfterInit;
-	/**
-	 * The indices live in this storage at the beginning of a steady-state
-	 * execution.
+	 * The indices live in this storage at the end of initialization and the
+	 * beginning of each steady-state execution.  These indices are migrated
+	 * from init to steady-state storage.
 	 */
 	private ImmutableSortedSet<Integer> liveDuringSteadyState;
 	public Storage(Actor upstream, Actor downstream) {
@@ -171,11 +166,6 @@ public final class Storage {
 		return Object.class;
 	}
 
-	public int throughput() {
-		checkState(throughput != -1);
-		return throughput;
-	}
-
 	/**
 	 * Returns the indices read from this storage during an execution of the
 	 * given schedule.  The returned list is not cached so as to be responsive
@@ -207,6 +197,16 @@ public final class Storage {
 	}
 
 	/**
+	 * Returns the number of items written to and consumed from this storage
+	 * during a steady-state execution.
+	 * @return the steady-state throughput
+	 */
+	public int throughput() {
+		checkState(throughput != -1);
+		return throughput;
+	}
+
+	/**
 	 * Returns this Storage's steady-state capacity: the span of live elements
 	 * during a steady state iteration.  This includes items to be read this
 	 * iteration, items buffered for a future iteration, and space for items to
@@ -214,65 +214,28 @@ public final class Storage {
 	 * @return this Storage's steady-state capacity
 	 */
 	public int steadyStateCapacity() {
-		if (isInternal())
-			return throughput();
-		//The indices live at the beginning of the iteration, plus space for
-		//items being written.  (Some writes are into new holes, but others
-		//create new holes, so it balances out.)
-		int span = indicesLiveDuringSteadyState().last() - indicesLiveDuringSteadyState().first() + 1;
-		return span + throughput();
+		checkState(steadyStateCapacity != -1);
+		return steadyStateCapacity;
 	}
 
 	/**
-	 * Compute this storage's size requirements based on the index functions.
-	 * (This is not the actual buffer capacity, because the init schedule might
-	 * require additional buffering to meet some other storage's requirement.)
-	 * TODO: perhaps use ActorGroup.reads()/writes() in here?  Would duplicate
-	 * work because we only care about one Storage here, but would simplify code.
-	 * Or maybe we should move this work to Compiler2.initSchedule() so we can
-	 * compute with all Storages at once?
+	 * Compute this storage's steady-state throughput and capacity.
 	 * @param externalSchedule the external schedule
 	 */
-	public void computeRequirements(Map<ActorGroup, Integer> externalSchedule) {
-		/*
-		 * To compute the throughput, we just count the elements written; they
-		 * should be both dense and non-overlapping.  TODO: if we intrisify a
-		 * decimator by making some writes no-ops, this may not hold.
-		 */
-		throughput = 0;
-		for (Actor a : upstream()) {
-			int executions = (isInternal() ? 1 : externalSchedule.get(a.group())) * a.group().schedule().get(a);
-			for (int i = 0; i < a.outputs().size(); ++i)
-				if (a.outputs().get(i).equals(this))
-					throughput += a.push(i) * executions;
-		}
-	}
-
-	public int initCapacity() {
-		checkState(initCapacity != -1);
-		return initCapacity;
-	}
-
-	public void setInitCapacity(int initCapacity) {
-		this.initCapacity = initCapacity;
-	}
-
-	public ImmutableSortedSet<Integer> indicesLiveAfterInit() {
-		checkState(liveAfterInit != null);
-		return liveAfterInit;
-	}
-
-	public void setIndicesLiveAfterInit(ImmutableSortedSet<Integer> liveAfterInit) {
-		this.liveAfterInit = liveAfterInit;
-		if (this.liveAfterInit.isEmpty())
-			this.liveDuringSteadyState = ImmutableSortedSet.of();
+	public void computeSteadyStateRequirements(Map<ActorGroup, Integer> externalSchedule) {
+		ImmutableSortedSet<Integer> writeIndices = writeIndices(externalSchedule);
+		this.throughput = writeIndices.size();
+		if (indicesLiveDuringSteadyState().isEmpty())
+			this.steadyStateCapacity = writeIndices.last() - writeIndices.first() + 1;
 		else {
-			int offset = liveAfterInit.first() - readIndices().first();
-			ImmutableSortedSet.Builder<Integer> b = ImmutableSortedSet.naturalOrder();
-			for (Integer i : this.liveAfterInit)
-				b.add(i-offset);
-			this.liveDuringSteadyState = b.build();
+			int minIdx = Math.min(indicesLiveDuringSteadyState().first(), writeIndices.first());
+			int maxIdx = Math.max(indicesLiveDuringSteadyState().last(), writeIndices.last());
+			this.steadyStateCapacity = maxIdx - minIdx + 1;
 		}
+	}
+
+	public void setIndicesLiveDuringSteadyState(ImmutableSortedSet<Integer> liveDuringSteadyState) {
+		this.liveDuringSteadyState = liveDuringSteadyState;
 	}
 
 	public ImmutableSortedSet<Integer> indicesLiveDuringSteadyState() {

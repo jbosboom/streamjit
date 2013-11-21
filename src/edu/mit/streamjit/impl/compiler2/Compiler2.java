@@ -41,6 +41,7 @@ import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.WriteInstruction;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
+import edu.mit.streamjit.test.regression.Reg20131116_104433_226;
 import edu.mit.streamjit.test.sanity.PipelineSanity;
 import edu.mit.streamjit.test.sanity.SplitjoinComputeSanity;
 import edu.mit.streamjit.util.CollectionUtils;
@@ -506,7 +507,7 @@ public class Compiler2 {
 	private void createSteadyStateCode() {
 		for (Storage s : storage) {
 			if (s.isInternal()) continue;
-			int offset = s.indicesLiveAfterInit().first() - s.readIndices().first();
+			int offset = 0;
 			for (Actor a : ImmutableSet.copyOf(s.upstream())) {
 				int executions = initSchedule.get(a.group()) * a.group().schedule().get(a);
 				for (int i = 0; i < a.outputs().size(); ++i)
@@ -537,6 +538,8 @@ public class Compiler2 {
 			}
 		}
 
+		for (Storage s : storage)
+			s.computeSteadyStateRequirements(externalSchedule);
 		this.steadyStateStorage = createExternalStorage(CircularArrayConcreteStorage.factory());
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
@@ -697,44 +700,6 @@ public class Compiler2 {
 	 * Computes liveness information based on the schedules.
 	 */
 	private void computeLiveness() {
-		for (Storage s : storage)
-			s.computeRequirements(externalSchedule);
-
-		/**
-		 * Initial state reduces the required read indices.  We'll need the
-		 * before-init liveness later, so we keep it around to avoid computing
-		 * it twice.
-		 *
-		 * TODO: if we have more init data than required for reads, we might
-		 * consider trying to drain the extra data rather than keep it around
-		 * during the steady state.  We will drain it when we finally drain (at
-		 * the end of the blob lifetime), so it would only persist for one
-		 * configuration in the online tuning setting.
-		 */
-		Map<Storage, Set<Integer>> initLiveness = new HashMap<>();
-		for (Storage s : storage)
-			initLiveness.put(s, s.indicesLiveBeforeInit());
-
-		/**
-		 * Compute the memory requirement for the init schedule. This is the
-		 * required read span (difference between the min and max read index),
-		 * plus throughput for each steady-state unit (or fraction thereof)
-		 * beyond the first, maximized across all writers.
-		 *
-		 * TODO: what if we have more init data than required reads?
-		 * TODO: given that we use MapConcreteStorage during init anyway, should
-		 * we bother with computing an init capacity?  (We can use any
-		 * dynamically-expanding ConcreteStorage, not necessarily a Map.)
-		 */
-		for (Storage s : storage) {
-			List<Long> size = new ArrayList<>(s.upstream().size());
-			for (ActorGroup writer : s.upstreamGroups())
-				size.add(LongMath.checkedMultiply(LongMath.divide(initSchedule.get(writer), externalSchedule.get(writer), RoundingMode.CEILING) - 1, s.throughput()));
-			int initCapacity = Ints.checkedCast(Collections.max(size) +
-					(s.readIndices().isEmpty() ? 0 : s.readIndices().last() - s.readIndices().first()));
-			s.setInitCapacity(initCapacity);
-		}
-
 		/**
 		 * Compute post-initialization liveness (data items written during init
 		 * that will be read in a future steady-state iteration). These are the
@@ -751,12 +716,12 @@ public class Compiler2 {
 		Map<Storage, Set<Integer>> initWrites = new HashMap<>();
 		Map<Storage, Set<Integer>> futureReads = new HashMap<>();
 		for (Storage s : storage) {
-			initWrites.put(s, new HashSet<>(initLiveness.get(s)));
+			initWrites.put(s, new HashSet<Integer>());
 			futureReads.put(s, new HashSet<Integer>());
 		}
 		for (ActorGroup g : groups)
 			for (int i = 0; i < initSchedule.get(g); ++i)
-				for (Map.Entry<Storage, Set<Integer>> writes : g.writes(i).entrySet())
+				for (Map.Entry<Storage, ImmutableSortedSet<Integer>> writes : g.writes(i).entrySet())
 					initWrites.get(writes.getKey()).addAll(writes.getValue());
 		for (ActorGroup g : groups) {
 			//We run until our read indices don't intersect any of the write
@@ -764,7 +729,7 @@ public class Compiler2 {
 			boolean progress = true;
 			for (int i = initSchedule.get(g); progress; ++i) {
 				progress = false;
-				for (Map.Entry<Storage, Set<Integer>> reads : g.reads(i).entrySet()) {
+				for (Map.Entry<Storage, ImmutableSortedSet<Integer>> reads : g.reads(i).entrySet()) {
 					Storage s = reads.getKey();
 					Set<Integer> readIndices = reads.getValue();
 					Set<Integer> writeIndices = initWrites.get(s);
@@ -776,32 +741,22 @@ public class Compiler2 {
 			}
 		}
 		for (Storage s : storage)
-			s.setIndicesLiveAfterInit(ImmutableSortedSet.copyOf(Sets.intersection(initWrites.get(s), futureReads.get(s))));
-		//Assert we covered the required read indices.
-		for (Storage s : storage) {
-			if (s.isInternal())
-				assert s.indicesLiveDuringSteadyState().isEmpty();
-			else
-				for (int i : s.readIndices())
-					assert s.indicesLiveDuringSteadyState().contains(i) : s + ": " + i + " from " + s.readIndices() + " not in " + s.indicesLiveDuringSteadyState();
-		}
+			s.setIndicesLiveDuringSteadyState(ImmutableSortedSet.copyOf(Sets.intersection(initWrites.get(s), futureReads.get(s))));
 	}
 
 	private static final class MigrationInstruction implements Runnable {
 		private final ConcreteStorage init, steady;
 		private final ImmutableSortedSet<Integer> indicesToMigrate;
-		private final int offset;
 		private MigrationInstruction(Storage storage, ConcreteStorage init, ConcreteStorage steady) {
 			this.init = init;
 			this.steady = steady;
-			this.indicesToMigrate = storage.indicesLiveAfterInit();
-			this.offset = storage.indicesLiveAfterInit().first() - storage.indicesLiveDuringSteadyState().first();
+			this.indicesToMigrate = storage.indicesLiveDuringSteadyState();
 		}
 		@Override
 		public void run() {
 			init.sync();
 			for (int i : indicesToMigrate)
-				steady.write(i - offset, init.read(i));
+				steady.write(i, init.read(i));
 			steady.sync();
 		}
 	}
@@ -1019,11 +974,14 @@ public class Compiler2 {
 				readInstructions, writeInstructions, drainInstructions);
 	}
 
+//	public static void main(String[] args) {
+//		StreamCompiler sc = new Compiler2StreamCompiler();//.multiplier(64).maxNumCores(8);
+////		Benchmark bm = new PipelineSanity.Add15();
+////		Benchmark bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
+//		Benchmark bm = new SplitjoinComputeSanity.MultiplyBenchmark();
+//		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);
+//	}
 	public static void main(String[] args) {
-		StreamCompiler sc = new Compiler2StreamCompiler();
-//		Benchmark bm = new PipelineSanity.Add15();
-//		Benchmark bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
-		Benchmark bm = new SplitjoinComputeSanity.MultiplyBenchmark();
-		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);
+		Benchmarker.runBenchmark(new Reg20131116_104433_226(), new edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler()).get(0).print(System.out);
 	}
 }
