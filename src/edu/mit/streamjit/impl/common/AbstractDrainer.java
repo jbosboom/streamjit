@@ -616,7 +616,7 @@ public abstract class AbstractDrainer {
 		/**
 		 * The blob that wrapped by this blob node.
 		 */
-		private Token blobID;
+		private final Token blobID;
 		/**
 		 * Predecessor blob nodes of this blob node.
 		 */
@@ -737,7 +737,9 @@ public abstract class AbstractDrainer {
 							suc.predecessorDrained(BlobNode.this);
 						}
 						System.out
-								.println("deadLockHandler: Deadlock during draining has been handled");
+								.println("deadLockHandler: "
+										+ blobID
+										+ " - Deadlock during draining has been handled");
 					}
 				}
 			};
