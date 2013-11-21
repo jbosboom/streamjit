@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Range;
 import edu.mit.streamjit.util.Pair;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -49,11 +50,6 @@ public final class Storage {
 	 */
 	private int throughput = -1;
 	/**
-	 * The logical indices in this storage read by outputs in a steady-state
-	 * iteration. These values must be live at the beginning of the steady-state
-	 * iteration, and thus determine the minimum buffering requirement.
-	 */
-	private ImmutableSortedSet<Integer> readIndices;
 	/**
 	 * The max number of elements live in this storage during initialization.
 	 */
@@ -180,9 +176,34 @@ public final class Storage {
 		return throughput;
 	}
 
-	public ImmutableSortedSet<Integer> readIndices() {
-		checkState(readIndices != null);
-		return readIndices;
+	/**
+	 * Returns the indices read from this storage during an execution of the
+	 * given schedule.  The returned list is not cached so as to be responsive
+	 * to changes in input index functions.
+	 * @param externalSchedule the schedule
+	 * @return the indices read during the given schedule under the current
+	 * index functions
+	 */
+	public ImmutableSortedSet<Integer> readIndices(Map<ActorGroup, Integer> externalSchedule) {
+		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+		for (Actor a : downstream())
+			builder.addAll(a.reads(this, Range.closedOpen(0, a.group().schedule().get(a) * externalSchedule.get(a.group()))));
+		return builder.build();
+	}
+
+	/**
+	 * Returns the indices written in this storage during an execution of the
+	 * given schedule.  The returned list is not cached so as to be responsive
+	 * to changes in output index functions.
+	 * @param externalSchedule the schedule
+	 * @return the indices written during the given schedule under the current
+	 * index functions
+	 */
+	public ImmutableSortedSet<Integer> writeIndices(Map<ActorGroup, Integer> externalSchedule) {
+		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+		for (Actor a : upstream())
+			builder.addAll(a.writes(this, Range.closedOpen(0, a.group().schedule().get(a) * externalSchedule.get(a.group()))));
+		return builder.build();
 	}
 
 	/**
@@ -225,24 +246,6 @@ public final class Storage {
 				if (a.outputs().get(i).equals(this))
 					throughput += a.push(i) * executions;
 		}
-
-		/**
-		 * Now find the indices that could be read during a steady state
-		 * execution. That's the initialization requirement.
-		 */
-		ImmutableSortedSet.Builder<Integer> readIndicesBuilder = ImmutableSortedSet.naturalOrder();
-		for (Actor a : downstream()) {
-			int executions = a.group().schedule().get(a) * (isInternal() ? 1 : externalSchedule.get(a.group()));
-			for (int i = 0; i < a.inputs().size(); ++i) {
-				if (!a.inputs().get(i).equals(this)) continue;
-				int pop = a.pop(i),	peek = a.peek(i);
-				int excessPeeks = Math.max(0, peek - pop);
-				int maxLogicalIndex = pop * executions + excessPeeks;
-				for (int idx = 0; idx < maxLogicalIndex; ++idx)
-					readIndicesBuilder.add(a.translateInputIndex(i, idx));
-			}
-		}
-		this.readIndices = readIndicesBuilder.build();
 	}
 
 	public int initCapacity() {
