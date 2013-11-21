@@ -18,7 +18,40 @@ public class Reg20130906_043404_467 implements Benchmark {
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public OneToOneElement<Object, Object> instantiate() {
-		return new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new Pipeline(new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Multiplier(2)), new edu.mit.streamjit.impl.common.TestFilters.ArrayListHasher(1)), new Pipeline(new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Multiplier(100), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2), new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(10))), new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)))), new Pipeline(new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new edu.mit.streamjit.impl.common.TestFilters.Multiplier(3)), new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3), new edu.mit.streamjit.impl.common.TestFilters.Multiplier(100), new Pipeline(new edu.mit.streamjit.api.Identity(), new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(10), new edu.mit.streamjit.impl.common.TestFilters.Multiplier(100)), new edu.mit.streamjit.impl.common.TestFilters.Multiplier(3)), new edu.mit.streamjit.impl.common.TestFilters.Multiplier(3)), new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new edu.mit.streamjit.impl.common.TestFilters.Multiplier(2), new edu.mit.streamjit.impl.common.TestFilters.Multiplier(100)), new edu.mit.streamjit.impl.common.TestFilters.Multiplier(3), new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new edu.mit.streamjit.impl.common.TestFilters.ArrayListHasher(1), new edu.mit.streamjit.impl.common.TestFilters.ArrayListHasher(1))));
+		return new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(),
+				new Pipeline(
+						new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(),
+								new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(),
+										new Pipeline(
+												new edu.mit.streamjit.impl.common.TestFilters.Multiplier(2)),
+										new edu.mit.streamjit.impl.common.TestFilters.ArrayListHasher(1)),
+								new Pipeline(
+										new Pipeline(
+												new edu.mit.streamjit.impl.common.TestFilters.Multiplier(100),
+												new edu.mit.streamjit.impl.common.TestFilters.Batcher(2),
+												new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(10))),
+								new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(),
+										new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(),
+												new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)))),
+						new Pipeline(
+								new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(),
+										new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(),
+												new edu.mit.streamjit.impl.common.TestFilters.Multiplier(3)),
+										new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+										new edu.mit.streamjit.impl.common.TestFilters.Multiplier(100),
+										new Pipeline(
+												new edu.mit.streamjit.api.Identity(),
+												new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(10),
+												new edu.mit.streamjit.impl.common.TestFilters.Multiplier(100)),
+										new edu.mit.streamjit.impl.common.TestFilters.Multiplier(3)),
+								new edu.mit.streamjit.impl.common.TestFilters.Multiplier(3)),
+						new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(),
+								new edu.mit.streamjit.impl.common.TestFilters.Multiplier(2),
+								new edu.mit.streamjit.impl.common.TestFilters.Multiplier(100)),
+						new edu.mit.streamjit.impl.common.TestFilters.Multiplier(3),
+						new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(),
+								new edu.mit.streamjit.impl.common.TestFilters.ArrayListHasher(1),
+								new edu.mit.streamjit.impl.common.TestFilters.ArrayListHasher(1))));
 	}
 	@Override
 	public List<Dataset> inputs() {
@@ -30,7 +63,7 @@ public class Reg20130906_043404_467 implements Benchmark {
 		return getClass().getSimpleName();
 	}
 	public static void main(String[] args) {
-		Benchmarker.runBenchmark(new Reg20130906_043404_467(), new edu.mit.streamjit.impl.compiler.CompilerStreamCompiler()).get(0).print(System.out);
+		Benchmarker.runBenchmark(new Reg20130906_043404_467(), new edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler()).get(0).print(System.out);
 	}
 }
 
