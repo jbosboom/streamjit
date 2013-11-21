@@ -505,36 +505,20 @@ public class Compiler2 {
 	}
 
 	private void createSteadyStateCode() {
-		for (Storage s : storage) {
-			if (s.isInternal()) continue;
-			int offset = 0;
-			for (Actor a : ImmutableSet.copyOf(s.upstream())) {
-				int executions = initSchedule.get(a.group()) * a.group().schedule().get(a);
-				for (int i = 0; i < a.outputs().size(); ++i)
-					if (a.outputs().get(i).equals(s)) {
-						int itemsWritten = a.push(i) * executions;
-//						TODO: do we need backups?
-						a.outputIndexFunctions().set(i,
-								MethodHandles.filterReturnValue(
-										MethodHandles.filterArguments(a.outputIndexFunctions().get(i), 0, Combinators.add(MethodHandles.identity(int.class), itemsWritten)),
-										Combinators.sub(MethodHandles.identity(int.class), offset)
-								)
-						);
-					}
+		for (Actor a : actors) {
+			for (int i = 0; i < a.outputs().size(); ++i) {
+				Storage s = a.outputs().get(i);
+				if (s.isInternal()) continue;
+				int itemsWritten = a.push(i) * initSchedule.get(a.group()) * a.group().schedule().get(a);
+				a.outputIndexFunctions().set(i, MethodHandles.filterArguments(
+						a.outputIndexFunctions().get(i), 0, Combinators.add(MethodHandles.identity(int.class), itemsWritten)));
 			}
-
-			for (Actor a : ImmutableSet.copyOf(s.downstream())) {
-				int executions = initSchedule.get(a.group()) * a.group().schedule().get(a);
-				for (int i = 0; i < a.inputs().size(); ++i)
-					if (a.inputs().get(i).equals(s)) {
-						int itemsRead = a.pop(i) * (executions);
-						a.inputIndexFunctions().set(i,
-								MethodHandles.filterReturnValue(
-										MethodHandles.filterArguments(a.inputIndexFunctions().get(i), 0, Combinators.add(MethodHandles.identity(int.class), itemsRead)),
-										Combinators.sub(MethodHandles.identity(int.class), offset)
-								)
-						);
-					}
+			for (int i = 0; i < a.inputs().size(); ++i) {
+				Storage s = a.inputs().get(i);
+				if (s.isInternal()) continue;
+				int itemsRead = a.pop(i) * initSchedule.get(a.group()) * a.group().schedule().get(a);
+				a.inputIndexFunctions().set(i, MethodHandles.filterArguments(
+						a.inputIndexFunctions().get(i), 0, Combinators.add(MethodHandles.identity(int.class), itemsRead)));
 			}
 		}
 
