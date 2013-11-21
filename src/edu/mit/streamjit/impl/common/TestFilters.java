@@ -120,7 +120,7 @@ public final class TestFilters {
 		}
 		@Override
 		public String toString() {
-			return String.format("ArrayHasher(%d)", n);
+			return String.format("ArrayListHasher(%d)", n);
 		}
 	}
 
