@@ -304,7 +304,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		} else {
 			int[] readIndices = new int[a.inputs().size()];
 			for (int m = 0; m < a.inputs().size(); ++m)
-				readIndices[m] = firstIteration * a.pop(m);
+				readIndices[m] = firstIteration * subiterations * a.pop(m);
 			pop = readIndices.clone();
 			requiredCopies.put(readIndices, (int[])pop);
 		}
@@ -314,7 +314,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		} else {
 			int[] writeIndices = new int[a.outputs().size()];
 			for (int m = 0; m < a.outputs().size(); ++m)
-				writeIndices[m] = firstIteration * a.push(m);
+				writeIndices[m] = firstIteration * subiterations * a.push(m);
 			push = writeIndices.clone();
 			requiredCopies.put(writeIndices, (int[])push);
 		}
