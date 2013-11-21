@@ -749,10 +749,6 @@ public class Compiler2 {
 		 * (including initial data items), then building the read physical
 		 * indices for future steady-state executions and taking the
 		 * intersection.
-		 *
-		 * TODO: This makes the same assumption as above, that we can stop
-		 * translating indices as soon as adding an execution doesn't change the
-		 * indices, which may not be true.
 		 */
 		Map<Storage, Set<Integer>> initWrites = new HashMap<>();
 		Map<Storage, Set<Integer>> futureReads = new HashMap<>();
@@ -767,17 +763,16 @@ public class Compiler2 {
 		for (ActorGroup g : groups) {
 			//We run until our read indices don't intersect any of the write
 			//indices, at which point we aren't keeping any more elements live.
-			boolean progress = true;
-			for (int i = initSchedule.get(g); progress; ++i) {
-				progress = false;
+			boolean canStop = false;
+			for (int i = initSchedule.get(g); !canStop; ++i) {
+				canStop = true;
 				for (Map.Entry<Storage, ImmutableSortedSet<Integer>> reads : g.reads(i).entrySet()) {
 					Storage s = reads.getKey();
 					Set<Integer> readIndices = reads.getValue();
 					Set<Integer> writeIndices = initWrites.get(s);
-					if (!Sets.intersection(readIndices, writeIndices).isEmpty()) {
-						futureReads.get(s).addAll(readIndices);
-						progress = true;
-					}
+					futureReads.get(s).addAll(readIndices);
+					canStop &= Collections.min(readIndices) > Collections.max(writeIndices);
+//					if (canStop) System.out.println(i+" "+readIndices+" "+writeIndices);
 				}
 			}
 		}
