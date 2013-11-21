@@ -1,6 +1,9 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.collect.Maps;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
@@ -29,12 +32,21 @@ public final class MapConcreteStorage implements ConcreteStorage {
 		this.type = type;
 		this.readHandle = MAP_GET.bindTo(map).asType(MethodType.methodType(type, int.class));
 		this.writeHandle = MAP_PUT.bindTo(map).asType(MethodType.methodType(void.class, int.class, type));
-		this.adjustHandle = adjustHandle;
+		this.adjustHandle = adjustHandle.bindTo(this);
 		this.minReadIndex = minReadIndex;
 		this.throughput = throughput;
 	}
+	public static MapConcreteStorage create(Storage s) {
+		ImmutableSet<ActorGroup> relevantGroups = ImmutableSet.<ActorGroup>builder().addAll(s.upstreamGroups()).addAll(s.downstreamGroups()).build();
+		return new MapConcreteStorage(s.type(), ADJUST, s.readIndices(Maps.asMap(relevantGroups, new Function<ActorGroup, Integer>() {
+			@Override
+			public Integer apply(ActorGroup input) {
+				return 1;
+			}
+		})).first(), s.throughput());
+	}
 	public static MapConcreteStorage createNopAdjust(Storage s) {
-		return new MapConcreteStorage(s.type(), Combinators.nop(), Integer.MAX_VALUE, Integer.MAX_VALUE);
+		return new MapConcreteStorage(s.type(), Combinators.nop(Object.class), Integer.MAX_VALUE, Integer.MAX_VALUE);
 	}
 	//TODO: create(Storage s, Map<ActorGroup, Integer> schedule) if we want adjusting
 
@@ -100,6 +112,15 @@ public final class MapConcreteStorage implements ConcreteStorage {
 	}
 
 	public static StorageFactory factory() {
+		return new StorageFactory() {
+			@Override
+			public ConcreteStorage make(Storage storage) {
+				return create(storage);
+			}
+		};
+	}
+
+	public static StorageFactory initFactory() {
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {

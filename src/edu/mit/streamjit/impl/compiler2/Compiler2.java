@@ -475,7 +475,7 @@ public class Compiler2 {
 		});
 
 		computeLiveness();
-		this.initStorage = createExternalStorage(MapConcreteStorage.factory());
+		this.initStorage = createExternalStorage(MapConcreteStorage.initFactory());
 		initReadInstructions.add(new InitDataReadInstruction(initStorage, initialStateDataMap));
 
 		/**
@@ -484,7 +484,7 @@ public class Compiler2 {
 		 * time we build the token init schedule information required by the
 		 * blob host.
 		 */
-		Core initCore = new Core(storage, initStorage, MapConcreteStorage.factory());
+		Core initCore = new Core(storage, initStorage, MapConcreteStorage.initFactory());
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
