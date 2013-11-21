@@ -263,26 +263,26 @@ public abstract class Actor implements Comparable<Actor> {
 	}
 
 	public ImmutableSortedSet<Integer> reads(Storage storage, int iteration) {
-		if (!inputs().contains(storage)) return ImmutableSortedSet.of();
 		List<ImmutableSortedSet<Integer>> list = new ArrayList<>(inputs().size());
 		for (int input = 0; input < inputs().size(); ++input)
-			list.add(translateInputIndices(input, peeks(input, iteration)));
+			if (inputs().get(input).equals(storage))
+				list.add(translateInputIndices(input, peeks(input, iteration)));
 		return ImmutableSortedSet.copyOf(Iterables.concat(list));
 	}
 
 	public ImmutableSortedSet<Integer> reads(Storage storage, Set<Integer> iterations) {
-		if (!inputs().contains(storage)) return ImmutableSortedSet.of();
 		List<ImmutableSortedSet<Integer>> list = new ArrayList<>(inputs().size());
 		for (int input = 0; input < inputs().size(); ++input)
-			list.add(translateInputIndices(input, peeks(input, iterations)));
+			if (inputs().get(input).equals(storage))
+				list.add(translateInputIndices(input, peeks(input, iterations)));
 		return ImmutableSortedSet.copyOf(Iterables.concat(list));
 	}
 
 	public ImmutableSortedSet<Integer> reads(Storage storage, Range<Integer> iterations) {
-		if (!inputs().contains(storage)) return ImmutableSortedSet.of();
 		List<ImmutableSortedSet<Integer>> list = new ArrayList<>(inputs().size());
 		for (int input = 0; input < inputs().size(); ++input)
-			list.add(translateInputIndices(input, peeks(input, iterations)));
+			if (inputs().get(input).equals(storage))
+				list.add(translateInputIndices(input, peeks(input, iterations)));
 		return ImmutableSortedSet.copyOf(Iterables.concat(list));
 	}
 
@@ -320,26 +320,26 @@ public abstract class Actor implements Comparable<Actor> {
 	}
 
 	public ImmutableSortedSet<Integer> writes(Storage storage, int iteration) {
-		if (!outputs().contains(storage)) return ImmutableSortedSet.of();
 		List<ImmutableSortedSet<Integer>> list = new ArrayList<>(outputs().size());
 		for (int output = 0; output < outputs().size(); ++output)
-			list.add(translateOutputIndices(output, pushes(output, iteration)));
+			if (outputs().get(output).equals(storage))
+				list.add(translateOutputIndices(output, pushes(output, iteration)));
 		return ImmutableSortedSet.copyOf(Iterables.concat(list));
 	}
 
 	public ImmutableSortedSet<Integer> writes(Storage storage, Set<Integer> iterations) {
-		if (!outputs().contains(storage)) return ImmutableSortedSet.of();
 		List<ImmutableSortedSet<Integer>> list = new ArrayList<>(outputs().size());
 		for (int output = 0; output < outputs().size(); ++output)
-			list.add(translateOutputIndices(output, pushes(output, iterations)));
+			if (outputs().get(output).equals(storage))
+				list.add(translateOutputIndices(output, pushes(output, iterations)));
 		return ImmutableSortedSet.copyOf(Iterables.concat(list));
 	}
 
 	public ImmutableSortedSet<Integer> writes(Storage storage, Range<Integer> iterations) {
-		if (!outputs().contains(storage)) return ImmutableSortedSet.of();
 		List<ImmutableSortedSet<Integer>> list = new ArrayList<>(outputs().size());
 		for (int output = 0; output < outputs().size(); ++output)
-			list.add(translateOutputIndices(output, pushes(output, iterations)));
+			if (outputs().get(output).equals(storage))
+				list.add(translateOutputIndices(output, pushes(output, iterations)));
 		return ImmutableSortedSet.copyOf(Iterables.concat(list));
 	}
 
