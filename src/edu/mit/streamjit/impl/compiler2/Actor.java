@@ -5,6 +5,7 @@ import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
@@ -282,6 +283,27 @@ public abstract class Actor implements Comparable<Actor> {
 		return ImmutableSortedSet.copyOf(Iterables.concat(list));
 	}
 
+	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> reads(int iteration) {
+		ImmutableMap.Builder<Storage, ImmutableSortedSet<Integer>> builder = ImmutableMap.builder();
+		for (Storage s : inputs())
+			builder.put(s, reads(s, iteration));
+		return builder.build();
+	}
+
+	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> reads(Set<Integer> iterations) {
+		ImmutableMap.Builder<Storage, ImmutableSortedSet<Integer>> builder = ImmutableMap.builder();
+		for (Storage s : inputs())
+			builder.put(s, reads(s, iterations));
+		return builder.build();
+	}
+
+	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> reads(Range<Integer> iterations) {
+		ImmutableMap.Builder<Storage, ImmutableSortedSet<Integer>> builder = ImmutableMap.builder();
+		for (Storage s : inputs())
+			builder.put(s, reads(s, iterations));
+		return builder.build();
+	}
+
 	public ImmutableSortedSet<Integer> writes(int output, int iteration) {
 		return translateOutputIndices(output, pushes(output, iteration));
 	}
@@ -313,6 +335,27 @@ public abstract class Actor implements Comparable<Actor> {
 		for (int output = 0; output < outputs().size(); ++output)
 			list.add(translateOutputIndices(output, pushes(output, iterations)));
 		return ImmutableSortedSet.copyOf(Iterables.concat(list));
+	}
+
+	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> writes(int iteration) {
+		ImmutableMap.Builder<Storage, ImmutableSortedSet<Integer>> builder = ImmutableMap.builder();
+		for (Storage s : outputs())
+			builder.put(s, writes(s, iteration));
+		return builder.build();
+	}
+
+	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> writes(Set<Integer> iterations) {
+		ImmutableMap.Builder<Storage, ImmutableSortedSet<Integer>> builder = ImmutableMap.builder();
+		for (Storage s : outputs())
+			builder.put(s, writes(s, iterations));
+		return builder.build();
+	}
+
+	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> writes(Range<Integer> iterations) {
+		ImmutableMap.Builder<Storage, ImmutableSortedSet<Integer>> builder = ImmutableMap.builder();
+		for (Storage s : outputs())
+			builder.put(s, writes(s, iterations));
+		return builder.build();
 	}
 
 	@Override
