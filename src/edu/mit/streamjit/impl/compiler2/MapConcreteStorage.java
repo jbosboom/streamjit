@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.collect.ImmutableSortedSet;
+import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -24,14 +25,18 @@ public final class MapConcreteStorage implements ConcreteStorage {
 	private final Map<Integer, Object> map = new ConcurrentHashMap<>();
 	private final MethodHandle readHandle, writeHandle, adjustHandle;
 	private final int minReadIndex, throughput;
-	public MapConcreteStorage(Storage s) {
-		this.type = s.type();
+	private MapConcreteStorage(Class<?> type, MethodHandle adjustHandle, int minReadIndex, int throughput) {
+		this.type = type;
 		this.readHandle = MAP_GET.bindTo(map).asType(MethodType.methodType(type, int.class));
 		this.writeHandle = MAP_PUT.bindTo(map).asType(MethodType.methodType(void.class, int.class, type));
-		this.adjustHandle = ADJUST.bindTo(this);
-		this.minReadIndex = s.readIndices().isEmpty() ? Integer.MAX_VALUE : s.readIndices().first();
-		this.throughput = s.throughput();
+		this.adjustHandle = adjustHandle;
+		this.minReadIndex = minReadIndex;
+		this.throughput = throughput;
 	}
+	public static MapConcreteStorage createNopAdjust(Storage s) {
+		return new MapConcreteStorage(s.type(), Combinators.nop(), Integer.MAX_VALUE, Integer.MAX_VALUE);
+	}
+	//TODO: create(Storage s, Map<ActorGroup, Integer> schedule) if we want adjusting
 
 	@Override
 	public Class<?> type() {
@@ -98,7 +103,7 @@ public final class MapConcreteStorage implements ConcreteStorage {
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {
-				return new MapConcreteStorage(storage);
+				return createNopAdjust(storage);
 			}
 		};
 	}
