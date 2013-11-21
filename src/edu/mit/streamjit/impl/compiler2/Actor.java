@@ -1,10 +1,17 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
+import com.google.common.collect.Collections2;
+import com.google.common.collect.ContiguousSet;
+import com.google.common.collect.DiscreteDomain;
+import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.collect.Range;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The compiler IR for a Worker or Token.
@@ -73,6 +80,19 @@ public abstract class Actor implements Comparable<Actor> {
 		}
 	}
 
+	public ImmutableSortedSet<Integer> translateInputIndices(final int input, Set<Integer> logicalIndices) {
+		return ImmutableSortedSet.copyOf(Collections2.transform(logicalIndices, new Function<Integer, Integer>() {
+			@Override
+			public Integer apply(Integer index) {
+				return translateInputIndex(input, index);
+			}
+		}));
+	}
+
+	public ImmutableSortedSet<Integer> translateInputIndices(final int input, Range<Integer> logicalIndices) {
+		return translateInputIndices(input, ContiguousSet.create(logicalIndices, DiscreteDomain.integers()));
+	}
+
 	public List<MethodHandle> outputIndexFunctions() {
 		return downstreamIndex;
 	}
@@ -87,11 +107,170 @@ public abstract class Actor implements Comparable<Actor> {
 		}
 	}
 
+	public ImmutableSortedSet<Integer> translateOutputIndices(final int input, Set<Integer> logicalIndices) {
+		return ImmutableSortedSet.copyOf(Collections2.transform(logicalIndices, new Function<Integer, Integer>() {
+			@Override
+			public Integer apply(Integer index) {
+				return translateOutputIndex(input, index);
+			}
+		}));
+	}
+
+	public ImmutableSortedSet<Integer> translateOutputIndices(final int input, Range<Integer> logicalIndices) {
+		return translateOutputIndices(input, ContiguousSet.create(logicalIndices, DiscreteDomain.integers()));
+	}
+
 	public abstract int peek(int input);
 
 	public abstract int pop(int input);
 
 	public abstract int push(int output);
+
+	/**
+	 * Returns the number of items peeked at but not popped from the given input
+	 * in a single iteration.
+	 * @param input the input index
+	 * @return the number of items peeked but not popped
+	 */
+	public int excessPeeks(int input) {
+		return Math.max(0, peek(input) - pop(input));
+	}
+
+	/**
+	 * Returns the logical indices peeked or popped on the given input during
+	 * the given iteration.  Note that this method may return a nonempty set
+	 * even if peeks(input) returns 0 and isPeeking() returns false.
+	 * @param input the input index
+	 * @param iteration the iteration number
+	 * @return the logical indices peeked or popped on the given input during
+	 * the given iteration
+	 */
+	public ContiguousSet<Integer> peeks(int input, int iteration) {
+		return ContiguousSet.create(Range.closedOpen(iteration * pop(input), (iteration + 1) * pop(input) + excessPeeks(input)), DiscreteDomain.integers());
+	}
+
+	/**
+	 * Returns the logical indices peeked or popped on the given input during
+	 * the given iterations.  Note that this method may return a nonempty set
+	 * even if peeks(input) returns 0 and isPeeking() returns false.
+	 * @param input the input index
+	 * @param iterations the iteration numbers
+	 * @return the logical indices peeked or popped on the given input during
+	 * the given iterations
+	 */
+	public ImmutableSortedSet<Integer> peeks(int input, Set<Integer> iterations) {
+		if (iterations instanceof ContiguousSet)
+			return peeks(input, (ContiguousSet<Integer>)iterations);
+		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+		for (int i : iterations)
+			builder.addAll(peeks(input, i));
+		return builder.build();
+	}
+
+	/**
+	 * Returns the logical indices peeked or popped on the given input during
+	 * the given iterations.  Note that this method may return a nonempty set
+	 * even if peeks(input) returns 0 and isPeeking() returns false.
+	 * @param input the input index
+	 * @param iterations the iteration numbers
+	 * @return the logical indices peeked or popped on the given input during
+	 * the given iterations
+	 */
+	public ContiguousSet<Integer> peeks(int input, ContiguousSet<Integer> iterations) {
+		return ContiguousSet.create(Range.closedOpen(iterations.first() * pop(input), (iterations.last() + 1) * pop(input) + excessPeeks(input)), DiscreteDomain.integers());
+	}
+
+	/**
+	 * Returns the logical indices peeked or popped on the given input during
+	 * the given iterations.  Note that this method may return a nonempty set
+	 * even if peeks(input) returns 0 and isPeeking() returns false.
+	 * @param input the input index
+	 * @param iterations the iteration numbers
+	 * @return the logical indices peeked or popped on the given input during
+	 * the given iterations
+	 */
+	public ContiguousSet<Integer> peeks(int input, Range<Integer> iterations) {
+		return peeks(input, ContiguousSet.create(iterations, DiscreteDomain.integers()));
+	}
+
+	//TODO: popped()? (would exclude peeks)  Would we ever use it?
+
+	/**
+	 * Returns the logical indices pushed to the given output during the given
+	 * iteration.
+	 * @param output the output index
+	 * @param iteration the iteration number
+	 * @return the logical indices pushed to the given input during the given
+	 * iteration
+	 */
+	public ContiguousSet<Integer> pushes(int output, int iteration) {
+		return ContiguousSet.create(Range.closedOpen(iteration * push(output), (iteration + 1) * push(output)), DiscreteDomain.integers());
+	}
+
+	/**
+	 * Returns the logical indices pushed to the given output during the given
+	 * iterations.
+	 * @param output the output index
+	 * @param iterations the iteration numbers
+	 * @return the logical indices pushed to the given input during the given
+	 * iterations
+	 */
+	public ImmutableSortedSet<Integer> pushes(int output, Set<Integer> iterations) {
+		if (iterations instanceof ContiguousSet)
+			return pushes(output, (ContiguousSet<Integer>)iterations);
+		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+		for (int i : iterations)
+			builder.addAll(pushes(output, i));
+		return builder.build();
+	}
+
+	/**
+	 * Returns the logical indices pushed to the given output during the given
+	 * iterations.
+	 * @param output the output index
+	 * @param iterations the iteration numbers
+	 * @return the logical indices pushed to the given input during the given
+	 * iterations
+	 */
+	public ContiguousSet<Integer> pushes(int output, ContiguousSet<Integer> iterations) {
+		return ContiguousSet.create(Range.closedOpen(iterations.first() * push(output), (iterations.last() + 1) * push(output)), DiscreteDomain.integers());
+	}
+
+	/**
+	 * Returns the logical indices pushed to the given output during the given
+	 * iterations.
+	 * @param output the output index
+	 * @param iterations the iteration numbers
+	 * @return the logical indices pushed to the given input during the given
+	 * iterations
+	 */
+	public ContiguousSet<Integer> pushes(int output, Range<Integer> iterations) {
+		return pushes(output, ContiguousSet.create(iterations, DiscreteDomain.integers()));
+	}
+
+	public ImmutableSortedSet<Integer> reads(int input, int iteration) {
+		return translateInputIndices(input, peeks(input, iteration));
+	}
+
+	public ImmutableSortedSet<Integer> reads(int input, Set<Integer> iterations) {
+		return translateInputIndices(input, peeks(input, iterations));
+	}
+
+	public ImmutableSortedSet<Integer> reads(int input, Range<Integer> iterations) {
+		return translateInputIndices(input, peeks(input, iterations));
+	}
+
+	public ImmutableSortedSet<Integer> writes(int output, int iteration) {
+		return translateOutputIndices(output, pushes(output, iteration));
+	}
+
+	public ImmutableSortedSet<Integer> writes(int output, Set<Integer> iterations) {
+		return translateOutputIndices(output, pushes(output, iterations));
+	}
+
+	public ImmutableSortedSet<Integer> writes(int output, Range<Integer> iterations) {
+		return translateOutputIndices(output, pushes(output, iterations));
+	}
 
 	@Override
 	public final int compareTo(Actor o) {
