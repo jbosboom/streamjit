@@ -37,5 +37,341 @@ public class Reg20131116_104433_226 implements Benchmark {
 	public static void main(String[] args) {
 		Benchmarker.runBenchmark(new Reg20131116_104433_226(), new edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler()).get(0).print(System.out);
 	}
+
+	/**
+	 * @since 11/20/2013
+	 */
+   @ServiceProvider(Benchmark.class)
+   public static class Reg20131116_104433_226_copy1 implements Benchmark {
+	   @Override
+	   @SuppressWarnings({"unchecked", "rawtypes"})
+	   public OneToOneElement<Object, Object> instantiate() {
+		   return new Pipeline(new Identity<>(),
+				   new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter<>(), new edu.mit.streamjit.api.RoundrobinJoiner(), new OneToOneElement[]{
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(2),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(4),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(5),
+						   new Identity(),
+						   }));
+	   }
+	   @Override
+	   public List<Dataset> inputs() {
+		   Dataset ds = Datasets.allIntsInRange(0, 1000);
+		   return Collections.singletonList(ds.withOutput(Datasets.outputOf(new edu.mit.streamjit.impl.interp.InterpreterStreamCompiler(), instantiate(), ds.input())));
+	   }
+	   @Override
+	   public String toString() {
+		   return getClass().getSimpleName();
+	   }
+   }
+
+	/**
+	 * @since 11/20/2013
+	 */
+   @ServiceProvider(Benchmark.class)
+   public static class Reg20131116_104433_226_copy2 implements Benchmark {
+	   @Override
+	   @SuppressWarnings({"unchecked", "rawtypes"})
+	   public OneToOneElement<Object, Object> instantiate() {
+		   return new Pipeline(new Identity<>(),
+				   new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter<>(), new edu.mit.streamjit.api.RoundrobinJoiner(), new OneToOneElement[]{
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(2),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+						   new Identity(),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(4),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(5),
+						   }));
+	   }
+	   @Override
+	   public List<Dataset> inputs() {
+		   Dataset ds = Datasets.allIntsInRange(0, 1000);
+		   return Collections.singletonList(ds.withOutput(Datasets.outputOf(new edu.mit.streamjit.impl.interp.InterpreterStreamCompiler(), instantiate(), ds.input())));
+	   }
+	   @Override
+	   public String toString() {
+		   return getClass().getSimpleName();
+	   }
+   }
+
+	/**
+	 * @since 11/20/2013
+	 */
+   @ServiceProvider(Benchmark.class)
+   public static class Reg20131116_104433_226_copy3 implements Benchmark {
+	   @Override
+	   @SuppressWarnings({"unchecked", "rawtypes"})
+	   public OneToOneElement<Object, Object> instantiate() {
+		   return new Pipeline(new Identity<>(),
+				   new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter<>(), new edu.mit.streamjit.api.RoundrobinJoiner(), new OneToOneElement[]{
+						   new Identity(),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(2),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(4),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(5),
+						   }));
+	   }
+	   @Override
+	   public List<Dataset> inputs() {
+		   Dataset ds = Datasets.allIntsInRange(0, 1000);
+		   return Collections.singletonList(ds.withOutput(Datasets.outputOf(new edu.mit.streamjit.impl.interp.InterpreterStreamCompiler(), instantiate(), ds.input())));
+	   }
+	   @Override
+	   public String toString() {
+		   return getClass().getSimpleName();
+	   }
+   }
+
+	/**
+	 * @since 11/20/2013
+	 */
+   @ServiceProvider(Benchmark.class)
+   public static class Reg20131116_104433_226_copy4 implements Benchmark {
+	   @Override
+	   @SuppressWarnings({"unchecked", "rawtypes"})
+	   public OneToOneElement<Object, Object> instantiate() {
+		   return new Pipeline(new Identity<>(),
+				   new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter<>(), new edu.mit.streamjit.api.RoundrobinJoiner(), new OneToOneElement[]{
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(2),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(4),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(5),
+						   new Identity(),
+						   }));
+	   }
+	   @Override
+	   public List<Dataset> inputs() {
+		   Dataset ds = Datasets.allIntsInRange(0, 1000);
+		   return Collections.singletonList(ds.withOutput(Datasets.outputOf(new edu.mit.streamjit.impl.interp.InterpreterStreamCompiler(), instantiate(), ds.input())));
+	   }
+	   @Override
+	   public String toString() {
+		   return getClass().getSimpleName();
+	   }
+   }
+
+	/**
+	 * @since 11/20/2013
+	 */
+   @ServiceProvider(Benchmark.class)
+   public static class Reg20131116_104433_226_copy5 implements Benchmark {
+	   @Override
+	   @SuppressWarnings({"unchecked", "rawtypes"})
+	   public OneToOneElement<Object, Object> instantiate() {
+		   return new Pipeline(new Identity<>(),
+				   new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter<>(), new edu.mit.streamjit.api.RoundrobinJoiner(), new OneToOneElement[]{
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(2),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+						   new Identity(),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(4),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(5),
+						   }));
+	   }
+	   @Override
+	   public List<Dataset> inputs() {
+		   Dataset ds = Datasets.allIntsInRange(0, 1000);
+		   return Collections.singletonList(ds.withOutput(Datasets.outputOf(new edu.mit.streamjit.impl.interp.InterpreterStreamCompiler(), instantiate(), ds.input())));
+	   }
+	   @Override
+	   public String toString() {
+		   return getClass().getSimpleName();
+	   }
+   }
+
+	/**
+	 * @since 11/20/2013
+	 */
+   @ServiceProvider(Benchmark.class)
+   public static class Reg20131116_104433_226_copy6 implements Benchmark {
+	   @Override
+	   @SuppressWarnings({"unchecked", "rawtypes"})
+	   public OneToOneElement<Object, Object> instantiate() {
+		   return new Pipeline(new Identity<>(),
+				   new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter<>(), new edu.mit.streamjit.api.RoundrobinJoiner(), new OneToOneElement[]{
+						   new Identity(),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(2),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(4),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(5),
+						   }));
+	   }
+	   @Override
+	   public List<Dataset> inputs() {
+		   Dataset ds = Datasets.allIntsInRange(0, 1000);
+		   return Collections.singletonList(ds.withOutput(Datasets.outputOf(new edu.mit.streamjit.impl.interp.InterpreterStreamCompiler(), instantiate(), ds.input())));
+	   }
+	   @Override
+	   public String toString() {
+		   return getClass().getSimpleName();
+	   }
+   }
+
+	/**
+	 * @since 11/20/2013
+	 */
+   @ServiceProvider(Benchmark.class)
+   public static class Reg20131116_104433_226_copy7 implements Benchmark {
+	   @Override
+	   @SuppressWarnings({"unchecked", "rawtypes"})
+	   public OneToOneElement<Object, Object> instantiate() {
+		   return new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(10),
+				   new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter<>(), new edu.mit.streamjit.api.RoundrobinJoiner(), new OneToOneElement[]{
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(2),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(4),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(5),
+						   new Identity(),
+						   }));
+	   }
+	   @Override
+	   public List<Dataset> inputs() {
+		   Dataset ds = Datasets.allIntsInRange(0, 1000);
+		   return Collections.singletonList(ds.withOutput(Datasets.outputOf(new edu.mit.streamjit.impl.interp.InterpreterStreamCompiler(), instantiate(), ds.input())));
+	   }
+	   @Override
+	   public String toString() {
+		   return getClass().getSimpleName();
+	   }
+   }
+
+	/**
+	 * @since 11/20/2013
+	 */
+   @ServiceProvider(Benchmark.class)
+   public static class Reg20131116_104433_226_copy8 implements Benchmark {
+	   @Override
+	   @SuppressWarnings({"unchecked", "rawtypes"})
+	   public OneToOneElement<Object, Object> instantiate() {
+		   return new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(10),
+				   new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter<>(), new edu.mit.streamjit.api.RoundrobinJoiner(), new OneToOneElement[]{
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(2),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+						   new Identity(),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(4),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(5),
+						   }));
+	   }
+	   @Override
+	   public List<Dataset> inputs() {
+		   Dataset ds = Datasets.allIntsInRange(0, 1000);
+		   return Collections.singletonList(ds.withOutput(Datasets.outputOf(new edu.mit.streamjit.impl.interp.InterpreterStreamCompiler(), instantiate(), ds.input())));
+	   }
+	   @Override
+	   public String toString() {
+		   return getClass().getSimpleName();
+	   }
+   }
+
+	/**
+	 * @since 11/20/2013
+	 */
+   @ServiceProvider(Benchmark.class)
+   public static class Reg20131116_104433_226_copy9 implements Benchmark {
+	   @Override
+	   @SuppressWarnings({"unchecked", "rawtypes"})
+	   public OneToOneElement<Object, Object> instantiate() {
+		   return new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(10),
+				   new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter<>(), new edu.mit.streamjit.api.RoundrobinJoiner(), new OneToOneElement[]{
+						   new Identity(),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(2),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(4),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(5),
+						   }));
+	   }
+	   @Override
+	   public List<Dataset> inputs() {
+		   Dataset ds = Datasets.allIntsInRange(0, 1000);
+		   return Collections.singletonList(ds.withOutput(Datasets.outputOf(new edu.mit.streamjit.impl.interp.InterpreterStreamCompiler(), instantiate(), ds.input())));
+	   }
+	   @Override
+	   public String toString() {
+		   return getClass().getSimpleName();
+	   }
+   }
+
+	/**
+	 * @since 11/20/2013
+	 */
+   @ServiceProvider(Benchmark.class)
+   public static class Reg20131116_104433_226_copy10 implements Benchmark {
+	   @Override
+	   @SuppressWarnings({"unchecked", "rawtypes"})
+	   public OneToOneElement<Object, Object> instantiate() {
+		   return new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(10),
+				   new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter<>(), new edu.mit.streamjit.api.RoundrobinJoiner(), new OneToOneElement[]{
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(2),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(4),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(5),
+						   new Identity(),
+						   }));
+	   }
+	   @Override
+	   public List<Dataset> inputs() {
+		   Dataset ds = Datasets.allIntsInRange(0, 1000);
+		   return Collections.singletonList(ds.withOutput(Datasets.outputOf(new edu.mit.streamjit.impl.interp.InterpreterStreamCompiler(), instantiate(), ds.input())));
+	   }
+	   @Override
+	   public String toString() {
+		   return getClass().getSimpleName();
+	   }
+   }
+
+	/**
+	 * @since 11/20/2013
+	 */
+   @ServiceProvider(Benchmark.class)
+   public static class Reg20131116_104433_226_copy11 implements Benchmark {
+	   @Override
+	   @SuppressWarnings({"unchecked", "rawtypes"})
+	   public OneToOneElement<Object, Object> instantiate() {
+		   return new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(10),
+				   new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter<>(), new edu.mit.streamjit.api.RoundrobinJoiner(), new OneToOneElement[]{
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(2),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+						   new Identity(),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(4),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(5),
+						   }));
+	   }
+	   @Override
+	   public List<Dataset> inputs() {
+		   Dataset ds = Datasets.allIntsInRange(0, 1000);
+		   return Collections.singletonList(ds.withOutput(Datasets.outputOf(new edu.mit.streamjit.impl.interp.InterpreterStreamCompiler(), instantiate(), ds.input())));
+	   }
+	   @Override
+	   public String toString() {
+		   return getClass().getSimpleName();
+	   }
+   }
+
+	/**
+	 * @since 11/20/2013
+	 */
+   @ServiceProvider(Benchmark.class)
+   public static class Reg20131116_104433_226_copy12 implements Benchmark {
+	   @Override
+	   @SuppressWarnings({"unchecked", "rawtypes"})
+	   public OneToOneElement<Object, Object> instantiate() {
+		   return new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(10),
+				   new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter<>(), new edu.mit.streamjit.api.RoundrobinJoiner(), new OneToOneElement[]{
+						   new Identity(),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(2),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(4),
+						   new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(5),
+						   }));
+	   }
+	   @Override
+	   public List<Dataset> inputs() {
+		   Dataset ds = Datasets.allIntsInRange(0, 1000);
+		   return Collections.singletonList(ds.withOutput(Datasets.outputOf(new edu.mit.streamjit.impl.interp.InterpreterStreamCompiler(), instantiate(), ds.input())));
+	   }
+	   @Override
+	   public String toString() {
+		   return getClass().getSimpleName();
+	   }
+   }
 }
 
