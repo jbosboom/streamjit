@@ -154,12 +154,6 @@ public class OnlineTuner implements Runnable {
 		if (needTermination) {
 			if (manager.isRunning()) {
 				drainer.startDraining(1);
-				System.err.println("awaitDrainedIntrmdiate");
-				try {
-					drainer.awaitDrainedIntrmdiate();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
 			} else {
 				manager.stop();
 			}
@@ -295,8 +289,8 @@ public class OnlineTuner implements Runnable {
 				app.blobConfiguration);
 		String json = config.toJson();
 		try {
-			FileWriter writer = new FileWriter(
-					String.format("final_%s.cfg", app.name), false);
+			FileWriter writer = new FileWriter(String.format("final_%s.cfg",
+					app.name), false);
 			writer.write(json);
 			writer.flush();
 			writer.close();
