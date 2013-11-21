@@ -43,6 +43,10 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 	@Override
 	public Iterator<Benchmark> iterator() {
 		Benchmark[] benchmarks = {
+			rr_rr(1, 1, 1),
+			rr_rr(1, 5, 5),
+			rr_rr(1, 7, 5),
+			rr_rr(1, 5, 7),
 			rr_rr(7, 1, 1),
 			rr_rr(7, 5, 5),
 			rr_rr(7, 5, 3),
@@ -61,6 +65,7 @@ public final class SplitjoinOrderSanity implements BenchmarkProvider {
 			wrr_wrr(7, new int[]{5, 5, 5, 5, 5, 5, 5}, new int[]{5, 5, 5, 5, 5, 5, 5}),
 			wrr_wrr(7, new int[]{1, 2, 3, 4, 3, 2, 1}, new int[]{1, 2, 3, 4, 3, 2, 1}),
 
+			dup_rr(1, 1),
 			dup_rr(7, 1),
 			dup_rr(7, 7),
 
