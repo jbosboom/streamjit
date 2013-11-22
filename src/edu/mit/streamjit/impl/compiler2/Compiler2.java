@@ -396,15 +396,14 @@ public class Compiler2 {
 			for (int i = 0; i < joiner.inputs().size(); ++i) {
 				Storage victim = joiner.inputs().get(i);
 				MethodHandle t = transfers.get(i);
-//				MethodHandle t2 = MethodHandles.filterReturnValue(t, Jout);
+				MethodHandle t2 = MethodHandles.filterReturnValue(t, Jout);
 				for (Actor a : victim.upstream()) {
 					List<Storage> outputs = a.outputs();
 					List<MethodHandle> outputIndices = a.outputIndexFunctions();
 					for (int j = 0; j < outputs.size(); ++j)
 						if (outputs.get(j).equals(victim)) {
 							outputs.set(j, survivor);
-//							outputIndices.set(j, MethodHandles.filterReturnValue(t2, outputIndices.get(j)));
-							outputIndices.set(j, MethodHandles.filterReturnValue(MethodHandles.filterReturnValue(Jout, t), outputIndices.get(j)));
+							outputIndices.set(j, MethodHandles.filterReturnValue(t2, outputIndices.get(j)));
 							survivor.upstream().add(a);
 						}
 				}
