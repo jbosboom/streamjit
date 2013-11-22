@@ -656,11 +656,10 @@ public class Compiler2 {
 				if (s.isInternal()) continue;
 				ImmutableSortedSet<Integer> liveIndices = s.indicesLiveDuringSteadyState();
 				ImmutableSortedSet.Builder<Integer> drainableIndicesBuilder = ImmutableSortedSet.naturalOrder();
-				for (int logicalIndex = 0; ; ++logicalIndex) {
-					int physicalIndex = a.translateInputIndex(i, logicalIndex);
-					if (liveIndices.contains(physicalIndex))
-						drainableIndicesBuilder.add(physicalIndex);
-					else break; //TODO: assumes strong monotonicity. maybe needs to look at SS iteration units?
+				for (int iteration = 0; ; ++iteration) {
+					ImmutableSortedSet<Integer> reads = a.reads(i, iteration);
+					drainableIndicesBuilder.addAll(Sets.intersection(liveIndices, reads));
+					if (Collections.min(reads) > Collections.max(liveIndices)) break;
 				}
 				ImmutableSortedSet<Integer> drainableIndices = drainableIndicesBuilder.build();
 				if (drainableIndices.isEmpty()) continue;
