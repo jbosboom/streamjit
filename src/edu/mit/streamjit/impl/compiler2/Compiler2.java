@@ -458,6 +458,7 @@ public class Compiler2 {
 		if (g.actors().isEmpty()) {
 			groups = ImmutableSortedSet.copyOf(Sets.difference(groups, ImmutableSet.of(g)));
 			externalSchedule = ImmutableMap.copyOf(Maps.difference(externalSchedule, ImmutableMap.of(g, 0)).entriesOnlyOnLeft());
+			initSchedule = ImmutableMap.copyOf(Maps.difference(initSchedule, ImmutableMap.of(g, 0)).entriesOnlyOnLeft());
 		}
 	}
 
