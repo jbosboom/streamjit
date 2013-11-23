@@ -350,6 +350,7 @@ public class Compiler2 {
 				storage.remove(victim);
 			}
 			removeActor(splitter);
+			assert consistency();
 		}
 	}
 
@@ -412,6 +413,7 @@ public class Compiler2 {
 			}
 			System.out.println("removed "+joiner);
 			removeActor(joiner);
+			assert consistency();
 		}
 	}
 
@@ -460,6 +462,20 @@ public class Compiler2 {
 			externalSchedule = ImmutableMap.copyOf(Maps.difference(externalSchedule, ImmutableMap.of(g, 0)).entriesOnlyOnLeft());
 			initSchedule = ImmutableMap.copyOf(Maps.difference(initSchedule, ImmutableMap.of(g, 0)).entriesOnlyOnLeft());
 		}
+	}
+
+	private boolean consistency() {
+		Set<Storage> usedStorage = new HashSet<>();
+		for (Actor a : actors) {
+			usedStorage.addAll(a.inputs());
+			usedStorage.addAll(a.outputs());
+		}
+		if (!storage.equals(usedStorage)) {
+			Set<Storage> unused = Sets.difference(storage, usedStorage);
+			Set<Storage> untracked = Sets.difference(usedStorage, storage);
+			throw new AssertionError(String.format("inconsistent storage:%n\tunused: %s%n\tuntracked:%s%n", unused, untracked));
+		}
+		return true;
 	}
 
 	//<editor-fold defaultstate="collapsed" desc="Unimplemented optimization stuff">

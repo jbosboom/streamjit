@@ -244,28 +244,6 @@ public final class Storage {
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		final Storage other = (Storage)obj;
-		if (!Objects.equals(this.upstream, other.upstream))
-			return false;
-		if (!Objects.equals(this.downstream, other.downstream))
-			return false;
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int hash = 3;
-		hash = 73 * hash + Objects.hashCode(this.upstream);
-		hash = 73 * hash + Objects.hashCode(this.downstream);
-		return hash;
-	}
-
-	@Override
 	public String toString() {
 		return String.format("(%s, %s)", upstream, downstream);
 	}
