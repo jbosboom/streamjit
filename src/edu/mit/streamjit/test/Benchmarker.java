@@ -276,7 +276,7 @@ public final class Benchmarker {
 			compileMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 			stream.awaitDrained(TIMEOUT_DURATION, TIMEOUT_UNIT);
 			stopwatch.stop();
-			runMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+			runMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS) - compileMillis;
 		} catch (TimeoutException ex) {
 			return Result.timeout(benchmark, input, compiler);
 		} catch (InterruptedException ex) {
