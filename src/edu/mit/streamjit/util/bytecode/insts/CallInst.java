@@ -9,6 +9,7 @@ import edu.mit.streamjit.util.bytecode.Method;
 import edu.mit.streamjit.util.bytecode.Value;
 import edu.mit.streamjit.util.bytecode.types.PrimitiveType;
 import edu.mit.streamjit.util.bytecode.types.RegularType;
+import edu.mit.streamjit.util.bytecode.types.ReturnType;
 import edu.mit.streamjit.util.bytecode.types.VoidType;
 
 /**
@@ -32,6 +33,10 @@ public final class CallInst extends Instruction {
 		this(m);
 		for (int i = 0; i < arguments.length; ++i)
 			setArgument(i, arguments[i]);
+	}
+	@Override
+	public ReturnType getType() {
+		return (ReturnType)super.getType();
 	}
 	public Method getMethod() {
 		return (Method)getOperand(0);
