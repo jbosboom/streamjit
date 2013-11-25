@@ -166,6 +166,12 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		return !(modifiers().contains(Modifier.STATIC) || isConstructor());
 	}
 
+	public boolean isSignaturePolymorphic() {
+		return !getParent().isMutable()
+				&& getParent().getName().equals("java.lang.invoke.MethodHandle")
+				&& (getName().equals("invoke") || getName().equals("invokeExact"));
+	}
+
 	@Override
 	public Access getAccess() {
 		return Access.fromModifiers(modifiers());

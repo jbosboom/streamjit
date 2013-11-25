@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
@@ -504,9 +505,9 @@ public final class MethodUnresolver {
 
 		for (Value v : i.arguments())
 			load(v, insns);
-		insns.add(new MethodInsnNode(opcode, owner, m.getName(), methodDescriptor(m)));
+		insns.add(new MethodInsnNode(opcode, owner, m.getName(), i.callDescriptor()));
 
-		if (!(m.getType().getReturnType() instanceof VoidType))
+		if (!(i.getType() instanceof VoidType))
 			store(i, insns);
 	}
 	private void emit(CastInst i, InsnList insns) {

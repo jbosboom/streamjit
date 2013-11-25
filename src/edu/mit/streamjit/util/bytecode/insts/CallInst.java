@@ -7,10 +7,12 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.util.bytecode.Method;
 import edu.mit.streamjit.util.bytecode.Value;
+import edu.mit.streamjit.util.bytecode.types.MethodType;
 import edu.mit.streamjit.util.bytecode.types.PrimitiveType;
 import edu.mit.streamjit.util.bytecode.types.RegularType;
 import edu.mit.streamjit.util.bytecode.types.ReturnType;
 import edu.mit.streamjit.util.bytecode.types.VoidType;
+import java.lang.invoke.MethodHandle;
 
 /**
  * A method call.  All types of bytecoded calls (i.e., not invokedynamic) use
@@ -25,12 +27,18 @@ import edu.mit.streamjit.util.bytecode.types.VoidType;
  * @since 4/13/2013
  */
 public final class CallInst extends Instruction {
+	private final MethodType methodType;
 	public CallInst(Method m) {
-		super(checkNotNull(m).getType().getReturnType(), 1+m.getType().getParameterTypes().size());
-		setOperand(0, m);
+		this(m, m.getType());
 	}
 	public CallInst(Method m, Value... arguments) {
-		this(m);
+		this(m, m.getType(), arguments);
+	}
+	public CallInst(Method m, MethodType methodType, Value... arguments) {
+		super(methodType.getReturnType(), 1 + methodType.getParameterTypes().size());
+		checkArgument(m.isSignaturePolymorphic() || methodType.equals(m.getType()));
+		this.methodType = methodType;
+		setOperand(0, m);
 		for (int i = 0; i < arguments.length; ++i)
 			setArgument(i, arguments[i]);
 	}
@@ -50,16 +58,35 @@ public final class CallInst extends Instruction {
 	public void setArgument(int i, Value v) {
 		setOperand(i+1, v);
 	}
+//	public void addArgument(int i, Value v) {
+//		checkState(getMethod().isSignaturePolymorphic(), "can't add arguments to non-signature-polymorphic method %s", getMethod());
+//		super.addOperand(i + 1, v);
+//	}
+//	public void removeArgument(int i, Value v) {
+//		checkState(getMethod().isSignaturePolymorphic(), "can't remove arguments to non-signature-polymorphic method %s", getMethod());
+//		super.removeOperand(i + 1);
+//	}
 	public Iterable<Value> arguments() {
 		return Iterables.skip(operands(), 1);
 	}
 
+	public String callDescriptor() {
+		MethodType type = methodType;
+		if (getMethod().isConstructor())
+			type = type.withReturnType(type.getTypeFactory().getVoidType());
+		if (getMethod().hasReceiver())
+			type = type.dropFirstArgument();
+		return type.getDescriptor();
+	}
+
 	@Override
 	public CallInst clone(Function<Value, Value> operandMap) {
-		CallInst ci = new CallInst((Method)operandMap.apply(getMethod()));
-		for (int i = 1; i < getNumOperands(); ++i)
-			ci.setOperand(i, operandMap.apply(getOperand(i)));
-		return ci;
+		Value[] arguments = new Value[Iterables.size(arguments())];
+		for (int i = 0; i < arguments.length; ++i)
+			arguments[i] = operandMap.apply(getArgument(i));
+		Method newMethod = (Method)operandMap.apply(getMethod());
+		MethodType newMethodType = newMethod.isSignaturePolymorphic() ? methodType : newMethod.getType();
+		return new CallInst(newMethod, newMethodType, arguments);
 	}
 
 	@Override
@@ -67,7 +94,7 @@ public final class CallInst extends Instruction {
 		if (i == 0)
 			checkArgument(v instanceof Method);
 		else {
-			RegularType paramType = getMethod().getType().getParameterTypes().get(i-1);
+			RegularType paramType = methodType.getParameterTypes().get(i-1);
 			PrimitiveType intType = paramType.getTypeFactory().getPrimitiveType(int.class);
 			//Due to the JVM's type system not distinguishing types smaller than
 			//int, we can implicitly convert to int then to the parameter type.
@@ -75,7 +102,7 @@ public final class CallInst extends Instruction {
 			if (!(v.getType().isSubtypeOf(intType) && paramType.isSubtypeOf(intType)))
 				checkArgument(v.getType().isSubtypeOf(paramType),
 						"cannot assign %s (%s) to parameter type %s",
-						v, v.getType(), getMethod().getType().getParameterTypes().get(i-1));
+						v, v.getType(), paramType);
 		}
 		super.checkOperand(i, v);
 	}

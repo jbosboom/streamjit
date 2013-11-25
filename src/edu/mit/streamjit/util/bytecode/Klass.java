@@ -218,7 +218,7 @@ public final class Klass implements Accessible, Parented<Module> {
 
 	public Method getMethod(String name, MethodType type) {
 		for (Method m : methods())
-			if (m.getName().equals(name) && m.getType().equals(type))
+			if (m.getName().equals(name) && (m.getType().equals(type) || m.isSignaturePolymorphic()))
 				return m;
 		return null;
 	}
@@ -253,6 +253,8 @@ public final class Klass implements Accessible, Parented<Module> {
 			for (Method m : k.getMethods(name)) {
 				if (m == null || m.modifiers().contains(Modifier.STATIC))
 					continue;
+				if (m.isSignaturePolymorphic()) //accepts any method type
+					return m;
 				MethodType desc = m.getType().dropFirstArgument();
 				RegularType rec = m.getType().getParameterTypes().get(0);
 				if (desc.equals(descriptorType) && receiver.isSubtypeOf(rec))
