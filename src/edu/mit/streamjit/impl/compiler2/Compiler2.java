@@ -512,25 +512,27 @@ public class Compiler2 {
 //			}
 //		return replacements;
 //	}
-
-//	/**
-//	 * Symbolically unboxes a Storage if its common type is a wrapper type and
-//	 * all the connected Actors support unboxing.
-//	 */
-//	private void unbox() {
-//		next_storage: for (Storage s : storage) {
-//			Class<?> commonType = s.commonType();
-//			if (!Primitives.isWrapperType(commonType)) continue;
-//			for (Object o : s.upstream())
-//				if (o instanceof Actor && !((Actor)o).archetype().canUnboxOutput())
-//					continue next_storage;
-//			for (Object o : s.downstream())
-//				if (o instanceof Actor && !((Actor)o).archetype().canUnboxInput())
-//					continue next_storage;
-//			s.setType(Primitives.unwrap(s.commonType()));
-//		}
-//	}
 	//</editor-fold>
+
+	/**
+	 * Symbolically unboxes a Storage if its common type is a wrapper type and
+	 * all the connected Actors support unboxing.
+	 */
+	private void unbox() {
+		next_storage: for (Storage s : storage) {
+			Class<?> commonType = s.commonType();
+			if (!Primitives.isWrapperType(commonType)) continue;
+			for (Actor a : s.upstream())
+				if (a instanceof TokenActor || !((WorkerActor)a).archetype().canUnboxOutput())
+					continue next_storage;
+			for (Actor a : s.downstream())
+				if (a instanceof TokenActor || !((WorkerActor)a).archetype().canUnboxInput())
+					continue next_storage;
+			Class<?> type = Primitives.unwrap(s.commonType());
+			s.setType(type);
+			System.out.println("unboxed "+s+" to "+type);
+		}
+	}
 
 	private void generateArchetypalCode() {
 		String packageName = "compiler"+PACKAGE_NUMBER.getAndIncrement();
