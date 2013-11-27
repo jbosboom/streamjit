@@ -24,8 +24,8 @@ public class Reg20131116_094349_939 implements Benchmark {
 					new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(),
 							new Identity<Object>()
 					),
-				new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(),
-						new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3)));
+					new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(),
+							new edu.mit.streamjit.impl.common.TestFilters.PeekingAdder(3)));
 	}
 	@Override
 	public List<Dataset> inputs() {
