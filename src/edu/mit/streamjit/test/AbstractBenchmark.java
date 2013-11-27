@@ -17,6 +17,15 @@ public abstract class AbstractBenchmark implements Benchmark {
 		this.name = name;
 		this.inputs = ImmutableList.copyOf(Lists.asList(firstInput, moreInputs));
 	}
+	public AbstractBenchmark(Dataset firstInput, Dataset... moreInputs) {
+		if (!getClass().getSimpleName().isEmpty())
+			this.name = getClass().getSimpleName();
+		else {
+			String binaryName = getClass().getName();
+			this.name = binaryName.substring(binaryName.lastIndexOf('.')+1, binaryName.length()-1);
+		}
+		this.inputs = ImmutableList.copyOf(Lists.asList(firstInput, moreInputs));
+	}
 	@Override
 	public final List<Dataset> inputs() {
 		return inputs;
