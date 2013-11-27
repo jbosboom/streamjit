@@ -342,7 +342,7 @@ public class Compiler2 {
 					for (int j = 0; j < inputs.size(); ++j)
 						if (inputs.get(j).equals(victim)) {
 							inputs.set(j, survivor);
-							inputIndices.set(j, MethodHandles.filterReturnValue(t2, inputIndices.get(j)));
+							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), t2));
 							survivor.downstream().add(a);
 						}
 				}
@@ -404,7 +404,7 @@ public class Compiler2 {
 					for (int j = 0; j < outputs.size(); ++j)
 						if (outputs.get(j).equals(victim)) {
 							outputs.set(j, survivor);
-							outputIndices.set(j, MethodHandles.filterReturnValue(t2, outputIndices.get(j)));
+							outputIndices.set(j, MethodHandles.filterReturnValue(outputIndices.get(j), t2));
 							survivor.upstream().add(a);
 						}
 				}
