@@ -141,7 +141,58 @@ public abstract class Actor implements Comparable<Actor> {
 		return peeks(input, ContiguousSet.create(iterations, DiscreteDomain.integers()));
 	}
 
-	//TODO: popped()? (would exclude peeks)  Would we ever use it?
+	/**
+	 * Returns the logical indices popped on the given input during the given
+	 * iteration.
+	 * @param input the input index
+	 * @param iteration the iteration number
+	 * @return the logical indices popped on the given input during the given
+	 * iteration
+	 */
+	public ContiguousSet<Integer> pops(int input, int iteration) {
+		return ContiguousSet.create(Range.closedOpen(iteration * pop(input), (iteration + 1) * pop(input)), DiscreteDomain.integers());
+	}
+
+	/**
+	 * Returns the logical indices popped on the given input during the given
+	 * iteration.
+	 * @param input the input index
+	 * @param iterations the iteration numbers
+	 * @return the logical indices popped on the given input during the given
+	 * iterations
+	 */
+	public ImmutableSortedSet<Integer> pops(int input, Set<Integer> iterations) {
+		if (iterations instanceof ContiguousSet)
+			return pops(input, (ContiguousSet<Integer>)iterations);
+		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+		for (int i : iterations)
+			builder.addAll(pops(input, i));
+		return builder.build();
+	}
+
+	/**
+	 * Returns the logical indices popped on the given input during the given
+	 * iteration.
+	 * @param input the input index
+	 * @param iterations the iteration numbers
+	 * @return the logical indices popped on the given input during the given
+	 * iterations
+	 */
+	public ContiguousSet<Integer> pops(int input, ContiguousSet<Integer> iterations) {
+		return ContiguousSet.create(Range.closedOpen(iterations.first() * pop(input), (iterations.last() + 1) * pop(input)), DiscreteDomain.integers());
+	}
+
+	/**
+	 * Returns the logical indices popped on the given input during the given
+	 * iteration.
+	 * @param input the input index
+	 * @param iterations the iteration numbers
+	 * @return the logical indices popped on the given input during the given
+	 * iterations
+	 */
+	public ContiguousSet<Integer> pops(int input, Range<Integer> iterations) {
+		return pops(input, ContiguousSet.create(iterations, DiscreteDomain.integers()));
+	}
 
 	/**
 	 * Returns the logical indices pushed to the given output during the given
@@ -304,6 +355,63 @@ public abstract class Actor implements Comparable<Actor> {
 		ImmutableMap.Builder<Storage, ImmutableSortedSet<Integer>> builder = ImmutableMap.builder();
 		for (Storage s : inputs())
 			builder.put(s, reads(s, iterations));
+		return builder.build();
+	}
+
+	public ImmutableSortedSet<Integer> consumes(int input, int iteration) {
+		return translateInputIndices(input, pops(input, iteration));
+	}
+
+	public ImmutableSortedSet<Integer> consumes(int input, Set<Integer> iterations) {
+		return translateInputIndices(input, pops(input, iterations));
+	}
+
+	public ImmutableSortedSet<Integer> consumes(int input, Range<Integer> iterations) {
+		return translateInputIndices(input, pops(input, iterations));
+	}
+
+	public ImmutableSortedSet<Integer> consumes(Storage storage, int iteration) {
+		List<ImmutableSortedSet<Integer>> list = new ArrayList<>(inputs().size());
+		for (int input = 0; input < inputs().size(); ++input)
+			if (inputs().get(input).equals(storage))
+				list.add(translateInputIndices(input, pops(input, iteration)));
+		return ImmutableSortedSet.copyOf(Iterables.concat(list));
+	}
+
+	public ImmutableSortedSet<Integer> consumes(Storage storage, Set<Integer> iterations) {
+		List<ImmutableSortedSet<Integer>> list = new ArrayList<>(inputs().size());
+		for (int input = 0; input < inputs().size(); ++input)
+			if (inputs().get(input).equals(storage))
+				list.add(translateInputIndices(input, pops(input, iterations)));
+		return ImmutableSortedSet.copyOf(Iterables.concat(list));
+	}
+
+	public ImmutableSortedSet<Integer> consumes(Storage storage, Range<Integer> iterations) {
+		List<ImmutableSortedSet<Integer>> list = new ArrayList<>(inputs().size());
+		for (int input = 0; input < inputs().size(); ++input)
+			if (inputs().get(input).equals(storage))
+				list.add(translateInputIndices(input, pops(input, iterations)));
+		return ImmutableSortedSet.copyOf(Iterables.concat(list));
+	}
+
+	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> consumes(int iteration) {
+		ImmutableMap.Builder<Storage, ImmutableSortedSet<Integer>> builder = ImmutableMap.builder();
+		for (Storage s : inputs())
+			builder.put(s, consumes(s, iteration));
+		return builder.build();
+	}
+
+	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> consumes(Set<Integer> iterations) {
+		ImmutableMap.Builder<Storage, ImmutableSortedSet<Integer>> builder = ImmutableMap.builder();
+		for (Storage s : inputs())
+			builder.put(s, consumes(s, iterations));
+		return builder.build();
+	}
+
+	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> consumes(Range<Integer> iterations) {
+		ImmutableMap.Builder<Storage, ImmutableSortedSet<Integer>> builder = ImmutableMap.builder();
+		for (Storage s : inputs())
+			builder.put(s, consumes(s, iterations));
 		return builder.build();
 	}
 
