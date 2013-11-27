@@ -160,7 +160,7 @@ public final class StreamFuzzer {
 		return new FuzzJoiner(RoundrobinJoiner.class, ImmutableList.of());
 	}
 
-	private static final com.google.common.base.Joiner ARG_JOINER = com.google.common.base.Joiner.on(", ");
+	private static final com.google.common.base.Joiner ARG_JOINER = com.google.common.base.Joiner.on(",\n");
 	private static class FuzzStreamElement<T extends StreamElement<Integer, Integer>> {
 		private final Class<? extends T> filterClass;
 		private final ImmutableList<?> arguments;
@@ -227,7 +227,7 @@ public final class StreamFuzzer {
 			List<String> args = new ArrayList<>(elements.size());
 			for (FuzzElement e : elements)
 				args.add(e.toJava());
-			return "new Pipeline(" + ARG_JOINER.join(args) + ")";
+			return "new Pipeline(new OneToOneElement[]{\n" + ARG_JOINER.join(args) + "\n})";
 		}
 		@Override
 		public boolean equals(Object obj) {
@@ -297,12 +297,10 @@ public final class StreamFuzzer {
 		}
 		@Override
 		public String toJava() {
-			List<String> args = new ArrayList<>(branches.size()+2);
-			args.add(splitter.toJava());
-			args.add(joiner.toJava());
+			List<String> args = new ArrayList<>(branches.size());
 			for (FuzzElement e : branches)
 				args.add(e.toJava());
-			return "new Splitjoin(" + ARG_JOINER.join(args) + ")";
+			return "new Splitjoin(" + splitter.toJava() + ", " + joiner.toJava()+", new OneToOneElement[]{\n" + ARG_JOINER.join(args) + "\n})";
 		}
 		@Override
 		public boolean equals(Object obj) {
