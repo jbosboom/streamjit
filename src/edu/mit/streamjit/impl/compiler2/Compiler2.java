@@ -5,7 +5,6 @@ import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -13,7 +12,6 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
-import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
 import com.google.common.math.IntMath;
@@ -69,7 +67,6 @@ import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -584,6 +581,13 @@ public class Compiler2 {
 
 	private void createSteadyStateCode() {
 		for (Actor a : actors) {
+			for (int i = 0; i < a.outputs().size(); ++i) {
+				Storage s = a.outputs().get(i);
+				if (s.isInternal()) continue;
+				int itemsWritten = a.push(i) * initSchedule.get(a.group()) * a.group().schedule().get(a);
+				a.outputIndexFunctions().set(i, MethodHandles.filterArguments(
+						a.outputIndexFunctions().get(i), 0, Combinators.add(MethodHandles.identity(int.class), itemsWritten)));
+			}
 			for (int i = 0; i < a.inputs().size(); ++i) {
 				Storage s = a.inputs().get(i);
 				if (s.isInternal()) continue;
@@ -593,23 +597,9 @@ public class Compiler2 {
 			}
 		}
 
-		List<DrainInstructionFactory> drainInstructionFactories = createDrainInstructions();
-
-		for (Actor a : actors) {
-			for (int i = 0; i < a.outputs().size(); ++i) {
-				Storage s = a.outputs().get(i);
-				if (s.isInternal()) continue;
-				int itemsWritten = a.push(i) * initSchedule.get(a.group()) * a.group().schedule().get(a);
-				a.outputIndexFunctions().set(i, MethodHandles.filterArguments(
-						a.outputIndexFunctions().get(i), 0, Combinators.add(MethodHandles.identity(int.class), itemsWritten)));
-			}
-		}
-
 		for (Storage s : storage)
 			s.computeSteadyStateRequirements(externalSchedule);
 		this.steadyStateStorage = createExternalStorage(CircularArrayConcreteStorage.factory());
-		for (DrainInstructionFactory f : drainInstructionFactories)
-			this.drainInstructions.add(f.call());
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
 		for (int i = 0; i < maxNumCores; ++i)
@@ -641,6 +631,8 @@ public class Compiler2 {
 		for (Storage s : initStorage.keySet())
 			migrationInstructions.add(new MigrationInstruction(
 					s, initStorage.get(s), steadyStateStorage.get(s)));
+
+		createDrainInstructions();
 	}
 
 	/**
@@ -674,56 +666,25 @@ public class Compiler2 {
 
 	/**
 	 * Create drain instructions, which collect live items from steady-state
-	 * storage when draining.  This is called after adjusting input index
-	 * functions but before adjusting output index functions.  We haven't
-	 * created steady-state storage yet (that requires output index adjustment),
-	 * so we return factories instead of the actual instructions.
+	 * storage when draining.
 	 */
-	private List<DrainInstructionFactory> createDrainInstructions() {
-		ImmutableList.Builder<DrainInstructionFactory> retval = ImmutableList.builder();
-		/**
-		 * If we remove a joiner from a splitjoin with rate lag (due to
-		 * peeking), we may have holes.  Some elements are logically below
-		 * the joiner, while others are logically above; assuming they're
-		 * all below (as we did before joiner removal) may incorrectly
-		 * reorder them.  Thus we consider the elements we know are buffered
-		 * for read to be below, and the rest of the elements above.  In
-		 * some cases we could move more elements below safely, but the
-		 * extra code isn't worth saving a bit of work during draining.
-		 */
-		for (Storage s : storage) {
-			if (s.isInternal()) continue;
-//			System.out.println(s+" "+s.indicesLiveDuringSteadyState());
-		}
-
-		SetMultimap<Storage, Integer> claimedForRead = HashMultimap.create();
+	private void createDrainInstructions() {
 		for (Actor a : actors) {
 			for (int i = 0; i < a.inputs().size(); ++i) {
 				Storage s = a.inputs().get(i);
 				if (s.isInternal()) continue;
-				/**
-				 * We have one steady state's worth of items buffered for read.
-				 * Note that some elements may be read by multiple outputs, due
-				 * to read aliasing from DuplicateSplitter. There may be holes
-				 * if outputs have been fused with inputs (those elements are
-				 * produced and consumed in the same iteration); they can be
-				 * safely ignored.
-				 * TODO now wrong
-				 *
-				 * Read until we have a partial read.
-				 */
-				ImmutableSortedSet.Builder<Integer> readsBuilder = ImmutableSortedSet.naturalOrder();
-				int scheduleAdjust = /*externalSchedule.get(a.group()) **/ a.group().schedule().get(a);
-				outer: for (int ss = 0; ; ++ss) {
-					ImmutableSortedSet<Integer> reads = a.consumes(i, Range.closedOpen(ss*scheduleAdjust, (ss+1)*scheduleAdjust));
-					if (!s.indicesLiveDuringSteadyState().containsAll(reads))
-						break;
-					readsBuilder.addAll(reads);
+				ImmutableSortedSet<Integer> liveIndices = s.indicesLiveDuringSteadyState();
+				ImmutableSortedSet.Builder<Integer> drainableIndicesBuilder = ImmutableSortedSet.naturalOrder();
+				for (int iteration = 0; ; ++iteration) {
+					ImmutableSortedSet<Integer> reads = a.reads(i, iteration);
+					drainableIndicesBuilder.addAll(Sets.intersection(liveIndices, reads));
+					if (Collections.min(reads) > Collections.max(liveIndices)) break;
 				}
-				ImmutableSortedSet<Integer> reads = readsBuilder.build();
-				ImmutableSortedSet<Integer> drainable = ImmutableSortedSet.copyOf(Sets.intersection(reads, s.indicesLiveDuringSteadyState()));
-//				System.out.format("read: %s %d %s%n", a, i, drainable);
-				if (drainable.isEmpty()) continue;
+				ImmutableSortedSet<Integer> drainableIndices = drainableIndicesBuilder.build();
+				if (drainableIndices.isEmpty()) continue;
+				//If the indices are contiguous, minimize storage by storing them as a range.
+				if (drainableIndices.last() - drainableIndices.first() + 1 == drainableIndices.size())
+					drainableIndices = ContiguousSet.create(Range.closed(drainableIndices.first(), drainableIndices.last()), DiscreteDomain.integers());
 
 				Token token;
 				if (a instanceof WorkerActor) {
@@ -732,99 +693,8 @@ public class Compiler2 {
 							new Token(Workers.getPredecessors(w).get(i), w);
 				} else
 					token = ((TokenActor)a).token();
-				retval.add(new DrainInstructionFactory(token, s, drainable));
-				claimedForRead.putAll(s, drainable);
+				drainInstructions.add(new XDrainInstruction(token, steadyStateStorage.get(s), drainableIndices));
 			}
-		}
-
-		SetMultimap<Storage, Integer> claimedForWrite = HashMultimap.create();
-		for (Actor a : actors) {
-			for (int i = 0; i < a.outputs().size(); ++i) {
-				Storage s = a.outputs().get(i);
-				if (s.isInternal()) continue;
-				/**
-				 * Any items this actor can write that haven't been claimed for
-				 * read are placed on the given output.  There should not be
-				 * any aliasing between actors.
-				 */
-				ImmutableSortedSet.Builder<Integer> writesBuilder = ImmutableSortedSet.naturalOrder();
-				Set<Integer> claimed = claimedForRead.get(s);
-				for (int iteration = 0; ; ++iteration) {
-					ImmutableSortedSet<Integer> writes = a.writes(i, iteration);
-					writesBuilder.addAll(Sets.difference(writes, claimed));
-					if (writes.first() > s.indicesLiveDuringSteadyState().last())
-						break;
-				}
-				ImmutableSortedSet<Integer> writes = writesBuilder.build();
-				ImmutableSortedSet<Integer> drainable = ImmutableSortedSet.copyOf(Sets.intersection(writes, s.indicesLiveDuringSteadyState()));
-//				System.out.format("write: %s %d %s%n", a, i, drainable);
-				if (drainable.isEmpty()) continue;
-				Set<Integer> intersection = Sets.intersection(drainable, claimedForWrite.get(s));
-				assert intersection.isEmpty() : intersection + " claimed twice for write";
-
-				Token token;
-				if (a instanceof WorkerActor) {
-					Worker<?, ?> w = ((WorkerActor)a).worker();
-					token = Workers.getSuccessors(w).isEmpty() ? Token.createOverallOutputToken(w) :
-							new Token(w, Workers.getSuccessors(w).get(i));
-				} else
-					token = ((TokenActor)a).token();
-				retval.add(new DrainInstructionFactory(token, s, drainable));
-				claimedForWrite.putAll(s, drainable);
-			}
-		}
-
-		for (Storage s : storage)
-			assert s.indicesLiveDuringSteadyState().equals(Sets.union(claimedForRead.get(s), claimedForWrite.get(s))) :
-					String.format("unclaimed: %s, overclaimed: %s",
-							Sets.difference(s.indicesLiveDuringSteadyState(), (Sets.union(claimedForRead.get(s), claimedForWrite.get(s)))),
-							Sets.difference((Sets.union(claimedForRead.get(s), claimedForWrite.get(s))), s.indicesLiveDuringSteadyState()));
-		return retval.build();
-	}
-
-	private class DrainInstructionFactory implements Callable<DrainInstruction> {
-		private final Token token;
-		private final Storage storage;
-		private final ImmutableSortedSet<Integer> indices;
-		private DrainInstructionFactory(Token token, Storage storage, ImmutableSortedSet<Integer> indices) {
-			this.token = token;
-			this.storage = storage;
-			this.indices = indices;
-		}
-		@Override
-		public DrainInstruction call() {
-			return new XDrainInstruction(token, steadyStateStorage.get(storage), indices);
-		}
-	}
-
-	/**
-	 * The X doesn't stand for anything.  I just needed a different name.
-	 */
-	private static final class XDrainInstruction implements DrainInstruction {
-		private final Token token;
-		private final ConcreteStorage storage;
-		private final ImmutableSortedSet<Integer> indices;
-		private XDrainInstruction(Token token, ConcreteStorage storage, ImmutableSortedSet<Integer> indices) {
-			this.token = token;
-			this.storage = storage;
-			//Reduce memory consumption.
-			//TODO: check ContiguousSet memory use to see if this is worth it.
-			//TODO: use RangeSet or some other interval set for mostly-dense sets?
-			//TODO: use an Iterable<Integer> to permit some lazy computation
-			//(probably based on the index function)?
-			Range<Integer> span = Range.closed(indices.first(), indices.last());
-			ContiguousSet<Integer> condensed = ContiguousSet.create(span, DiscreteDomain.integers());
-			if (indices.size() == condensed.size())
-				indices = condensed;
-			this.indices = indices;
-		}
-		@Override
-		public Map<Token, Object[]> call() {
-			Object[] data = new Object[indices.size()];
-			int idx = 0;
-			for (int i : indices)
-				data[idx++] = storage.read(i);
-			return ImmutableMap.of(token, data);
 		}
 	}
 
@@ -941,6 +811,28 @@ public class Compiler2 {
 			for (int i : indicesToMigrate)
 				steady.write(i, init.read(i));
 			steady.sync();
+		}
+	}
+
+	/**
+	 * The X doesn't stand for anything.  I just needed a different name.
+	 */
+	private static final class XDrainInstruction implements DrainInstruction {
+		private final Token token;
+		private final ConcreteStorage storage;
+		private final ImmutableSortedSet<Integer> indices;
+		private XDrainInstruction(Token token, ConcreteStorage storage, ImmutableSortedSet<Integer> indices) {
+			this.token = token;
+			this.storage = storage;
+			this.indices = indices;
+		}
+		@Override
+		public Map<Token, Object[]> call() {
+			Object[] data = new Object[indices.size()];
+			int idx = 0;
+			for (int i : indices)
+				data[idx++] = storage.read(i);
+			return ImmutableMap.of(token, data);
 		}
 	}
 
