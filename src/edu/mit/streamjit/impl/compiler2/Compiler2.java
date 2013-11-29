@@ -94,6 +94,14 @@ public class Compiler2 {
 	private final Module module = new Module();
 	private ImmutableMap<ActorGroup, Integer> initSchedule;
 	/**
+	 * For each token in the blob, the number of items live on that edge after
+	 * the init schedule, without regard to removals.  (We could recover this
+	 * information from Actor.drainInfo when we're creating drain instructions,
+	 * but storing it simplifies the code and permits asserting we didn't lose
+	 * any items.)
+	 */
+	private ImmutableMap<Token, Integer> postInitLiveness;
+	/**
 	 * ConcreteStorage instances used during initialization (bound into the
 	 * initialization code).
 	 */
@@ -322,6 +330,30 @@ public class Compiler2 {
 		} catch (Schedule.ScheduleException ex) {
 			throw new StreamCompilationFailedException("couldn't find init schedule", ex);
 		}
+
+		ImmutableMap.Builder<Token, Integer> postInitLivenessBuilder = ImmutableMap.builder();
+		for (Storage s : storage) {
+			if (s.isInternal()) continue;
+			Actor upstream = Iterables.getOnlyElement(s.upstream()), downstream = Iterables.getOnlyElement(s.downstream());
+			int upstreamExecutions = upstream.group().schedule().get(upstream) * initSchedule.get(upstream.group());
+			int downstreamExecutions = downstream.group().schedule().get(downstream) * initSchedule.get(downstream.group());
+			int liveItems = s.push() * upstreamExecutions - s.pop() * downstreamExecutions;
+			assert liveItems >= 0 : s;
+
+			int index = downstream.inputs().indexOf(s);
+			assert index != -1;
+			Token token;
+			if (downstream instanceof WorkerActor) {
+				Worker<?, ?> w = ((WorkerActor)downstream).worker();
+				token = downstream.id() == 0 ? Token.createOverallInputToken(w) :
+						new Token(Workers.getPredecessors(w).get(index), w);
+			} else
+				token = ((TokenActor)downstream).token();
+			for (int i = 0; i < liveItems; ++i)
+				downstream.drainInfo(index).add(new Pair<>(token, i));
+			postInitLivenessBuilder.put(token, liveItems);
+		}
+		this.postInitLiveness = postInitLivenessBuilder.build();
 	}
 
 	private void splitterRemoval() {
@@ -669,32 +701,27 @@ public class Compiler2 {
 	 * storage when draining.
 	 */
 	private void createDrainInstructions() {
-		for (Actor a : actors) {
-			for (int i = 0; i < a.inputs().size(); ++i) {
-				Storage s = a.inputs().get(i);
-				if (s.isInternal()) continue;
-				ImmutableSortedSet<Integer> liveIndices = s.indicesLiveDuringSteadyState();
-				ImmutableSortedSet.Builder<Integer> drainableIndicesBuilder = ImmutableSortedSet.naturalOrder();
-				for (int iteration = 0; ; ++iteration) {
-					ImmutableSortedSet<Integer> reads = a.reads(i, iteration);
-					drainableIndicesBuilder.addAll(Sets.intersection(liveIndices, reads));
-					if (Collections.min(reads) > Collections.max(liveIndices)) break;
-				}
-				ImmutableSortedSet<Integer> drainableIndices = drainableIndicesBuilder.build();
-				if (drainableIndices.isEmpty()) continue;
-				//If the indices are contiguous, minimize storage by storing them as a range.
-				if (drainableIndices.last() - drainableIndices.first() + 1 == drainableIndices.size())
-					drainableIndices = ContiguousSet.create(Range.closed(drainableIndices.first(), drainableIndices.last()), DiscreteDomain.integers());
+		Map<Token, List<Pair<ConcreteStorage, Integer>>> drainReads = new HashMap<>();
+		for (Map.Entry<Token, Integer> e : postInitLiveness.entrySet())
+			drainReads.put(e.getKey(), new ArrayList<>(Collections.nCopies(e.getValue(), (Pair<ConcreteStorage, Integer>)null)));
 
-				Token token;
-				if (a instanceof WorkerActor) {
-					Worker<?, ?> w = ((WorkerActor)a).worker();
-					token = a.id() == 0 ? Token.createOverallInputToken(w) :
-							new Token(Workers.getPredecessors(w).get(i), w);
-				} else
-					token = ((TokenActor)a).token();
-				drainInstructions.add(new XDrainInstruction(token, steadyStateStorage.get(s), drainableIndices));
+		for (Actor a : actors) {
+			for (int input = 0; input < a.inputs().size(); ++input) {
+				ConcreteStorage storage = steadyStateStorage.get(a.inputs().get(input));
+				for (int index = 0; index < a.drainInfo(input).size(); ++index) {
+					Pair<Token, Integer> info = a.drainInfo(input).get(index);
+					if (info != null) {
+						Pair<ConcreteStorage, Integer> old = drainReads.get(info.first).
+								set(info.second, new Pair<>(storage, a.translateInputIndex(input, index)));
+						assert old == null : "overwriting "+info;
+					}
+				}
 			}
+		}
+
+		for (Map.Entry<Token, List<Pair<ConcreteStorage, Integer>>> e : drainReads.entrySet()) {
+			assert !e.getValue().contains(null) : "lost an element from "+e.getValue();
+			drainInstructions.add(new XDrainInstruction(e.getKey(), e.getValue()));
 		}
 	}
 
@@ -819,19 +846,17 @@ public class Compiler2 {
 	 */
 	private static final class XDrainInstruction implements DrainInstruction {
 		private final Token token;
-		private final ConcreteStorage storage;
-		private final ImmutableSortedSet<Integer> indices;
-		private XDrainInstruction(Token token, ConcreteStorage storage, ImmutableSortedSet<Integer> indices) {
+		private final ImmutableList<Pair<ConcreteStorage, Integer>> reads;
+		private XDrainInstruction(Token token, List<Pair<ConcreteStorage, Integer>> reads) {
 			this.token = token;
-			this.storage = storage;
-			this.indices = indices;
+			this.reads = ImmutableList.copyOf(reads);
 		}
 		@Override
 		public Map<Token, Object[]> call() {
-			Object[] data = new Object[indices.size()];
+			Object[] data = new Object[reads.size()];
 			int idx = 0;
-			for (int i : indices)
-				data[idx++] = storage.read(i);
+			for (Pair<ConcreteStorage, Integer> r : reads)
+				data[idx++] = r.first.read(r.second);
 			return ImmutableMap.of(token, data);
 		}
 	}

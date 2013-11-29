@@ -9,10 +9,14 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
+import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -35,6 +39,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 */
 	private final List<MethodHandle> upstreamIndex = new ArrayList<>(),
 			downstreamIndex = new ArrayList<>();
+	private final Map<Integer, List<Pair<Token, Integer>>> drainInfo = new HashMap<>();
 	protected Actor() {
 	}
 
@@ -470,6 +475,14 @@ public abstract class Actor implements Comparable<Actor> {
 		for (Storage s : outputs())
 			builder.put(s, writes(s, iterations));
 		return builder.build();
+	}
+
+	public List<Pair<Token, Integer>> drainInfo(int input) {
+		checkElementIndex(input, inputs().size());
+		List<Pair<Token, Integer>> list = drainInfo.get(input);
+		if (list == null)
+			drainInfo.put(input, list = new ArrayList<>());
+		return list;
 	}
 
 	@Override
