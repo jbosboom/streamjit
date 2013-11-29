@@ -364,23 +364,29 @@ public class Compiler2 {
 			//Remove all instances of splitter, not just the first.
 			survivor.downstream().removeAll(ImmutableList.of(splitter));
 			MethodHandle Sin = Iterables.getOnlyElement(splitter.inputIndexFunctions());
+			List<Pair<Token, Integer>> drainInfo = splitter.drainInfo(0);
 			for (int i = 0; i < splitter.outputs().size(); ++i) {
 				Storage victim = splitter.outputs().get(i);
 				MethodHandle t = transfers.get(i);
-				MethodHandle t2 = MethodHandles.filterReturnValue(t, Sin);
 				for (Actor a : victim.downstream()) {
 					List<Storage> inputs = a.inputs();
 					List<MethodHandle> inputIndices = a.inputIndexFunctions();
 					for (int j = 0; j < inputs.size(); ++j)
 						if (inputs.get(j).equals(victim)) {
 							inputs.set(j, survivor);
-							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), t2));
 							survivor.downstream().add(a);
+							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), t));
+							for (int idx = 0, q = a.translateInputIndex(j, idx); q < drainInfo.size(); ++idx, q = a.translateInputIndex(j, idx)) {
+								a.drainInfo(j).add(drainInfo.get(q));
+								drainInfo.set(q, null);
+							}
+							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), Sin));
 						}
 				}
 				//TODO: victim initial data
 				storage.remove(victim);
 			}
+
 			removeActor(splitter);
 			assert consistency();
 		}
@@ -443,7 +449,31 @@ public class Compiler2 {
 				//TODO: victim initial data
 				storage.remove(victim);
 			}
-			System.out.println("removed "+joiner);
+
+			//Linearize drain info from the joiner's inputs.
+			Map<Integer, Pair<Token, Integer>> linearizedInput = new HashMap<>();
+			for (int i = 0; i < joiner.inputs().size(); ++i) {
+				MethodHandle t = transfers.get(i);
+				for (int idx = 0; idx < joiner.drainInfo(i).size(); ++idx)
+					try {
+						linearizedInput.put((int)t.invokeExact(idx), joiner.drainInfo(i).get(idx));
+					} catch (Throwable ex) {
+						throw new AssertionError("Can't happen! transfer function threw?", ex);
+					}
+			}
+
+			if (!linearizedInput.isEmpty()) {
+				int max = Collections.max(linearizedInput.keySet());
+				for (Actor a : survivor.downstream())
+					for (int j = 0; j < a.inputs().size(); ++j)
+						if (a.inputs().get(j).equals(survivor))
+							for (int idx = 0, q = a.translateInputIndex(j, idx); q <= max; ++idx, q = a.translateInputIndex(j, idx)) {
+								a.drainInfo(j).add(linearizedInput.get(q));
+								linearizedInput.put(q, null);
+							}
+			}
+
+//			System.out.println("removed "+joiner);
 			removeActor(joiner);
 			assert consistency();
 		}
@@ -562,7 +592,7 @@ public class Compiler2 {
 					continue next_storage;
 			Class<?> type = Primitives.unwrap(s.commonType());
 			s.setType(type);
-			System.out.println("unboxed "+s+" to "+type);
+//			System.out.println("unboxed "+s+" to "+type);
 		}
 	}
 
@@ -720,7 +750,7 @@ public class Compiler2 {
 		}
 
 		for (Map.Entry<Token, List<Pair<ConcreteStorage, Integer>>> e : drainReads.entrySet()) {
-			assert !e.getValue().contains(null) : "lost an element from "+e.getValue();
+			assert !e.getValue().contains(null) : "lost an element from "+e.getKey()+": "+e.getValue();
 			drainInstructions.add(new XDrainInstruction(e.getKey(), e.getValue()));
 		}
 	}
