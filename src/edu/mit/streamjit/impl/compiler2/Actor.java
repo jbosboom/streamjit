@@ -39,7 +39,11 @@ public abstract class Actor implements Comparable<Actor> {
 	 */
 	private final List<MethodHandle> upstreamIndex = new ArrayList<>(),
 			downstreamIndex = new ArrayList<>();
-	private final Map<Integer, List<Pair<Token, Integer>>> drainInfo = new HashMap<>();
+	/**
+	 * Liveness information for the Storage on the inputs of this actor.
+	 * TODO: don't use a map here, we should only need a list
+	 */
+	private final Map<Integer, List<StorageSlot>> inputSlots = new HashMap<>();
 	protected Actor() {
 	}
 
@@ -477,11 +481,11 @@ public abstract class Actor implements Comparable<Actor> {
 		return builder.build();
 	}
 
-	public List<Pair<Token, Integer>> drainInfo(int input) {
+	public List<StorageSlot> inputSlots(int input) {
 		checkElementIndex(input, inputs().size());
-		List<Pair<Token, Integer>> list = drainInfo.get(input);
+		List<StorageSlot> list = inputSlots.get(input);
 		if (list == null)
-			drainInfo.put(input, list = new ArrayList<>());
+			inputSlots.put(input, list = new ArrayList<>());
 		return list;
 	}
 

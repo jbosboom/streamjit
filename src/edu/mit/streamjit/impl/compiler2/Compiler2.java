@@ -96,7 +96,7 @@ public class Compiler2 {
 	/**
 	 * For each token in the blob, the number of items live on that edge after
 	 * the init schedule, without regard to removals.  (We could recover this
-	 * information from Actor.drainInfo when we're creating drain instructions,
+	 * information from Actor.inputSlots when we're creating drain instructions,
 	 * but storing it simplifies the code and permits asserting we didn't lose
 	 * any items.)
 	 */
@@ -350,7 +350,7 @@ public class Compiler2 {
 			} else
 				token = ((TokenActor)downstream).token();
 			for (int i = 0; i < liveItems; ++i)
-				downstream.drainInfo(index).add(new Pair<>(token, i));
+				downstream.inputSlots(index).add(StorageSlot.live(token, i));
 			postInitLivenessBuilder.put(token, liveItems);
 		}
 		this.postInitLiveness = postInitLivenessBuilder.build();
@@ -364,7 +364,7 @@ public class Compiler2 {
 			//Remove all instances of splitter, not just the first.
 			survivor.downstream().removeAll(ImmutableList.of(splitter));
 			MethodHandle Sin = Iterables.getOnlyElement(splitter.inputIndexFunctions());
-			List<Pair<Token, Integer>> drainInfo = splitter.drainInfo(0);
+			List<StorageSlot> drainInfo = splitter.inputSlots(0);
 			for (int i = 0; i < splitter.outputs().size(); ++i) {
 				Storage victim = splitter.outputs().get(i);
 				MethodHandle t = transfers.get(i);
@@ -377,8 +377,8 @@ public class Compiler2 {
 							survivor.downstream().add(a);
 							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), t));
 							for (int idx = 0, q = a.translateInputIndex(j, idx); q < drainInfo.size(); ++idx, q = a.translateInputIndex(j, idx)) {
-								a.drainInfo(j).add(drainInfo.get(q));
-								drainInfo.set(q, null);
+								a.inputSlots(j).add(drainInfo.get(q));
+								drainInfo.set(q, drainInfo.get(q).duplify());
 							}
 							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), Sin));
 						}
@@ -451,12 +451,12 @@ public class Compiler2 {
 			}
 
 			//Linearize drain info from the joiner's inputs.
-			Map<Integer, Pair<Token, Integer>> linearizedInput = new HashMap<>();
+			Map<Integer, StorageSlot> linearizedInput = new HashMap<>();
 			for (int i = 0; i < joiner.inputs().size(); ++i) {
 				MethodHandle t = transfers.get(i);
-				for (int idx = 0; idx < joiner.drainInfo(i).size(); ++idx)
+				for (int idx = 0; idx < joiner.inputSlots(i).size(); ++idx)
 					try {
-						linearizedInput.put((int)t.invokeExact(idx), joiner.drainInfo(i).get(idx));
+						linearizedInput.put((int)t.invokeExact(idx), joiner.inputSlots(i).get(idx));
 					} catch (Throwable ex) {
 						throw new AssertionError("Can't happen! transfer function threw?", ex);
 					}
@@ -468,8 +468,11 @@ public class Compiler2 {
 					for (int j = 0; j < a.inputs().size(); ++j)
 						if (a.inputs().get(j).equals(survivor))
 							for (int idx = 0, q = a.translateInputIndex(j, idx); q <= max; ++idx, q = a.translateInputIndex(j, idx)) {
-								a.drainInfo(j).add(linearizedInput.get(q));
-								linearizedInput.put(q, null);
+								StorageSlot slot = linearizedInput.get(q);
+								if (slot == null)
+									slot = StorageSlot.hole();
+								a.inputSlots(j).add(slot);
+								linearizedInput.put(q, slot.duplify());
 							}
 			}
 
@@ -738,11 +741,11 @@ public class Compiler2 {
 		for (Actor a : actors) {
 			for (int input = 0; input < a.inputs().size(); ++input) {
 				ConcreteStorage storage = steadyStateStorage.get(a.inputs().get(input));
-				for (int index = 0; index < a.drainInfo(input).size(); ++index) {
-					Pair<Token, Integer> info = a.drainInfo(input).get(index);
-					if (info != null) {
-						Pair<ConcreteStorage, Integer> old = drainReads.get(info.first).
-								set(info.second, new Pair<>(storage, a.translateInputIndex(input, index)));
+				for (int index = 0; index < a.inputSlots(input).size(); ++index) {
+					StorageSlot info = a.inputSlots(input).get(index);
+					if (info.isDrainable()) {
+						Pair<ConcreteStorage, Integer> old = drainReads.get(info.token()).
+								set(info.index(), new Pair<>(storage, a.translateInputIndex(input, index)));
 						assert old == null : "overwriting "+info;
 					}
 				}
