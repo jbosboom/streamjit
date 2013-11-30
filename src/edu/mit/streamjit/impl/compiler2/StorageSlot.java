@@ -63,11 +63,6 @@ public abstract class StorageSlot {
 	private static class LiveStorageSlot extends StorageSlot {
 		private final Token token;
 		private final int index;
-		/**
-		 * If we've duplified, the duplicate slot we created.  Caching this
-		 * prevents a duplicate explosion.
-		 */
-		private StorageSlot duplicate;
 		protected LiveStorageSlot(Token token, int index) {
 			this.token = token;
 			this.index = index;
@@ -86,9 +81,7 @@ public abstract class StorageSlot {
 		}
 		@Override
 		public StorageSlot duplify() {
-			if (duplicate == null)
-				duplicate = new DuplicateStorageSlot(token(), index());
-			return duplicate;
+			return DuplicateStorageSlot.INSTANCE;
 		}
 		@Override
 		public Token token() {
@@ -104,9 +97,16 @@ public abstract class StorageSlot {
 		}
 	}
 
-	private static final class DuplicateStorageSlot extends LiveStorageSlot {
-		private DuplicateStorageSlot(Token token, int index) {
-			super(token, index);
+	private static final class DuplicateStorageSlot extends StorageSlot {
+		private static final DuplicateStorageSlot INSTANCE = new DuplicateStorageSlot();
+		private DuplicateStorageSlot() {}
+		@Override
+		public boolean isLive() {
+			return true;
+		}
+		@Override
+		public boolean isHole() {
+			return false;
 		}
 		@Override
 		public boolean isDrainable() {
@@ -117,8 +117,16 @@ public abstract class StorageSlot {
 			return this;
 		}
 		@Override
+		public Token token() {
+			throw new AssertionError("called token() on a duplicate");
+		}
+		@Override
+		public int index() {
+			throw new AssertionError("called index() on a duplicate");
+		}
+		@Override
 		public String toString() {
-			return String.format("dup:%s[%d]", token(), index());
+			return String.format("(dup)");
 		}
 	}
 
