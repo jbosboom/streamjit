@@ -53,12 +53,6 @@ public final class Storage {
 	 * The span of the indices live during a steady-state iteration.
 	 */
 	private int steadyStateCapacity = -1;
-	/**
-	 * The indices live in this storage at the end of initialization and the
-	 * beginning of each steady-state execution.  These indices are migrated
-	 * from init to steady-state storage.
-	 */
-	private ImmutableSortedSet<Integer> liveDuringSteadyState;
 	public Storage(Actor upstream, Actor downstream) {
 		this.upstream = Lists.newArrayList(upstream);
 		this.downstream = Lists.newArrayList(downstream);
@@ -229,15 +223,6 @@ public final class Storage {
 		int minIdx = Math.min(readIndices.first(), writeIndices.first());
 		int maxIdx = Math.max(readIndices.last(), writeIndices.last());
 		this.steadyStateCapacity = maxIdx - minIdx + 1;
-	}
-
-	public void setIndicesLiveDuringSteadyState(ImmutableSortedSet<Integer> liveDuringSteadyState) {
-		this.liveDuringSteadyState = liveDuringSteadyState;
-	}
-
-	public ImmutableSortedSet<Integer> indicesLiveDuringSteadyState() {
-		checkState(liveDuringSteadyState != null);
-		return liveDuringSteadyState;
 	}
 
 	@Override

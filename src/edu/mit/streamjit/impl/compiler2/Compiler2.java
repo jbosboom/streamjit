@@ -614,7 +614,6 @@ public class Compiler2 {
 			}
 		});
 
-		computeLiveness();
 		this.initStorage = createExternalStorage(MapConcreteStorage.initFactory());
 		initReadInstructions.add(new InitDataReadInstruction(initStorage, initialStateDataMap));
 
@@ -812,49 +811,6 @@ public class Compiler2 {
 			if (!s.isInternal())
 				builder.put(s, factory.make(s));
 		return builder.build();
-	}
-
-	/**
-	 * Computes liveness information based on the schedules.
-	 */
-	private void computeLiveness() {
-		/**
-		 * Compute post-initialization liveness (data items written during init
-		 * that will be read in a future steady-state iteration). These are the
-		 * items that must be moved into steady-state storage. We compute by
-		 * building the written physical indices during the init schedule
-		 * (including initial data items), then building the read physical
-		 * indices for future steady-state executions and taking the
-		 * intersection.
-		 */
-		Map<Storage, Set<Integer>> initWrites = new HashMap<>();
-		Map<Storage, Set<Integer>> futureReads = new HashMap<>();
-		for (Storage s : storage) {
-			initWrites.put(s, new HashSet<Integer>());
-			futureReads.put(s, new HashSet<Integer>());
-		}
-		for (ActorGroup g : groups)
-			for (int i = 0; i < initSchedule.get(g); ++i)
-				for (Map.Entry<Storage, ImmutableSortedSet<Integer>> writes : g.writes(i).entrySet())
-					initWrites.get(writes.getKey()).addAll(writes.getValue());
-		for (ActorGroup g : groups) {
-			//We run until our read indices don't intersect any of the write
-			//indices, at which point we aren't keeping any more elements live.
-			boolean canStop = false;
-			for (int i = initSchedule.get(g); !canStop; ++i) {
-				canStop = true;
-				for (Map.Entry<Storage, ImmutableSortedSet<Integer>> reads : g.reads(i).entrySet()) {
-					Storage s = reads.getKey();
-					Set<Integer> readIndices = reads.getValue();
-					Set<Integer> writeIndices = initWrites.get(s);
-					futureReads.get(s).addAll(readIndices);
-					canStop &= Collections.min(readIndices) > Collections.max(writeIndices);
-//					if (canStop) System.out.println(i+" "+readIndices+" "+writeIndices);
-				}
-			}
-		}
-		for (Storage s : storage)
-			s.setIndicesLiveDuringSteadyState(ImmutableSortedSet.copyOf(Sets.intersection(initWrites.get(s), futureReads.get(s))));
 	}
 
 	private static final class MigrationInstruction implements Runnable {
