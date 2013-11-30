@@ -58,6 +58,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -843,17 +844,27 @@ public class Compiler2 {
 	 */
 	private static final class XDrainInstruction implements DrainInstruction {
 		private final Token token;
-		private final ImmutableList<Pair<ConcreteStorage, Integer>> reads;
+		private final ConcreteStorage[] storage;
+		private final int[] storageSelector, index;
 		private XDrainInstruction(Token token, List<Pair<ConcreteStorage, Integer>> reads) {
 			this.token = token;
-			this.reads = ImmutableList.copyOf(reads);
+			Set<ConcreteStorage> set = new HashSet<>();
+			for (Pair<ConcreteStorage, Integer> p : reads)
+				set.add(p.first);
+			this.storage = set.toArray(new ConcreteStorage[set.size()]);
+			this.storageSelector = new int[reads.size()];
+			this.index = new int[reads.size()];
+			for (int i = 0; i < reads.size(); ++i) {
+				storageSelector[i] = Arrays.asList(storage).indexOf(reads.get(i).first);
+				index[i] = reads.get(i).second;
+			}
 		}
 		@Override
 		public Map<Token, Object[]> call() {
-			Object[] data = new Object[reads.size()];
+			Object[] data = new Object[index.length];
 			int idx = 0;
-			for (Pair<ConcreteStorage, Integer> r : reads)
-				data[idx++] = r.first.read(r.second);
+			for (int i = 0; i < index.length; ++i)
+				data[idx++] = storage[storageSelector[i]].read(index[i]);
 			return ImmutableMap.of(token, data);
 		}
 	}
