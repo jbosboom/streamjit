@@ -14,9 +14,7 @@ import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -40,10 +38,10 @@ public abstract class Actor implements Comparable<Actor> {
 	private final List<MethodHandle> upstreamIndex = new ArrayList<>(),
 			downstreamIndex = new ArrayList<>();
 	/**
-	 * Liveness information for the Storage on the inputs of this actor.
-	 * TODO: don't use a map here, we should only need a list
+	 * Liveness information for the Storage on the inputs of this actor.  Lazily
+	 * initialized in inputSlots.
 	 */
-	private final Map<Integer, List<StorageSlot>> inputSlots = new HashMap<>();
+	private List<List<StorageSlot>> inputSlots;
 	protected Actor() {
 	}
 
@@ -482,11 +480,12 @@ public abstract class Actor implements Comparable<Actor> {
 	}
 
 	public List<StorageSlot> inputSlots(int input) {
-		checkElementIndex(input, inputs().size());
-		List<StorageSlot> list = inputSlots.get(input);
-		if (list == null)
-			inputSlots.put(input, list = new ArrayList<>());
-		return list;
+		if (inputSlots == null) {
+			inputSlots = new ArrayList<>(inputs().size());
+			for (int i = 0; i < inputs().size(); ++i)
+				inputSlots.add(new ArrayList<StorageSlot>());
+		}
+		return inputSlots.get(input);
 	}
 
 	@Override
