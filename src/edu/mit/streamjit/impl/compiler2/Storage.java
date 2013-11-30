@@ -223,15 +223,12 @@ public final class Storage {
 	 * @param externalSchedule the external schedule
 	 */
 	public void computeSteadyStateRequirements(Map<ActorGroup, Integer> externalSchedule) {
+		ImmutableSortedSet<Integer> readIndices = readIndices(externalSchedule);
 		ImmutableSortedSet<Integer> writeIndices = writeIndices(externalSchedule);
 		this.throughput = writeIndices.size();
-		if (indicesLiveDuringSteadyState().isEmpty())
-			this.steadyStateCapacity = writeIndices.last() - writeIndices.first() + 1;
-		else {
-			int minIdx = Math.min(indicesLiveDuringSteadyState().first(), writeIndices.first());
-			int maxIdx = Math.max(indicesLiveDuringSteadyState().last(), writeIndices.last());
-			this.steadyStateCapacity = maxIdx - minIdx + 1;
-		}
+		int minIdx = Math.min(readIndices.first(), writeIndices.first());
+		int maxIdx = Math.max(readIndices.last(), writeIndices.last());
+		this.steadyStateCapacity = maxIdx - minIdx + 1;
 	}
 
 	public void setIndicesLiveDuringSteadyState(ImmutableSortedSet<Integer> liveDuringSteadyState) {
