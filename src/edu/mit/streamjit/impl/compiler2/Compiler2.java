@@ -407,17 +407,7 @@ public class Compiler2 {
 			int[] weights = new int[a.outputs().size()];
 			for (int i = 0; i < weights.length; ++i)
 				weights[i] = a.push(i);
-			int[] weightPrefixSum = new int[weights.length + 1];
-			for (int i = 1; i < weightPrefixSum.length; ++i)
-				weightPrefixSum[i] = weightPrefixSum[i-1] + weights[i-1];
-			int N = weightPrefixSum[weightPrefixSum.length-1];
-			//t_x(i) = N(i/w[x]) + sum_0_x-1{w} + (i mod w[x])
-			//where the first two terms select a "window" and the third is the
-			//index into that window.
-			ImmutableList.Builder<MethodHandle> transfer = ImmutableList.builder();
-			for (int x = 0; x < a.outputs().size(); ++x)
-				transfer.add(MethodHandles.insertArguments(ROUNDROBIN_TRANSFER_FUNCTION, 0, weights[x], weightPrefixSum[x], N));
-			return transfer.build();
+			return roundrobinTransferFunctions(weights);
 		} else if (a.worker() instanceof DuplicateSplitter) {
 			return Collections.nCopies(a.outputs().size(), MethodHandles.identity(int.class));
 		} else
@@ -485,25 +475,27 @@ public class Compiler2 {
 	private List<MethodHandle> joinerTransferFunctions(WorkerActor a) {
 		assert REMOVABLE_WORKERS.contains(a.worker().getClass()) : a.worker().getClass();
 		if (a.worker() instanceof RoundrobinJoiner || a.worker() instanceof WeightedRoundrobinJoiner) {
-			//TODO: factor out this duplicate code -- all we need is the weights array
 			int[] weights = new int[a.inputs().size()];
 			for (int i = 0; i < weights.length; ++i)
 				weights[i] = a.pop(i);
-			int[] weightPrefixSum = new int[weights.length + 1];
-			for (int i = 1; i < weightPrefixSum.length; ++i)
-				weightPrefixSum[i] = weightPrefixSum[i-1] + weights[i-1];
-			int N = weightPrefixSum[weightPrefixSum.length-1];
-			//t_x(i) = N(i/w[x]) + sum_0_x-1{w} + (i mod w[x])
-			//where the first two terms select a "window" and the third is the
-			//index into that window.
-			ImmutableList.Builder<MethodHandle> transfer = ImmutableList.builder();
-			for (int x = 0; x < a.inputs().size(); ++x)
-				transfer.add(MethodHandles.insertArguments(ROUNDROBIN_TRANSFER_FUNCTION, 0, weights[x], weightPrefixSum[x], N));
-			return transfer.build();
+			return roundrobinTransferFunctions(weights);
 		} else
 			throw new AssertionError();
 	}
 
+	private List<MethodHandle> roundrobinTransferFunctions(int[] weights) {
+		int[] weightPrefixSum = new int[weights.length + 1];
+		for (int i = 1; i < weightPrefixSum.length; ++i)
+			weightPrefixSum[i] = weightPrefixSum[i-1] + weights[i-1];
+		int N = weightPrefixSum[weightPrefixSum.length-1];
+		//t_x(i) = N(i/w[x]) + sum_0_x-1{w} + (i mod w[x])
+		//where the first two terms select a "window" and the third is the
+		//index into that window.
+		ImmutableList.Builder<MethodHandle> transfer = ImmutableList.builder();
+		for (int x = 0; x < weights.length; ++x)
+			transfer.add(MethodHandles.insertArguments(ROUNDROBIN_TRANSFER_FUNCTION, 0, weights[x], weightPrefixSum[x], N));
+		return transfer.build();
+	}
 	private final MethodHandle ROUNDROBIN_TRANSFER_FUNCTION = findStatic(LOOKUP, Compiler2.class, "_roundrobinTransferFunction", int.class, int.class, int.class, int.class, int.class);
 	//TODO: build this directly out of MethodHandles?
 	private static int _roundrobinTransferFunction(int weight, int prefixSum, int N, int i) {
