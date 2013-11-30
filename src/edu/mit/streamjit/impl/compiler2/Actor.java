@@ -41,7 +41,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * Liveness information for the Storage on the inputs of this actor.  Lazily
 	 * initialized in inputSlots.
 	 */
-	private List<List<StorageSlot>> inputSlots;
+	private List<ArrayList<StorageSlot>> inputSlots;
 	protected Actor() {
 	}
 
@@ -479,7 +479,7 @@ public abstract class Actor implements Comparable<Actor> {
 		return builder.build();
 	}
 
-	public List<StorageSlot> inputSlots(int input) {
+	public ArrayList<StorageSlot> inputSlots(int input) {
 		if (inputSlots == null) {
 			inputSlots = new ArrayList<>(inputs().size());
 			for (int i = 0; i < inputs().size(); ++i)

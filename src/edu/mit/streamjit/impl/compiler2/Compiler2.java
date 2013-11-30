@@ -441,28 +441,37 @@ public class Compiler2 {
 			}
 
 			//Linearize drain info from the joiner's inputs.
-			Map<Integer, StorageSlot> linearizedInput = new HashMap<>();
+			int maxIdx = 0;
 			for (int i = 0; i < joiner.inputs().size(); ++i) {
 				MethodHandle t = transfers.get(i);
 				for (int idx = 0; idx < joiner.inputSlots(i).size(); ++idx)
 					try {
-						linearizedInput.put((int)t.invokeExact(idx), joiner.inputSlots(i).get(idx));
+						maxIdx = Math.max(maxIdx, (int)t.invokeExact(joiner.inputSlots(i).size()-1));
 					} catch (Throwable ex) {
 						throw new AssertionError("Can't happen! transfer function threw?", ex);
 					}
 			}
+			List<StorageSlot> linearizedInput = new ArrayList<>(Collections.nCopies(maxIdx+1, StorageSlot.hole()));
+			for (int i = 0; i < joiner.inputs().size(); ++i) {
+				MethodHandle t = transfers.get(i);
+				for (int idx = 0; idx < joiner.inputSlots(i).size(); ++idx)
+					try {
+						linearizedInput.set((int)t.invokeExact(idx), joiner.inputSlots(i).get(idx));
+					} catch (Throwable ex) {
+						throw new AssertionError("Can't happen! transfer function threw?", ex);
+					}
+				joiner.inputSlots(i).clear();
+				joiner.inputSlots(i).trimToSize();
+			}
 
 			if (!linearizedInput.isEmpty()) {
-				int max = Collections.max(linearizedInput.keySet());
 				for (Actor a : survivor.downstream())
 					for (int j = 0; j < a.inputs().size(); ++j)
 						if (a.inputs().get(j).equals(survivor))
-							for (int idx = 0, q = a.translateInputIndex(j, idx); q <= max; ++idx, q = a.translateInputIndex(j, idx)) {
+							for (int idx = 0, q = a.translateInputIndex(j, idx); q < linearizedInput.size(); ++idx, q = a.translateInputIndex(j, idx)) {
 								StorageSlot slot = linearizedInput.get(q);
-								if (slot == null)
-									slot = StorageSlot.hole();
 								a.inputSlots(j).add(slot);
-								linearizedInput.put(q, slot.duplify());
+								linearizedInput.set(q, slot.duplify());
 							}
 			}
 
