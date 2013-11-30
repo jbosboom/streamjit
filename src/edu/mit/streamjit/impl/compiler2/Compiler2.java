@@ -863,7 +863,14 @@ public class Compiler2 {
 		private MigrationInstruction(Storage storage, ConcreteStorage init, ConcreteStorage steady) {
 			this.init = init;
 			this.steady = steady;
-			this.indicesToMigrate = storage.indicesLiveDuringSteadyState();
+			ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+			for (Actor a : storage.downstream())
+				for (int i = 0; i < a.inputs().size(); ++i)
+					if (a.inputs().get(i).equals(storage))
+						for (int idx = 0; idx < a.inputSlots(i).size(); ++idx)
+							if (a.inputSlots(i).get(idx).isLive())
+								builder.add(a.translateInputIndex(i, idx));
+			this.indicesToMigrate = builder.build();
 		}
 		@Override
 		public void run() {
