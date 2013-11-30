@@ -816,7 +816,7 @@ public class Compiler2 {
 
 	private static final class MigrationInstruction implements Runnable {
 		private final ConcreteStorage init, steady;
-		private final ImmutableSortedSet<Integer> indicesToMigrate;
+		private final int[] indicesToMigrate;
 		private MigrationInstruction(Storage storage, ConcreteStorage init, ConcreteStorage steady) {
 			this.init = init;
 			this.steady = steady;
@@ -827,7 +827,7 @@ public class Compiler2 {
 						for (int idx = 0; idx < a.inputSlots(i).size(); ++idx)
 							if (a.inputSlots(i).get(idx).isLive())
 								builder.add(a.translateInputIndex(i, idx));
-			this.indicesToMigrate = builder.build();
+			this.indicesToMigrate = Ints.toArray(builder.build());
 		}
 		@Override
 		public void run() {
