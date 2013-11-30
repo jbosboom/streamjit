@@ -11,6 +11,8 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Random;
 
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+
 public final class TCPTuner implements OpenTuner {
 
 	Process tuner;
@@ -50,8 +52,11 @@ public final class TCPTuner implements OpenTuner {
 		int min = 5000;
 		Random rand = new Random();
 		Integer port = rand.nextInt(65535 - min) + min;
-		this.tuner = new ProcessBuilder("xterm", "-e", "python", tunerPath,
-				port.toString()).start();
+		if (GlobalConstants.tunerMode == 0) {
+			this.tuner = new ProcessBuilder("xterm", "-e", "python", tunerPath,
+					port.toString()).start();
+		} else
+			port = 12563;
 		this.connection = new TunerConnection();
 		connection.connect(port);
 	}
@@ -125,7 +130,7 @@ public final class TCPTuner implements OpenTuner {
 			if (isStillConnected()) {
 				try {
 					writter.write(msg);
-					if(msg.toCharArray()[msg.length() - 1] != '\n')
+					if (msg.toCharArray()[msg.length() - 1] != '\n')
 						writter.write('\n');
 					writter.flush();
 				} catch (IOException ix) {
