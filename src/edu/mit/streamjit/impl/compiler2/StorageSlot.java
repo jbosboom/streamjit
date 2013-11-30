@@ -63,6 +63,11 @@ public abstract class StorageSlot {
 	private static class LiveStorageSlot extends StorageSlot {
 		private final Token token;
 		private final int index;
+		/**
+		 * If we've duplified, the duplicate slot we created.  Caching this
+		 * prevents a duplicate explosion.
+		 */
+		private StorageSlot duplicate;
 		protected LiveStorageSlot(Token token, int index) {
 			this.token = token;
 			this.index = index;
@@ -81,7 +86,9 @@ public abstract class StorageSlot {
 		}
 		@Override
 		public StorageSlot duplify() {
-			return new DuplicateStorageSlot(token(), index());
+			if (duplicate == null)
+				duplicate = new DuplicateStorageSlot(token(), index());
+			return duplicate;
 		}
 		@Override
 		public Token token() {
