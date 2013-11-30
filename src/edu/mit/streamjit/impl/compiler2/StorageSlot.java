@@ -5,100 +5,115 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 /**
  * A StorageSlot represents a slot in a storage: whether it's live or not, and
  * if it is, where it should go when we drain.
- *
- * TODO: we could use three subclasses here to allow removing the type field
- * (embedding its information in the class).
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/29/2013
  */
-public final class StorageSlot {
-	public static enum Type {
-		/**
-		 * A live item that will be read during draining.  The token and index
-		 * fields of this StorageSlot are valid.
-		 */
-		LIVE,
-		/**
-		 * A live item that won't be read during draining because it's a
-		 * duplicate of another live item.  The token and index
-		 * fields of this StorageSlot are valid, though they're only useful for
-		 * assertions.
-		 */
-		LIVE_DUPLICATE,
-		/**
-		 * A slot that doesn't contain a live item at the beginning of a
-		 * steady-state iteration.  Note that holes may be temporarily occupied
-		 * during an iteration.  The token and index fields of this StorageSlot
-		 * are not valid.
-		 */
-		HOLE
-	}
-	/**
-	 * This StorageSlot's type.
-	 */
-	private final Type type;
-	/**
-	 * If this StorageSlot is LIVE or LIVE_DUPLICATE, the Token onto which we'll
-	 * drain the data from this slot.
-	 */
-	private final Token token;
-	/**
-	 * If this StorageSlot is LIVE or LIVE_DUPLICATE, the index of this slot in
-	 * the Token we're draining to.
-	 */
-	private final int index;
-	private StorageSlot(Type type, Token token, int index) {
-		this.type = type;
-		this.token = token;
-		this.index = index;
-	}
+public abstract class StorageSlot {
 	public static StorageSlot live(Token token, int index) {
 		assert token != null;
 		assert index >= 0 : index;
-		return new StorageSlot(Type.LIVE, token, index);
+		return new LiveStorageSlot(token, index);
 	}
-	private static final StorageSlot HOLE_SINGLETON = new StorageSlot(Type.HOLE, null, -1);
 	public static StorageSlot hole() {
-		return HOLE_SINGLETON;
+		return HoleStorageSlot.INSTANCE;
 	}
 
-	public boolean isLive() {
-		return type == Type.LIVE || type == Type.LIVE_DUPLICATE;
-	}
-
-	public boolean isHole() {
-		return type == Type.HOLE;
-	}
-
-	public boolean isDrainable() {
-		return type == Type.LIVE;
-	}
-
-	public StorageSlot duplify() {
-		switch (type) {
-			case HOLE: //duplicate holes are still holes
-			case LIVE_DUPLICATE: //already a duplicate
-				return this;
-			case LIVE:
-				return new StorageSlot(Type.LIVE_DUPLICATE, token, index);
-		}
-		throw new AssertionError("unreachable");
-	}
-
-	public Token token() {
-		assert type != Type.HOLE;
-		return token;
-	}
-
-	public int index() {
-		assert type != Type.HOLE;
-		return index;
-	}
-
+	public abstract boolean isLive();
+	public abstract boolean isHole();
+	public abstract boolean isDrainable();
+	public abstract StorageSlot duplify();
+	public abstract Token token();
+	public abstract int index();
 	@Override
-	public String toString() {
-		if (type == Type.HOLE)
-			return type.toString();
-		return String.format("%s: %s@%d", type, token, index);
+	public abstract String toString();
+
+	private static final class HoleStorageSlot extends StorageSlot {
+		private static final HoleStorageSlot INSTANCE = new HoleStorageSlot();
+		private HoleStorageSlot() {}
+		@Override
+		public boolean isLive() {
+			return false;
+		}
+		@Override
+		public boolean isHole() {
+			return true;
+		}
+		@Override
+		public boolean isDrainable() {
+			return false;
+		}
+		@Override
+		public StorageSlot duplify() {
+			return this; //a hole duplicate is just a hole
+		}
+		@Override
+		public Token token() {
+			throw new AssertionError("called token() on a hole");
+		}
+		@Override
+		public int index() {
+			throw new AssertionError("called index() on a hole");
+		}
+		@Override
+		public String toString() {
+			return "(hole)";
+		}
 	}
+
+	private static class LiveStorageSlot extends StorageSlot {
+		private final Token token;
+		private final int index;
+		protected LiveStorageSlot(Token token, int index) {
+			this.token = token;
+			this.index = index;
+		}
+		@Override
+		public boolean isLive() {
+			return true;
+		}
+		@Override
+		public boolean isHole() {
+			return false;
+		}
+		@Override
+		public boolean isDrainable() {
+			return true;
+		}
+		@Override
+		public StorageSlot duplify() {
+			return new DuplicateStorageSlot(token(), index());
+		}
+		@Override
+		public Token token() {
+			return token;
+		}
+		@Override
+		public int index() {
+			return index;
+		}
+		@Override
+		public String toString() {
+			return String.format("%s[%d]", token(), index());
+		}
+	}
+
+	private static final class DuplicateStorageSlot extends LiveStorageSlot {
+		private DuplicateStorageSlot(Token token, int index) {
+			super(token, index);
+		}
+		@Override
+		public boolean isDrainable() {
+			return false;
+		}
+		@Override
+		public StorageSlot duplify() {
+			return this;
+		}
+		@Override
+		public String toString() {
+			return String.format("dup:%s[%d]", token(), index());
+		}
+	}
+
+	protected StorageSlot() {}
 }
