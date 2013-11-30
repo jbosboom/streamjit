@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OptionalDataException;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -369,10 +370,17 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	// optimise it.
 	private void fillUnprocessedData() {
 		// System.out.println(name + " - Buffer size is - " + buffer.size());
-		Object[] bufArray = new Object[buffer.size()];
+		int size = buffer.size();
+		Object[] bufArray = new Object[size];
 		buffer.readAll(bufArray);
 		assert buffer.size() == 0 : String.format(
 				"buffer size is %d. But 0 is expected", buffer.size());
+		// TODO: Occasionally buffer's last element turns to be null. May be due
+		// to buffer.size() is inconsistence. Remove this if body and debug the
+		// ConcurrentArrayBuffer to fix the bug.
+		if (size > 0 && bufArray[size - 1] == null) {
+			bufArray = Arrays.copyOfRange(bufArray, 0, size - 1);
+		}
 		if (extraBuffer == null)
 			this.unProcessedData = ImmutableList.copyOf(bufArray);
 		else {
