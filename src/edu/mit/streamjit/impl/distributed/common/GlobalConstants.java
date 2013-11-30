@@ -43,4 +43,9 @@ public final class GlobalConstants {
 	public static final String PARTITION = "partition";
 	public static final String CONINFOMAP = "ConInfoMap";
 
+	/**
+	 * Whether to start the tuner automatically or not.
+	 */
+	public static int tunerMode = 0;
+
 }
