@@ -379,18 +379,19 @@ public class ActorArchetype {
 		Method invokeExact = Iterables.getOnlyElement(module.getKlass(MethodHandle.class).getMethods("invokeExact"));
 
 		//TODO: understand unboxing
+		Class<?> inputType = inputType().getRawType(), outputType = outputType().getRawType();
 		if (method.equals(peek1Filter) || method.equals(peek1Splitter)) {
 			Value peekIndex = inst.getArgument(1);
 			LoadInst readIndex = new LoadInst(rwork.getLocalVariable("readIndex"));
 			BinaryInst actualIndex = new BinaryInst(readIndex, BinaryInst.Operation.ADD, peekIndex);
 			Argument readInput = rwork.getArgument("$readInput");
-			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(Object.class, MethodHandle.class, int.class), readInput, actualIndex);
+			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class), readInput, actualIndex);
 			invoke.setName("peekedItem");
 			inst.replaceInstWithInsts(invoke, readIndex, actualIndex, invoke);
 		} else if (method.equals(pop1Filter) || method.equals(pop1Splitter)) {
 			LoadInst readIndex = new LoadInst(rwork.getLocalVariable("readIndex"));
 			Argument readInput = rwork.getArgument("$readInput");
-			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(Object.class, MethodHandle.class, int.class), readInput, readIndex);
+			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class), readInput, readIndex);
 			invoke.setName("poppedItem");
 			BinaryInst incReadIndex = new BinaryInst(readIndex, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
 			StoreInst storeReadIndex = new StoreInst(rwork.getLocalVariable("readIndex"), incReadIndex);
@@ -399,7 +400,7 @@ public class ActorArchetype {
 			Value item = inst.getArgument(1);
 			LoadInst writeIndex = new LoadInst(rwork.getLocalVariable("writeIndex"));
 			Argument writeOutput = rwork.getArgument("$writeOutput");
-			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(void.class, MethodHandle.class, int.class, Object.class), writeOutput, writeIndex, item);
+			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(void.class, MethodHandle.class, int.class, outputType), writeOutput, writeIndex, item);
 			BinaryInst incWriteIndex = new BinaryInst(writeIndex, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
 			StoreInst storeWriteIndex = new StoreInst(rwork.getLocalVariable("writeIndex"), incWriteIndex);
 			inst.replaceInstWithInsts(invoke, writeIndex, invoke, incWriteIndex, storeWriteIndex);
@@ -409,7 +410,7 @@ public class ActorArchetype {
 			ArrayLoadInst readIndex = new ArrayLoadInst(readIndices, channelIndex);
 			BinaryInst actualIndex = new BinaryInst(readIndex, BinaryInst.Operation.ADD, peekIndex);
 			Argument readInput = rwork.getArgument("$readInput");
-			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(Object.class, MethodHandle.class, int.class, int.class), readInput, channelIndex, actualIndex);
+			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class, int.class), readInput, channelIndex, actualIndex);
 			invoke.setName("peekedItem");
 			inst.replaceInstWithInsts(invoke, readIndices, readIndex, actualIndex, invoke);
 		} else if (method.equals(pop2)) {
@@ -417,7 +418,7 @@ public class ActorArchetype {
 			LoadInst readIndices = new LoadInst(rwork.getLocalVariable("readIndex"));
 			ArrayLoadInst readIndex = new ArrayLoadInst(readIndices, channelIndex);
 			Argument readInput = rwork.getArgument("$readInput");
-			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(Object.class, MethodHandle.class, int.class, int.class), readInput, channelIndex, readIndex);
+			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class, int.class), readInput, channelIndex, readIndex);
 			invoke.setName("poppedItem");
 			BinaryInst incReadIndex = new BinaryInst(readIndex, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
 			ArrayStoreInst storeReadIndex = new ArrayStoreInst(readIndices, channelIndex, incReadIndex);
@@ -427,7 +428,7 @@ public class ActorArchetype {
 			LoadInst writeIndices = new LoadInst(rwork.getLocalVariable("writeIndex"));
 			ArrayLoadInst writeIndex = new ArrayLoadInst(writeIndices, channelIndex);
 			Argument writeOutput = rwork.getArgument("$writeOutput");
-			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(void.class, MethodHandle.class, int.class, int.class, Object.class), writeOutput, channelIndex, writeIndex, item);
+			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(void.class, MethodHandle.class, int.class, int.class, outputType), writeOutput, channelIndex, writeIndex, item);
 			BinaryInst incWriteIndex = new BinaryInst(writeIndex, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
 			ArrayStoreInst storeWriteIndex = new ArrayStoreInst(writeIndices, channelIndex, incWriteIndex);
 			inst.replaceInstWithInsts(invoke, writeIndices, writeIndex, invoke, incWriteIndex, storeWriteIndex);

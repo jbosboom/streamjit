@@ -191,7 +191,7 @@ public class Compiler2 {
 		joinerRemoval();
 
 		inferTypes();
-//		unbox();
+		unbox();
 
 		generateArchetypalCode();
 		createInitCode();
@@ -689,15 +689,15 @@ public class Compiler2 {
 		next_storage: for (Storage s : storage) {
 			TypeToken<?> commonType = s.commonType();
 			if (!Primitives.isWrapperType(commonType.getRawType())) continue;
-			for (Actor a : s.upstream())
-				if (!a.canUnboxOutput())
-					continue next_storage;
-			for (Actor a : s.downstream())
-				if (!a.canUnboxInput())
-					continue next_storage;
+//			for (Actor a : s.upstream())
+//				if (!a.canUnboxOutput())
+//					continue next_storage;
+//			for (Actor a : s.downstream())
+//				if (!a.canUnboxInput())
+//					continue next_storage;
 			Class<?> type = commonType.unwrap().getRawType();
 			s.setType(type);
-//			System.out.println("unboxed "+s+" to "+type);
+			System.out.println("unboxed "+s+" to "+type);
 		}
 	}
 

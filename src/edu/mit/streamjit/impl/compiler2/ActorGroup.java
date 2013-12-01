@@ -21,6 +21,7 @@ import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.LookupUtils.findStatic;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -235,26 +236,30 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			MethodHandle specialized = wa.archetype().specialize(wa);
 
 			assert a.inputs().size() > 0 : a;
+			MethodType readHandleType = MethodType.methodType(wa.archetype().inputType().getRawType(), int.class);
 			MethodHandle read;
 			if (wa.worker() instanceof Joiner) {
 				MethodHandle[] table = new MethodHandle[a.inputs().size()];
 				for (int i = 0; i < a.inputs().size(); i++)
 					table[i] = MethodHandles.filterArguments(storage.get(a.inputs().get(i)).readHandle(),
-							0, a.inputIndexFunctions().get(i));
+							0, a.inputIndexFunctions().get(i)).asType(readHandleType);
 				read = Combinators.tableswitch(table);
-			} else read = MethodHandles.filterArguments(storage.get(a.inputs().get(0)).readHandle(),
-					0, a.inputIndexFunctions().get(0));
+			} else
+				read = MethodHandles.filterArguments(storage.get(a.inputs().get(0)).readHandle(),
+					0, a.inputIndexFunctions().get(0)).asType(readHandleType);
 
 			assert a.outputs().size() > 0 : a;
+			MethodType writeHandleType = MethodType.methodType(void.class, int.class, wa.archetype().outputType().getRawType());
 			MethodHandle write;
 			if (wa.worker() instanceof Splitter) {
 				MethodHandle[] table = new MethodHandle[a.outputs().size()];
 				for (int i = 0; i < a.outputs().size(); ++i)
 					table[i] = MethodHandles.filterArguments(storage.get(a.outputs().get(i)).writeHandle(),
-							0, a.outputIndexFunctions().get(i));
+							0, a.outputIndexFunctions().get(i)).asType(writeHandleType);
 				write = Combinators.tableswitch(table);
-			} else write = MethodHandles.filterArguments(storage.get(a.outputs().get(0)).writeHandle(),
-					0, a.outputIndexFunctions().get(0));
+			} else
+				write = MethodHandles.filterArguments(storage.get(a.outputs().get(0)).writeHandle(),
+					0, a.outputIndexFunctions().get(0)).asType(writeHandleType);
 
 			withRWHandlesBound.put(wa, specialized.bindTo(read).bindTo(write));
 		}
