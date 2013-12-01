@@ -21,6 +21,7 @@ public final class WorkerActor extends Actor {
 	private final Worker<?, ?> worker;
 	private final ActorArchetype archetype;
 	public WorkerActor(Worker<?, ?> worker, ActorArchetype archetype) {
+		super(archetype.inputType(), archetype.outputType());
 		this.worker = worker;
 		this.archetype = archetype;
 	}
@@ -36,6 +37,16 @@ public final class WorkerActor extends Actor {
 
 	public ActorArchetype archetype() {
 		return archetype;
+	}
+
+	@Override
+	public boolean canUnboxInput() {
+		return archetype().canUnboxInput(inputType());
+	}
+
+	@Override
+	public boolean canUnboxOutput() {
+		return archetype().canUnboxOutput(outputType());
 	}
 
 	/**
@@ -130,16 +141,6 @@ public final class WorkerActor extends Actor {
 	@Override
 	public int push(int output) {
 		return worker().getPushRates().get(output).max();
-	}
-
-	@Override
-	public Class<?> inputType() {
-		return archetype().inputType();
-	}
-
-	@Override
-	public Class<?> outputType() {
-		return archetype().outputType();
 	}
 
 	@Override

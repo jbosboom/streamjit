@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
+import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.util.Pair;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -147,8 +148,8 @@ public final class Storage {
 	 * Computes the common type of the Actors connected to this Storage.
 	 * @return the common type of the Actors connected to this Storage
 	 */
-	public Class<?> commonType() {
-		Set<Class<?>> types = new HashSet<>();
+	public TypeToken<?> commonType() {
+		Set<TypeToken<?>> types = new HashSet<>();
 		for (Actor a : upstream())
 			types.add(a.outputType());
 		for (Actor a : downstream())
@@ -157,7 +158,7 @@ public final class Storage {
 		//all one (wrapper) type, so check that and return Object otherwise.
 		if (types.size() == 1)
 			return types.iterator().next();
-		return Object.class;
+		return TypeToken.of(Object.class);
 	}
 
 	/**

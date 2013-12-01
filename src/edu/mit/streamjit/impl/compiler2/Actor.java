@@ -9,6 +9,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
+import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
@@ -42,7 +43,13 @@ public abstract class Actor implements Comparable<Actor> {
 	 * initialized in inputSlots.
 	 */
 	private List<ArrayList<StorageSlot>> inputSlots;
-	protected Actor() {
+	private TypeToken<?> inputType, outputType;
+	protected Actor(TypeToken<?> inputType, TypeToken<?> outputType) {
+		//It would be technically more correct to create fresh type variables
+		//for each actor, but that should never matter so long as we only care
+		//about wrapper types.
+		this.inputType = inputType;
+		this.outputType = outputType;
 	}
 
 	public abstract int id();
@@ -63,9 +70,24 @@ public abstract class Actor implements Comparable<Actor> {
 		return false;
 	}
 
-	public abstract Class<?> inputType();
+	public TypeToken<?> inputType() {
+		return inputType;
+	}
 
-	public abstract Class<?> outputType();
+	public void setInputType(TypeToken<?> type) {
+		this.inputType = type;
+	}
+
+	public TypeToken<?> outputType() {
+		return outputType;
+	}
+
+	public void setOutputType(TypeToken<?> type) {
+		this.outputType = type;
+	}
+
+	public abstract boolean canUnboxInput();
+	public abstract boolean canUnboxOutput();
 
 	public List<Storage> inputs() {
 		return upstream;

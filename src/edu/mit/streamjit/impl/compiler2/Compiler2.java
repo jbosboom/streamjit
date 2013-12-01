@@ -18,6 +18,7 @@ import com.google.common.math.IntMath;
 import com.google.common.math.LongMath;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
+import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.RoundrobinJoiner;
@@ -587,15 +588,15 @@ public class Compiler2 {
 	 */
 	private void unbox() {
 		next_storage: for (Storage s : storage) {
-			Class<?> commonType = s.commonType();
-			if (!Primitives.isWrapperType(commonType)) continue;
+			TypeToken<?> commonType = s.commonType();
+			if (!Primitives.isWrapperType(commonType.getRawType())) continue;
 			for (Actor a : s.upstream())
-				if (a instanceof TokenActor || !((WorkerActor)a).archetype().canUnboxOutput())
+				if (!a.canUnboxOutput())
 					continue next_storage;
 			for (Actor a : s.downstream())
-				if (a instanceof TokenActor || !((WorkerActor)a).archetype().canUnboxInput())
+				if (!a.canUnboxInput())
 					continue next_storage;
-			Class<?> type = Primitives.unwrap(s.commonType());
+			Class<?> type = commonType.unwrap().getRawType();
 			s.setType(type);
 //			System.out.println("unboxed "+s+" to "+type);
 		}

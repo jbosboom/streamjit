@@ -97,34 +97,35 @@ public class ActorArchetype {
 	}
 
 	/**
-	 * Returns an upper bound on the input type of the Worker class. For
-	 * example, a Filter<Integer, String> will return Integer, and a Filter<T,
-	 * T> will return Object.
-	 * @return an upper bound on the input type of the Worker class
+	 * Returns the static input type of the worker class. For example, a
+	 * Filter<Integer, String> will return Integer, and a Filter<T, T> will
+	 * return T.
+	 * @return the static input type of the worker class
 	 */
-	public Class<?> inputType() {
+	public TypeToken<?> inputType() {
 		ParameterizedType t = (ParameterizedType)TypeToken.of(workerClass).getSupertype(StreamElement.class).getType();
-		return TypeToken.of(t.getActualTypeArguments()[0]).getRawType();
+		return TypeToken.of(t.getActualTypeArguments()[0]);
 	}
 
 	/**
-	 * Returns an upper bound on the output type of the Worker class. For
-	 * example, a Filter<Integer, String> will return String, and a Filter<T, T>
-	 * will return Object.
-	 * @return an upper bound on the output type of the Worker class
+	 * Returns the static output type of the worker class. For example, a
+	 * Filter<Integer, String> will return String, and a Filter<T, T> will
+	 * return T.
+	 * @return the static output type of the worker class
 	 */
-	public Class<?> outputType() {
+	public TypeToken<?> outputType() {
 		ParameterizedType t = (ParameterizedType)TypeToken.of(workerClass).getSupertype(StreamElement.class).getType();
-		return TypeToken.of(t.getActualTypeArguments()[1]).getRawType();
+		return TypeToken.of(t.getActualTypeArguments()[1]);
 	}
 
 	public boolean isStateful() {
 		return ReflectionUtils.getAllSupertypes(workerClass()).contains(StatefulFilter.class);
 	}
 
-	public boolean canUnboxInput() {
-		if (!Primitives.isWrapperType(inputType())) return false;
-		Class<?> primitiveType = Primitives.unwrap(inputType());
+	public boolean canUnboxInput(TypeToken<?> inputType) {
+		Class<?> rawInput = inputType.getRawType();
+		if (!Primitives.isWrapperType(rawInput)) return false;
+		Class<?> primitiveType = Primitives.unwrap(rawInput);
 
 		Module module = workerKlass.getParent();
 		Klass filterKlass = module.getKlass(Filter.class);
@@ -156,7 +157,7 @@ public class ActorArchetype {
 
 		//The only use of the value should be a CastInst to the input type,
 		//followed by the proper fooValue() call.  TODO: tolerate more uses?
-		Method fooValue = module.getKlass(inputType()).getMethod(primitiveType.getCanonicalName()+"Value", module.types().getMethodType(primitiveType, inputType()));
+		Method fooValue = module.getKlass(rawInput).getMethod(primitiveType.getCanonicalName()+"Value", module.types().getMethodType(primitiveType, rawInput));
 		assert fooValue != null;
 		for (Value v : inputs)
 			for (User u : v.users().elementSet()) {
@@ -172,9 +173,10 @@ public class ActorArchetype {
 		return true;
 	}
 
-	public boolean canUnboxOutput() {
-		if (!Primitives.isWrapperType(outputType())) return false;
-		Class<?> primitiveType = Primitives.unwrap(inputType());
+	public boolean canUnboxOutput(TypeToken<?> outputType) {
+		Class<?> rawOutput = outputType.getRawType();
+		if (!Primitives.isWrapperType(rawOutput)) return false;
+		Class<?> primitiveType = Primitives.unwrap(rawOutput);
 
 		Module module = workerKlass.getParent();
 		Klass filterKlass = module.getKlass(Filter.class);
@@ -200,7 +202,7 @@ public class ActorArchetype {
 		//The pushed value must come from a CallInst to the wrapper type's
 		//valueOf() method.
 		//TODO: support push(peek(i)).  push(peek(i).intValue() already works)
-		Method valueOf = module.getKlass(inputType()).getMethod("valueOf", module.types().getMethodType(inputType(), primitiveType));
+		Method valueOf = module.getKlass(rawOutput).getMethod("valueOf", module.types().getMethodType(rawOutput, primitiveType));
 		assert valueOf != null;
 		for (Value v : outputs)
 			if (!(v instanceof CallInst) || ((CallInst)v).getMethod() != valueOf)

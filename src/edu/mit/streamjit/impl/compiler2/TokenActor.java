@@ -1,9 +1,13 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.reflect.TypeToken;
+import edu.mit.streamjit.api.Identity;
+import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.ParameterizedType;
 
 /**
  * An Actor encapsulating a Token, either input xor output.
@@ -18,6 +22,8 @@ public final class TokenActor extends Actor {
 	 */
 	private final int id;
 	public TokenActor(Token token, int id) {
+		//can't call isInput()/isOutput() here, annoying
+		super(id < 0 ? TypeToken.of(void.class) : typeVariable(), id < 0 ? typeVariable() : TypeToken.of(void.class));
 		this.token = token;
 		this.id = id;
 		MethodHandle identity = MethodHandles.identity(int.class);
@@ -25,6 +31,12 @@ public final class TokenActor extends Actor {
 			inputIndexFunctions().add(identity);
 		else
 			outputIndexFunctions().add(identity);
+	}
+	private static TypeToken<?> typeVariable() {
+		//TODO: I want a TypeToken<T>, but Guava goes out of its way to make
+		//that hard; is there something else I should do instead?
+		ParameterizedType t = (ParameterizedType)TypeToken.of(Identity.class).getSupertype(StreamElement.class).getType();
+		return TypeToken.of(t.getActualTypeArguments()[0]);
 	}
 
 	@Override
@@ -42,6 +54,16 @@ public final class TokenActor extends Actor {
 
 	public boolean isOutput() {
 		return !isInput();
+	}
+
+	@Override
+	public boolean canUnboxInput() {
+		return isOutput();
+	}
+
+	@Override
+	public boolean canUnboxOutput() {
+		return isInput();
 	}
 
 	@Override
@@ -63,18 +85,6 @@ public final class TokenActor extends Actor {
 		checkState(isInput());
 		checkElementIndex(output, outputs().size());
 		return 1;
-	}
-
-	@Override
-	public Class<?> inputType() {
-		//TODO: throw if isOutput()?
-		return Object.class;
-	}
-
-	@Override
-	public Class<?> outputType() {
-		//TODO: throw if isInput()?
-		return Object.class;
 	}
 
 	@Override
