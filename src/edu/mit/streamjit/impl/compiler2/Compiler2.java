@@ -682,16 +682,33 @@ public class Compiler2 {
 	}
 
 	/**
-	 * Symbolically unboxes a Storage if its common type is a wrapper type and
-	 * all the connected Actors support unboxing.
+	 * Unboxes storage types and Actor input and output types.
 	 */
 	private void unbox() {
 		for (Storage s : storage) {
+			//TODO: make this tunable?  Would require giving storage some ID.
 			TypeToken<?> contents = s.contentType();
 			if (!Primitives.isWrapperType(contents.getRawType())) continue;
 			Class<?> type = contents.unwrap().getRawType();
 			s.setType(type);
 			System.out.println("unboxed "+s+" to "+type);
+		}
+
+		for (WorkerActor a : Iterables.filter(actors, WorkerActor.class)) {
+			SwitchParameter<Boolean> unboxInput = config.getParameter("unboxInput"+a.id(), SwitchParameter.class, Boolean.class);
+			SwitchParameter<Boolean> unboxOutput = config.getParameter("unboxOutput"+a.id(), SwitchParameter.class, Boolean.class);
+			if (unboxInput.getValue()) {
+				TypeToken<?> oldType = a.inputType();
+				a.setInputType(oldType.unwrap());
+				if (!a.inputType().equals(oldType))
+					System.out.println("unboxed input of "+a+": "+oldType+" -> "+a.inputType());
+			}
+			if (unboxOutput.getValue()) {
+				TypeToken<?> oldType = a.outputType();
+				a.setOutputType(oldType.unwrap());
+				if (!a.outputType().equals(oldType))
+					System.out.println("unboxed output of "+a+": "+oldType+" -> "+a.outputType());
+			}
 		}
 	}
 

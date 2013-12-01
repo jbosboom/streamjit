@@ -44,6 +44,10 @@ public final class Compiler2BlobFactory implements BlobFactory {
 		for (Worker<?, ?> w : workers)
 			if (Compiler2.REMOVABLE_WORKERS.contains(w.getClass()))
 				builder.addParameter(Configuration.SwitchParameter.create("remove"+Workers.getIdentifier(w), true));
+		for (Worker<?, ?> w : workers) {
+			builder.addParameter(Configuration.SwitchParameter.create("unboxInput"+Workers.getIdentifier(w), true));
+			builder.addParameter(Configuration.SwitchParameter.create("unboxOutput"+Workers.getIdentifier(w), true));
+		}
 		return builder.addParameter(new Configuration.IntParameter("multiplier", 1, 1000000, 1))
 				.build();
 	}
