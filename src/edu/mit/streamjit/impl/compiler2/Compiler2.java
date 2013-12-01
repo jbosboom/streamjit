@@ -686,16 +686,10 @@ public class Compiler2 {
 	 * all the connected Actors support unboxing.
 	 */
 	private void unbox() {
-		next_storage: for (Storage s : storage) {
-			TypeToken<?> commonType = s.commonType();
-			if (!Primitives.isWrapperType(commonType.getRawType())) continue;
-//			for (Actor a : s.upstream())
-//				if (!a.canUnboxOutput())
-//					continue next_storage;
-//			for (Actor a : s.downstream())
-//				if (!a.canUnboxInput())
-//					continue next_storage;
-			Class<?> type = commonType.unwrap().getRawType();
+		for (Storage s : storage) {
+			TypeToken<?> contents = s.contentType();
+			if (!Primitives.isWrapperType(contents.getRawType())) continue;
+			Class<?> type = contents.unwrap().getRawType();
 			s.setType(type);
 			System.out.println("unboxed "+s+" to "+type);
 		}

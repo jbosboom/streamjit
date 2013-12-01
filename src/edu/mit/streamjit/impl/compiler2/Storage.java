@@ -145,17 +145,15 @@ public final class Storage {
 	}
 
 	/**
-	 * Computes the common type of the Actors connected to this Storage.
-	 * @return the common type of the Actors connected to this Storage
+	 * Computes the type of items written into this Storage.
+	 * @return the type of items written into this Storage
 	 */
-	public TypeToken<?> commonType() {
+	public TypeToken<?> contentType() {
 		Set<TypeToken<?>> types = new HashSet<>();
 		for (Actor a : upstream())
 			types.add(a.outputType());
-		for (Actor a : downstream())
-			types.add(a.inputType());
-		//TODO: we only really care about the case where the common types are
-		//all one (wrapper) type, so check that and return Object otherwise.
+		//TODO: we only really care about single wrapper types, so we don't find
+		//the most specific common type etc.
 		if (types.size() == 1)
 			return types.iterator().next();
 		return TypeToken.of(Object.class);
