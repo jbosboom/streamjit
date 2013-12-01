@@ -5,7 +5,12 @@ import com.google.common.collect.ImmutableSet;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -155,5 +160,20 @@ public final class ReflectionUtils {
 		if (klass.getSuperclass() != null)
 			builder.addAll(getAllSupertypes(klass.getSuperclass()));
 		return builder.build();
+	}
+
+	public static boolean containsVariableOrWildcard(Type type) {
+		if (type instanceof TypeVariable || type instanceof WildcardType)
+			return true;
+		if (type instanceof ParameterizedType) {
+			for (Type t : ((ParameterizedType)type).getActualTypeArguments())
+				if (containsVariableOrWildcard(t))
+					return true;
+			//TODO: should we check the owner type or not?
+			return false;
+		}
+		if (type instanceof GenericArrayType)
+			return containsVariableOrWildcard(((GenericArrayType)type).getGenericComponentType());
+		return false;
 	}
 }

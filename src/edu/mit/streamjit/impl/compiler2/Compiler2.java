@@ -18,8 +18,10 @@ import com.google.common.math.IntMath;
 import com.google.common.math.LongMath;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
+import com.google.common.reflect.TypeResolver;
 import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.api.DuplicateSplitter;
+import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
@@ -53,10 +55,12 @@ import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.Combinators.*;
 import static edu.mit.streamjit.util.LookupUtils.findStatic;
 import edu.mit.streamjit.util.Pair;
+import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.bytecode.Module;
 import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Modifier;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -181,9 +185,12 @@ public class Compiler2 {
 		findRemovals();
 		fuse();
 		schedule();
+
 //		identityRemoval();
 		splitterRemoval();
 		joinerRemoval();
+
+		inferTypes();
 //		unbox();
 
 		generateArchetypalCode();
@@ -581,6 +588,98 @@ public class Compiler2 {
 //		return replacements;
 //	}
 	//</editor-fold>
+
+	/**
+	 * Performs type inference to replace type variables with concrete types.
+	 * For now, we only care about wrapper types.
+	 */
+	public void inferTypes() {
+		while (inferUpward() || inferDownward());
+	}
+
+	private boolean inferUpward() {
+		boolean changed = false;
+		//For each storage, if a reader's input type is a final type, all
+		//writers' output types must be that final type.  (Wrappers are final,
+		//so this works for wrappers, and maybe detects errors related to other
+		//types.)
+		for (Storage s : storage) {
+			Set<TypeToken<?>> finalInputTypes = new HashSet<>();
+			for (Actor a : s.downstream())
+				if (Modifier.isFinal(a.inputType().getRawType().getModifiers()))
+					finalInputTypes.add(a.inputType());
+			if (finalInputTypes.isEmpty()) continue;
+			if (finalInputTypes.size() > 1)
+				throw new IllegalStreamGraphException("Type mismatch among readers: "+s.downstream());
+
+			TypeToken<?> inputType = finalInputTypes.iterator().next();
+			for (Actor a : s.upstream())
+				if (!a.outputType().equals(inputType)) {
+					TypeToken<?> oldOutputType = a.outputType();
+					TypeResolver resolver = new TypeResolver().where(oldOutputType.getType(), inputType.getType());
+					TypeToken<?> newOutputType = TypeToken.of(resolver.resolveType(oldOutputType.getType()));
+					if (!oldOutputType.equals(newOutputType)) {
+						a.setOutputType(newOutputType);
+						System.out.println("inferUpward: inferred "+a+" output type: "+oldOutputType+" -> "+newOutputType);
+						changed = true;
+					}
+
+					TypeToken<?> oldInputType = a.inputType();
+					TypeToken<?> newInputType = TypeToken.of(resolver.resolveType(oldInputType.getType()));
+					if (!oldInputType.equals(newInputType)) {
+						a.setInputType(newInputType);
+						System.out.println("inferUpward: inferred "+a+" input type: "+oldInputType+" -> "+newInputType);
+						changed = true;
+					}
+				}
+		}
+		return changed;
+	}
+
+	private boolean inferDownward() {
+		boolean changed = false;
+		//For each storage, find the most specific common type among all the
+		//writers' output types, then if it's final, unify with any variable or
+		//wildcard reader input type.  (We only unify if final to avoid removing
+		//a type variable too soon.  We could also refine concrete types like
+		//Object to a more specific subclass.)
+		for (Storage s : storage) {
+			Set<? extends TypeToken<?>> commonTypes = null;
+			for (Actor a : s.upstream())
+				if (commonTypes == null)
+					commonTypes = a.outputType().getTypes();
+				else
+					commonTypes = Sets.intersection(commonTypes, a.outputType().getTypes());
+			if (commonTypes.isEmpty())
+				throw new IllegalStreamGraphException("No common type among writers: "+s.upstream());
+
+			TypeToken<?> mostSpecificType = commonTypes.iterator().next();
+			if (!Modifier.isFinal(mostSpecificType.getRawType().getModifiers()))
+				continue;
+			for (Actor a : s.downstream()) {
+				TypeToken<?> oldInputType = a.inputType();
+				//TODO: this isn't quite right?
+				if (!ReflectionUtils.containsVariableOrWildcard(oldInputType.getType())) continue;
+
+				TypeResolver resolver = new TypeResolver().where(oldInputType.getType(), mostSpecificType.getType());
+				TypeToken<?> newInputType = TypeToken.of(resolver.resolveType(oldInputType.getType()));
+				if (!oldInputType.equals(newInputType)) {
+					a.setInputType(newInputType);
+					System.out.println("inferDownward: inferred "+a+" input type: "+oldInputType+" -> "+newInputType);
+					changed = true;
+				}
+
+				TypeToken<?> oldOutputType = a.outputType();
+				TypeToken<?> newOutputType = TypeToken.of(resolver.resolveType(oldOutputType.getType()));
+				if (!oldOutputType.equals(newOutputType)) {
+					a.setOutputType(newOutputType);
+					System.out.println("inferDownward: inferred "+a+" output type: "+oldOutputType+" -> "+newOutputType);
+					changed = true;
+				}
+			}
+		}
+		return changed;
+	}
 
 	/**
 	 * Symbolically unboxes a Storage if its common type is a wrapper type and
