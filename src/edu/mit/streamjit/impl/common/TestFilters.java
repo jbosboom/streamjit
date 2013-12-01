@@ -4,6 +4,8 @@ import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Rate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -141,6 +143,35 @@ public final class TestFilters {
 		@Override
 		public String toString() {
 			return String.format("PeekingAdder(%d)", n);
+		}
+	}
+
+	public static final class ListGatherer<T> extends Filter<T, List<T>> {
+		private final int n;
+		public ListGatherer(int n) {
+			super(n, 1);
+			this.n = n;
+		}
+		@Override
+		public void work() {
+			List<T> list = new ArrayList<>(n);
+			for (int i = 0; i < n; ++i)
+				list.add(pop());
+			push(list);
+		}
+		@Override
+		public String toString() {
+			return String.format("ListGatherer(%d)", n);
+		}
+	}
+
+	public static final class ExtractMax<T extends Comparable<T>> extends Filter<Collection<T>, T> {
+		public ExtractMax() {
+			super(1, 1);
+		}
+		@Override
+		public void work() {
+			push(Collections.max(pop()));
 		}
 	}
 }
