@@ -22,6 +22,7 @@ import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.bytecode.Argument;
 import edu.mit.streamjit.util.bytecode.BasicBlock;
 import edu.mit.streamjit.util.bytecode.Cloning;
+import edu.mit.streamjit.util.bytecode.DeadCodeElimination;
 import edu.mit.streamjit.util.bytecode.Field;
 import edu.mit.streamjit.util.bytecode.Klass;
 import edu.mit.streamjit.util.bytecode.LocalVariable;
@@ -250,6 +251,7 @@ public class ActorArchetype {
 			for (int i = 1; i < rwork.arguments().size(); ++i)
 				vmap.put(rwork.arguments().get(i), work.arguments().get(i-1));
 			Cloning.cloneMethod(rwork, work, vmap);
+			DeadCodeElimination.eliminateDeadCode(work);
 			methods.put(key, work);
 			rwork.eraseFromParent();
 		}
