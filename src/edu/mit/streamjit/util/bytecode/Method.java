@@ -20,6 +20,8 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -92,6 +94,28 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 
 	public boolean isMutable() {
 		return getParent().isMutable();
+	}
+
+	public java.lang.reflect.Method getBackingMethod() {
+		//We don't call this very often (if at all), so look it up every time
+		//rather than burn a field on all Methods.
+		Class<?> klass = getParent().getBackingClass();
+		if (klass == null) return null;
+		MethodType type = getType();
+		if (!modifiers().contains(Modifier.STATIC))
+			type = type.dropFirstArgument(); //drop the receiver
+		List<Class<?>> paramTypes = new ArrayList<>();
+		for (RegularType t : type.getParameterTypes()) {
+			Class<?> backingParamClass = t.getKlass().getBackingClass();
+			//Live Methods can only have live Classes as parameter types.
+			if (backingParamClass == null) return null;
+			paramTypes.add(backingParamClass);
+		}
+		try {
+			return klass.getDeclaredMethod(getName(), paramTypes.toArray(new Class<?>[paramTypes.size()]));
+		} catch (NoSuchMethodException ex) {
+			throw new AssertionError(String.format("Can't happen! Class %s doesn't have a %s(%s) method?", klass, getName(), paramTypes), ex);
+		}
 	}
 
 	public boolean isResolved() {
