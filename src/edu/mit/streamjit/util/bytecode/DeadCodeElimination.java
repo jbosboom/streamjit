@@ -3,6 +3,8 @@ package edu.mit.streamjit.util.bytecode;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.primitives.Primitives;
+import edu.mit.streamjit.util.bytecode.insts.CallInst;
 import edu.mit.streamjit.util.bytecode.insts.Instruction;
 import edu.mit.streamjit.util.bytecode.insts.PhiInst;
 import java.util.ArrayDeque;
@@ -24,6 +26,7 @@ public final class DeadCodeElimination {
 		do {
 			makingProgress = false;
 //			changed |= makingProgress |= eliminateTriviallyDeadInsts(method);
+			changed |= makingProgress |= eliminateBoxUnbox(method);
 			changed |= makingProgress |= eliminateUselessPhis(method);
 		} while (makingProgress);
 		return changed;
@@ -34,6 +37,7 @@ public final class DeadCodeElimination {
 		do {
 			makingProgress = false;
 //			changed |= makingProgress |= eliminateTriviallyDeadInsts(block);
+			changed |= makingProgress |= eliminateBoxUnbox(block);
 			changed |= makingProgress |= eliminateUselessPhis(block);
 		} while (makingProgress);
 		return changed;
@@ -62,6 +66,65 @@ public final class DeadCodeElimination {
 //		} while (makingProgress);
 //		return changed;
 //	}
+
+	public static boolean eliminateBoxUnbox(Method method) {
+		boolean changed = false, makingProgress;
+		do {
+			makingProgress = false;
+			for (BasicBlock block : method.basicBlocks())
+				changed |= makingProgress |= eliminateBoxUnbox(block);
+		} while (makingProgress);
+		return changed;
+	}
+
+	private static final ImmutableList<java.lang.reflect.Method> BOXING_METHODS;
+	private static final ImmutableList<java.lang.reflect.Method> UNBOXING_METHODS;
+	static {
+		ImmutableList.Builder<java.lang.reflect.Method> boxingBuilder = ImmutableList.builder();
+		ImmutableList.Builder<java.lang.reflect.Method> unboxingBuilder = ImmutableList.builder();
+		for (Class<?> w : Primitives.allWrapperTypes()) {
+			if (w.equals(Void.class)) continue;
+			Class<?> prim = Primitives.unwrap(w);
+			try {
+				boxingBuilder.add(w.getMethod("valueOf", prim));
+				unboxingBuilder.add(w.getMethod(prim.getName()+"Value"));
+			} catch (NoSuchMethodException ex) {
+				throw new AssertionError("Can't happen!", ex);
+			}
+		}
+		BOXING_METHODS = boxingBuilder.build();
+		UNBOXING_METHODS = unboxingBuilder.build();
+	}
+
+	/**
+	 * Replaces the result of an unboxing operation whose source is a boxing
+	 * operation with the value that was boxed, and also removes the boxing
+	 * operation if it has no other uses.
+	 * @param block the block to operate on (note that the boxing operation may
+	 * be outside this block!)
+	 * @return true iff changes were made
+	 */
+	public static boolean eliminateBoxUnbox(BasicBlock block) {
+		boolean changed = false, makingProgress;
+		do {
+			makingProgress = false;
+			for (Instruction i : ImmutableList.copyOf(block.instructions())) {
+				if (!(i instanceof CallInst)) continue;
+				CallInst fooValue = (CallInst)i;
+				int index = UNBOXING_METHODS.indexOf(fooValue.getMethod().getBackingMethod());
+				if (index == -1) continue;
+				Value receiver = Iterables.getOnlyElement(fooValue.arguments());
+				if (!(receiver instanceof CallInst)) continue;
+				CallInst valueOf = (CallInst)receiver;
+				if (!valueOf.getMethod().getBackingMethod().equals(BOXING_METHODS.get(index))) continue;
+				fooValue.replaceInstWithValue(valueOf.getArgument(0));
+				if (valueOf.uses().isEmpty())
+					valueOf.eraseFromParent();
+				changed = makingProgress = true;
+			}
+		} while (makingProgress);
+		return changed;
+	}
 
 	public static boolean eliminateUselessPhis(Method method) {
 		boolean changed = false, makingProgress;
