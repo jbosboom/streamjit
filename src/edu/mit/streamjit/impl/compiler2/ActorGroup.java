@@ -236,7 +236,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			MethodHandle specialized = wa.archetype().specialize(wa);
 
 			assert a.inputs().size() > 0 : a;
-			MethodType readHandleType = MethodType.methodType(wa.archetype().inputType().getRawType(), int.class);
+			MethodType readHandleType = MethodType.methodType(wa.inputType().getRawType(), int.class);
 			MethodHandle read;
 			if (wa.worker() instanceof Joiner) {
 				MethodHandle[] table = new MethodHandle[a.inputs().size()];
@@ -249,7 +249,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 					0, a.inputIndexFunctions().get(0)).asType(readHandleType);
 
 			assert a.outputs().size() > 0 : a;
-			MethodType writeHandleType = MethodType.methodType(void.class, int.class, wa.archetype().outputType().getRawType());
+			MethodType writeHandleType = MethodType.methodType(void.class, int.class, wa.outputType().getRawType());
 			MethodHandle write;
 			if (wa.worker() instanceof Splitter) {
 				MethodHandle[] table = new MethodHandle[a.outputs().size()];

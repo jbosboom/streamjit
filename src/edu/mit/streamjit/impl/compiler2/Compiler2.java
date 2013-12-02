@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Function;
+import com.google.common.base.Predicate;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.FluentIterable;
@@ -715,8 +716,15 @@ public class Compiler2 {
 	private void generateArchetypalCode() {
 		String packageName = "compiler"+PACKAGE_NUMBER.getAndIncrement();
 		ModuleClassLoader mcl = new ModuleClassLoader(module);
-		for (ActorArchetype archetype : archetypes)
-			archetype.generateCode(packageName, mcl);
+		for (final ActorArchetype archetype : archetypes)
+			archetype.generateCode(packageName, mcl, FluentIterable.from(actors)
+					.filter(WorkerActor.class)
+					.filter(new Predicate<WorkerActor>() {
+						@Override
+						public boolean apply(WorkerActor input) {
+							return input.archetype().equals(archetype);
+						}
+			}));
 	}
 
 	private void createInitCode() {

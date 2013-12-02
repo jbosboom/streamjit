@@ -1,10 +1,14 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Multimaps;
 import com.google.common.primitives.Primitives;
 import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.api.Filter;
@@ -13,6 +17,7 @@ import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.bytecode.Argument;
 import edu.mit.streamjit.util.bytecode.BasicBlock;
@@ -38,14 +43,17 @@ import edu.mit.streamjit.util.bytecode.insts.LoadInst;
 import edu.mit.streamjit.util.bytecode.insts.StoreInst;
 import edu.mit.streamjit.util.bytecode.types.ArrayType;
 import edu.mit.streamjit.util.bytecode.types.MethodType;
+import edu.mit.streamjit.util.bytecode.types.PrimitiveType;
 import edu.mit.streamjit.util.bytecode.types.RegularType;
 import edu.mit.streamjit.util.bytecode.types.TypeFactory;
+import edu.mit.streamjit.util.bytecode.types.WrapperType;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +81,7 @@ public class ActorArchetype {
 	 * The Klass corresponding to the worker class.
 	 */
 	private final Klass workerKlass;
-	private MethodHandle workMethod;
+	private ImmutableMap<Pair<Class<?>, Class<?>>, MethodHandle> workMethods;
 	public ActorArchetype(Class<? extends Worker<?, ?>> workerClass, Module module) {
 		this.workerClass = workerClass;
 		ImmutableList.Builder<java.lang.reflect.Field> fieldsBuilder = ImmutableList.builder();
@@ -210,9 +218,8 @@ public class ActorArchetype {
 		return true;
 	}
 
-	public void generateCode(String packageName, ModuleClassLoader loader) {
-		if (workMethod != null)
-			return;
+	public void generateCode(String packageName, ModuleClassLoader loader, Iterable<WorkerActor> actors) {
+		assert workMethods == null : "already generated code for "+this;
 
 		Module module = workerKlass.getParent();
 		Klass archetypeKlass = new Klass(packageName + "." + workerKlass.getName()+"Archetype",
@@ -221,9 +228,65 @@ public class ActorArchetype {
 				module);
 		archetypeKlass.modifiers().addAll(EnumSet.of(Modifier.PUBLIC, Modifier.FINAL));
 
-		//We first make a method with a dummy receiver argument and clone the
-		//original work method into it.  After remapping away any instructions
-		//that use the receiver, we make the actual work method without it.
+		Map<Pair<Class<?>, Class<?>>, Method> methods = new HashMap<>();
+		for (WorkerActor a : actors) {
+			Class<?> inputType = a.inputType().getRawType(), outputType = a.outputType().getRawType();
+			Pair<Class<?>, Class<?>> key = new Pair<Class<?>, Class<?>>(inputType, outputType);
+			if (methods.containsKey(key)) continue;
+
+			//We modify rwork while remapping so we need a fresh clone.
+			Method rwork = makeRwork(archetypeKlass);
+			for (BasicBlock b : rwork.basicBlocks())
+				for (Instruction i : ImmutableList.copyOf(b.instructions()))
+					if (Iterables.contains(i.operands(), rwork.arguments().get(0)))
+						remapEliminatingReceiver(i, inputType, outputType);
+
+			assert rwork.arguments().get(0).uses().isEmpty();
+			Method work = new Method(makeWorkMethodName(inputType, outputType),
+					rwork.getType().dropFirstArgument(),
+					EnumSet.of(Modifier.PUBLIC, Modifier.STATIC), archetypeKlass);
+			Map<Value, Value> vmap = new IdentityHashMap<>();
+			vmap.put(rwork.arguments().get(0), null);
+			for (int i = 1; i < rwork.arguments().size(); ++i)
+				vmap.put(rwork.arguments().get(i), work.arguments().get(i-1));
+			Cloning.cloneMethod(rwork, work, vmap);
+			methods.put(key, work);
+			rwork.eraseFromParent();
+		}
+
+		ImmutableMap.Builder<Pair<Class<?>, Class<?>>, MethodHandle> workMethodsBuilder = ImmutableMap.builder();
+		try {
+			Class<?> archetypeClass = loader.loadClass(archetypeKlass.getName());
+			ImmutableListMultimap<String, java.lang.reflect.Method> methodsByName
+					= Multimaps.index(Arrays.asList(archetypeClass.getMethods()),
+							new Function<java.lang.reflect.Method, String>() {
+								@Override
+								public String apply(java.lang.reflect.Method input) {
+									return input.getName();
+								}
+			});
+			for (Pair<Class<?>, Class<?>> p : methods.keySet()) {
+				String name = makeWorkMethodName(p.first, p.second);
+				workMethodsBuilder.put(p, MethodHandles.publicLookup().unreflect(
+						Iterables.getOnlyElement(methodsByName.get(name))));
+			}
+		} catch (ClassNotFoundException | IllegalAccessException ex) {
+			throw new AssertionError(ex);
+		}
+		this.workMethods = workMethodsBuilder.build();
+	}
+
+	private static String makeWorkMethodName(Class<?> inputType, Class<?> outputType) {
+		return "work"+inputType.getSimpleName()+outputType.getSimpleName();
+	}
+
+	/**
+	 * Creates a clone of the original work method with additional arguments but
+	 * retaining a dummy receiver argument (the 'r' stands for "receiver").
+	 * @return the rwork method
+	 */
+	private Method makeRwork(Klass archetypeKlass) {
+		Module module = archetypeKlass.getParent();
 		TypeFactory types = module.types();
 		Method oldWork = workerKlass.getMethodByVirtual("work", types.getMethodType(types.getVoidType(), types.getRegularType(workerKlass)));
 		oldWork.resolve();
@@ -283,29 +346,7 @@ public class ActorArchetype {
 		makeArgTempCopy(rwork.getArgument("$initialReadIndex"), "readIndex", entryBlock);
 		makeArgTempCopy(rwork.getArgument("$initialWriteIndex"), "writeIndex", entryBlock);
 		entryBlock.instructions().add(new JumpInst(rwork.basicBlocks().get(1)));
-
-		for (BasicBlock b : rwork.basicBlocks())
-			for (Instruction i : ImmutableList.copyOf(b.instructions()))
-				if (Iterables.contains(i.operands(), rwork.arguments().get(0)))
-					remapEliminatingReceiver(i);
-
-		assert rwork.arguments().get(0).uses().isEmpty();
-		Method work = new Method("work",
-				workMethodType, EnumSet.of(Modifier.PUBLIC, Modifier.STATIC), archetypeKlass);
-		vmap.clear();
-		vmap.put(rwork.arguments().get(0), null);
-		for (int i = 1; i < rwork.arguments().size(); ++i)
-			vmap.put(rwork.arguments().get(i), work.arguments().get(i-1));
-		Cloning.cloneMethod(rwork, work, vmap);
-		rwork.eraseFromParent();
-		try {
-			Class<?> archetypeClass = loader.loadClass(archetypeKlass.getName());
-			for (java.lang.reflect.Method m : archetypeClass.getMethods())
-				if (m.getName().equals("work"))
-					workMethod = MethodHandles.publicLookup().unreflect(m);
-		} catch (ClassNotFoundException | IllegalAccessException ex) {
-			throw new AssertionError(ex);
-		}
+		return rwork;
 	}
 
 	/**
@@ -336,9 +377,9 @@ public class ActorArchetype {
 		block.instructions().add(store);
 	}
 
-	private void remapEliminatingReceiver(Instruction inst) {
+	private void remapEliminatingReceiver(Instruction inst, Class<?> inputType, Class<?> outputType) {
 		if (inst instanceof CallInst)
-			remap((CallInst)inst);
+			remap((CallInst)inst, inputType, outputType);
 		else if (inst instanceof LoadInst)
 			remap((LoadInst)inst);
 		else if (inst instanceof StoreInst)
@@ -347,7 +388,7 @@ public class ActorArchetype {
 			throw new AssertionError("Can't eliminiate receiver: "+inst);
 	}
 
-	private void remap(CallInst inst) {
+	private void remap(CallInst inst, Class<?> inputType, Class<?> outputType) {
 		Module module = workerKlass.getParent();
 		Method rwork = inst.getParent().getParent();
 		Method method = inst.getMethod();
@@ -378,70 +419,186 @@ public class ActorArchetype {
 		assert outputs != null;
 		Method invokeExact = Iterables.getOnlyElement(module.getKlass(MethodHandle.class).getMethods("invokeExact"));
 
-		//TODO: understand unboxing
-		Class<?> inputType = inputType().getRawType(), outputType = outputType().getRawType();
+		List<Instruction> insts = new ArrayList<>();
+		Value replacement;
 		if (method.equals(peek1Filter) || method.equals(peek1Splitter)) {
 			Value peekIndex = inst.getArgument(1);
-			LoadInst readIndex = new LoadInst(rwork.getLocalVariable("readIndex"));
-			BinaryInst actualIndex = new BinaryInst(readIndex, BinaryInst.Operation.ADD, peekIndex);
-			Argument readInput = rwork.getArgument("$readInput");
-			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class), readInput, actualIndex);
-			invoke.setName("peekedItem");
-			inst.replaceInstWithInsts(invoke, readIndex, actualIndex, invoke);
+			replacement = read(null, peekIndex, inputType, rwork, insts);
 		} else if (method.equals(pop1Filter) || method.equals(pop1Splitter)) {
-			LoadInst readIndex = new LoadInst(rwork.getLocalVariable("readIndex"));
-			Argument readInput = rwork.getArgument("$readInput");
-			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class), readInput, readIndex);
-			invoke.setName("poppedItem");
-			BinaryInst incReadIndex = new BinaryInst(readIndex, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
-			StoreInst storeReadIndex = new StoreInst(rwork.getLocalVariable("readIndex"), incReadIndex);
-			inst.replaceInstWithInsts(invoke, readIndex, invoke, incReadIndex, storeReadIndex);
+			replacement = read(null, null, inputType, rwork, insts);
+			incrementReadIndex(null, rwork, insts);
 		} else if (method.equals(push1Filter) || method.equals(push1Joiner)) {
 			Value item = inst.getArgument(1);
-			LoadInst writeIndex = new LoadInst(rwork.getLocalVariable("writeIndex"));
-			Argument writeOutput = rwork.getArgument("$writeOutput");
-			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(void.class, MethodHandle.class, int.class, outputType), writeOutput, writeIndex, item);
-			BinaryInst incWriteIndex = new BinaryInst(writeIndex, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
-			StoreInst storeWriteIndex = new StoreInst(rwork.getLocalVariable("writeIndex"), incWriteIndex);
-			inst.replaceInstWithInsts(invoke, writeIndex, invoke, incWriteIndex, storeWriteIndex);
+			replacement = write(null, item, outputType, rwork, insts);
 		} else if (method.equals(peek2)) {
 			Value channelIndex = inst.getArgument(1), peekIndex = inst.getArgument(2);
-			LoadInst readIndices = new LoadInst(rwork.getLocalVariable("readIndex"));
-			ArrayLoadInst readIndex = new ArrayLoadInst(readIndices, channelIndex);
-			BinaryInst actualIndex = new BinaryInst(readIndex, BinaryInst.Operation.ADD, peekIndex);
-			Argument readInput = rwork.getArgument("$readInput");
-			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class, int.class), readInput, channelIndex, actualIndex);
-			invoke.setName("peekedItem");
-			inst.replaceInstWithInsts(invoke, readIndices, readIndex, actualIndex, invoke);
+			replacement = read(channelIndex, peekIndex, inputType, rwork, insts);
 		} else if (method.equals(pop2)) {
 			Value channelIndex = inst.getArgument(1);
-			LoadInst readIndices = new LoadInst(rwork.getLocalVariable("readIndex"));
-			ArrayLoadInst readIndex = new ArrayLoadInst(readIndices, channelIndex);
-			Argument readInput = rwork.getArgument("$readInput");
-			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class, int.class), readInput, channelIndex, readIndex);
-			invoke.setName("poppedItem");
-			BinaryInst incReadIndex = new BinaryInst(readIndex, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
-			ArrayStoreInst storeReadIndex = new ArrayStoreInst(readIndices, channelIndex, incReadIndex);
-			inst.replaceInstWithInsts(invoke, readIndices, readIndex, invoke, incReadIndex, storeReadIndex);
+			replacement = read(channelIndex, null, inputType, rwork, insts);
+			incrementReadIndex(channelIndex, rwork, insts);
 		} else if (method.equals(push2)) {
 			Value channelIndex = inst.getArgument(1), item = inst.getArgument(2);
-			LoadInst writeIndices = new LoadInst(rwork.getLocalVariable("writeIndex"));
-			ArrayLoadInst writeIndex = new ArrayLoadInst(writeIndices, channelIndex);
-			Argument writeOutput = rwork.getArgument("$writeOutput");
-			CallInst invoke = new CallInst(invokeExact, module.types().getMethodType(void.class, MethodHandle.class, int.class, int.class, outputType), writeOutput, channelIndex, writeIndex, item);
-			BinaryInst incWriteIndex = new BinaryInst(writeIndex, BinaryInst.Operation.ADD, module.constants().getSmallestIntConstant(1));
-			ArrayStoreInst storeWriteIndex = new ArrayStoreInst(writeIndices, channelIndex, incWriteIndex);
-			inst.replaceInstWithInsts(invoke, writeIndices, writeIndex, invoke, incWriteIndex, storeWriteIndex);
+			replacement = write(channelIndex, item, outputType, rwork, insts);
 		} else if (method.equals(inputs)) {
 			LoadInst readIndex = new LoadInst(rwork.getLocalVariable("readIndex"));
+			insts.add(readIndex);
 			ArrayLengthInst length = new ArrayLengthInst(readIndex);
-			inst.replaceInstWithInsts(length, readIndex, length);
+			insts.add(length);
+			replacement = length;
 		} else if (method.equals(outputs)) {
 			LoadInst writeIndex = new LoadInst(rwork.getLocalVariable("writeIndex"));
+			insts.add(writeIndex);
 			ArrayLengthInst length = new ArrayLengthInst(writeIndex);
-			inst.replaceInstWithInsts(length, writeIndex, length);
+			insts.add(length);
+			replacement = length;
 		} else
 			throw new AssertionError(inst);
+		inst.replaceInstWithInsts(replacement, insts);
+	}
+
+	private Value read(Value channelIndex, Value readOffset, Class<?> inputType, Method rwork, List<Instruction> insts) {
+		Module module = rwork.getParent().getParent();
+		Method invokeExact = Iterables.getOnlyElement(module.getKlass(MethodHandle.class).getMethods("invokeExact"));
+
+		Value readIndex = getReadIndex(channelIndex, rwork, insts);
+		if (readOffset == null)
+			readOffset = module.constants().getConstant(0);
+		BinaryInst actualIndex = new BinaryInst(readIndex, BinaryInst.Operation.ADD, readOffset);
+		insts.add(actualIndex);
+		Argument readHandle = rwork.getArgument("$readInput");
+		CallInst invoke;
+		if (channelIndex == null)
+			invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class), readHandle, actualIndex);
+		else
+			invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class, int.class), readHandle, channelIndex, actualIndex);
+		insts.add(invoke);
+
+		Value value = invoke;
+		if (inputType.isPrimitive())
+			value = box(value, insts);
+		return value;
+	}
+
+	private Value write(Value channelIndex, Value item, Class<?> outputType, Method rwork, List<Instruction> insts) {
+		Module module = rwork.getParent().getParent();
+		Method invokeExact = Iterables.getOnlyElement(module.getKlass(MethodHandle.class).getMethods("invokeExact"));
+
+		Value writeIndex = getWriteIndex(channelIndex, rwork, insts);
+
+		if (outputType.isPrimitive())
+			item = unbox(item, outputType, insts);
+		//TODO: will I ever need to cast an object type to outputType here?
+
+		Argument writeHandle = rwork.getArgument("$writeOutput");
+		CallInst invoke;
+		if (channelIndex == null)
+			invoke = new CallInst(invokeExact, module.types().getMethodType(void.class, MethodHandle.class, int.class, outputType), writeHandle, writeIndex, item);
+		else
+			invoke = new CallInst(invokeExact, module.types().getMethodType(void.class, MethodHandle.class, int.class, int.class, outputType), writeHandle, channelIndex, writeIndex, item);
+		insts.add(invoke);
+
+		incrementWriteIndex(channelIndex, rwork, insts);
+		return invoke;
+	}
+
+	/**
+	 * Gets the current read index for the given channel.  Pass null for the
+	 * channel index if there's only one input.
+	 * @param channelIndex the channel index value, or null if only one input
+	 * @param rwork the rwork method
+	 * @param insts the insts being constructed
+	 * @return the read index
+	 */
+	private Value getReadIndex(Value channelIndex, Method rwork, List<Instruction> insts) {
+		return getIndex(channelIndex, "readIndex", rwork, insts);
+	}
+
+	/**
+	 * Gets the current write index for the given channel.  Pass null for the
+	 * channel index if there's only one output.
+	 * @param channelIndex the channel index value, or null if only one output
+	 * @param rwork the rwork method
+	 * @param insts the insts being constructed
+	 * @return the read index
+	 */
+	private Value getWriteIndex(Value channelIndex, Method rwork, List<Instruction> insts) {
+		return getIndex(channelIndex, "writeIndex", rwork, insts);
+	}
+
+	private Value getIndex(Value channelIndex, String indexVariableName, Method rwork, List<Instruction> insts) {
+		LoadInst readIndex = new LoadInst(rwork.getLocalVariable(indexVariableName));
+		insts.add(readIndex);
+		if (readIndex.getType() instanceof ArrayType) {
+			ArrayLoadInst index = new ArrayLoadInst(readIndex, channelIndex);
+			insts.add(index);
+			return index;
+		}
+		assert channelIndex == null;
+		return readIndex;
+	}
+
+	private void incrementReadIndex(Value channelIndex, Method rwork, List<Instruction> insts) {
+		incrementIndex(channelIndex, "readIndex", rwork, insts);
+	}
+
+	private void incrementWriteIndex(Value channelIndex, Method rwork, List<Instruction> insts) {
+		incrementIndex(channelIndex, "writeIndex", rwork, insts);
+	}
+
+	private void incrementIndex(Value channelIndex, String indexVariableName, Method rwork, List<Instruction> insts) {
+		LocalVariable localVar = rwork.getLocalVariable(indexVariableName);
+		LoadInst readIndex = new LoadInst(localVar);
+		insts.add(readIndex);
+		Value index;
+		if (readIndex.getType() instanceof ArrayType) {
+			ArrayLoadInst load = new ArrayLoadInst(readIndex, channelIndex);
+			insts.add(load);
+			index = load;
+		} else {
+			assert channelIndex == null;
+			index = readIndex;
+		}
+
+		BinaryInst addOne = new BinaryInst(index, BinaryInst.Operation.ADD, rwork.getParent().getParent().constants().getConstant(1));
+		insts.add(addOne);
+
+		Instruction store;
+		if (readIndex.getType() instanceof ArrayType) {
+			store = new ArrayStoreInst(readIndex, channelIndex, addOne);
+		} else {
+			store = new StoreInst(localVar, addOne);
+		}
+		insts.add(store);
+	}
+
+	private Value box(Value v, List<Instruction> insts) {
+		assert v.getType() instanceof PrimitiveType : "boxing nonprimitive "+v;
+		PrimitiveType prim = (PrimitiveType)v.getType();
+		WrapperType wrapper = prim.wrap();
+		Method valueOf = wrapper.getKlass().getMethod("valueOf", wrapper.getTypeFactory().getMethodType(wrapper, prim));
+		CallInst ci = new CallInst(valueOf, v);
+		insts.add(ci);
+		return ci;
+	}
+
+	//We need targetType in case the value is just an Object.
+	private Value unbox(Value v, Class<?> targetType, List<Instruction> insts) {
+		TypeFactory types = v.getType().getTypeFactory();
+
+		assert v.getType() instanceof WrapperType || v.getType().equals(types.getType(Object.class)) : "unboxing bad type "+v;
+		PrimitiveType prim = types.getPrimitiveType(targetType);
+		WrapperType wrapper = prim.wrap();
+		if (v.getType().equals(types.getType(Object.class))) {
+			CastInst ci = new CastInst(wrapper, v);
+			insts.add(ci);
+			v = ci;
+		}
+
+		Method fooValue = wrapper.getKlass().getMethod(prim.toString()+"Value", types.getMethodType(prim, wrapper));
+		CallInst call = new CallInst(fooValue, v);
+		insts.add(call);
+		return call;
 	}
 
 	private void remap(LoadInst inst) {
@@ -466,7 +623,7 @@ public class ActorArchetype {
 	 */
 	public MethodHandle specialize(WorkerActor a) {
 		checkArgument(a.archetype() == this);
-		MethodHandle handle = workMethod;
+		MethodHandle handle = workMethods.get(new Pair<>(a.inputType().getRawType(), a.outputType().getRawType()));
 		//This relies on fields having a consistent iteration order.
 		for (java.lang.reflect.Field f : fields)
 			try {
