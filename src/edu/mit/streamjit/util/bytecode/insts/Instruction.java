@@ -95,16 +95,14 @@ public abstract class Instruction extends User implements Parented<BasicBlock> {
 
 	/**
 	 * Replaces this instruction with the given instructions similarly to
-	 * {@link #replaceInstWithInst(Instruction)}, using a specific
-	 * instruction to replace uses, but adding all the given instructions in
-	 * order just prior to this instruction.
-	 * @param replacement the instruction to replace this instruction's uses
-	 * with
+	 * {@link #replaceInstWithInst(Instruction)}, using a specific value to
+	 * replace uses, but adding all the given instructions in order just prior
+	 * to this instruction.
+	 * @param replacement the value to replace this instruction's uses with
 	 * @param insts the instructions to replace this instruction with
 	 */
-	public void replaceInstWithInsts(Instruction replacement, List<Instruction> insts) {
+	public void replaceInstWithInsts(Value replacement, List<Instruction> insts) {
 		checkState(getParent() != null);
-		checkArgument(insts.contains(replacement));
 		for (Instruction i : insts)
 			checkArgument(i.getParent() == null);
 
@@ -117,14 +115,13 @@ public abstract class Instruction extends User implements Parented<BasicBlock> {
 
 	/**
 	 * Replaces this instruction with the given instructions similarly to
-	 * {@link #replaceInstWithInst(Instruction)}, using a specific
-	 * instruction to replace uses, but adding all the given instructions in
-	 * order just prior to this instruction.
-	 * @param replacement the instruction to replace this instruction's uses
-	 * with
+	 * {@link #replaceInstWithInst(Instruction)}, using a specific value to
+	 * replace uses, but adding all the given instructions in order just prior
+	 * to this instruction.
+	 * @param replacement the value to replace this instruction's uses with
 	 * @param insts the instructions to replace this instruction with
 	 */
-	public void replaceInstWithInsts(Instruction replacement, Instruction... insts) {
+	public void replaceInstWithInsts(Value replacement, Instruction... insts) {
 		replaceInstWithInsts(replacement, Arrays.asList(insts));
 	}
 
