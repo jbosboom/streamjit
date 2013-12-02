@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.primitives.Primitives;
+import com.google.common.reflect.Invokable;
 import edu.mit.streamjit.util.bytecode.insts.CallInst;
 import edu.mit.streamjit.util.bytecode.insts.Instruction;
 import edu.mit.streamjit.util.bytecode.insts.PhiInst;
@@ -77,17 +78,17 @@ public final class DeadCodeElimination {
 		return changed;
 	}
 
-	private static final ImmutableList<java.lang.reflect.Method> BOXING_METHODS;
-	private static final ImmutableList<java.lang.reflect.Method> UNBOXING_METHODS;
+	private static final ImmutableList<Invokable<?, ?>> BOXING_METHODS;
+	private static final ImmutableList<Invokable<?, ?>> UNBOXING_METHODS;
 	static {
-		ImmutableList.Builder<java.lang.reflect.Method> boxingBuilder = ImmutableList.builder();
-		ImmutableList.Builder<java.lang.reflect.Method> unboxingBuilder = ImmutableList.builder();
+		ImmutableList.Builder<Invokable<?, ?>> boxingBuilder = ImmutableList.builder();
+		ImmutableList.Builder<Invokable<?, ?>> unboxingBuilder = ImmutableList.builder();
 		for (Class<?> w : Primitives.allWrapperTypes()) {
 			if (w.equals(Void.class)) continue;
 			Class<?> prim = Primitives.unwrap(w);
 			try {
-				boxingBuilder.add(w.getMethod("valueOf", prim));
-				unboxingBuilder.add(w.getMethod(prim.getName()+"Value"));
+				boxingBuilder.add(Invokable.from(w.getMethod("valueOf", prim)));
+				unboxingBuilder.add(Invokable.from(w.getMethod(prim.getName()+"Value")));
 			} catch (NoSuchMethodException ex) {
 				throw new AssertionError("Can't happen!", ex);
 			}
@@ -111,12 +112,12 @@ public final class DeadCodeElimination {
 			for (Instruction i : ImmutableList.copyOf(block.instructions())) {
 				if (!(i instanceof CallInst)) continue;
 				CallInst fooValue = (CallInst)i;
-				int index = UNBOXING_METHODS.indexOf(fooValue.getMethod().getBackingMethod());
+				int index = UNBOXING_METHODS.indexOf(fooValue.getMethod().getBackingInvokable());
 				if (index == -1) continue;
 				Value receiver = Iterables.getOnlyElement(fooValue.arguments());
 				if (!(receiver instanceof CallInst)) continue;
 				CallInst valueOf = (CallInst)receiver;
-				if (!valueOf.getMethod().getBackingMethod().equals(BOXING_METHODS.get(index))) continue;
+				if (!valueOf.getMethod().getBackingInvokable().equals(BOXING_METHODS.get(index))) continue;
 				fooValue.replaceInstWithValue(valueOf.getArgument(0));
 				if (valueOf.uses().isEmpty())
 					valueOf.eraseFromParent();

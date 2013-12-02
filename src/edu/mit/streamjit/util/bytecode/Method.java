@@ -11,6 +11,7 @@ import edu.mit.streamjit.util.bytecode.types.MethodType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Shorts;
+import com.google.common.reflect.Invokable;
 import edu.mit.streamjit.util.bytecode.insts.Instruction;
 import edu.mit.streamjit.util.bytecode.types.RegularType;
 import edu.mit.streamjit.util.bytecode.types.VoidType;
@@ -96,7 +97,7 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		return getParent().isMutable();
 	}
 
-	public java.lang.reflect.Method getBackingMethod() {
+	public Invokable<?, ?> getBackingInvokable() {
 		//We don't call this very often (if at all), so look it up every time
 		//rather than burn a field on all Methods.
 		Class<?> klass = getParent().getBackingClass();
@@ -112,7 +113,11 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 			paramTypes.add(backingParamClass);
 		}
 		try {
-			return klass.getDeclaredMethod(getName(), paramTypes.toArray(new Class<?>[paramTypes.size()]));
+			Class<?>[] array = paramTypes.toArray(new Class<?>[paramTypes.size()]);
+			if (getName().equals("<init>"))
+				return Invokable.from(klass.getDeclaredConstructor(array));
+			else
+				return Invokable.from(klass.getDeclaredMethod(getName(), array));
 		} catch (NoSuchMethodException ex) {
 			throw new AssertionError(String.format("Can't happen! Class %s doesn't have a %s(%s) method?", klass, getName(), paramTypes), ex);
 		}
