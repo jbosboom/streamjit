@@ -490,7 +490,11 @@ public class ActorArchetype {
 
 		if (outputType.isPrimitive())
 			item = unbox(item, outputType, insts);
-		//TODO: will I ever need to cast an object type to outputType here?
+		else if (!item.getType().isSubtypeOf(module.types().getType(outputType))) {
+			CastInst cast = new CastInst(module.types().getType(outputType), item);
+			insts.add(cast);
+			item = cast;
+		}
 
 		Argument writeHandle = rwork.getArgument("$writeOutput");
 		CallInst invoke;
