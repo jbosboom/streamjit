@@ -6,6 +6,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.primitives.Primitives;
 import com.google.common.reflect.Invokable;
 import edu.mit.streamjit.util.bytecode.insts.CallInst;
+import edu.mit.streamjit.util.bytecode.insts.CastInst;
 import edu.mit.streamjit.util.bytecode.insts.Instruction;
 import edu.mit.streamjit.util.bytecode.insts.PhiInst;
 import java.util.ArrayDeque;
@@ -27,6 +28,7 @@ public final class DeadCodeElimination {
 		do {
 			makingProgress = false;
 //			changed |= makingProgress |= eliminateTriviallyDeadInsts(method);
+			changed |= makingProgress |= removeDeadCasts(method);
 			changed |= makingProgress |= eliminateBoxUnbox(method);
 			changed |= makingProgress |= eliminateUselessPhis(method);
 		} while (makingProgress);
@@ -122,6 +124,39 @@ public final class DeadCodeElimination {
 				if (valueOf.uses().isEmpty())
 					valueOf.eraseFromParent();
 				changed = makingProgress = true;
+			}
+		} while (makingProgress);
+		return changed;
+	}
+
+	public static boolean removeDeadCasts(Method method) {
+		boolean changed = false, makingProgress;
+		do {
+			makingProgress = false;
+			for (BasicBlock block : method.basicBlocks())
+				changed |= makingProgress |= removeDeadCasts(block);
+		} while (makingProgress);
+		return changed;
+	}
+
+	/**
+	 * Removes cast instructions that cast a value to its own type.
+	 *
+	 * TODO: is it safe to remove casts to a supertype (e.g., Float to Object)?
+	 * @param block the block to remove casts in
+	 * @return true iff changes were made
+	 */
+	public static boolean removeDeadCasts(BasicBlock block) {
+		boolean changed = false, makingProgress;
+		do {
+			makingProgress = false;
+			for (Instruction i : ImmutableList.copyOf(block.instructions())) {
+				if (!(i instanceof CastInst)) continue;
+				CastInst cast = (CastInst)i;
+				if (cast.getType().equals(cast.getOperand(0).getType())) {
+					cast.replaceInstWithValue(cast.getOperand(0));
+					changed = makingProgress = true;
+				}
 			}
 		} while (makingProgress);
 		return changed;
