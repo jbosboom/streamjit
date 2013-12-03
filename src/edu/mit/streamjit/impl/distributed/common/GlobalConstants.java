@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.common;
 
+import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
@@ -53,5 +54,11 @@ public final class GlobalConstants {
 	 * be ignored and every new reconfiguration will run with fresh inputs.
 	 */
 	public static final boolean useDrainData = true;
+
+	/**
+	 * To turn on or off the dead lock handler. see {@link AbstractDrainer} for
+	 * it's usage.
+	 */
+	public static final boolean needDrainDeadlockHandler = true;
 
 }
