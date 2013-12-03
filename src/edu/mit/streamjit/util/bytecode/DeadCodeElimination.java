@@ -27,11 +27,8 @@ public final class DeadCodeElimination {
 		boolean changed = false, makingProgress;
 		do {
 			makingProgress = false;
-//			changed |= makingProgress |= eliminateTriviallyDeadInsts(method);
-			changed |= makingProgress |= removeDeadCasts(method);
-			changed |= makingProgress |= eliminateBoxUnbox(method);
-			changed |= makingProgress |= removeUnusedKnownSideEffectFreeCalls(method);
-			changed |= makingProgress |= eliminateUselessPhis(method);
+			for (BasicBlock block : method.basicBlocks())
+				changed |= makingProgress |= eliminateDeadCode(block);
 		} while (makingProgress);
 		return changed;
 	}
@@ -41,7 +38,9 @@ public final class DeadCodeElimination {
 		do {
 			makingProgress = false;
 //			changed |= makingProgress |= eliminateTriviallyDeadInsts(block);
+			changed |= makingProgress |= removeDeadCasts(block);
 			changed |= makingProgress |= eliminateBoxUnbox(block);
+			changed |= makingProgress |= removeUnusedKnownSideEffectFreeCalls(block);
 			changed |= makingProgress |= eliminateUselessPhis(block);
 		} while (makingProgress);
 		return changed;
