@@ -251,7 +251,7 @@ public class ActorArchetype {
 			for (int i = 1; i < rwork.arguments().size(); ++i)
 				vmap.put(rwork.arguments().get(i), work.arguments().get(i-1));
 			Cloning.cloneMethod(rwork, work, vmap);
-			DeadCodeElimination.eliminateDeadCode(work);
+			cleanWorkMethod(work);
 			methods.put(key, work);
 			rwork.eraseFromParent();
 		}
@@ -621,6 +621,46 @@ public class ActorArchetype {
 
 	private void remap(StoreInst inst) {
 		throw new UnsupportedOperationException("TODO: remap StoreInsts for stateful filters");
+	}
+
+	/**
+	 * Cleans up a work method by removing dead code, including code that isn't
+	 * in general dead but is dead in our specific cases.
+	 * @param work the work method
+	 */
+	private void cleanWorkMethod(Method work) {
+		boolean progress;
+		do {
+			progress = false;
+			progress |= DeadCodeElimination.eliminateDeadCode(work);
+			progress |= removeUnusedReads(work);
+		} while (progress);
+	}
+
+	/**
+	 * Removes reads that aren't used by anything.  Peeking filters tend to
+	 * compute a result via peeking and then pop some of their inputs rather
+	 * than mix peeks and pops; we need only increment the read index for those
+	 * unused pops.  However, we can't easily tell if the pop is used when
+	 * remapping, as it will often be used by a generics-induced cast to the
+	 * original input type, so we wait until after running standard DCE.
+	 * @param work the work method to remove reads from
+	 * @return true iff changes were made
+	 */
+	private boolean removeUnusedReads(Method work) {
+		Argument readHandle = work.getArgument("$readInput_clone");
+		for (BasicBlock block : work.basicBlocks())
+			for (Instruction i : block.instructions()) {
+				if (!(i instanceof CallInst)) continue;
+				if (!i.uses().isEmpty()) continue;
+				CallInst ci = (CallInst)i;
+				//Nothing else uses the read handle, so this is sufficient.
+				if (ci.getArgument(0).equals(readHandle)) {
+					ci.eraseFromParent();
+					return true;
+				}
+			}
+		return false;
 	}
 
 	/**
