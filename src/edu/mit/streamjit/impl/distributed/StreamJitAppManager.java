@@ -301,7 +301,7 @@ public class StreamJitAppManager {
 
 		@Override
 		public void process(DrainedData drainedData) {
-			if (GlobalConstants.drainData)
+			if (GlobalConstants.useDrainData)
 				drainer.newDrainData(drainedData);
 		}
 	}

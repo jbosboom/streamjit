@@ -316,7 +316,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 			// System.out.println("Blob " + blobID + "is drained");
 
-			if (GlobalConstants.drainData && this.reqDrainData) {
+			if (GlobalConstants.useDrainData && this.reqDrainData) {
 				// System.out.println("**********************************");
 				DrainData dd = blob.getDrainData();
 				drainState = 5;

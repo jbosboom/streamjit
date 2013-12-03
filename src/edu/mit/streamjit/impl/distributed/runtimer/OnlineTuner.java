@@ -97,7 +97,7 @@ public class OnlineTuner implements Runnable {
 						System.err.println("awaitDrainedIntrmdiate");
 						drainer.awaitDrainedIntrmdiate();
 
-						if (GlobalConstants.drainData) {
+						if (GlobalConstants.useDrainData) {
 							System.err.println("awaitDrainData...");
 							drainer.awaitDrainData();
 							DrainData drainData = drainer.getDrainData();
@@ -191,7 +191,7 @@ public class OnlineTuner implements Runnable {
 				System.err.println("awaitDrainedIntrmdiate");
 				drainer.awaitDrainedIntrmdiate();
 
-				if (GlobalConstants.drainData) {
+				if (GlobalConstants.useDrainData) {
 					System.err.println("awaitDrainData...");
 					drainer.awaitDrainData();
 					DrainData drainData = drainer.getDrainData();
