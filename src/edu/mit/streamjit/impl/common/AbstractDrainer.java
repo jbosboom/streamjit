@@ -35,6 +35,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 
@@ -178,8 +179,11 @@ public abstract class AbstractDrainer {
 					throw new IllegalArgumentException(
 							"Invalid draining type. type can be 0, 1, or 2.");
 			}
-			this.schExecutorService = Executors
-					.newSingleThreadScheduledExecutor();
+
+			if (GlobalConstants.needDrainDeadlockHandler)
+				this.schExecutorService = Executors
+						.newSingleThreadScheduledExecutor();
+
 			blobGraph.getSourceBlobNode().drain();
 
 			return true;
@@ -429,7 +433,9 @@ public abstract class AbstractDrainer {
 				state = DrainerState.NODRAINING;
 				intermediateLatch.countDown();
 			}
-			schExecutorService.shutdownNow();
+
+			if (GlobalConstants.needDrainDeadlockHandler)
+				schExecutorService.shutdownNow();
 		}
 	}
 
@@ -669,9 +675,11 @@ public abstract class AbstractDrainer {
 						"Drain of this blobNode has already been called");
 			}
 			drainer.drain(blobID, drainer.state == DrainerState.FINAL);
+
 			// TODO: Verify the waiting time is reasonable.
-			drainer.schExecutorService.schedule(deadLockHandler(), 6000,
-					TimeUnit.MILLISECONDS);
+			if (GlobalConstants.needDrainDeadlockHandler)
+				drainer.schExecutorService.schedule(deadLockHandler(), 6000,
+						TimeUnit.MILLISECONDS);
 		}
 
 		private void setDrainData(DrainedData drainedData) {
