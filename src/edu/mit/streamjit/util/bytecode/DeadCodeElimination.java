@@ -5,10 +5,12 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.primitives.Primitives;
 import com.google.common.reflect.Invokable;
+import edu.mit.streamjit.util.bytecode.insts.BinaryInst;
 import edu.mit.streamjit.util.bytecode.insts.CallInst;
 import edu.mit.streamjit.util.bytecode.insts.CastInst;
 import edu.mit.streamjit.util.bytecode.insts.Instruction;
 import edu.mit.streamjit.util.bytecode.insts.PhiInst;
+import edu.mit.streamjit.util.bytecode.types.PrimitiveType;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -37,7 +39,7 @@ public final class DeadCodeElimination {
 		boolean changed = false, makingProgress;
 		do {
 			makingProgress = false;
-//			changed |= makingProgress |= eliminateTriviallyDeadInsts(block);
+			changed |= makingProgress |= eliminateUnusedSideEffectFreeInsts(block);
 			changed |= makingProgress |= removeDeadCasts(block);
 			changed |= makingProgress |= eliminateBoxUnbox(block);
 			changed |= makingProgress |= removeUnusedKnownSideEffectFreeCalls(block);
@@ -46,29 +48,60 @@ public final class DeadCodeElimination {
 		return changed;
 	}
 
-	//TODO: these need a much more nuanced understanding of side effects to be safe.
-//	public static boolean eliminateTriviallyDeadInsts(Method method) {
-//		boolean changed = false, makingProgress;
-//		do {
-//			makingProgress = false;
-//			for (BasicBlock block : method.basicBlocks())
-//				changed |= makingProgress |= eliminateTriviallyDeadInsts(block);
-//		} while (makingProgress);
-//		return changed;
-//	}
-//
-//	public static boolean eliminateTriviallyDeadInsts(BasicBlock block) {
-//		boolean changed = false, makingProgress;
-//		do {
-//			makingProgress = false;
-//			for (Instruction i : ImmutableList.copyOf(block.instructions()))
-//				if (!(i.getType() instanceof VoidType) && i.uses().isEmpty()) {
-//					i.eraseFromParent();
-//					changed = makingProgress = true;
-//				}
-//		} while (makingProgress);
-//		return changed;
-//	}
+	public static boolean eliminateUnusedSideEffectFreeInsts(Method method) {
+		boolean changed = false, makingProgress;
+		do {
+			makingProgress = false;
+			for (BasicBlock block : method.basicBlocks())
+				changed |= makingProgress |= eliminateUnusedSideEffectFreeInsts(block);
+		} while (makingProgress);
+		return changed;
+	}
+
+	public static boolean eliminateUnusedSideEffectFreeInsts(BasicBlock block) {
+		boolean changed = false, makingProgress;
+		do {
+			makingProgress = false;
+			for (Instruction i : ImmutableList.copyOf(block.instructions())) {
+				if (!i.uses().isEmpty()) continue;
+				//TODO: ArrayLengthInst of non-null array
+				//TODO: ArrayLoadInst from non-null array known in bounds
+				//(perhaps because length and index are both constants)
+				if (i instanceof BinaryInst) {
+					BinaryInst bi = (BinaryInst)i;
+					//Division and remainder can throw ArithmeticException.
+					if ((bi.getOperation().equals(BinaryInst.Operation.DIV) ||
+							bi.getOperation().equals(BinaryInst.Operation.REM)) &&
+							bi.getType().isIntegral() &&
+							!knownNotZero(bi.getOperand(1)))
+						continue;
+					i.eraseFromParent();
+					changed = makingProgress = true;
+				}
+				//TODO: InstanceofInst
+				//TODO: LoadInst of local variable, or field of known non-null object
+				//TODO: NewArrayInst with known nonnegative size(s)
+				//TODO: StoreInst of a local variable with no following loads
+				//(conservative approximation: no loads at all)
+			}
+		} while (makingProgress);
+		return changed;
+	}
+
+	private static boolean knownNotZero(Value v) {
+		assert v.getType() instanceof PrimitiveType : v;
+		//Trivial implementation: non-zero constants.
+		if (v instanceof Constant) {
+			Object c = ((Constant<?>)v).getConstant();
+			if (c instanceof Boolean)
+				return (Boolean)c;
+			assert c instanceof Number : c;
+			Number n = (Number)c;
+			//Any primitive Number to double is a widening conversion.
+			return n.doubleValue() == 0;
+		}
+		return false;
+	}
 
 	public static boolean eliminateBoxUnbox(Method method) {
 		boolean changed = false, makingProgress;
