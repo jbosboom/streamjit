@@ -9,6 +9,7 @@ import edu.mit.streamjit.util.bytecode.insts.BinaryInst;
 import edu.mit.streamjit.util.bytecode.insts.CallInst;
 import edu.mit.streamjit.util.bytecode.insts.CastInst;
 import edu.mit.streamjit.util.bytecode.insts.Instruction;
+import edu.mit.streamjit.util.bytecode.insts.LoadInst;
 import edu.mit.streamjit.util.bytecode.insts.PhiInst;
 import edu.mit.streamjit.util.bytecode.types.PrimitiveType;
 import java.util.ArrayDeque;
@@ -79,7 +80,16 @@ public final class DeadCodeElimination {
 					changed = makingProgress = true;
 				}
 				//TODO: InstanceofInst
-				//TODO: LoadInst of local variable, or field of known non-null object
+				if (i instanceof LoadInst) {
+					LoadInst li = (LoadInst)i;
+					if (li.getLocation() instanceof Field) {
+						//TODO: LoadInst of field of known non-null object
+						continue;
+					} else
+						assert li.getLocation() instanceof LocalVariable;
+					i.eraseFromParent();
+					changed = makingProgress = true;
+				}
 				//TODO: NewArrayInst with known nonnegative size(s)
 				//TODO: StoreInst of a local variable with no following loads
 				//(conservative approximation: no loads at all)
