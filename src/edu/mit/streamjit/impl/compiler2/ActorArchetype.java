@@ -221,6 +221,8 @@ public class ActorArchetype {
 
 	public void generateCode(String packageName, ModuleClassLoader loader, Iterable<WorkerActor> actors) {
 		assert workMethods == null : "already generated code for "+this;
+		//If we've removed all instances of this archetype, don't spin an empty class.
+		if (Iterables.isEmpty(actors)) return;
 
 		Module module = workerKlass.getParent();
 		Klass archetypeKlass = new Klass(packageName + "." + workerKlass.getName()+"Archetype",
