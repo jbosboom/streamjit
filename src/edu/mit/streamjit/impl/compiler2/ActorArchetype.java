@@ -475,6 +475,7 @@ public class ActorArchetype {
 		else
 			invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class, int.class), readHandle, channelIndex, actualIndex);
 		insts.add(invoke);
+		invoke.setName("readItem");
 
 		Value value = invoke;
 		if (inputType.isPrimitive())
@@ -503,6 +504,7 @@ public class ActorArchetype {
 		else
 			invoke = new CallInst(invokeExact, module.types().getMethodType(void.class, MethodHandle.class, int.class, int.class, outputType), writeHandle, channelIndex, writeIndex, item);
 		insts.add(invoke);
+		invoke.setName("writeItem");
 
 		incrementWriteIndex(channelIndex, rwork, insts);
 		return invoke;
@@ -585,6 +587,7 @@ public class ActorArchetype {
 		Method valueOf = wrapper.getKlass().getMethod("valueOf", wrapper.getTypeFactory().getMethodType(wrapper, prim));
 		CallInst ci = new CallInst(valueOf, v);
 		insts.add(ci);
+		ci.setName(v.getName()+"_boxed");
 		return ci;
 	}
 
@@ -595,6 +598,7 @@ public class ActorArchetype {
 		assert v.getType() instanceof WrapperType || v.getType().equals(types.getType(Object.class)) : "unboxing bad type "+v;
 		PrimitiveType prim = types.getPrimitiveType(targetType);
 		WrapperType wrapper = prim.wrap();
+		String name = v.getName();
 		if (v.getType().equals(types.getType(Object.class))) {
 			CastInst ci = new CastInst(wrapper, v);
 			insts.add(ci);
@@ -604,6 +608,7 @@ public class ActorArchetype {
 		Method fooValue = wrapper.getKlass().getMethod(prim.toString()+"Value", types.getMethodType(prim, wrapper));
 		CallInst call = new CallInst(fooValue, v);
 		insts.add(call);
+		call.setName(name+"_unboxed");
 		return call;
 	}
 
