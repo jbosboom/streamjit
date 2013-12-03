@@ -30,6 +30,7 @@ public final class DeadCodeElimination {
 //			changed |= makingProgress |= eliminateTriviallyDeadInsts(method);
 			changed |= makingProgress |= removeDeadCasts(method);
 			changed |= makingProgress |= eliminateBoxUnbox(method);
+			changed |= makingProgress |= removeUnusedKnownSideEffectFreeCalls(method);
 			changed |= makingProgress |= eliminateUselessPhis(method);
 		} while (makingProgress);
 		return changed;
@@ -121,8 +122,8 @@ public final class DeadCodeElimination {
 				CallInst valueOf = (CallInst)receiver;
 				if (!valueOf.getMethod().getBackingInvokable().equals(BOXING_METHODS.get(index))) continue;
 				fooValue.replaceInstWithValue(valueOf.getArgument(0));
-				if (valueOf.uses().isEmpty())
-					valueOf.eraseFromParent();
+				//If the boxing call has no other uses, it will be removed by
+				//removeUnusedKnownSideEffectFreeCalls.
 				changed = makingProgress = true;
 			}
 		} while (makingProgress);
@@ -157,6 +158,36 @@ public final class DeadCodeElimination {
 					cast.replaceInstWithValue(cast.getOperand(0));
 					changed = makingProgress = true;
 				}
+			}
+		} while (makingProgress);
+		return changed;
+	}
+
+
+	public static boolean removeUnusedKnownSideEffectFreeCalls(Method method) {
+		boolean changed = false, makingProgress;
+		do {
+			makingProgress = false;
+			for (BasicBlock block : method.basicBlocks())
+				changed |= makingProgress |= removeUnusedKnownSideEffectFreeCalls(block);
+		} while (makingProgress);
+		return changed;
+	}
+
+	private static final ImmutableSet<Invokable<?, ?>> KNOWN_SIDE_EFFECT_FREE = ImmutableSet.<Invokable<?, ?>>builder()
+			.addAll(BOXING_METHODS)
+			.build();
+	public static boolean removeUnusedKnownSideEffectFreeCalls(BasicBlock block) {
+		boolean changed = false, makingProgress;
+		do {
+			makingProgress = false;
+			for (Instruction i : ImmutableList.copyOf(block.instructions())) {
+				if (!(i instanceof CallInst)) continue;
+				if (!i.uses().isEmpty()) continue;
+				CallInst call = (CallInst)i;
+				if (!KNOWN_SIDE_EFFECT_FREE.contains(call.getMethod().getBackingInvokable())) continue;
+				call.eraseFromParent();
+				changed = makingProgress = true;
 			}
 		} while (makingProgress);
 		return changed;
