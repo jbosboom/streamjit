@@ -49,6 +49,11 @@ public final class BinaryInst extends Instruction {
 		this.operation = op;
 	}
 
+	@Override
+	public PrimitiveType getType() {
+		return (PrimitiveType)super.getType();
+	}
+
 	public Operation getOperation() {
 		return operation;
 	}
