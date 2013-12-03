@@ -464,16 +464,19 @@ public class ActorArchetype {
 		Method invokeExact = Iterables.getOnlyElement(module.getKlass(MethodHandle.class).getMethods("invokeExact"));
 
 		Value readIndex = getReadIndex(channelIndex, rwork, insts);
-		if (readOffset == null)
-			readOffset = module.constants().getConstant(0);
-		BinaryInst actualIndex = new BinaryInst(readIndex, BinaryInst.Operation.ADD, readOffset);
-		insts.add(actualIndex);
+		if (readOffset != null) {
+			BinaryInst actualIndex = new BinaryInst(readIndex, BinaryInst.Operation.ADD, readOffset);
+			actualIndex.setName("readIndex_plus_peek");
+			insts.add(actualIndex);
+			readIndex = actualIndex;
+		}
+
 		Argument readHandle = rwork.getArgument("$readInput");
 		CallInst invoke;
 		if (channelIndex == null)
-			invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class), readHandle, actualIndex);
+			invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class), readHandle, readIndex);
 		else
-			invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class, int.class), readHandle, channelIndex, actualIndex);
+			invoke = new CallInst(invokeExact, module.types().getMethodType(inputType, MethodHandle.class, int.class, int.class), readHandle, channelIndex, readIndex);
 		insts.add(invoke);
 		invoke.setName("readItem");
 
