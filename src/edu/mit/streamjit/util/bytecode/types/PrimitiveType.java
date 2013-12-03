@@ -69,6 +69,18 @@ public final class PrimitiveType extends RegularType {
 		return super.getCategory();
 	}
 
+	public boolean isIntegral() {
+		return !isFloatingPoint() && !isBoolean();
+	}
+
+	public boolean isFloatingPoint() {
+		return equals(getTypeFactory().getType(float.class)) || equals(getTypeFactory().getType(double.class));
+	}
+
+	public boolean isBoolean() {
+		return equals(getTypeFactory().getType(boolean.class));
+	}
+
 	private static final List<String> PRIMITIVE_TYPE_NAMES = Arrays.asList(
 			boolean.class.getName(), byte.class.getName(),
 			char.class.getName(), short.class.getName(),
