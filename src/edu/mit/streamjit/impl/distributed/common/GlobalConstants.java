@@ -48,4 +48,10 @@ public final class GlobalConstants {
 	 */
 	public static int tunerMode = 0;
 
+	/**
+	 * To turn on or turn off the drain data. If this is false, drain data will
+	 * be ignored and every new reconfiguration will run with fresh inputs.
+	 */
+	public static final boolean drainData = true;
+
 }

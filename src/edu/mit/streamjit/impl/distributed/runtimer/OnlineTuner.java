@@ -19,6 +19,7 @@ import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.tuner.OpenTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
 import edu.mit.streamjit.util.json.Jsonifiers;
@@ -96,11 +97,12 @@ public class OnlineTuner implements Runnable {
 						System.err.println("awaitDrainedIntrmdiate");
 						drainer.awaitDrainedIntrmdiate();
 
-						// System.err.println("awaitDrainData...");
-						drainer.awaitDrainData();
-						DrainData drainData = drainer.getDrainData();
-
-						app.drainData = drainData;
+						if (GlobalConstants.drainData) {
+							System.err.println("awaitDrainData...");
+							drainer.awaitDrainData();
+							DrainData drainData = drainer.getDrainData();
+							app.drainData = drainData;
+						}
 					}
 
 					drainer.setBlobGraph(app.blobGraph);
@@ -189,11 +191,13 @@ public class OnlineTuner implements Runnable {
 				System.err.println("awaitDrainedIntrmdiate");
 				drainer.awaitDrainedIntrmdiate();
 
-				// System.err.println("awaitDrainData...");
-				drainer.awaitDrainData();
-				DrainData drainData = drainer.getDrainData();
+				if (GlobalConstants.drainData) {
+					System.err.println("awaitDrainData...");
+					drainer.awaitDrainData();
+					DrainData drainData = drainer.getDrainData();
+					app.drainData = drainData;
+				}
 
-				app.drainData = drainData;
 				drainer.setBlobGraph(app.blobGraph);
 			}
 

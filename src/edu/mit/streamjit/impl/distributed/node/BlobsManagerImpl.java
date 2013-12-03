@@ -25,6 +25,7 @@ import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DoDrain;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainDataRequest;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
@@ -315,7 +316,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 			// System.out.println("Blob " + blobID + "is drained");
 
-			if (this.reqDrainData) {
+			if (GlobalConstants.drainData && this.reqDrainData) {
 				// System.out.println("**********************************");
 				DrainData dd = blob.getDrainData();
 				drainState = 5;
@@ -376,6 +377,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 				// System.out.println("**********************************");
 			}
+
 			// printDrainedStatus();
 		}
 
