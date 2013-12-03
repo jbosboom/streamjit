@@ -59,7 +59,8 @@ public class CircularArrayConcreteStorage implements ConcreteStorage {
 
 	@Override
 	public void adjust() {
-		head = IntMath.mod(head + throughput, capacity);
+		//head + throughput >= 0 && capacity > 0, so % is mod.
+		head = (head + throughput) % capacity;
 	}
 
 	@Override
@@ -82,7 +83,9 @@ public class CircularArrayConcreteStorage implements ConcreteStorage {
 	}
 
 	private int index(int physicalIndex) {
-		return IntMath.mod(physicalIndex + head, capacity);
+		//assumes (physicalIndex + head) >= 0
+		//I'd assert but that would add bytes to the method, hampering inlining.
+		return (physicalIndex + head) % capacity;
 	}
 
 	public static StorageFactory factory() {
