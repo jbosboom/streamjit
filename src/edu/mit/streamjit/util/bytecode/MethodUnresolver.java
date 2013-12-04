@@ -2,6 +2,7 @@ package edu.mit.streamjit.util.bytecode;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.util.bytecode.insts.ArrayLengthInst;
 import edu.mit.streamjit.util.bytecode.insts.ArrayLoadInst;
@@ -108,6 +109,7 @@ public final class MethodUnresolver {
 			createLabels();
 			for (BasicBlock b : method.basicBlocks())
 				methodNode.instructions.add(emit(b));
+			peepholeOptimizations();
 			int maxRegister = registers.values().isEmpty() ? 0 : Collections.max(registers.values());
 			this.methodNode.maxLocals = maxRegister+2;
 			//We'd like to use ClassWriter's COMPUTE_MAXS option to compute this
@@ -733,6 +735,65 @@ public final class MethodUnresolver {
 
 	private String internalName(Klass k) {
 		return k.getName().replace('.', '/');
+	}
+
+	/**
+	 * Performs peephole optimizations at the bytecode level, primarily to
+	 * reduce bytecode size for better inlining.  (HotSpot makes inlining
+	 * decisions based partially on the number of bytes in a method.)
+	 */
+	private void peepholeOptimizations() {
+		boolean progress;
+		do {
+			progress = false;
+			progress |= removeLoadStore();
+			progress |= removeUnnecessaryGotos();
+		} while (progress);
+	}
+
+	private static final ImmutableList<Integer> LOADS = ImmutableList.of(
+			Opcodes.ALOAD, Opcodes.DLOAD, Opcodes.FLOAD, Opcodes.ILOAD, Opcodes.LLOAD
+	);
+	private static final ImmutableList<Integer> STORES = ImmutableList.of(
+			Opcodes.ASTORE, Opcodes.DSTORE, Opcodes.FSTORE, Opcodes.ISTORE, Opcodes.LSTORE
+	);
+	/**
+	 * Removes "xLOAD N xSTORE N".
+	 * @return true iff changes were made
+	 */
+	private boolean removeLoadStore() {
+		InsnList insns = methodNode.instructions;
+		for (int i = 0; i < insns.size()-1; ++i) {
+			AbstractInsnNode first = insns.get(i);
+			int index = LOADS.indexOf(first.getOpcode());
+			if (index == -1) continue;
+			AbstractInsnNode second = insns.get(i+1);
+			if (second.getOpcode() != STORES.get(index)) continue;
+			if (((VarInsnNode)first).var != ((VarInsnNode)second).var) continue;
+			insns.remove(first);
+			insns.remove(second);
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Removes goto instructions that go to the label immediately following
+	 * them.
+	 * @return true iff changes were made
+	 */
+	private boolean removeUnnecessaryGotos() {
+		InsnList insns = methodNode.instructions;
+		for (int i = 0; i < insns.size()-1; ++i) {
+			AbstractInsnNode first = insns.get(i);
+			if (first.getOpcode() != Opcodes.GOTO) continue;
+			AbstractInsnNode second = insns.get(i+1);
+			if (!(second instanceof LabelNode)) continue;
+			if (((JumpInsnNode)first).label != second) continue;
+			insns.remove(first);
+			return true;
+		}
+		return false;
 	}
 
 	public static void main(String[] args) {
