@@ -57,16 +57,6 @@ public final class TokenActor extends Actor {
 	}
 
 	@Override
-	public boolean canUnboxInput() {
-		return isOutput();
-	}
-
-	@Override
-	public boolean canUnboxOutput() {
-		return isInput();
-	}
-
-	@Override
 	public int peek(int input) {
 		checkState(isOutput());
 		checkElementIndex(input, inputs().size());

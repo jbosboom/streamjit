@@ -86,9 +86,6 @@ public abstract class Actor implements Comparable<Actor> {
 		this.outputType = type;
 	}
 
-	public abstract boolean canUnboxInput();
-	public abstract boolean canUnboxOutput();
-
 	public List<Storage> inputs() {
 		return upstream;
 	}

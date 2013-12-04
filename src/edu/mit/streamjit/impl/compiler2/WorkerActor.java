@@ -39,16 +39,6 @@ public final class WorkerActor extends Actor {
 		return archetype;
 	}
 
-	@Override
-	public boolean canUnboxInput() {
-		return archetype().canUnboxInput(inputType());
-	}
-
-	@Override
-	public boolean canUnboxOutput() {
-		return archetype().canUnboxOutput(outputType());
-	}
-
 	/**
 	 * Sets up Actor connections based on the worker's predecessor/successor
 	 * relationships, creating TokenActors and Storages as required.  This
