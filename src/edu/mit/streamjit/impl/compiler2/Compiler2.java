@@ -1180,14 +1180,14 @@ public class Compiler2 {
 				readInstructions, writeInstructions, drainInstructions);
 	}
 
-//	public static void main(String[] args) {
-//		StreamCompiler sc = new Compiler2StreamCompiler();//.multiplier(64).maxNumCores(8);
-////		Benchmark bm = new PipelineSanity.Add15();
-////		Benchmark bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
-//		Benchmark bm = new SplitjoinComputeSanity.MultiplyBenchmark();
-//		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);
-//	}
 	public static void main(String[] args) {
-		Benchmarker.runBenchmark(new Reg20131116_104433_226(), new edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler()).get(0).print(System.out);
+		StreamCompiler sc = new Compiler2StreamCompiler().multiplier(8).maxNumCores(8);
+//		Benchmark bm = new PipelineSanity.Add15();
+		Benchmark bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
+//		Benchmark bm = new SplitjoinComputeSanity.MultiplyBenchmark();
+		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);
 	}
+//	public static void main(String[] args) {
+//		Benchmarker.runBenchmark(new Reg20131116_104433_226(), new edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler()).get(0).print(System.out);
+//	}
 }

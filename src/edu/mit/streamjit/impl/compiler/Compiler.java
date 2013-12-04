@@ -35,6 +35,7 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
+import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
@@ -69,6 +70,9 @@ import edu.mit.streamjit.impl.interp.ArrayChannel;
 import edu.mit.streamjit.impl.interp.Channel;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
+import edu.mit.streamjit.test.Benchmark;
+import edu.mit.streamjit.test.Benchmarker;
+import edu.mit.streamjit.test.apps.fmradio.FMRadio;
 import edu.mit.streamjit.util.Pair;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -1701,43 +1705,49 @@ public final class Compiler {
 		}
 	}
 
-	public static void main(String[] args) throws Throwable {
-		OneToOneElement<Integer, Integer> graph = new Pipeline(new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Adder(20), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)), new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new Pipeline(new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Multiplier(2), new edu.mit.streamjit.impl.common.TestFilters.Multiplier(2)), new Pipeline(new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new edu.mit.streamjit.impl.common.TestFilters.Batcher(10), new edu.mit.streamjit.api.Identity(), new edu.mit.streamjit.impl.common.TestFilters.Batcher(10)), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2), new edu.mit.streamjit.impl.common.TestFilters.Batcher(10), new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new edu.mit.streamjit.impl.common.TestFilters.Adder(1), new edu.mit.streamjit.api.Identity(), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2), new edu.mit.streamjit.impl.common.TestFilters.Batcher(10), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)), new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Batcher(2), new edu.mit.streamjit.api.Identity(), new edu.mit.streamjit.impl.common.TestFilters.Adder(1), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)))), new edu.mit.streamjit.impl.common.TestFilters.Adder(20), new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Multiplier(3)), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)));
-		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
-		graph.visit(cwv);
-		Set<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
-		Configuration config = new CompilerBlobFactory().getDefaultConfiguration(workers);
-		int maxNumCores = 1;
-		Compiler compiler = new Compiler(workers, config, maxNumCores, null);
+//	public static void main(String[] args) throws Throwable {
+//		OneToOneElement<Integer, Integer> graph = new Pipeline(new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Adder(20), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)), new Splitjoin(new edu.mit.streamjit.api.DuplicateSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new Pipeline(new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Multiplier(2), new edu.mit.streamjit.impl.common.TestFilters.Multiplier(2)), new Pipeline(new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new edu.mit.streamjit.impl.common.TestFilters.Batcher(10), new edu.mit.streamjit.api.Identity(), new edu.mit.streamjit.impl.common.TestFilters.Batcher(10)), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2), new edu.mit.streamjit.impl.common.TestFilters.Batcher(10), new Splitjoin(new edu.mit.streamjit.api.RoundrobinSplitter(), new edu.mit.streamjit.api.RoundrobinJoiner(), new edu.mit.streamjit.impl.common.TestFilters.Adder(1), new edu.mit.streamjit.api.Identity(), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2), new edu.mit.streamjit.impl.common.TestFilters.Batcher(10), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)), new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Batcher(2), new edu.mit.streamjit.api.Identity(), new edu.mit.streamjit.impl.common.TestFilters.Adder(1), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)))), new edu.mit.streamjit.impl.common.TestFilters.Adder(20), new Pipeline(new edu.mit.streamjit.impl.common.TestFilters.Multiplier(3)), new edu.mit.streamjit.impl.common.TestFilters.Batcher(2)));
+//		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
+//		graph.visit(cwv);
+//		Set<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
+//		Configuration config = new CompilerBlobFactory().getDefaultConfiguration(workers);
+//		int maxNumCores = 1;
+//		Compiler compiler = new Compiler(workers, config, maxNumCores, null);
+//
+//		Blob blob = compiler.compile();
+//		Map<Token, Buffer> buffers = new HashMap<>();
+//		for (Token t : blob.getInputs()) {
+//			Buffer buf = Buffers.queueBuffer(new ArrayDeque<>(), Integer.MAX_VALUE);
+//			for (int i = 0; i < 1000; ++i)
+//				buf.write(i);
+//			buffers.put(t, buf);
+//		}
+//		for (Token t : blob.getOutputs())
+//			buffers.put(t, Buffers.queueBuffer(new ArrayDeque<>(), Integer.MAX_VALUE));
+//		blob.installBuffers(buffers);
+//
+//		final AtomicBoolean drained = new AtomicBoolean();
+//		blob.drain(new Runnable() {
+//			@Override
+//			public void run() {
+//				drained.set(true);
+//			}
+//		});
+//
+//		Runnable r = blob.getCoreCode(0);
+//		Buffer b = buffers.get(blob.getOutputs().iterator().next());
+//		while (!drained.get()) {
+//			r.run();
+//			Object o;
+//			while ((o = b.read()) != null)
+//				System.out.println(o);
+//		}
+//		System.out.println(blob.getDrainData());
+//	}
 
-		Blob blob = compiler.compile();
-		Map<Token, Buffer> buffers = new HashMap<>();
-		for (Token t : blob.getInputs()) {
-			Buffer buf = Buffers.queueBuffer(new ArrayDeque<>(), Integer.MAX_VALUE);
-			for (int i = 0; i < 1000; ++i)
-				buf.write(i);
-			buffers.put(t, buf);
-		}
-		for (Token t : blob.getOutputs())
-			buffers.put(t, Buffers.queueBuffer(new ArrayDeque<>(), Integer.MAX_VALUE));
-		blob.installBuffers(buffers);
-
-		final AtomicBoolean drained = new AtomicBoolean();
-		blob.drain(new Runnable() {
-			@Override
-			public void run() {
-				drained.set(true);
-			}
-		});
-
-		Runnable r = blob.getCoreCode(0);
-		Buffer b = buffers.get(blob.getOutputs().iterator().next());
-		while (!drained.get()) {
-			r.run();
-			Object o;
-			while ((o = b.read()) != null)
-				System.out.println(o);
-		}
-		System.out.println(blob.getDrainData());
+	public static void main(String[] args) {
+		StreamCompiler sc = new CompilerStreamCompiler().multiplier(64).maxNumCores(8);
+		Benchmark bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
+		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);
 	}
 }
