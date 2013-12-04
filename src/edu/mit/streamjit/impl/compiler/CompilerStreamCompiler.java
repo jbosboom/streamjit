@@ -4,6 +4,7 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -41,9 +42,19 @@ public final class CompilerStreamCompiler extends BlobHostStreamCompiler {
 
 	@Override
 	protected final Configuration getConfiguration(Set<Worker<?, ?>> workers) {
-		Configuration.Builder builder = Configuration.builder(super.getConfiguration(workers));
+		Configuration defaultConfiguration = super.getConfiguration(workers);
+		Configuration.Builder builder = Configuration.builder(defaultConfiguration);
 		Configuration.IntParameter multiplierParam = (Configuration.IntParameter)builder.removeParameter("multiplier");
 		builder.addParameter(new Configuration.IntParameter("multiplier", multiplierParam.getRange(), this.multiplier));
+
+		//For testing, try full data-parallelization across all cores.
+		int perCore = multiplier/maxNumCores;
+		for (Map.Entry<String, Configuration.Parameter> e : defaultConfiguration.getParametersMap().entrySet())
+			if (e.getKey().matches("node(\\d+)core(\\d+)iter")) {
+				Configuration.IntParameter p = (Configuration.IntParameter)builder.removeParameter(e.getKey());
+				builder.addParameter(new Configuration.IntParameter(e.getKey(), p.getRange(), perCore));
+			}
+
 		if (dumpFile != null)
 			builder.putExtraData("dumpFile", dumpFile);
 		return builder.build();
