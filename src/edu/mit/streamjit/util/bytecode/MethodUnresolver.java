@@ -661,17 +661,20 @@ public final class MethodUnresolver {
 			Object c = ((Constant<?>)v).getConstant();
 			if (c == null)
 				insns.add(new InsnNode(Opcodes.ACONST_NULL));
-			else if (c instanceof Boolean)
-				if ((Boolean)c)
-					insns.add(new LdcInsnNode(1));
-				else
-					insns.add(new LdcInsnNode(0));
-			else if (c instanceof Character)
-				insns.add(new LdcInsnNode((int)((Character)c).charValue()));
-			else if (c instanceof Byte || c instanceof Short)
-				insns.add(new LdcInsnNode(((Number)c).intValue()));
 			else if (c instanceof Class)
 				insns.add(new LdcInsnNode(org.objectweb.asm.Type.getType((Class)c)));
+			else if (c instanceof Boolean)
+				insns.add(loadIntegerConstant(((Boolean)c) ? 1 : 0));
+			else if (c instanceof Character)
+				insns.add(loadIntegerConstant((int)((Character)c).charValue()));
+			else if (c instanceof Byte || c instanceof Short || c instanceof Integer)
+				insns.add(loadIntegerConstant(((Number)c).intValue()));
+			else if (c instanceof Long)
+				insns.add(loadLongConstant((Long)c));
+			else if (c instanceof Float)
+				insns.add(loadFloatConstant((Float)c));
+			else if (c instanceof Double)
+				insns.add(loadDoubleConstant((Double)c));
 			else
 				insns.add(new LdcInsnNode(c));
 			return;
@@ -692,6 +695,54 @@ public final class MethodUnresolver {
 			insns.add(new VarInsnNode(Opcodes.ILOAD, reg));
 		else
 			throw new AssertionError("unloadable value: "+v);
+	}
+
+	private AbstractInsnNode loadIntegerConstant(int c) {
+		if (c == -1)
+			return new InsnNode(Opcodes.ICONST_M1);
+		if (c == 0)
+			return new InsnNode(Opcodes.ICONST_0);
+		if (c == 1)
+			return new InsnNode(Opcodes.ICONST_1);
+		if (c == 2)
+			return new InsnNode(Opcodes.ICONST_2);
+		if (c == 3)
+			return new InsnNode(Opcodes.ICONST_3);
+		if (c == 4)
+			return new InsnNode(Opcodes.ICONST_4);
+		if (c == 5)
+			return new InsnNode(Opcodes.ICONST_5);
+		if (Byte.MIN_VALUE <= c && c <= Byte.MAX_VALUE)
+			return new IntInsnNode(Opcodes.BIPUSH, c);
+		if (Short.MIN_VALUE <= c && c <= Short.MAX_VALUE)
+			return new IntInsnNode(Opcodes.SIPUSH, c);
+		return new LdcInsnNode(c);
+	}
+
+	private AbstractInsnNode loadLongConstant(long c) {
+		if (c == 0)
+			return new InsnNode(Opcodes.LCONST_0);
+		if (c == 1)
+			return new InsnNode(Opcodes.LCONST_1);
+		return new LdcInsnNode(c);
+	}
+
+	private AbstractInsnNode loadFloatConstant(float c) {
+		if (c == 0.0f)
+			return new InsnNode(Opcodes.FCONST_0);
+		if (c == 1.0f)
+			return new InsnNode(Opcodes.FCONST_1);
+		if (c == 2.0f)
+			return new InsnNode(Opcodes.FCONST_2);
+		return new LdcInsnNode(c);
+	}
+
+	private AbstractInsnNode loadDoubleConstant(double c) {
+		if (c == 0.0)
+			return new InsnNode(Opcodes.DCONST_0);
+		if (c == 1.0)
+			return new InsnNode(Opcodes.DCONST_1);
+		return new LdcInsnNode(c);
 	}
 
 	private void store(Value v, InsnList insns) {
