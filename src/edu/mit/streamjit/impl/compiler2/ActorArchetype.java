@@ -2,14 +2,11 @@ package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimaps;
-import com.google.common.primitives.Primitives;
 import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Joiner;
@@ -30,7 +27,6 @@ import edu.mit.streamjit.util.bytecode.Method;
 import edu.mit.streamjit.util.bytecode.Modifier;
 import edu.mit.streamjit.util.bytecode.Module;
 import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
-import edu.mit.streamjit.util.bytecode.User;
 import edu.mit.streamjit.util.bytecode.Value;
 import edu.mit.streamjit.util.bytecode.insts.ArrayLengthInst;
 import edu.mit.streamjit.util.bytecode.insts.ArrayLoadInst;
@@ -129,94 +125,6 @@ public class ActorArchetype {
 
 	public boolean isStateful() {
 		return ReflectionUtils.getAllSupertypes(workerClass()).contains(StatefulFilter.class);
-	}
-
-	public boolean canUnboxInput(TypeToken<?> inputType) {
-		Class<?> rawInput = inputType.getRawType();
-		if (!Primitives.isWrapperType(rawInput)) return false;
-		Class<?> primitiveType = Primitives.unwrap(rawInput);
-
-		Module module = workerKlass.getParent();
-		Klass filterKlass = module.getKlass(Filter.class);
-		Klass splitterKlass = module.getKlass(Splitter.class);
-		Klass joinerKlass = module.getKlass(Joiner.class);
-		Method peek1Filter = filterKlass.getMethod("peek", module.types().getMethodType(Object.class, Filter.class, int.class));
-		assert peek1Filter != null;
-		Method peek1Splitter = splitterKlass.getMethod("peek", module.types().getMethodType(Object.class, Splitter.class, int.class));
-		assert peek1Splitter != null;
-		Method pop1Filter = filterKlass.getMethod("pop", module.types().getMethodType(Object.class, Filter.class));
-		assert pop1Filter != null;
-		Method pop1Splitter = splitterKlass.getMethod("pop", module.types().getMethodType(Object.class, Splitter.class));
-		assert pop1Splitter != null;
-		Method peek2 = joinerKlass.getMethod("peek", module.types().getMethodType(Object.class, Joiner.class, int.class, int.class));
-		assert peek2 != null;
-		Method pop2 = joinerKlass.getMethod("pop", module.types().getMethodType(Object.class, Joiner.class, int.class));
-		assert pop2 != null;
-		ImmutableSet<Method> inputMethods = ImmutableSet.of(peek1Filter, peek1Splitter, pop1Filter, pop1Splitter, peek2, pop2);
-
-		Method work = workerKlass.getMethodByVirtual("work", module.types().getMethodType(void.class, workerClass()));
-		work.resolve();
-		List<Value> inputs = new ArrayList<>();
-		for (BasicBlock block : work.basicBlocks())
-			for (Instruction inst : block.instructions())
-				if (inst instanceof CallInst &&
-						inputMethods.contains(((CallInst)inst).getMethod())) {
-					inputs.add(inst);
-				}
-
-		//The only use of the value should be a CastInst to the input type,
-		//followed by the proper fooValue() call.  TODO: tolerate more uses?
-		Method fooValue = module.getKlass(rawInput).getMethod(primitiveType.getCanonicalName()+"Value", module.types().getMethodType(primitiveType, rawInput));
-		assert fooValue != null;
-		for (Value v : inputs)
-			for (User u : v.users().elementSet()) {
-				if (!(u instanceof CastInst))
-					return false;
-				for (User t : u.users().elementSet()) {
-					if (!(t instanceof CallInst))
-						return false;
-					if (((CallInst)t).getMethod() != fooValue)
-						return false;
-				}
-			}
-		return true;
-	}
-
-	public boolean canUnboxOutput(TypeToken<?> outputType) {
-		Class<?> rawOutput = outputType.getRawType();
-		if (!Primitives.isWrapperType(rawOutput)) return false;
-		Class<?> primitiveType = Primitives.unwrap(rawOutput);
-
-		Module module = workerKlass.getParent();
-		Klass filterKlass = module.getKlass(Filter.class);
-		Klass splitterKlass = module.getKlass(Splitter.class);
-		Klass joinerKlass = module.getKlass(Joiner.class);
-		Method push1Filter = filterKlass.getMethod("push", module.types().getMethodType(void.class, Filter.class, Object.class));
-		assert push1Filter != null;
-		Method push1Joiner = joinerKlass.getMethod("push", module.types().getMethodType(void.class, Joiner.class, Object.class));
-		assert push1Joiner != null;
-		Method push2 = splitterKlass.getMethod("push", module.types().getMethodType(void.class, Splitter.class, int.class, Object.class));
-		assert push2 != null;
-
-		Method work = workerKlass.getMethodByVirtual("work", module.types().getMethodType(void.class, workerClass()));
-		work.resolve();
-		List<Value> outputs = new ArrayList<>();
-		for (BasicBlock block : work.basicBlocks())
-			for (CallInst inst : FluentIterable.from(block.instructions()).filter(CallInst.class))
-				if (inst.getMethod().equals(push1Filter) || inst.getMethod().equals(push1Joiner))
-					outputs.add(inst.getArgument(1));
-				else if (inst.getMethod().equals(push2))
-					outputs.add(inst.getArgument(2));
-
-		//The pushed value must come from a CallInst to the wrapper type's
-		//valueOf() method.
-		//TODO: support push(peek(i)).  push(peek(i).intValue() already works)
-		Method valueOf = module.getKlass(rawOutput).getMethod("valueOf", module.types().getMethodType(rawOutput, primitiveType));
-		assert valueOf != null;
-		for (Value v : outputs)
-			if (!(v instanceof CallInst) || ((CallInst)v).getMethod() != valueOf)
-				return false;
-		return true;
 	}
 
 	public void generateCode(String packageName, ModuleClassLoader loader, Iterable<WorkerActor> actors) {
