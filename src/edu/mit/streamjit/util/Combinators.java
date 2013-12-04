@@ -108,9 +108,10 @@ public final class Combinators {
 	}
 
 	/**
-	 * Returns a MethodHandle that calls the given no-arg MethodHandles in
-	 * sequence, ignoring any return values.  If no handles are given, the
-	 * returned handle does nothing
+	 * Returns a MethodHandle that calls the given method handles in sequence,
+	 * ignoring their return values.  The given handles must all take the same
+	 * parameters.  They may have any return type, but any returned values will
+	 * be ignored.  If no handles are given, the returned handle does nothing.
 	 * @param handles the handles to invoke
 	 * @return a MethodHandle approximating semicolons
 	 */
