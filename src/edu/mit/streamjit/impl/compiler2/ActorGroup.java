@@ -279,14 +279,20 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		Map<int[], int[]> requiredCopies = new LinkedHashMap<>();
 		for (Actor a : actors())
 			loopHandles.add(makeWorkerLoop((WorkerActor)a, withRWHandlesBound.get(a), iterations.lowerEndpoint(), requiredCopies));
+		MethodHandle groupLoop = MethodHandles.insertArguments(OVERALL_GROUP_LOOP, 0,
+				Combinators.semicolon(loopHandles), iterations.lowerEndpoint(), iterations.upperEndpoint());
+		if (requiredCopies.isEmpty())
+			return groupLoop;
+
 		int[][] copies = new int[requiredCopies.size()*2][];
 		int i = 0;
 		for (Map.Entry<int[], int[]> e : requiredCopies.entrySet()) {
 			copies[i++] = e.getKey();
 			copies[i++] = e.getValue();
 		}
-		return MethodHandles.insertArguments(OVERALL_GROUP_LOOP, 0,
-				copies, Combinators.semicolon(loopHandles), iterations.lowerEndpoint(), iterations.upperEndpoint());
+		return Combinators.semicolon(
+				MethodHandles.insertArguments(REINITIALIZE_ARRAYS, 0, (Object)copies),
+				groupLoop);
 	}
 
 	/**
@@ -339,7 +345,8 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	private static final MethodHandle FILTER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_filterLoop", void.class, MethodHandle.class, int.class, int.class, int.class, int.class);
 	private static final MethodHandle SPLITTER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_splitterLoop", void.class, MethodHandle.class, int.class, int.class, int[].class, int.class);
 	private static final MethodHandle JOINER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_joinerLoop", void.class, MethodHandle.class, int.class, int[].class, int.class, int.class);
-	private static final MethodHandle OVERALL_GROUP_LOOP = findStatic(LOOKUP, ActorGroup.class, "_overallGroupLoop", void.class, int[][].class, MethodHandle.class, int.class, int.class);
+	private static final MethodHandle REINITIALIZE_ARRAYS = findStatic(LOOKUP, ActorGroup.class, "_reinitializeArrays", void.class, int[][].class);
+	private static final MethodHandle OVERALL_GROUP_LOOP = findStatic(LOOKUP, ActorGroup.class, "_overallGroupLoop", void.class, MethodHandle.class, int.class, int.class);
 	private static void _filterLoop(MethodHandle work, int subiterations, int pop, int push, int iteration) throws Throwable {
 		for (int i = iteration*subiterations; i < (iteration+1)*subiterations; ++i)
 			work.invokeExact(i * pop, i * push);
@@ -352,9 +359,11 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		for (int i = iteration*subiterations; i < (iteration+1)*subiterations; ++i)
 			work.invokeExact(readIndices, i * push);
 	}
-	private static void _overallGroupLoop(int[][] indexArrays, MethodHandle loopBody, int begin, int end) throws Throwable {
+	private static void _reinitializeArrays(int[][] indexArrays) {
 		for (int i = 0; i < indexArrays.length; i += 2)
 			System.arraycopy(indexArrays[i], 0, indexArrays[i+1], 0, indexArrays[i].length);
+	}
+	private static void _overallGroupLoop(MethodHandle loopBody, int begin, int end) throws Throwable {
 		for (int i = begin; i < end; ++i)
 			loopBody.invokeExact(i);
 	}
