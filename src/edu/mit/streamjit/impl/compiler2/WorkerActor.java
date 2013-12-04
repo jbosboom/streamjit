@@ -21,7 +21,7 @@ public final class WorkerActor extends Actor {
 	private final Worker<?, ?> worker;
 	private final ActorArchetype archetype;
 	public WorkerActor(Worker<?, ?> worker, ActorArchetype archetype) {
-		super(archetype.inputType(), archetype.outputType());
+		super(archetype.declaredInputType(), archetype.declaredOutputType());
 		this.worker = worker;
 		this.archetype = archetype;
 	}

@@ -107,7 +107,7 @@ public class ActorArchetype {
 	 * return T.
 	 * @return the static input type of the worker class
 	 */
-	public TypeToken<?> inputType() {
+	public TypeToken<?> declaredInputType() {
 		ParameterizedType t = (ParameterizedType)TypeToken.of(workerClass).getSupertype(StreamElement.class).getType();
 		return TypeToken.of(t.getActualTypeArguments()[0]);
 	}
@@ -118,7 +118,7 @@ public class ActorArchetype {
 	 * return T.
 	 * @return the static output type of the worker class
 	 */
-	public TypeToken<?> outputType() {
+	public TypeToken<?> declaredOutputType() {
 		ParameterizedType t = (ParameterizedType)TypeToken.of(workerClass).getSupertype(StreamElement.class).getType();
 		return TypeToken.of(t.getActualTypeArguments()[1]);
 	}
