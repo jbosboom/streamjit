@@ -518,7 +518,8 @@ public class Compiler2 {
 	private final MethodHandle ROUNDROBIN_TRANSFER_FUNCTION = findStatic(LOOKUP, Compiler2.class, "_roundrobinTransferFunction", int.class, int.class, int.class, int.class, int.class);
 	//TODO: build this directly out of MethodHandles?
 	private static int _roundrobinTransferFunction(int weight, int prefixSum, int N, int i) {
-		return N*(i/weight) + prefixSum + IntMath.mod(i, weight);
+		//assumes nonnegative indices
+		return N*(i/weight) + prefixSum + (i % weight);
 	}
 
 	/**
