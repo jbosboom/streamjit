@@ -3,6 +3,7 @@ package edu.mit.streamjit.util.bytecode;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.primitives.Primitives;
 import com.google.common.reflect.Invokable;
 import edu.mit.streamjit.util.bytecode.insts.BinaryInst;
@@ -11,10 +12,12 @@ import edu.mit.streamjit.util.bytecode.insts.CastInst;
 import edu.mit.streamjit.util.bytecode.insts.Instruction;
 import edu.mit.streamjit.util.bytecode.insts.LoadInst;
 import edu.mit.streamjit.util.bytecode.insts.PhiInst;
+import edu.mit.streamjit.util.bytecode.insts.StoreInst;
 import edu.mit.streamjit.util.bytecode.types.PrimitiveType;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
@@ -42,6 +45,7 @@ public final class DeadCodeElimination {
 			makingProgress = false;
 			changed |= makingProgress |= eliminateUnusedSideEffectFreeInsts(block);
 			changed |= makingProgress |= removeDeadCasts(block);
+			changed |= makingProgress |= removeDeadStores(block);
 			changed |= makingProgress |= eliminateBoxUnbox(block);
 			changed |= makingProgress |= removeUnusedKnownSideEffectFreeCalls(block);
 			changed |= makingProgress |= eliminateUselessPhis(block);
@@ -205,6 +209,62 @@ public final class DeadCodeElimination {
 		return changed;
 	}
 
+	public static boolean removeDeadStores(Method method) {
+		boolean changed = false, makingProgress;
+		do {
+			makingProgress = false;
+			for (BasicBlock block : method.basicBlocks())
+				changed |= makingProgress |= removeDeadStores(block);
+		} while (makingProgress);
+		return changed;
+	}
+
+	/**
+	 * Removes stores to local variables with no following loads.
+	 * @param block the block to remove dead stores in
+	 * @return true iff changes were made
+	 */
+	public static boolean removeDeadStores(BasicBlock block) {
+		boolean changed = false, makingProgress;
+		do {
+			makingProgress = false;
+			next_instruction: for (Instruction i : ImmutableList.copyOf(block.instructions())) {
+				if (!(i instanceof StoreInst)) continue;
+				StoreInst store = (StoreInst)i;
+				if (!(store.getLocation() instanceof LocalVariable)) continue;
+				ImmutableSet<Instruction> followers = followingInstructions(store);
+				for (Instruction f : followers)
+					if (f instanceof LoadInst && ((LoadInst)f).getLocation().equals(store.getLocation()))
+						continue next_instruction;
+				store.eraseFromParent();
+				changed = makingProgress = true;
+			}
+		} while (makingProgress);
+		return changed;
+	}
+
+	/**
+	 * Returns all instructions that could follow the given instruction in an
+	 * execution.  The set may include start itself (if start is in a loop, for
+	 * example).
+	 * @param start the starting point
+	 * @return a set containing all instructions that follow start
+	 */
+	private static ImmutableSet<Instruction> followingInstructions(Instruction start) {
+		ImmutableSet.Builder<Instruction> followers = ImmutableSet.builder();
+		BasicBlock startBlock = start.getParent();
+		int startIndex = startBlock.instructions().indexOf(start);
+		followers.addAll(startBlock.instructions().subList(startIndex+1, startBlock.instructions().size()));
+
+		List<BasicBlock> worklist = Lists.newArrayList(startBlock.successors());
+		for (int i = 0; i < worklist.size(); ++i) {
+			followers.addAll(worklist.get(i).instructions());
+			for (BasicBlock s : worklist.get(i).successors())
+				if (!worklist.contains(s))
+					worklist.add(s);
+		}
+		return followers.build();
+	}
 
 	public static boolean removeUnusedKnownSideEffectFreeCalls(Method method) {
 		boolean changed = false, makingProgress;
