@@ -266,13 +266,16 @@ public final class Benchmarker {
 	private static Result run(Benchmark benchmark, Dataset input, StreamCompiler compiler) {
 		long compileMillis, runMillis;
 		VerifyingOutputBufferFactory verifier = null;
+		OutputCounter counter;
 		if (input.output() != null)
-			verifier = new VerifyingOutputBufferFactory(input.output());
+			counter = verifier = new VerifyingOutputBufferFactory(input.output());
+		else
+			counter = new CountingOutputBufferFactory();
 		try {
 			Stopwatch stopwatch = new Stopwatch();
 			stopwatch.start();
 			CompiledStream stream = compiler.compile(benchmark.instantiate(), input.input(),
-					verifier != null ? OutputBufferFactory.wrap(verifier) : Output.blackHole());
+					OutputBufferFactory.wrap((OutputBufferFactory)counter));
 			compileMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 			stream.awaitDrained(TIMEOUT_DURATION, TIMEOUT_UNIT);
 			stopwatch.stop();
@@ -284,13 +287,14 @@ public final class Benchmarker {
 		} catch (Throwable t) {
 			return Result.exception(benchmark, input, compiler, t);
 		}
+		long outputs = counter.getCount();
 		if (verifier != null) {
 			verifier.buffer.finish();
 			if (!verifier.buffer.correct())
 				return Result.wrongOutput(benchmark, input, compiler, compileMillis, runMillis,
 						verifier.buffer.extents, verifier.buffer.missingOutput, verifier.buffer.excessOutput);
 		}
-		return Result.ok(benchmark, input, compiler, compileMillis, runMillis);
+		return Result.ok(benchmark, input, compiler, compileMillis, runMillis, outputs);
 	}
 
 	public static final class Result {
@@ -305,7 +309,8 @@ public final class Benchmarker {
 		private final ImmutableList<Object> missingOutput, excessOutput;
 		private final Throwable throwable;
 		private final long compileMillis, runMillis;
-		private Result(Kind kind, Benchmark benchmark, Dataset dataset, StreamCompiler compiler, List<Extent> wrongOutput, List<Object> missingOutput, List<Object> excessOutput, Throwable throwable, long compileMillis, long runMillis) {
+		private final long outputsProduced;
+		private Result(Kind kind, Benchmark benchmark, Dataset dataset, StreamCompiler compiler, List<Extent> wrongOutput, List<Object> missingOutput, List<Object> excessOutput, Throwable throwable, long compileMillis, long runMillis, long outputsProduced) {
 			this.kind = kind;
 			this.benchmark = benchmark;
 			this.dataset = dataset;
@@ -316,18 +321,19 @@ public final class Benchmarker {
 			this.throwable = throwable;
 			this.compileMillis = compileMillis;
 			this.runMillis = runMillis;
+			this.outputsProduced = outputsProduced;
 		}
-		private static Result ok(Benchmark benchmark, Dataset dataset, StreamCompiler compiler, long compileMillis, long runMillis) {
-			return new Result(Kind.OK, benchmark, dataset, compiler, null, null, null, null, compileMillis, runMillis);
+		private static Result ok(Benchmark benchmark, Dataset dataset, StreamCompiler compiler, long compileMillis, long runMillis, long outputsProduced) {
+			return new Result(Kind.OK, benchmark, dataset, compiler, null, null, null, null, compileMillis, runMillis, outputsProduced);
 		}
 		private static Result wrongOutput(Benchmark benchmark, Dataset dataset, StreamCompiler compiler, long compileMillis, long runMillis, List<Extent> wrongOutput, List<Object> missingOutput, List<Object> excessOutput) {
-			return new Result(Kind.WRONG_OUTPUT, benchmark, dataset, compiler, wrongOutput, missingOutput, excessOutput, null, compileMillis, runMillis);
+			return new Result(Kind.WRONG_OUTPUT, benchmark, dataset, compiler, wrongOutput, missingOutput, excessOutput, null, compileMillis, runMillis, -1);
 		}
 		private static Result exception(Benchmark benchmark, Dataset dataset, StreamCompiler compiler, Throwable throwable) {
-			return new Result(Kind.EXCEPTION, benchmark, dataset, compiler, null, null, null, throwable, -1, -1);
+			return new Result(Kind.EXCEPTION, benchmark, dataset, compiler, null, null, null, throwable, -1, -1, -1);
 		}
 		private static Result timeout(Benchmark benchmark, Dataset dataset, StreamCompiler compiler) {
-			return new Result(Kind.TIMEOUT, benchmark, dataset, compiler, null, null, null, null, -1, -1);
+			return new Result(Kind.TIMEOUT, benchmark, dataset, compiler, null, null, null, null, -1, -1, -1);
 		}
 		public void print(OutputStream stream) {
 			print(stream, new HumanResultFormatter());
@@ -367,7 +373,7 @@ public final class Benchmarker {
 			StringBuilder sb = new StringBuilder();
 			String statusText = "BUG";
 			if (result.kind == Result.Kind.OK)
-				statusText = String.format("%d ms compile, %d ms run", result.compileMillis, result.runMillis);
+				statusText = String.format("%d ms compile, %d ms run; %d items output, %f ms/output", result.compileMillis, result.runMillis, result.outputsProduced, ((double)result.runMillis)/result.outputsProduced);
 			else if (result.kind == Result.Kind.WRONG_OUTPUT)
 				statusText = "wrong output";
 			else if (result.kind == Result.Kind.EXCEPTION)
@@ -418,7 +424,11 @@ public final class Benchmarker {
 		}
 	}
 
-	private static final class VerifyingOutputBufferFactory extends OutputBufferFactory {
+	private static interface OutputCounter {
+		public long getCount();
+	}
+
+	private static final class VerifyingOutputBufferFactory extends OutputBufferFactory implements OutputCounter {
 		private final Input<Object> expectedOutput;
 		private VerifyingBuffer buffer;
 		private VerifyingOutputBufferFactory(Input<Object> expectedOutput) {
@@ -429,6 +439,11 @@ public final class Benchmarker {
 		@Override
 		public Buffer createWritableBuffer(int writerMinSize) {
 			return buffer;
+		}
+
+		@Override
+		public long getCount() {
+			return buffer.index;
 		}
 
 		private final class VerifyingBuffer extends AbstractWriteOnlyBuffer {
@@ -463,6 +478,31 @@ public final class Benchmarker {
 			}
 			public boolean correct() {
 				return excessOutput.isEmpty() && missingOutput.isEmpty() && extents.isEmpty();
+			}
+		}
+	}
+
+	private static final class CountingOutputBufferFactory extends OutputBufferFactory implements OutputCounter {
+		private CountingBuffer b = new CountingBuffer();
+		@Override
+		public long getCount() {
+			return b.count;
+		}
+		@Override
+		public Buffer createWritableBuffer(int writerMinSize) {
+			return b;
+		}
+		private static final class CountingBuffer extends AbstractWriteOnlyBuffer {
+			private long count;
+			@Override
+			public boolean write(Object t) {
+				++count;
+				return true;
+			}
+			@Override
+			public int write(Object[] data, int offset, int length) {
+				count += length;
+				return length;
 			}
 		}
 	}
