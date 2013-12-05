@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.math.IntMath;
+import edu.mit.streamjit.impl.blob.Buffer;
 import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -12,7 +13,7 @@ import java.lang.reflect.Array;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 10/10/2013
  */
-public class CircularArrayConcreteStorage implements ConcreteStorage {
+public class CircularArrayConcreteStorage implements BulkWritableConcreteStorage {
 	private static final Lookup LOOKUP = MethodHandles.lookup();
 	private static final MethodHandle INDEX = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "index", int.class, int.class);
 	private static final MethodHandle ADJUST = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "adjust", void.class);;
@@ -80,6 +81,19 @@ public class CircularArrayConcreteStorage implements ConcreteStorage {
 	@Override
 	public MethodHandle adjustHandle() {
 		return adjustHandle;
+	}
+
+	@Override
+	public void bulkWrite(Buffer source, int index, int count) {
+		assert type().equals(Object.class);
+		index = index(index);
+		int countBeforeEnd = Math.min(count, capacity - index);
+		int itemsRead = source.read((Object[])array, index, countBeforeEnd);
+		assert itemsRead == countBeforeEnd;
+		int remaining = count - itemsRead;
+		int secondItemsRead = source.read((Object[])array, 0, remaining);
+		assert secondItemsRead == remaining;
+		assert itemsRead + secondItemsRead == count;
 	}
 
 	private int index(int physicalIndex) {

@@ -758,7 +758,7 @@ public class Compiler2 {
 				ConcreteStorage storage = initStorage.get(Iterables.getOnlyElement(ta.isInput() ? g.outputs() : g.inputs()));
 				int executions = initSchedule.get(g);
 				if (ta.isInput())
-					initReadInstructions.add(new TokenReadInstruction(g, storage, executions));
+					initReadInstructions.add(makeReadInstruction(ta, storage, executions));
 				else
 					initWriteInstructions.add(new TokenWriteInstruction(g, storage, executions));
 			}
@@ -802,7 +802,7 @@ public class Compiler2 {
 				ConcreteStorage storage = steadyStateStorage.get(Iterables.getOnlyElement(ta.isInput() ? g.outputs() : g.inputs()));
 				int executions = externalSchedule.get(g);
 				if (ta.isInput())
-					readInstructions.add(new TokenReadInstruction(g, storage, executions));
+					readInstructions.add(makeReadInstruction(ta, storage, executions));
 				else
 					writeInstructions.add(new TokenWriteInstruction(g, storage, executions));
 			}
@@ -850,6 +850,36 @@ public class Compiler2 {
 		//arbitrarily put them on core 0.
 		if (!toBeAllocated.isEmpty())
 			cores.get(0).allocate(g, toBeAllocated);
+	}
+
+	private ReadInstruction makeReadInstruction(TokenActor a, ConcreteStorage cs, int count) {
+		assert a.isInput();
+		Storage s = Iterables.getOnlyElement(a.outputs());
+		MethodHandle idxFxn = Iterables.getOnlyElement(a.outputIndexFunctions());
+		ReadInstruction retval;
+		if (s.type().equals(Object.class) &&
+				cs instanceof BulkWritableConcreteStorage &&
+				contiguouslyIncreasing(idxFxn, 0, count)) {
+			retval = new BulkReadInstruction(a, (BulkWritableConcreteStorage)cs, count);
+		} else
+			retval = new TokenReadInstruction(a, cs, count);
+		System.out.println("Made a "+retval+" for "+a.token());
+		return retval;
+	}
+
+	private boolean contiguouslyIncreasing(MethodHandle idxFxn, int start, int count) {
+		try {
+			int prev = (int)idxFxn.invokeExact(start);
+			for (int i = start+1; i < count; ++i) {
+				int next = (int)idxFxn.invokeExact(i);
+				if (next != (prev + 1))
+					return false;
+				prev = next;
+			}
+			return true;
+		} catch (Throwable ex) {
+			throw new AssertionError("index functions should not throw", ex);
+		}
 	}
 
 	/**
@@ -991,6 +1021,46 @@ public class Compiler2 {
 		}
 	}
 
+	private static final class BulkReadInstruction implements ReadInstruction {
+		private final Token token;
+		private final BulkWritableConcreteStorage storage;
+		private final int index, count;
+		private Buffer buffer;
+		private BulkReadInstruction(TokenActor a, BulkWritableConcreteStorage storage, int count) {
+			assert a.isInput() : a;
+			this.token = a.token();
+			this.storage = storage;
+			this.index = a.translateOutputIndex(0, 0);
+			this.count = count;
+		}
+		@Override
+		public void init(Map<Token, Buffer> buffers) {
+			this.buffer = buffers.get(token);
+			if (buffer == null)
+				throw new IllegalArgumentException("no buffer for "+token);
+		}
+		@Override
+		public Map<Token, Integer> getMinimumBufferCapacity() {
+			return ImmutableMap.of(token, count);
+		}
+		@Override
+		public boolean load() {
+			if (buffer.size() < count)
+				return false;
+			storage.bulkWrite(buffer, index, count);
+			storage.sync();
+			return true;
+		}
+		@Override
+		public Map<Token, Object[]> unload() {
+			Object[] data = new Object[count];
+			for (int i = index; i < count; ++i) {
+				data[i - index] = storage.read(i);
+			}
+			return ImmutableMap.of(token, data);
+		}
+	}
+
 	/**
 	 * TODO: consider using read/write handles instead of read(), write()?
 	 * TODO: if the index function is a contiguous range and the storage is
@@ -1002,15 +1072,12 @@ public class Compiler2 {
 		private final ConcreteStorage storage;
 		private final int count;
 		private Buffer buffer;
-		private TokenReadInstruction(ActorGroup tokenGroup, ConcreteStorage storage, int executions) {
-			assert tokenGroup.isTokenGroup();
-			TokenActor actor = (TokenActor)Iterables.getOnlyElement(tokenGroup.actors());
-			assert actor.isInput();
-
-			this.token = actor.token();
-			this.idxFxn = Iterables.getOnlyElement(actor.outputIndexFunctions());
+		private TokenReadInstruction(TokenActor a, ConcreteStorage storage, int count) {
+			assert a.isInput() : a;
+			this.token = a.token();
 			this.storage = storage;
-			this.count = executions;
+			this.idxFxn = Iterables.getOnlyElement(a.outputIndexFunctions());
+			this.count = count;
 		}
 		@Override
 		public void init(Map<Token, Buffer> buffers) {
