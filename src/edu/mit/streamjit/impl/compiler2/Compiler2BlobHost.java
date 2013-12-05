@@ -14,6 +14,7 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
+import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
@@ -51,6 +52,7 @@ public class Compiler2BlobHost implements Blob {
 
 	/* provided by Compiler2 */
 	private final ImmutableSet<Worker<?, ?>> workers;
+	private final Configuration config;
 	private final ImmutableSortedSet<Token> inputTokens, outputTokens;
 	private final MethodHandle initCode;
 	private final ImmutableList<MethodHandle> steadyStateCode;
@@ -96,6 +98,7 @@ public class Compiler2BlobHost implements Blob {
 	private volatile DrainData drainData;
 
 	public Compiler2BlobHost(ImmutableSet<Worker<?, ?>> workers,
+			Configuration configuration,
 			ImmutableSortedSet<Token> inputTokens,
 			ImmutableSortedSet<Token> outputTokens,
 			MethodHandle initCode,
@@ -108,6 +111,7 @@ public class Compiler2BlobHost implements Blob {
 			List<WriteInstruction> writeInstructions,
 			List<DrainInstruction> drainInstructions) {
 		this.workers = workers;
+		this.config = configuration;
 		this.inputTokens = inputTokens;
 		this.outputTokens = outputTokens;
 		this.initCode = initCode;

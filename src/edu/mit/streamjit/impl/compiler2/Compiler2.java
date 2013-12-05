@@ -1173,7 +1173,8 @@ public class Compiler2 {
 		ImmutableList.Builder<MethodHandle> storageAdjusts = ImmutableList.builder();
 		for (ConcreteStorage s : steadyStateStorage.values())
 			storageAdjusts.add(s.adjustHandle());
-		return new Compiler2BlobHost(workers, inputTokens.build(), outputTokens.build(),
+		return new Compiler2BlobHost(workers, config,
+				inputTokens.build(), outputTokens.build(),
 				initCode, steadyStateCode,
 				storageAdjusts.build(),
 				initReadInstructions, initWriteInstructions, migrationInstructions,
