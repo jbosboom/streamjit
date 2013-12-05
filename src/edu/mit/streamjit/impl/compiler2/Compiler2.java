@@ -789,7 +789,7 @@ public class Compiler2 {
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
 		for (int i = 0; i < maxNumCores; ++i)
-			ssCores.add(new Core(storage, steadyStateStorage, CircularArrayConcreteStorage.factory()));
+			ssCores.add(new Core(storage, steadyStateStorage, InternalArrayConcreteStorage.factory()));
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				allocateGroup(g, ssCores);
