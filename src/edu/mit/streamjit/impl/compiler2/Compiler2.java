@@ -857,7 +857,7 @@ public class Compiler2 {
 		Storage s = Iterables.getOnlyElement(a.outputs());
 		MethodHandle idxFxn = Iterables.getOnlyElement(a.outputIndexFunctions());
 		ReadInstruction retval;
-		if (s.type().equals(Object.class) &&
+		if (!s.type().isPrimitive() &&
 				cs instanceof BulkWritableConcreteStorage &&
 				contiguouslyIncreasing(idxFxn, 0, count)) {
 			retval = new BulkReadInstruction(a, (BulkWritableConcreteStorage)cs, count);
