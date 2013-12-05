@@ -5,6 +5,7 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.Workers;
 import java.util.Set;
 
@@ -44,6 +45,8 @@ public final class Compiler2BlobFactory implements BlobFactory {
 		for (Worker<?, ?> w : workers)
 			if (Compiler2.REMOVABLE_WORKERS.contains(w.getClass()))
 				builder.addParameter(Configuration.SwitchParameter.create("remove"+Workers.getIdentifier(w), true));
+		for (IOInfo i : IOInfo.allEdges(workers))
+			builder.addParameter(Configuration.SwitchParameter.create("unboxStorage"+i.token(), i.isInternal()));
 		for (Worker<?, ?> w : workers) {
 			builder.addParameter(Configuration.SwitchParameter.create("unboxInput"+Workers.getIdentifier(w), true));
 			builder.addParameter(Configuration.SwitchParameter.create("unboxOutput"+Workers.getIdentifier(w), true));

@@ -688,12 +688,14 @@ public class Compiler2 {
 	 */
 	private void unbox() {
 		for (Storage s : storage) {
-			//TODO: make this tunable?  Would require giving storage some ID.
-			TypeToken<?> contents = s.contentType();
-			if (!Primitives.isWrapperType(contents.getRawType())) continue;
-			Class<?> type = contents.unwrap().getRawType();
-			s.setType(type);
-			System.out.println("unboxed "+s+" to "+type);
+			SwitchParameter<Boolean> unboxStorage = config.getParameter("unboxStorage"+s.id(), SwitchParameter.class, Boolean.class);
+			if (unboxStorage.getValue()) {
+				TypeToken<?> contents = s.contentType();
+				Class<?> type = contents.unwrap().getRawType();
+				s.setType(type);
+				if (!s.type().equals(contents.getRawType()))
+					System.out.println("unboxed "+s+" to "+type);
+			}
 		}
 
 		for (WorkerActor a : Iterables.filter(actors, WorkerActor.class)) {
