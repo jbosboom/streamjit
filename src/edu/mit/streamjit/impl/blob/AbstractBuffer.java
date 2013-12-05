@@ -18,8 +18,10 @@ public abstract class AbstractBuffer implements Buffer {
 	public int read(Object[] data, int offset, int length) {
 		int read = 0;
 		Object obj;
-		while (read < length && (obj = read()) != null)
+		while (read < length && (obj = read()) != null) {
 			data[offset++] = obj;
+			++read;
+		}
 		return read;
 	}
 
