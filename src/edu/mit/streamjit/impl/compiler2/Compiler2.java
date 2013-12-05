@@ -1063,8 +1063,6 @@ public class Compiler2 {
 
 	/**
 	 * TODO: consider using read/write handles instead of read(), write()?
-	 * TODO: if the index function is a contiguous range and the storage is
-	 * backed by an array, allow the storage to readAll directly into its array
 	 */
 	private static final class TokenReadInstruction implements ReadInstruction {
 		private final Token token;
