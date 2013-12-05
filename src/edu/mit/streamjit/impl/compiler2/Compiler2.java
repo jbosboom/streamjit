@@ -364,6 +364,15 @@ public class Compiler2 {
 			postInitLivenessBuilder.put(token, liveItems);
 		}
 		this.postInitLiveness = postInitLivenessBuilder.build();
+
+		int initScheduleSize = 0;
+		for (int i : initSchedule.values())
+			initScheduleSize += i;
+//		System.out.println("init schedule size "+initScheduleSize);
+		int totalBuffering = 0;
+		for (int i : postInitLiveness.values())
+			totalBuffering += i;
+//		System.out.println("total items buffered "+totalBuffering);
 	}
 
 	private void splitterRemoval() {
@@ -622,7 +631,7 @@ public class Compiler2 {
 					TypeToken<?> newOutputType = TypeToken.of(resolver.resolveType(oldOutputType.getType()));
 					if (!oldOutputType.equals(newOutputType)) {
 						a.setOutputType(newOutputType);
-						System.out.println("inferUpward: inferred "+a+" output type: "+oldOutputType+" -> "+newOutputType);
+//						System.out.println("inferUpward: inferred "+a+" output type: "+oldOutputType+" -> "+newOutputType);
 						changed = true;
 					}
 
@@ -630,7 +639,7 @@ public class Compiler2 {
 					TypeToken<?> newInputType = TypeToken.of(resolver.resolveType(oldInputType.getType()));
 					if (!oldInputType.equals(newInputType)) {
 						a.setInputType(newInputType);
-						System.out.println("inferUpward: inferred "+a+" input type: "+oldInputType+" -> "+newInputType);
+//						System.out.println("inferUpward: inferred "+a+" input type: "+oldInputType+" -> "+newInputType);
 						changed = true;
 					}
 				}
@@ -667,7 +676,7 @@ public class Compiler2 {
 				TypeToken<?> newInputType = TypeToken.of(resolver.resolveType(oldInputType.getType()));
 				if (!oldInputType.equals(newInputType)) {
 					a.setInputType(newInputType);
-					System.out.println("inferDownward: inferred "+a+" input type: "+oldInputType+" -> "+newInputType);
+//					System.out.println("inferDownward: inferred "+a+" input type: "+oldInputType+" -> "+newInputType);
 					changed = true;
 				}
 
@@ -675,7 +684,7 @@ public class Compiler2 {
 				TypeToken<?> newOutputType = TypeToken.of(resolver.resolveType(oldOutputType.getType()));
 				if (!oldOutputType.equals(newOutputType)) {
 					a.setOutputType(newOutputType);
-					System.out.println("inferDownward: inferred "+a+" output type: "+oldOutputType+" -> "+newOutputType);
+//					System.out.println("inferDownward: inferred "+a+" output type: "+oldOutputType+" -> "+newOutputType);
 					changed = true;
 				}
 			}
@@ -693,8 +702,8 @@ public class Compiler2 {
 				TypeToken<?> contents = s.contentType();
 				Class<?> type = contents.unwrap().getRawType();
 				s.setType(type);
-				if (!s.type().equals(contents.getRawType()))
-					System.out.println("unboxed "+s+" to "+type);
+//				if (!s.type().equals(contents.getRawType()))
+//					System.out.println("unboxed "+s+" to "+type);
 			}
 		}
 
@@ -704,14 +713,14 @@ public class Compiler2 {
 			if (unboxInput.getValue()) {
 				TypeToken<?> oldType = a.inputType();
 				a.setInputType(oldType.unwrap());
-				if (!a.inputType().equals(oldType))
-					System.out.println("unboxed input of "+a+": "+oldType+" -> "+a.inputType());
+//				if (!a.declaredInputType().equals(oldType))
+//					System.out.println("unboxed input of "+a+": "+oldType+" -> "+a.inputType());
 			}
 			if (unboxOutput.getValue()) {
 				TypeToken<?> oldType = a.outputType();
 				a.setOutputType(oldType.unwrap());
-				if (!a.outputType().equals(oldType))
-					System.out.println("unboxed output of "+a+": "+oldType+" -> "+a.outputType());
+//				if (!a.declaredOutputType().equals(oldType))
+//					System.out.println("unboxed output of "+a+": "+oldType+" -> "+a.outputType());
 			}
 		}
 	}
@@ -863,7 +872,7 @@ public class Compiler2 {
 			retval = new BulkReadInstruction(a, (BulkWritableConcreteStorage)cs, count);
 		} else
 			retval = new TokenReadInstruction(a, cs, count);
-		System.out.println("Made a "+retval+" for "+a.token());
+//		System.out.println("Made a "+retval+" for "+a.token());
 		return retval;
 	}
 
@@ -878,7 +887,7 @@ public class Compiler2 {
 			retval = new BulkWriteInstruction(a, (BulkReadableConcreteStorage)cs, count);
 		} else
 			retval = new TokenWriteInstruction(a, cs, count);
-		System.out.println("Made a "+retval+" for "+a.token());
+//		System.out.println("Made a "+retval+" for "+a.token());
 		return retval;
 	}
 
@@ -1287,7 +1296,7 @@ public class Compiler2 {
 	}
 
 	public static void main(String[] args) {
-		StreamCompiler sc = new Compiler2StreamCompiler().multiplier(8).maxNumCores(8);
+		StreamCompiler sc = new Compiler2StreamCompiler().multiplier(64).maxNumCores(8);
 //		Benchmark bm = new PipelineSanity.Add15();
 		Benchmark bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
 //		Benchmark bm = new SplitjoinComputeSanity.MultiplyBenchmark();
