@@ -16,6 +16,7 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 	private int maxNumCores = 1;
 	private int multiplier = 1;
 	private Path dumpFile;
+	private boolean timings = false;
 	public Compiler2StreamCompiler() {
 		super(new Compiler2BlobFactory());
 	}
@@ -32,6 +33,11 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 
 	public Compiler2StreamCompiler dumpFile(Path path) {
 		this.dumpFile = path;
+		return this;
+	}
+
+	public Compiler2StreamCompiler timings() {
+		this.timings = true;
 		return this;
 	}
 
@@ -57,6 +63,7 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 
 		if (dumpFile != null)
 			builder.putExtraData("dumpFile", dumpFile);
+		builder.putExtraData("timings", timings);
 		return builder.build();
 	}
 

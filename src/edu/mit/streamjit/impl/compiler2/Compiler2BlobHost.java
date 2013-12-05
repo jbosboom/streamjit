@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -89,6 +90,7 @@ public class Compiler2BlobHost implements Blob {
 	 */
 	public final ImmutableList<DrainInstruction> drainInstructions;
 	/* provided by the host */
+	private final boolean collectTimings;
 	private final ImmutableMap<Token, Integer> minimumBufferCapacity;
 	private ImmutableMap<Token, Buffer> buffers;
 	private final ImmutableList<Runnable> coreCode;
@@ -123,6 +125,8 @@ public class Compiler2BlobHost implements Blob {
 		this.readInstructions = ImmutableList.copyOf(readInstructions);
 		this.writeInstructions = ImmutableList.copyOf(writeInstructions);
 		this.drainInstructions = ImmutableList.copyOf(drainInstructions);
+
+		this.collectTimings = (Boolean)config.getExtraData("timings");
 
 		List<Map<Token, Integer>> capacityRequirements = new ArrayList<>();
 		for (ReadInstruction i : Iterables.concat(this.initReadInstructions, this.readInstructions))
@@ -226,6 +230,10 @@ public class Compiler2BlobHost implements Blob {
 	}
 
 	private void doInit() throws Throwable {
+		Stopwatch initTime = null;
+		if (collectTimings)
+			initTime = Stopwatch.createStarted();
+
 		for (int i = 0; i < initReadInstructions.size(); ++i) {
 			ReadInstruction inst = initReadInstructions.get(i);
 			while (!inst.load())
@@ -254,9 +262,19 @@ public class Compiler2BlobHost implements Blob {
 		migrationInstructions = null;
 
 		SwitchPoint.invalidateAll(new SwitchPoint[]{sp1});
+
+		if (collectTimings)
+			System.out.println("init time: "+initTime.stop());
 	}
 
+	private final Stopwatch adjustTime = Stopwatch.createUnstarted();
+	private int adjustCount;
 	private void doAdjust() throws Throwable {
+		if (collectTimings) {
+			adjustTime.start();
+			++adjustCount;
+		}
+
 		for (int i = 0; i < readInstructions.size(); ++i) {
 			ReadInstruction inst = readInstructions.get(i);
 			while (!inst.load())
@@ -272,6 +290,9 @@ public class Compiler2BlobHost implements Blob {
 
 		for (MethodHandle h : storageAdjusts)
 			h.invokeExact();
+
+		if (collectTimings)
+			adjustTime.stop();
 	}
 
 	/**
@@ -285,6 +306,10 @@ public class Compiler2BlobHost implements Blob {
 	 * empty list if we didn't complete init
 	 */
 	private void doDrain(List<ReadInstruction> reads, List<DrainInstruction> drains) {
+		Stopwatch drainTime = null;
+		if (collectTimings)
+			drainTime = Stopwatch.createStarted();
+
 		List<Map<Token, Object[]>> data = new ArrayList<>(reads.size() + drains.size());
 		for (ReadInstruction i : reads)
 			data.add(i.unload());
@@ -327,6 +352,12 @@ public class Compiler2BlobHost implements Blob {
 
 		SwitchPoint.invalidateAll(new SwitchPoint[]{sp1, sp2});
 		drainCallback.run();
+
+		if (collectTimings) {
+			drainTime.stop();
+			System.out.println("total adjust time: "+adjustTime+" over "+adjustCount+" adjusts");
+			System.out.println("drain time: "+drainTime);
+		}
 	}
 
 	private boolean isDraining() {
