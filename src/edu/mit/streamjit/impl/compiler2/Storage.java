@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.google.common.reflect.TypeToken;
+import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.util.Pair;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -27,7 +28,12 @@ import java.util.Set;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 9/27/2013
  */
-public final class Storage {
+public final class Storage implements Comparable<Storage> {
+	/**
+	 * A persistent identifier for this Storage, based on the Actors initially
+	 * connected to it.  This is not affected by removals.
+	 */
+	private final Token id;
 	/**
 	 * The upstream and downstream Actors.
 	 */
@@ -57,6 +63,16 @@ public final class Storage {
 	public Storage(Actor upstream, Actor downstream) {
 		this.upstream = Lists.newArrayList(upstream);
 		this.downstream = Lists.newArrayList(downstream);
+		if (upstream instanceof TokenActor)
+			this.id = ((TokenActor)upstream).token();
+		else if (downstream instanceof TokenActor)
+			this.id = ((TokenActor)downstream).token();
+		else
+			this.id = new Token(((WorkerActor)upstream).worker(), ((WorkerActor)downstream).worker());
+	}
+
+	public Token id() {
+		return id;
 	}
 
 	public List<Actor> upstream() {
@@ -222,6 +238,14 @@ public final class Storage {
 		int minIdx = Math.min(readIndices.first(), writeIndices.first());
 		int maxIdx = Math.max(readIndices.last(), writeIndices.last());
 		this.steadyStateCapacity = maxIdx - minIdx + 1;
+	}
+
+	@Override
+	public int compareTo(Storage o) {
+		int res = id().compareTo(o.id());
+		if (res == 0)
+			assert equals(o) : "Can't happen! same id, different storage?";
+		return res;
 	}
 
 	@Override
