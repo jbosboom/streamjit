@@ -760,7 +760,7 @@ public class Compiler2 {
 				if (ta.isInput())
 					initReadInstructions.add(makeReadInstruction(ta, storage, executions));
 				else
-					initWriteInstructions.add(new TokenWriteInstruction(g, storage, executions));
+					initWriteInstructions.add(makeWriteInstruction(ta, storage, executions));
 			}
 		this.initCode = initCore.code();
 
@@ -804,7 +804,7 @@ public class Compiler2 {
 				if (ta.isInput())
 					readInstructions.add(makeReadInstruction(ta, storage, executions));
 				else
-					writeInstructions.add(new TokenWriteInstruction(g, storage, executions));
+					writeInstructions.add(makeWriteInstruction(ta, storage, executions));
 			}
 		ImmutableList.Builder<MethodHandle> steadyStateCodeBuilder = ImmutableList.builder();
 		for (Core c : ssCores)
@@ -863,6 +863,21 @@ public class Compiler2 {
 			retval = new BulkReadInstruction(a, (BulkWritableConcreteStorage)cs, count);
 		} else
 			retval = new TokenReadInstruction(a, cs, count);
+		System.out.println("Made a "+retval+" for "+a.token());
+		return retval;
+	}
+
+	private WriteInstruction makeWriteInstruction(TokenActor a, ConcreteStorage cs, int count) {
+		assert a.isOutput();
+		Storage s = Iterables.getOnlyElement(a.inputs());
+		MethodHandle idxFxn = Iterables.getOnlyElement(a.inputIndexFunctions());
+		WriteInstruction retval;
+		if (!s.type().isPrimitive() &&
+				cs instanceof BulkReadableConcreteStorage &&
+				contiguouslyIncreasing(idxFxn, 0, count)) {
+			retval = new BulkWriteInstruction(a, (BulkReadableConcreteStorage)cs, count);
+		} else
+			retval = new TokenWriteInstruction(a, cs, count);
 		System.out.println("Made a "+retval+" for "+a.token());
 		return retval;
 	}
@@ -1120,10 +1135,36 @@ public class Compiler2 {
 		}
 	}
 
+	private static final class BulkWriteInstruction implements WriteInstruction {
+		private final Token token;
+		private final BulkReadableConcreteStorage storage;
+		private final int index, count;
+		private Buffer buffer;
+		private BulkWriteInstruction(TokenActor a, BulkReadableConcreteStorage storage, int count) {
+			assert a.isInput() : a;
+			this.token = a.token();
+			this.storage = storage;
+			this.index = a.translateInputIndex(0, 0);
+			this.count = count;
+		}
+		@Override
+		public void init(Map<Token, Buffer> buffers) {
+			this.buffer = buffers.get(token);
+			if (buffer == null)
+				throw new IllegalArgumentException("no buffer for "+token);
+		}
+		@Override
+		public Map<Token, Integer> getMinimumBufferCapacity() {
+			return ImmutableMap.of(token, count);
+		}
+		@Override
+		public void run() {
+			storage.bulkRead(buffer, index, count);
+		}
+	}
+
 	/**
 	 * TODO: consider using read handles instead of read()?
-	 * TODO: if the index function is a contiguous range and the storage is
-	 * backed by an array, allow the storage to writeAll directly from its array
 	 */
 	private static final class TokenWriteInstruction implements WriteInstruction {
 		private final Token token;
@@ -1131,15 +1172,12 @@ public class Compiler2 {
 		private final ConcreteStorage storage;
 		private final int count;
 		private Buffer buffer;
-		private TokenWriteInstruction(ActorGroup tokenGroup, ConcreteStorage storage, int executions) {
-			assert tokenGroup.isTokenGroup();
-			TokenActor actor = (TokenActor)Iterables.getOnlyElement(tokenGroup.actors());
-			assert actor.isOutput();
-
-			this.token = actor.token();
-			this.idxFxn = Iterables.getOnlyElement(actor.inputIndexFunctions());
+		private TokenWriteInstruction(TokenActor a, ConcreteStorage storage, int count) {
+			assert a.isInput() : a;
+			this.token = a.token();
 			this.storage = storage;
-			this.count = executions;
+			this.idxFxn = Iterables.getOnlyElement(a.inputIndexFunctions());
+			this.count = count;
 		}
 		@Override
 		public void init(Map<Token, Buffer> buffers) {

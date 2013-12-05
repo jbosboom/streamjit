@@ -13,7 +13,7 @@ import java.lang.reflect.Array;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 10/10/2013
  */
-public class CircularArrayConcreteStorage implements BulkWritableConcreteStorage {
+public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadableConcreteStorage, BulkWritableConcreteStorage {
 	private static final Lookup LOOKUP = MethodHandles.lookup();
 	private static final MethodHandle INDEX = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "index", int.class, int.class);
 	private static final MethodHandle ADJUST = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "adjust", void.class);;
@@ -81,6 +81,18 @@ public class CircularArrayConcreteStorage implements BulkWritableConcreteStorage
 	@Override
 	public MethodHandle adjustHandle() {
 		return adjustHandle;
+	}
+
+	@Override
+	public void bulkRead(Buffer dest, int index, int count) {
+		assert type().equals(Object.class);
+		index = index(index);
+		int countBeforeEnd = Math.min(count, capacity - index);
+		for (int written = 0; written < countBeforeEnd;)
+			written += dest.write((Object[])array, index + written, countBeforeEnd - written);
+		int remaining = count - countBeforeEnd;
+		for (int written = 0; written < remaining;)
+			written += dest.write((Object[])array, written, remaining - written);
 	}
 
 	@Override
