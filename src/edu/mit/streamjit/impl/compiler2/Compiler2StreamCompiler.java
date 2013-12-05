@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import static com.google.common.base.Preconditions.checkState;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
@@ -13,6 +14,7 @@ import java.util.Set;
  * @since 11/12/2013 (from CompilerStreamCompiler since 8/13/2013)
  */
 public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
+	private Configuration config;
 	private int maxNumCores = 1;
 	private int multiplier = 1;
 	private Path dumpFile;
@@ -21,12 +23,19 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 		super(new Compiler2BlobFactory());
 	}
 
+	public Compiler2StreamCompiler configuration(Configuration config) {
+		this.config = config;
+		return this;
+	}
+
 	public Compiler2StreamCompiler maxNumCores(int maxNumCores) {
+		checkState(config == null, "can't specify when using a specific configuration");
 		this.maxNumCores = maxNumCores;
 		return this;
 	}
 
 	public Compiler2StreamCompiler multiplier(int multiplier) {
+		checkState(config == null, "can't specify when using a specific configuration");
 		this.multiplier = multiplier;
 		return this;
 	}
@@ -48,6 +57,9 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 
 	@Override
 	protected final Configuration getConfiguration(Set<Worker<?, ?>> workers) {
+		if (config != null)
+			return config;
+
 		Configuration defaultConfiguration = super.getConfiguration(workers);
 		Configuration.Builder builder = Configuration.builder(defaultConfiguration);
 		Configuration.IntParameter multiplierParam = (Configuration.IntParameter)builder.removeParameter("multiplier");
