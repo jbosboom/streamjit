@@ -1182,7 +1182,7 @@ public class Compiler2 {
 		private final int count;
 		private Buffer buffer;
 		private TokenWriteInstruction(TokenActor a, ConcreteStorage storage, int count) {
-			assert a.isInput() : a;
+			assert a.isOutput() : a;
 			this.token = a.token();
 			this.storage = storage;
 			this.idxFxn = Iterables.getOnlyElement(a.inputIndexFunctions());
