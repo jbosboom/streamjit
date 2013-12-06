@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.common;
 
 import edu.mit.streamjit.impl.common.AbstractDrainer;
+import edu.mit.streamjit.impl.distributed.TailChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
@@ -53,12 +54,23 @@ public final class GlobalConstants {
 	 * To turn on or turn off the drain data. If this is false, drain data will
 	 * be ignored and every new reconfiguration will run with fresh inputs.
 	 */
-	public static final boolean useDrainData = true;
+	public static final boolean useDrainData = false;
 
 	/**
 	 * To turn on or off the dead lock handler. see {@link AbstractDrainer} for
 	 * it's usage.
 	 */
-	public static final boolean needDrainDeadlockHandler = true;
+	public static final boolean needDrainDeadlockHandler = false;
 
+	/**
+	 * Just use the fixed configuration file to run the program. No tuning, no
+	 * intermediate draining. In this mode, time taken to pass fixed number of
+	 * input will be measured for 30 rounds and logged into FixedOutPut.txt. See
+	 * {@link TailChannel} for the file logging details.
+	 */
+	public static final boolean useCfgFile = true;
+
+	static {
+
+	}
 }

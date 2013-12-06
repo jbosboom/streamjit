@@ -38,6 +38,7 @@ import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
@@ -125,11 +126,14 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		StreamJitApp app = new StreamJitApp(stream.getClass().getSimpleName(),
 				stream.getClass().getName(), source, sink);
 
-		BlobFactory bf = new DistributedBlobFactory(noOfnodes);
-		this.cfg = bf.getDefaultConfiguration(Workers
-				.getAllWorkersInGraph(source));
+		if (GlobalConstants.useCfgFile)
+			this.cfg = readConfiguration(stream.getClass().getSimpleName());
+		else {
+			BlobFactory bf = new DistributedBlobFactory(noOfnodes);
+			this.cfg = bf.getDefaultConfiguration(Workers
+					.getAllWorkersInGraph(source));
+		}
 
-		// this.cfg = readConfiguration(stream.getClass().getSimpleName());
 		if (cfg == null) {
 			Integer[] machineIds = new Integer[this.noOfnodes];
 			for (int i = 0; i < machineIds.length; i++) {
@@ -192,7 +196,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		manager.reconfigure();
 		CompiledStream cs = new DistributedCompiledStream(drainer);
 
-		if (app.blobConfiguration != null) {
+		if (!GlobalConstants.useCfgFile && this.cfg != null) {
 			OnlineTuner tuner = new OnlineTuner(drainer, manager, app,
 					needTermination);
 			new Thread(tuner, "OnlineTuner").start();

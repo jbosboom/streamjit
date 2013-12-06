@@ -2,13 +2,13 @@ package edu.mit.streamjit.impl.distributed;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.base.Stopwatch;
 
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
@@ -28,7 +28,8 @@ public class TailChannel extends TCPInputChannel {
 		this.limit = limit;
 		count = 0;
 		latch = new CountDownLatch(1);
-		// new performanceLogger().start();
+		if (GlobalConstants.useCfgFile)
+			new performanceLogger().start();
 	}
 
 	@Override
@@ -56,7 +57,7 @@ public class TailChannel extends TCPInputChannel {
 			int i = 0;
 			FileWriter writer;
 			try {
-				writer = new FileWriter("1Interpreter.txt");
+				writer = new FileWriter("FixedOutPut.txt");
 			} catch (IOException e1) {
 				e1.printStackTrace();
 				return;
@@ -69,8 +70,8 @@ public class TailChannel extends TCPInputChannel {
 					stopwatch.stop();
 					Long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 
-					// System.out.println("Execution time is " + time
-					// + " milli seconds");
+					 System.out.println("Execution time is " + time
+					 + " milli seconds");
 
 					writer.write(time.toString());
 					writer.write('\n');
