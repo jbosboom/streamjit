@@ -77,7 +77,7 @@ public class OnlineTuner implements Runnable {
 				System.out
 						.println("----------------------------------------------");
 				System.out.println(tryCount++);
-				Configuration config = rebuildConfiguraion(pythonDict,
+				Configuration config = rebuildConfiguration(pythonDict,
 						app.blobConfiguration);
 
 				if (GlobalConstants.saveAllConfigurations)
@@ -156,7 +156,7 @@ public class OnlineTuner implements Runnable {
 	private void handleTermination() throws IOException {
 		String finalConfg = tuner.readLine();
 		System.out.println("Tuning finished");
-		saveConfg(rebuildConfiguraion(finalConfg, app.blobConfiguration), 0);
+		saveConfg(rebuildConfiguration(finalConfg, app.blobConfiguration), 0);
 		if (needTermination) {
 			if (manager.isRunning()) {
 				drainer.startDraining(1);
@@ -176,7 +176,7 @@ public class OnlineTuner implements Runnable {
 	 */
 	private void runForever(String pythonDict) {
 		System.out.println("runForever");
-		Configuration config = rebuildConfiguraion(pythonDict,
+		Configuration config = rebuildConfiguration(pythonDict,
 				app.blobConfiguration);
 		try {
 			if (!app.newConfiguration(config)) {
@@ -235,7 +235,7 @@ public class OnlineTuner implements Runnable {
 	 *            Old configuration object.
 	 * @return New configuration object with updated values from the pythonDict.
 	 */
-	private Configuration rebuildConfiguraion(String pythonDict,
+	private Configuration rebuildConfiguration(String pythonDict,
 			Configuration config) {
 		// System.out.println(pythonDict);
 		checkNotNull(pythonDict, "Received Python dictionary is null");

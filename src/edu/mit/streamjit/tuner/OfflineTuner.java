@@ -142,7 +142,7 @@ public class OfflineTuner {
 				System.out
 						.println("----------------------------------------------");
 				System.out.println(tryCount++);
-				Configuration config = rebuildConfiguraion(pythonDict, cfg);
+				Configuration config = rebuildConfiguration(pythonDict, cfg);
 				try {
 					double time = runApp(app, config);
 					System.out.println("Execution time is " + time
@@ -210,7 +210,7 @@ public class OfflineTuner {
 	 *            Old configuration object.
 	 * @return New configuration object with updated values from the pythonDict.
 	 */
-	private Configuration rebuildConfiguraion(String pythonDict,
+	private Configuration rebuildConfiguration(String pythonDict,
 			Configuration config) {
 		// System.out.println(pythonDict);
 		checkNotNull(pythonDict, "Received Python dictionary is null");
