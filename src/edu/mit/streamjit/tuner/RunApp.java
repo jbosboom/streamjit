@@ -106,7 +106,7 @@ public class RunApp {
 		Configuration config = Configuration
 				.fromJson(getConfigurationString(confgString));
 
-		Configuration cfg2 = rebuildConfiguraion(pyDict, config);
+		Configuration cfg2 = rebuildConfiguration(pyDict, config);
 
 		BenchmarkProvider provider = getClass(jarFilePath, className);
 		Benchmark app = provider.iterator().next();
@@ -270,7 +270,7 @@ public class RunApp {
 	 *            Old configuration object.
 	 * @return New configuration object with updated values from the pythonDict.
 	 */
-	private static Configuration rebuildConfiguraion(String pythonDict,
+	private static Configuration rebuildConfiguration(String pythonDict,
 			Configuration config) {
 		// System.out.println(pythonDict);
 		checkNotNull(pythonDict, "Received Python dictionary is null");
