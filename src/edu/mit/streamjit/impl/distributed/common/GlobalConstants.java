@@ -68,7 +68,13 @@ public final class GlobalConstants {
 	 * input will be measured for 30 rounds and logged into FixedOutPut.txt. See
 	 * {@link TailChannel} for the file logging details.
 	 */
-	public static final boolean useCfgFile = true;
+	public static final boolean useCfgFile = false;
+
+	/**
+	 * Save all configurations tired by open tuner in to
+	 * "configurations//app.name" directory.
+	 */
+	public static final boolean saveAllConfigurations = false;
 
 	static {
 

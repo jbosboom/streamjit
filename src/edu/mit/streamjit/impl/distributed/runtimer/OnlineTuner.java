@@ -79,6 +79,10 @@ public class OnlineTuner implements Runnable {
 				System.out.println(tryCount++);
 				Configuration config = rebuildConfiguraion(pythonDict,
 						app.blobConfiguration);
+
+				if (GlobalConstants.saveAllConfigurations)
+					saveConfg(config, tryCount);
+
 				try {
 					if (!app.newConfiguration(config)) {
 						tuner.writeLine("-1");
@@ -152,7 +156,7 @@ public class OnlineTuner implements Runnable {
 	private void handleTermination() throws IOException {
 		String finalConfg = tuner.readLine();
 		System.out.println("Tuning finished");
-		saveFinalConfg(finalConfg);
+		saveConfg(rebuildConfiguraion(finalConfg, app.blobConfiguration), 0);
 		if (needTermination) {
 			if (manager.isRunning()) {
 				drainer.startDraining(1);
@@ -285,16 +289,23 @@ public class OnlineTuner implements Runnable {
 	}
 
 	/**
-	 * @param finalCfg
-	 *            : Python dictionary
+	 * Save the configuration.
 	 */
-	private void saveFinalConfg(String finalCfg) {
-		Configuration config = rebuildConfiguraion(finalCfg,
-				app.blobConfiguration);
+	private void saveConfg(Configuration config, int round) {
 		String json = config.toJson();
 		try {
-			FileWriter writer = new FileWriter(String.format("final_%s.cfg",
-					app.name), false);
+
+			File dir = new File(String.format("configurations%s%s",
+					File.separator, app.name));
+			if (!dir.exists())
+				if (!dir.mkdirs()) {
+					System.err.println("Make directory failed");
+					return;
+				}
+
+			File file = new File(dir,
+					String.format("%d%s.cfg", round, app.name));
+			FileWriter writer = new FileWriter(file, false);
 			writer.write(json);
 			writer.flush();
 			writer.close();
