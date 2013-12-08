@@ -15,7 +15,7 @@ import java.lang.reflect.Array;
  */
 public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadableConcreteStorage, BulkWritableConcreteStorage {
 	private static final Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle INDEX = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "index", int.class, int.class);
+	private static final MethodHandle INDEX = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "index", int.class, int.class, int.class);
 	private static final MethodHandle ADJUST = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "adjust", void.class);;
 	private final Object array;
 	private final int capacity, throughput;
@@ -27,7 +27,7 @@ public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadab
 		this.throughput = s.throughput();
 		this.head = 0;
 
-		MethodHandle index = INDEX.bindTo(this);
+		MethodHandle index = MethodHandles.insertArguments(INDEX.bindTo(this), 1, capacity);
 		MethodHandle arrayGetter = MethodHandles.arrayElementGetter(array.getClass()).bindTo(array);
 		this.readHandle = MethodHandles.filterArguments(arrayGetter, 0, index);
 		MethodHandle arraySetter = MethodHandles.arrayElementSetter(array.getClass()).bindTo(array);
@@ -86,7 +86,7 @@ public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadab
 	@Override
 	public void bulkRead(Buffer dest, int index, int count) {
 		assert type().equals(Object.class);
-		index = index(index);
+		index = index(index, capacity);
 		int countBeforeEnd = Math.min(count, capacity - index);
 		for (int written = 0; written < countBeforeEnd;)
 			written += dest.write((Object[])array, index + written, countBeforeEnd - written);
@@ -98,7 +98,7 @@ public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadab
 	@Override
 	public void bulkWrite(Buffer source, int index, int count) {
 		assert type().equals(Object.class);
-		index = index(index);
+		index = index(index, capacity);
 		int countBeforeEnd = Math.min(count, capacity - index);
 		int itemsRead = source.read((Object[])array, index, countBeforeEnd);
 		assert itemsRead == countBeforeEnd;
@@ -108,7 +108,7 @@ public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadab
 		assert itemsRead + secondItemsRead == count;
 	}
 
-	private int index(int physicalIndex) {
+	private int index(int physicalIndex, int capacity) {
 		//assumes (physicalIndex + head) >= 0
 		//I'd assert but that would add bytes to the method, hampering inlining.
 		return (physicalIndex + head) % capacity;
