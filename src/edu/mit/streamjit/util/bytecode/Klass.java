@@ -49,8 +49,14 @@ public final class Klass implements Accessible, Parented<Module> {
 	private final Set<Modifier> modifiers;
 	private final Klass superclass;
 	private final List<Klass> interfaces;
-	private final List<Field> fields;
-	private final List<Method> methods;
+	/**
+	 * For Klasses with a backing Class, lazily initialized on first use.
+	 */
+	private List<Field> fields;
+	/**
+	 * For Klasses with a backing Class, lazily initialized on first use.
+	 */
+	private List<Method> methods;
 	/**
 	 * If this Klass represents a live Class, it's here.  Null otherwise.
 	 */
@@ -112,14 +118,20 @@ public final class Klass implements Accessible, Parented<Module> {
 		for (Class<?> c : klass.getInterfaces())
 			interfacesB.add(module.getKlass(c));
 		this.interfaces = interfacesB.build();
+	}
+
+	private void lazyInitFields() {
 		ParentedList<Klass, Field> fieldList = new ParentedList<>(this, Field.class);
-		for (java.lang.reflect.Field f : klass.getDeclaredFields())
-			fieldList.add(new Field(f, this, module));
+		for (java.lang.reflect.Field f : getBackingClass().getDeclaredFields())
+			fieldList.add(new Field(f, this, getParent()));
 		this.fields = Collections.unmodifiableList(fieldList);
+	}
+
+	private void lazyInitMethods() {
 		ParentedList<Klass, Method> methodList = new ParentedList<>(this, Method.class);
-		for (java.lang.reflect.Constructor<?> c : klass.getDeclaredConstructors())
+		for (java.lang.reflect.Constructor<?> c : getBackingClass().getDeclaredConstructors())
 			methodList.add(new Method(c, this));
-		for (java.lang.reflect.Method m : klass.getDeclaredMethods())
+		for (java.lang.reflect.Method m : getBackingClass().getDeclaredMethods())
 			methodList.add(new Method(m, this));
 		this.methods = Collections.unmodifiableList(methodList);
 	}
@@ -184,9 +196,13 @@ public final class Klass implements Accessible, Parented<Module> {
 		return interfaces;
 	}
 	public List<Field> fields() {
+		if (fields == null)
+			lazyInitFields();
 		return fields;
 	}
 	public List<Method> methods() {
+		if (methods == null)
+			lazyInitMethods();
 		return methods;
 	}
 
@@ -382,11 +398,11 @@ public final class Klass implements Accessible, Parented<Module> {
 		//TODO: "indirectly implements"
 		writer.println();
 
-		for (Field f : fields)
+		for (Field f : fields())
 			writer.println(f.toString());
 		writer.println();
 
-		for (Method m : methods) {
+		for (Method m : methods()) {
 			m.dump(writer);
 			writer.println();
 		}
