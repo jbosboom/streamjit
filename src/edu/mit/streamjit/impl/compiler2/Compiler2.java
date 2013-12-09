@@ -10,6 +10,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
@@ -85,6 +86,11 @@ public class Compiler2 {
 	public static final ImmutableSet<Class<?>> REMOVABLE_WORKERS = ImmutableSet.<Class<?>>of(
 			RoundrobinSplitter.class, WeightedRoundrobinSplitter.class, DuplicateSplitter.class,
 			RoundrobinJoiner.class, WeightedRoundrobinJoiner.class);
+	public static final ImmutableSet<IndexFunctionTransformer> INDEX_FUNCTION_TRANSFORMERS = ImmutableSet.<IndexFunctionTransformer>of(
+			new IdentityIndexFunctionTransformer(),
+			new ArrayifyIndexFunctionTransformer(false),
+			new ArrayifyIndexFunctionTransformer(true)
+	);
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
@@ -750,13 +756,23 @@ public class Compiler2 {
 		this.initStorage = createExternalStorage(MapConcreteStorage.initFactory());
 		initReadInstructions.add(new InitDataReadInstruction(initStorage, initialStateDataMap));
 
+		IndexFunctionTransformer ift = new IdentityIndexFunctionTransformer();
+		ImmutableTable.Builder<Actor, Integer, IndexFunctionTransformer> inputTransformers = ImmutableTable.builder(),
+				outputTransformers = ImmutableTable.builder();
+		for (Actor a : Iterables.filter(actors, WorkerActor.class)) {
+			for (int i = 0; i < a.inputs().size(); ++i)
+				inputTransformers.put(a, i, ift);
+			for (int i = 0; i < a.outputs().size(); ++i)
+				outputTransformers.put(a, i, ift);
+		}
+
 		/**
 		 * During init, all (nontoken) groups are assigned to the same Core in
 		 * topological order (via the ordering on ActorGroups).  At the same
 		 * time we build the token init schedule information required by the
 		 * blob host.
 		 */
-		Core initCore = new Core(storage, initStorage, MapConcreteStorage.initFactory());
+		Core initCore = new Core(storage, initStorage, MapConcreteStorage.initFactory(), inputTransformers.build(), outputTransformers.build());
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
@@ -799,8 +815,24 @@ public class Compiler2 {
 		this.steadyStateStorage = createExternalStorage(CircularArrayConcreteStorage.factory());
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
-		for (int i = 0; i < maxNumCores; ++i)
-			ssCores.add(new Core(storage, steadyStateStorage, InternalArrayConcreteStorage.factory()));
+		for (int i = 0; i < maxNumCores; ++i) {
+			ImmutableTable.Builder<Actor, Integer, IndexFunctionTransformer> inputTransformers = ImmutableTable.builder(),
+					outputTransformers = ImmutableTable.builder();
+			for (Actor a : Iterables.filter(actors, WorkerActor.class)) {
+				for (int j = 0; j < a.inputs().size(); ++j) {
+					String name = String.format("Core%dWorker%dInput%dIndexFxnTransformer", i, a.id(), j);
+					SwitchParameter<IndexFunctionTransformer> param = config.getParameter(name, SwitchParameter.class, IndexFunctionTransformer.class);
+					inputTransformers.put(a, j, param.getValue());
+				}
+				for (int j = 0; j < a.outputs().size(); ++j) {
+					String name = String.format("Core%dWorker%dOutput%dIndexFxnTransformer", i, a.id(), j);
+					SwitchParameter<IndexFunctionTransformer> param = config.getParameter(name, SwitchParameter.class, IndexFunctionTransformer.class);
+					outputTransformers.put(a, j, param.getValue());
+				}
+			}
+			ssCores.add(new Core(storage, steadyStateStorage, InternalArrayConcreteStorage.factory(), inputTransformers.build(), outputTransformers.build()));
+		}
+
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				allocateGroup(g, ssCores);

@@ -7,6 +7,8 @@ import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.Workers;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -41,6 +43,18 @@ public final class Compiler2BlobFactory implements BlobFactory {
 			for (int i = 0; i < MAX_MAX_NUM_CORES; ++i) {
 				String name = String.format("node%dcore%diter", Workers.getIdentifier(w), i);
 				builder.addParameter(new Configuration.IntParameter(name, 0, 1_000_000, 1));
+			}
+		for (Worker<?, ?> w : workers)
+			for (int i = 0; i < MAX_MAX_NUM_CORES; ++i) {
+				List<String> names = new ArrayList<>();
+				for (int j = 0; j < w.getPopRates().size(); ++j)
+					names.add(String.format("Core%dWorker%dInput%dIndexFxnTransformer", i, Workers.getIdentifier(w), j));
+				for (int j = 0; j < w.getPushRates().size(); ++j)
+					names.add(String.format("Core%dWorker%dOutput%dIndexFxnTransformer", i, Workers.getIdentifier(w), j));
+				for (String name : names)
+					builder.addParameter(new Configuration.SwitchParameter<>(name, IndexFunctionTransformer.class,
+							Compiler2.INDEX_FUNCTION_TRANSFORMERS.asList().get(0),
+							Compiler2.INDEX_FUNCTION_TRANSFORMERS));
 			}
 		for (Worker<?, ?> w : workers)
 			if (Compiler2.REMOVABLE_WORKERS.contains(w.getClass()))

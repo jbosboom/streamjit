@@ -10,6 +10,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
@@ -222,7 +223,9 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * @param storage the storage being used
 	 * @return a void->void method handle
 	 */
-	public MethodHandle specialize(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage) {
+	public MethodHandle specialize(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage,
+			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
+			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers) {
 		//TokenActors are special.
 		assert !isTokenGroup() : actors();
 
@@ -241,12 +244,14 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			if (wa.worker() instanceof Joiner) {
 				MethodHandle[] table = new MethodHandle[a.inputs().size()];
 				for (int i = 0; i < a.inputs().size(); i++)
-					table[i] = MethodHandles.filterArguments(storage.get(a.inputs().get(i)).readHandle(),
-							0, a.inputIndexFunctions().get(i)).asType(readHandleType);
+					table[i] = MethodHandles.filterArguments(storage.get(a.inputs().get(i)).readHandle(), 0,
+							inputTransformers.get(a, i).transform(a.inputIndexFunctions().get(i), a.peeks(i, iterations)))
+							.asType(readHandleType);
 				read = Combinators.tableswitch(table);
 			} else
-				read = MethodHandles.filterArguments(storage.get(a.inputs().get(0)).readHandle(),
-					0, a.inputIndexFunctions().get(0)).asType(readHandleType);
+				read = MethodHandles.filterArguments(storage.get(a.inputs().get(0)).readHandle(), 0,
+						inputTransformers.get(a, 0).transform(a.inputIndexFunctions().get(0), a.peeks(0, iterations)))
+						.asType(readHandleType);
 
 			assert a.outputs().size() > 0 : a;
 			MethodType writeHandleType = MethodType.methodType(void.class, int.class, wa.outputType().getRawType());
@@ -254,12 +259,14 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			if (wa.worker() instanceof Splitter) {
 				MethodHandle[] table = new MethodHandle[a.outputs().size()];
 				for (int i = 0; i < a.outputs().size(); ++i)
-					table[i] = MethodHandles.filterArguments(storage.get(a.outputs().get(i)).writeHandle(),
-							0, a.outputIndexFunctions().get(i)).asType(writeHandleType);
+					table[i] = MethodHandles.filterArguments(storage.get(a.outputs().get(i)).writeHandle(), 0,
+							outputTransformers.get(a, i).transform(a.outputIndexFunctions().get(i), a.pushes(i, iterations)))
+							.asType(writeHandleType);
 				write = Combinators.tableswitch(table);
 			} else
-				write = MethodHandles.filterArguments(storage.get(a.outputs().get(0)).writeHandle(),
-					0, a.outputIndexFunctions().get(0)).asType(writeHandleType);
+				write = MethodHandles.filterArguments(storage.get(a.outputs().get(0)).writeHandle(), 0,
+					outputTransformers.get(a, 0).transform(a.outputIndexFunctions().get(0), a.pushes(0, iterations)))
+					.asType(writeHandleType);
 
 			withRWHandlesBound.put(wa, specialized.bindTo(read).bindTo(write));
 		}

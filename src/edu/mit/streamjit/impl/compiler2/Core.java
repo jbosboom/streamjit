@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Range;
 import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
@@ -21,8 +22,12 @@ import java.util.Set;
  */
 public class Core {
 	private final ImmutableMap<Storage, ConcreteStorage> globalStorage, localStorage, allStorage;
+	private final ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers, outputTransformers;
 	private final List<Pair<ActorGroup, Range<Integer>>> allocations = new ArrayList<>();
-	public Core(Set<Storage> storage, ImmutableMap<Storage, ConcreteStorage> globalStorage, StorageFactory localStorageFactory) {
+	public Core(Set<Storage> storage, ImmutableMap<Storage, ConcreteStorage> globalStorage,
+			StorageFactory localStorageFactory,
+			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
+			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers) {
 		this.globalStorage = globalStorage;
 		//We make ConcreteStorage for every local storage, despite not knowing
 		//what we need yet; anything we don't use will get garbage collected
@@ -36,6 +41,8 @@ public class Core {
 				localStorageBuilder.put(s, localStorageFactory.make(s));
 		this.localStorage = localStorageBuilder.build();
 		this.allStorage = CollectionUtils.union(globalStorage, localStorage);
+		this.inputTransformers = inputTransformers;
+		this.outputTransformers = outputTransformers;
 	}
 
 	public void allocate(ActorGroup group, Range<Integer> iterations) {
@@ -48,7 +55,7 @@ public class Core {
 		List<MethodHandle> code = new ArrayList<>(allocations.size());
 		List<String> proxyNames = new ArrayList<>(allocations.size());
 		for (Pair<ActorGroup, Range<Integer>> p : allocations) {
-			code.add(p.first.specialize(p.second, allStorage));
+			code.add(p.first.specialize(p.second, allStorage, inputTransformers, outputTransformers));
 			proxyNames.add("Group"+p.first.id()+"Iter"+p.second.lowerEndpoint()+"To"+p.second.upperEndpoint());
 		}
 		ImmutableList<Runnable> proxies = Bytecodifier.runnableProxies(code, proxyNames);
