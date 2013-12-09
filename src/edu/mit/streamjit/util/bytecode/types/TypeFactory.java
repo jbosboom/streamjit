@@ -1,11 +1,8 @@
 package edu.mit.streamjit.util.bytecode.types;
 
-import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.SetMultimap;
 import edu.mit.streamjit.util.bytecode.Klass;
 import edu.mit.streamjit.util.bytecode.Module;
 import edu.mit.streamjit.util.ReflectionUtils;
@@ -49,10 +46,7 @@ public final class TypeFactory implements Iterable<Type> {
 	private static final ImmutableList<MethodHandle> typeCtors;
 	private final Module parent;
 	private final Map<Klass, ReturnType> typeMap = new IdentityHashMap<>();
-	/**
-	 * parameter count -> return type -> Set<MethodType>, to make lookups fast
-	 */
-	private final List<SetMultimap<ReturnType, MethodType>> methodTypes = new ArrayList<>();
+	private final List<MethodType> methodTypes = new ArrayList<>();
 	private final List<StaticFieldType> staticFieldTypes = new ArrayList<>();
 	private final List<InstanceFieldType> instanceFieldTypes = new ArrayList<>();
 	private final BasicBlockType basicBlockType;
@@ -142,20 +136,15 @@ public final class TypeFactory implements Iterable<Type> {
 	}
 
 	public MethodType getMethodType(ReturnType returnType, List<RegularType> parameterTypes) {
-		if (parameterTypes.size() >= methodTypes.size())
-			return addMethodType(returnType, parameterTypes);
-		SetMultimap<ReturnType, MethodType> map = methodTypes.get(parameterTypes.size());
-		for (MethodType t : map.get(returnType))
+		//If this linear search gets too expensive, we can break it up by return
+		//type and perhaps first parameter type.  Another strategy would be to
+		//overlay a tree through all the MethodType instances, so that a lookup
+		//just chases pointers from the return type roots.
+		for (MethodType t : methodTypes)
 			if (t.getReturnType().equals(returnType) && t.getParameterTypes().equals(parameterTypes))
 				return t;
-		return addMethodType(returnType, parameterTypes);
-	}
-
-	private MethodType addMethodType(ReturnType returnType, List<RegularType> parameterTypes) {
-		while (parameterTypes.size() >= methodTypes.size())
-			methodTypes.add(HashMultimap.<ReturnType, MethodType>create());
 		MethodType t = new MethodType(returnType, parameterTypes);
-		methodTypes.get(parameterTypes.size()).put(returnType, t);
+		methodTypes.add(t);
 		return t;
 	}
 
@@ -257,12 +246,7 @@ public final class TypeFactory implements Iterable<Type> {
 	public Iterator<Type> iterator() {
 		return Iterables.unmodifiableIterable(Iterables.<Type>concat(
 				typeMap.values(),
-				Iterables.concat(Iterables.transform(methodTypes, new Function<SetMultimap<ReturnType, MethodType>, Iterable<MethodType>>() {
-					@Override
-					public Iterable<MethodType> apply(SetMultimap<ReturnType, MethodType> input) {
-						return input.values();
-					}
-				})),
+				methodTypes,
 				staticFieldTypes,
 				instanceFieldTypes,
 				ImmutableList.of(basicBlockType, nullType))
