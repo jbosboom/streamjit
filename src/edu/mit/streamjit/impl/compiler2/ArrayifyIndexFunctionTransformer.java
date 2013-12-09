@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.base.Supplier;
 import edu.mit.streamjit.util.Combinators;
 import java.io.Serializable;
 import java.lang.invoke.MethodHandle;
@@ -23,7 +24,8 @@ public class ArrayifyIndexFunctionTransformer implements IndexFunctionTransforme
 		this.compact = compact;
 	}
 	@Override
-	public MethodHandle transform(MethodHandle fxn, NavigableSet<Integer> domain) {
+	public MethodHandle transform(MethodHandle fxn, Supplier<? extends NavigableSet<Integer>> domainSupplier) {
+		NavigableSet<Integer> domain = domainSupplier.get();
 		int[] array = new int[domain.last() - domain.first() + 1];
 		int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
 		for (int i : domain) {

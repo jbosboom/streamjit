@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.base.Supplier;
 import java.lang.invoke.MethodHandle;
 import java.util.NavigableSet;
 
@@ -10,7 +11,7 @@ import java.util.NavigableSet;
  */
 public class IdentityIndexFunctionTransformer implements IndexFunctionTransformer {
 	@Override
-	public MethodHandle transform(MethodHandle fxn, NavigableSet<Integer> domain) {
+	public MethodHandle transform(MethodHandle fxn, Supplier<? extends NavigableSet<Integer>> domain) {
 		return fxn;
 	}
 	@Override

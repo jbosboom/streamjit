@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.base.Supplier;
 import java.lang.invoke.MethodHandle;
 import java.util.NavigableSet;
 
@@ -17,5 +18,5 @@ public interface IndexFunctionTransformer {
 	 * @param domain the domain the function will be evaluated over
 	 * @return an equivalent handle
 	 */
-	public MethodHandle transform(MethodHandle fxn, NavigableSet<Integer> domain);
+	public MethodHandle transform(MethodHandle fxn, Supplier<? extends NavigableSet<Integer>> domain);
 }

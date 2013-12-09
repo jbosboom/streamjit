@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.compiler2;
 import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicate;
+import com.google.common.base.Supplier;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.FluentIterable;
@@ -245,12 +246,12 @@ public class ActorGroup implements Comparable<ActorGroup> {
 				MethodHandle[] table = new MethodHandle[a.inputs().size()];
 				for (int i = 0; i < a.inputs().size(); i++)
 					table[i] = MethodHandles.filterArguments(storage.get(a.inputs().get(i)).readHandle(), 0,
-							inputTransformers.get(a, i).transform(a.inputIndexFunctions().get(i), a.peeks(i, iterations)))
+							inputTransformers.get(a, i).transform(a.inputIndexFunctions().get(i), new PeeksSupplier(a, i, iterations)))
 							.asType(readHandleType);
 				read = Combinators.tableswitch(table);
 			} else
 				read = MethodHandles.filterArguments(storage.get(a.inputs().get(0)).readHandle(), 0,
-						inputTransformers.get(a, 0).transform(a.inputIndexFunctions().get(0), a.peeks(0, iterations)))
+						inputTransformers.get(a, 0).transform(a.inputIndexFunctions().get(0), new PeeksSupplier(a, 0, iterations)))
 						.asType(readHandleType);
 
 			assert a.outputs().size() > 0 : a;
@@ -260,12 +261,12 @@ public class ActorGroup implements Comparable<ActorGroup> {
 				MethodHandle[] table = new MethodHandle[a.outputs().size()];
 				for (int i = 0; i < a.outputs().size(); ++i)
 					table[i] = MethodHandles.filterArguments(storage.get(a.outputs().get(i)).writeHandle(), 0,
-							outputTransformers.get(a, i).transform(a.outputIndexFunctions().get(i), a.pushes(i, iterations)))
+							outputTransformers.get(a, i).transform(a.outputIndexFunctions().get(i), new PushesSupplier(a, i, iterations)))
 							.asType(writeHandleType);
 				write = Combinators.tableswitch(table);
 			} else
 				write = MethodHandles.filterArguments(storage.get(a.outputs().get(0)).writeHandle(), 0,
-					outputTransformers.get(a, 0).transform(a.outputIndexFunctions().get(0), a.pushes(0, iterations)))
+					outputTransformers.get(a, 0).transform(a.outputIndexFunctions().get(0), new PushesSupplier(a, 0, iterations)))
 					.asType(writeHandleType);
 
 			withRWHandlesBound.put(wa, specialized.bindTo(read).bindTo(write));
@@ -300,6 +301,37 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		return Combinators.semicolon(
 				MethodHandles.insertArguments(REINITIALIZE_ARRAYS, 0, (Object)copies),
 				groupLoop);
+	}
+
+	//TODO: replace these with Java 8 lambdas!
+	private static final class PeeksSupplier implements Supplier<ImmutableSortedSet<Integer>> {
+		private final Actor a;
+		private final int input;
+		private final Range<Integer> iterations;
+		private PeeksSupplier(Actor a, int input, Range<Integer> iterations) {
+			this.a = a;
+			this.input = input;
+			this.iterations = iterations;
+		}
+		@Override
+		public ImmutableSortedSet<Integer> get() {
+			return a.peeks(input, iterations);
+		}
+	}
+
+	private static final class PushesSupplier implements Supplier<ImmutableSortedSet<Integer>> {
+		private final Actor a;
+		private final int input;
+		private final Range<Integer> iterations;
+		private PushesSupplier(Actor a, int input, Range<Integer> iterations) {
+			this.a = a;
+			this.input = input;
+			this.iterations = iterations;
+		}
+		@Override
+		public ImmutableSortedSet<Integer> get() {
+			return a.pushes(input, iterations);
+		}
 	}
 
 	/**
