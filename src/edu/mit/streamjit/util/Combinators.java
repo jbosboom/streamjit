@@ -1,6 +1,8 @@
 package edu.mit.streamjit.util;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.primitives.Primitives;
 import static edu.mit.streamjit.util.LookupUtils.findStatic;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -129,5 +131,53 @@ public final class Combinators {
 	 */
 	public static MethodHandle nop(Class<?>... arguments) {
 		return MethodHandles.dropArguments(VOID_VOID_NOP, 0, arguments);
+	}
+
+	private static int _arraylength(boolean[] a) {
+		return a.length;
+	}
+	private static int _arraylength(byte[] a) {
+		return a.length;
+	}
+	private static int _arraylength(short[] a) {
+		return a.length;
+	}
+	private static int _arraylength(char[] a) {
+		return a.length;
+	}
+	private static int _arraylength(int[] a) {
+		return a.length;
+	}
+	private static int _arraylength(long[] a) {
+		return a.length;
+	}
+	private static int _arraylength(float[] a) {
+		return a.length;
+	}
+	private static int _arraylength(double[] a) {
+		return a.length;
+	}
+	private static int _arraylength(Object[] a) {
+		return a.length;
+	}
+	private static final MethodHandle REFERENCE_ARRAYLENGTH = findStatic(LOOKUP, Combinators.class, "_arraylength", int.class, Object[].class);
+	private static final ImmutableMap<Class<?>, MethodHandle> PRIMITIVE_ARRAYLENGTH;
+	static {
+		ImmutableMap.Builder<Class<?>, MethodHandle> builder = ImmutableMap.builder();
+		for (Class<?> c : Primitives.allPrimitiveTypes())
+			if (c != void.class) {
+				Class<?> arrayClass = ReflectionUtils.getArrayType(c);
+				builder.put(arrayClass, findStatic(LOOKUP, Combinators.class, "_arraylength", int.class, arrayClass));
+			}
+		PRIMITIVE_ARRAYLENGTH = builder.build();
+	}
+	public static MethodHandle arraylength(Class<?> arrayClass) {
+		checkArgument(arrayClass.isArray(), "%s not an array class", arrayClass);
+		if (arrayClass.getComponentType().isPrimitive()) {
+			MethodHandle handle = PRIMITIVE_ARRAYLENGTH.get(arrayClass);
+			assert handle != null : arrayClass;
+			return handle;
+		}
+		return REFERENCE_ARRAYLENGTH.asType(MethodType.methodType(int.class, arrayClass));
 	}
 }
