@@ -2,6 +2,9 @@ package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.math.IntMath;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.util.Combinators;
+import static edu.mit.streamjit.util.LookupUtils.findGetter;
+import static edu.mit.streamjit.util.LookupUtils.findStatic;
 import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -15,8 +18,9 @@ import java.lang.reflect.Array;
  */
 public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadableConcreteStorage, BulkWritableConcreteStorage {
 	private static final Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle INDEX = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "index", int.class, int.class, int.class);
+	private static final MethodHandle INDEX = findStatic(LOOKUP, CircularArrayConcreteStorage.class, "index", int.class, int.class, int.class, int.class);
 	private static final MethodHandle ADJUST = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "adjust", void.class);;
+	private static final MethodHandle HEAD_GETTER = findGetter(LOOKUP, CircularArrayConcreteStorage.class, "head", int.class);
 	private final Object array;
 	private final int capacity, throughput;
 	private int head;
@@ -27,7 +31,9 @@ public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadab
 		this.throughput = s.throughput();
 		this.head = 0;
 
-		MethodHandle index = MethodHandles.insertArguments(INDEX.bindTo(this), 1, capacity);
+		MethodHandle arrayLength = Combinators.arraylength(array.getClass()).bindTo(array);
+		MethodHandle index = MethodHandles.foldArguments(INDEX, arrayLength);
+		index = MethodHandles.foldArguments(index, HEAD_GETTER.bindTo(this));
 		MethodHandle arrayGetter = MethodHandles.arrayElementGetter(array.getClass()).bindTo(array);
 		this.readHandle = MethodHandles.filterArguments(arrayGetter, 0, index);
 		MethodHandle arraySetter = MethodHandles.arrayElementSetter(array.getClass()).bindTo(array);
@@ -86,7 +92,7 @@ public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadab
 	@Override
 	public void bulkRead(Buffer dest, int index, int count) {
 		assert type().equals(Object.class);
-		index = index(index, capacity);
+		index = index(capacity, head, index);
 		int countBeforeEnd = Math.min(count, capacity - index);
 		for (int written = 0; written < countBeforeEnd;)
 			written += dest.write((Object[])array, index + written, countBeforeEnd - written);
@@ -98,7 +104,7 @@ public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadab
 	@Override
 	public void bulkWrite(Buffer source, int index, int count) {
 		assert type().equals(Object.class);
-		index = index(index, capacity);
+		index = index(capacity, head, index);
 		int countBeforeEnd = Math.min(count, capacity - index);
 		int itemsRead = source.read((Object[])array, index, countBeforeEnd);
 		assert itemsRead == countBeforeEnd;
@@ -108,7 +114,7 @@ public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadab
 		assert itemsRead + secondItemsRead == count;
 	}
 
-	private int index(int physicalIndex, int capacity) {
+	private static int index(int capacity, int head, int physicalIndex) {
 		//assumes (physicalIndex + head) >= 0
 		//I'd assert but that would add bytes to the method, hampering inlining.
 		return (physicalIndex + head) % capacity;
