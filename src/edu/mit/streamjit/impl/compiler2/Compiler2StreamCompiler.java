@@ -65,12 +65,12 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 		Configuration.IntParameter multiplierParam = (Configuration.IntParameter)builder.removeParameter("multiplier");
 		builder.addParameter(new Configuration.IntParameter("multiplier", multiplierParam.getRange(), this.multiplier));
 
-		//For testing, try full data-parallelization across all cores.
-		int perCore = multiplier/maxNumCores;
+		//For testing, make no assignments; we'll try full data-parallelization
+		//across all cores.
 		for (Map.Entry<String, Configuration.Parameter> e : defaultConfiguration.getParametersMap().entrySet())
 			if (e.getKey().matches("node(\\d+)core(\\d+)iter")) {
 				Configuration.IntParameter p = (Configuration.IntParameter)builder.removeParameter(e.getKey());
-				builder.addParameter(new Configuration.IntParameter(e.getKey(), p.getRange(), perCore));
+				builder.addParameter(new Configuration.IntParameter(e.getKey(), p.getRange(), 0));
 			}
 
 		if (dumpFile != null)

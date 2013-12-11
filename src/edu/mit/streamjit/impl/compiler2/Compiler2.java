@@ -879,7 +879,7 @@ public class Compiler2 {
 
 			//If the node is stateful, we must put all allocations on the
 			//same core. Arbitrarily pick the first core with an allocation.
-			//(If no cores have an allocation, we'll put them on core 0 below.)
+			//(If no cores have an allocation, we'll spread them below.)
 			int min = toBeAllocated.lowerEndpoint();
 			Range<Integer> allocation = g.isStateful() ? toBeAllocated :
 					toBeAllocated.intersection(Range.closedOpen(min, min + parameter.getValue()));
@@ -887,10 +887,19 @@ public class Compiler2 {
 			toBeAllocated = Range.closedOpen(allocation.upperEndpoint(), toBeAllocated.upperEndpoint());
 		}
 
-		//If we have iterations left over not assigned to a core,
-		//arbitrarily put them on core 0.
-		if (!toBeAllocated.isEmpty())
-			cores.get(0).allocate(g, toBeAllocated);
+		//If we have iterations left over not assigned to a core, spread them
+		//evenly over all cores.
+		if (!toBeAllocated.isEmpty()) {
+			int perCore = IntMath.divide(toBeAllocated.upperEndpoint() - toBeAllocated.lowerEndpoint(), cores.size(), RoundingMode.CEILING);
+			for (int i = 0; i < cores.size() && !toBeAllocated.isEmpty(); ++i) {
+				int min = toBeAllocated.lowerEndpoint();
+				Range<Integer> allocation = g.isStateful() ? toBeAllocated :
+						toBeAllocated.intersection(Range.closedOpen(min, min + perCore));
+				cores.get(i).allocate(g, allocation);
+				toBeAllocated = Range.closedOpen(allocation.upperEndpoint(), toBeAllocated.upperEndpoint());
+			}
+		}
+		assert toBeAllocated.isEmpty();
 	}
 
 	private ReadInstruction makeReadInstruction(TokenActor a, ConcreteStorage cs, int count) {
