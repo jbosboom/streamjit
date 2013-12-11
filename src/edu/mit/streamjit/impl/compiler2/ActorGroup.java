@@ -21,6 +21,8 @@ import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.LookupUtils.findStatic;
+import edu.mit.streamjit.util.bytecode.Module;
+import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -283,24 +285,32 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		 * cache for data cache by unrolling, executing each actor for N
 		 * iterations worth before proceeding to the next actor.
 		 */
+		Module module = new Module();
+		ModuleClassLoader loader = new ModuleClassLoader(module);
+		String groupLoopName = String.format("Group%dIter%dTo%d", id(), iterations.lowerEndpoint(), iterations.upperEndpoint());
 		List<MethodHandle> loopHandles = new ArrayList<>(actors().size());
 		Map<int[], int[]> requiredCopies = new LinkedHashMap<>();
-		for (Actor a : actors())
-			loopHandles.add(makeWorkerLoop((WorkerActor)a, withRWHandlesBound.get(a), iterations.lowerEndpoint(), requiredCopies));
+		for (Actor a : actors()) {
+			MethodHandle workerLoop = makeWorkerLoop((WorkerActor)a, withRWHandlesBound.get(a), iterations.lowerEndpoint(), requiredCopies);
+			String workerLoopName = String.format("%sWorker%d", groupLoopName, a.id());
+			loopHandles.add(Bytecodifier.bytecodify(workerLoop, workerLoopName, module, loader));
+		}
 		MethodHandle groupLoop = MethodHandles.insertArguments(OVERALL_GROUP_LOOP, 0,
 				Combinators.semicolon(loopHandles), iterations.lowerEndpoint(), iterations.upperEndpoint());
-		if (requiredCopies.isEmpty())
-			return groupLoop;
-
-		int[][] copies = new int[requiredCopies.size()*2][];
-		int i = 0;
-		for (Map.Entry<int[], int[]> e : requiredCopies.entrySet()) {
-			copies[i++] = e.getKey();
-			copies[i++] = e.getValue();
+		if (!requiredCopies.isEmpty()) {
+			int[][] copies = new int[requiredCopies.size()*2][];
+			int i = 0;
+			for (Map.Entry<int[], int[]> e : requiredCopies.entrySet()) {
+				copies[i++] = e.getKey();
+				copies[i++] = e.getValue();
+			}
+			groupLoop = Combinators.semicolon(
+					MethodHandles.insertArguments(REINITIALIZE_ARRAYS, 0, (Object)copies),
+					groupLoop);
 		}
-		return Combinators.semicolon(
-				MethodHandles.insertArguments(REINITIALIZE_ARRAYS, 0, (Object)copies),
-				groupLoop);
+
+		groupLoop = Bytecodifier.bytecodify(groupLoop, "Group"+id()+"Iter"+iterations.lowerEndpoint()+"To"+iterations.upperEndpoint(), module, loader);
+		return groupLoop;
 	}
 
 	//TODO: replace these with Java 8 lambdas!
