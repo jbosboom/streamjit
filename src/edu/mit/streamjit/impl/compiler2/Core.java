@@ -1,16 +1,12 @@
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Range;
 import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
-import edu.mit.streamjit.util.LookupUtils;
 import edu.mit.streamjit.util.Pair;
-import edu.mit.streamjit.util.SemicolonRunnable;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -49,19 +45,12 @@ public class Core {
 		allocations.add(Pair.make(group, iterations));
 	}
 
-	private static final MethodHandle RUNNABLE_RUN = LookupUtils.findVirtual(MethodHandles.publicLookup(), Runnable.class, "run", void.class);
 	public MethodHandle code() {
 		//TODO: here's where to plug in ActorGroup ordering parameters
 		List<MethodHandle> code = new ArrayList<>(allocations.size());
-		List<String> proxyNames = new ArrayList<>(allocations.size());
-		for (Pair<ActorGroup, Range<Integer>> p : allocations) {
+		for (Pair<ActorGroup, Range<Integer>> p : allocations)
 			code.add(p.first.specialize(p.second, allStorage, inputTransformers, outputTransformers));
-			proxyNames.add("Group"+p.first.id()+"Iter"+p.second.lowerEndpoint()+"To"+p.second.upperEndpoint());
-		}
-		ImmutableList<Runnable> proxies = Bytecodifier.runnableProxies(code, proxyNames);
-		Runnable r = new SemicolonRunnable(proxies);
-		return RUNNABLE_RUN.bindTo(r);
-		//return Combinators.semicolon(code);
+		return Combinators.semicolon(code);
 	}
 
 	/**
