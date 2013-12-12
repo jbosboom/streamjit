@@ -139,6 +139,12 @@ public class ActorArchetype {
 		if (Iterables.isEmpty(actors)) return;
 
 		Module module = workerKlass.getParent();
+		TypeFactory types = module.types();
+		//We need to resolve work before making the state holder class so we
+		//pick up its uses.
+		Method oldWork = workerKlass.getMethodByVirtual("work", types.getMethodType(types.getVoidType(), types.getRegularType(workerKlass)));
+		oldWork.resolve();
+
 		Klass stateHolderKlass = makeStateHolderKlass(packageName);
 		Klass archetypeKlass = new Klass(packageName + "." + workerKlass.getName()+"Archetype",
 				module.getKlass(Object.class),
@@ -270,7 +276,6 @@ public class ActorArchetype {
 		Module module = archetypeKlass.getParent();
 		TypeFactory types = module.types();
 		Method oldWork = workerKlass.getMethodByVirtual("work", types.getMethodType(types.getVoidType(), types.getRegularType(workerKlass)));
-		oldWork.resolve();
 
 		ImmutableList.Builder<RegularType> workMethodTypeBuilder = ImmutableList.builder();
 		ImmutableList.Builder<String> workMethodArgumentNameBuilder = ImmutableList.builder();
