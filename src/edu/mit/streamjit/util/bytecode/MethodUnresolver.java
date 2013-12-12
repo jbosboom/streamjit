@@ -490,7 +490,9 @@ public final class MethodUnresolver {
 			opcode = Opcodes.INVOKESTATIC;
 		else if (m.isConstructor() ||
 				m.getAccess().equals(Access.PRIVATE) ||
-				Iterables.contains(method.getParent().superclasses(), m.getParent()))
+				//We're calling a superclass method we've overridden.
+				(Iterables.contains(method.getParent().superclasses(), m.getParent())) &&
+				method.getParent().getMethodByVirtual(m.getName(), m.getType()) != m)
 			opcode = Opcodes.INVOKESPECIAL;
 		else if (m.getParent().modifiers().contains(Modifier.INTERFACE))
 			//TODO: may not be correct?
