@@ -46,6 +46,28 @@ public final class ReflectionUtils {
 	}
 
 	/**
+	 * Returns object's first (lowest in inheritance hierarchy) field with the
+	 * given name.
+	 * @param object the object
+	 * @param name the field name
+	 * @return the object's first field with the given name
+	 */
+	public static Field getFieldByName(Object object, String name) {
+		for (Class<?> klass = object.getClass(); klass != null; klass = klass.getSuperclass()) {
+			for (Field f : klass.getDeclaredFields())
+				if (f.getName().equals(name))
+					return f;
+			//Class.getField checks interfaces before superclasses, so we'll do
+			//the same.  (getDeclaredField doesn't search up the hierarchy.)
+			for (Class<?> i : klass.getInterfaces())
+				for (Field f : i.getDeclaredFields())
+					if (f.getName().equals(name))
+						return f;
+		}
+		return null;
+	}
+
+	/**
 	 * Returns the Class object representing an array of the type represented
 	 * by the given Class object.  That is, this method is the inverse of
 	 * Class.getComponentType().

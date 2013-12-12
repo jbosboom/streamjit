@@ -236,14 +236,11 @@ public class ActorArchetype {
 		//private (thus inaccessible).  Unfortunately this means we need to
 		//generate reflective code.  (MethodHandles might be easier to use (just
 		//call into LookupUtils), but we won't have the appropriate Lookup(s).)
-		Method getClass = Iterables.getOnlyElement(module.getKlass(Object.class).getMethods("getClass"));
-		CallInst workerClass = new CallInst(getClass, worker);
-		initBlock.instructions().add(workerClass);
-		Method getDeclaredField = Iterables.getOnlyElement(module.getKlass(Class.class).getMethods("getDeclaredField"));
+		Method getFieldByName = Iterables.getOnlyElement(module.getKlass(ReflectionUtils.class).getMethods("getFieldByName"));
 		Method setAccessible = module.getKlass(AccessibleObject.class).getMethod("setAccessible", types.getMethodType(void.class, AccessibleObject.class, boolean.class));
 		for (Map.Entry<Field, Field> e : workerToHolder.entrySet()) {
 			Field wf = e.getKey(), hf = e.getValue();
-			CallInst field = new CallInst(getDeclaredField, workerClass, module.constants().getConstant(wf.getName()));
+			CallInst field = new CallInst(getFieldByName, worker, module.constants().getConstant(wf.getName()));
 			CallInst access = new CallInst(setAccessible, field, module.constants().getConstant(true));
 			String getSuffix = "";
 			if (wf.getType().getFieldType() instanceof PrimitiveType) {
