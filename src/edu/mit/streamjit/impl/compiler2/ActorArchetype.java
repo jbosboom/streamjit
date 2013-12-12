@@ -206,7 +206,7 @@ public class ActorArchetype {
 	private Klass makeStateHolderKlass(String packageName) {
 		Module module = workerKlass.getParent();
 		Klass stateHolder = new Klass(packageName + "." + workerKlass.getName() + "StateHolder",
-				module.getKlass(Object.class),
+				module.getKlass(StateHolder.class),
 				ImmutableList.<Klass>of(),
 				module);
 		stateHolder.modifiers().add(Modifier.PUBLIC);
@@ -229,7 +229,7 @@ public class ActorArchetype {
 		worker.setName("worker");
 		BasicBlock initBlock = new BasicBlock(module);
 		init.basicBlocks().add(initBlock);
-		Method superCtor = module.getKlass(Object.class).getMethods("<init>").iterator().next();
+		Method superCtor = module.getKlass(StateHolder.class).getMethods("<init>").iterator().next();
 		initBlock.instructions().add(new CallInst(superCtor));
 
 		//We need to generate field initializers, but some worker fields may be
