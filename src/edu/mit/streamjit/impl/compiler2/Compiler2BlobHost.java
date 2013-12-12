@@ -261,6 +261,8 @@ public class Compiler2BlobHost implements Blob {
 		initWriteInstructions = null;
 		migrationInstructions = null;
 
+		readOrDrain();
+
 		SwitchPoint.invalidateAll(new SwitchPoint[]{sp1});
 
 		if (collectTimings)
@@ -275,6 +277,20 @@ public class Compiler2BlobHost implements Blob {
 			++adjustCount;
 		}
 
+		for (WriteInstruction inst : writeInstructions) {
+			inst.run();
+		}
+
+		for (MethodHandle h : storageAdjusts)
+			h.invokeExact();
+
+		readOrDrain();
+
+		if (collectTimings)
+			adjustTime.stop();
+	}
+
+	private void readOrDrain() {
 		for (int i = 0; i < readInstructions.size(); ++i) {
 			ReadInstruction inst = readInstructions.get(i);
 			while (!inst.load())
@@ -283,23 +299,11 @@ public class Compiler2BlobHost implements Blob {
 					return;
 				}
 		}
-
-		for (WriteInstruction inst : writeInstructions) {
-			inst.run();
-		}
-
-		for (MethodHandle h : storageAdjusts)
-			h.invokeExact();
-
-		if (collectTimings)
-			adjustTime.stop();
 	}
 
 	/**
 	 * Extracts elements from storage and puts them in a DrainData for an
 	 * interpreter blob.
-	 * TODO: extract stateful filter state, probably with an extra
-	 * DrainInstruction method or possibly a new instruction class
 	 * @param reads read instructions whose load() completed (thus requiring
 	 * unload())
 	 * @param drains drain instructions, if we're in the steady-state, or an
