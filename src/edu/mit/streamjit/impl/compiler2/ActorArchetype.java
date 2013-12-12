@@ -159,11 +159,11 @@ public class ActorArchetype {
 			if (methods.containsKey(key)) continue;
 
 			//We modify rwork while remapping so we need a fresh clone.
-			Method rwork = makeRwork(archetypeKlass);
+			Method rwork = makeRwork(archetypeKlass, stateHolderKlass);
 			for (BasicBlock b : rwork.basicBlocks())
 				for (Instruction i : ImmutableList.copyOf(b.instructions()))
 					if (Iterables.contains(i.operands(), rwork.arguments().get(0)))
-						remapEliminatingReceiver(i, inputType, outputType);
+						remapEliminatingReceiver(i, inputType, outputType, stateHolderKlass);
 
 			assert rwork.arguments().get(0).uses().isEmpty();
 			Method work = new Method(makeWorkMethodName(inputType, outputType),
@@ -272,7 +272,7 @@ public class ActorArchetype {
 	 * retaining a dummy receiver argument (the 'r' stands for "receiver").
 	 * @return the rwork method
 	 */
-	private Method makeRwork(Klass archetypeKlass) {
+	private Method makeRwork(Klass archetypeKlass, Klass stateHolderKlass) {
 		Module module = archetypeKlass.getParent();
 		TypeFactory types = module.types();
 		Method oldWork = workerKlass.getMethodByVirtual("work", types.getMethodType(types.getVoidType(), types.getRegularType(workerKlass)));
@@ -280,21 +280,8 @@ public class ActorArchetype {
 		ImmutableList.Builder<RegularType> workMethodTypeBuilder = ImmutableList.builder();
 		ImmutableList.Builder<String> workMethodArgumentNameBuilder = ImmutableList.builder();
 
-		if (StatefulFilter.class.isAssignableFrom(workerClass())) {
-			//Stateful filters either get read/write MHs (which can point to the
-			//worker itself, but require invoker trampolines or signature
-			//polymorphism), or get a reference to a spun StateCollector class
-			//which can be loaded and stored normally (or perhaps loaded once
-			//into locals at entry and stored on exit, so the JVM knows only
-			//used in one place).
-			throw new UnsupportedOperationException("TODO");
-		} else {
-			//Stateless workers just get the values bound in directly.
-			for (java.lang.reflect.Field f : fields) {
-				workMethodArgumentNameBuilder.add(f.getName());
-				workMethodTypeBuilder.add(types.getRegularType(f.getType()));
-			}
-		}
+		workMethodArgumentNameBuilder.add("$stateHolder");
+		workMethodTypeBuilder.add(types.getRegularType(stateHolderKlass));
 
 		workMethodArgumentNameBuilder.add("$readInput");
 		workMethodTypeBuilder.add(types.getRegularType(MethodHandle.class));
@@ -363,13 +350,13 @@ public class ActorArchetype {
 		block.instructions().add(store);
 	}
 
-	private void remapEliminatingReceiver(Instruction inst, Class<?> inputType, Class<?> outputType) {
+	private void remapEliminatingReceiver(Instruction inst, Class<?> inputType, Class<?> outputType, Klass stateHolderKlass) {
 		if (inst instanceof CallInst)
 			remap((CallInst)inst, inputType, outputType);
 		else if (inst instanceof LoadInst)
-			remap((LoadInst)inst);
+			remap((LoadInst)inst, stateHolderKlass);
 		else if (inst instanceof StoreInst)
-			remap((StoreInst)inst);
+			remap((StoreInst)inst, stateHolderKlass);
 		else
 			throw new AssertionError("Can't eliminiate receiver: "+inst);
 	}
@@ -599,14 +586,15 @@ public class ActorArchetype {
 		return call;
 	}
 
-	private void remap(LoadInst inst) {
+	private void remap(LoadInst inst, Klass stateHolderKlass) {
 		assert inst.getLocation() instanceof Field;
-		Argument replacement = inst.getParent().getParent().getArgument(inst.getLocation().getName());
-		assert replacement != null;
-		inst.replaceInstWithValue(replacement);
+		Argument stateHolder = inst.getParent().getParent().getArgument("$stateHolder");
+		Field stateField = stateHolderKlass.getField(inst.getLocation().getName());
+		assert stateField != null : inst;
+		inst.replaceInstWithInst(new LoadInst(stateField, stateHolder));
 	}
 
-	private void remap(StoreInst inst) {
+	private void remap(StoreInst inst, Klass stateHolderKlass) {
 		throw new UnsupportedOperationException("TODO: remap StoreInsts for stateful filters");
 	}
 
@@ -662,18 +650,12 @@ public class ActorArchetype {
 	public MethodHandle specialize(WorkerActor a) {
 		checkArgument(a.archetype() == this);
 		MethodHandle handle = workMethods.get(new Pair<>(a.inputType().getRawType(), a.outputType().getRawType()));
-		//This relies on fields having a consistent iteration order.
-		for (java.lang.reflect.Field f : fields)
-			try {
-				handle = MethodHandles.insertArguments(handle, 0, f.get(a.worker()));
-			} catch (IllegalAccessException ex) {
-				throw new AssertionError(ex);
-			}
+		Object stateHolder;
 		try {
-			Object holder = constructStateHolder.invoke(a.worker());
+			stateHolder = constructStateHolder.invoke(a.worker());
 		} catch (Throwable ex) {
 			throw new AssertionError(ex);
 		}
-		return handle;
+		return handle.bindTo(stateHolder);
 	}
 }
