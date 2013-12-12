@@ -230,7 +230,7 @@ public class ActorArchetype {
 		BasicBlock initBlock = new BasicBlock(module);
 		init.basicBlocks().add(initBlock);
 		Method superCtor = module.getKlass(StateHolder.class).getMethods("<init>").iterator().next();
-		initBlock.instructions().add(new CallInst(superCtor));
+		initBlock.instructions().add(new CallInst(superCtor, worker));
 
 		//We need to generate field initializers, but some worker fields may be
 		//private (thus inaccessible).  Unfortunately this means we need to
@@ -639,6 +639,15 @@ public class ActorArchetype {
 		return false;
 	}
 
+	public StateHolder makeStateHolder(WorkerActor a) {
+		checkArgument(a.archetype() == this);
+		try {
+			return (StateHolder)constructStateHolder.invoke(a.worker());
+		} catch (Throwable ex) {
+			throw new AssertionError(ex);
+		}
+	}
+
 	/**
 	 * Specializes an archetypal work function for the given Actor.  The
 	 * returned function takes four arguments: the read and write method handles
@@ -651,12 +660,6 @@ public class ActorArchetype {
 	public MethodHandle specialize(WorkerActor a) {
 		checkArgument(a.archetype() == this);
 		MethodHandle handle = workMethods.get(new Pair<>(a.inputType().getRawType(), a.outputType().getRawType()));
-		Object stateHolder;
-		try {
-			stateHolder = constructStateHolder.invoke(a.worker());
-		} catch (Throwable ex) {
-			throw new AssertionError(ex);
-		}
-		return handle.bindTo(stateHolder);
+		return handle.bindTo(a.stateHolder());
 	}
 }

@@ -734,15 +734,19 @@ public class Compiler2 {
 	private void generateArchetypalCode() {
 		String packageName = "compiler"+PACKAGE_NUMBER.getAndIncrement();
 		ModuleClassLoader mcl = new ModuleClassLoader(module);
-		for (final ActorArchetype archetype : archetypes)
-			archetype.generateCode(packageName, mcl, FluentIterable.from(actors)
+		for (final ActorArchetype archetype : archetypes) {
+			Iterable<WorkerActor> workerActors = FluentIterable.from(actors)
 					.filter(WorkerActor.class)
 					.filter(new Predicate<WorkerActor>() {
 						@Override
 						public boolean apply(WorkerActor input) {
 							return input.archetype().equals(archetype);
 						}
-			}));
+					});
+			archetype.generateCode(packageName, mcl, workerActors);
+			for (WorkerActor wa : workerActors)
+				wa.setStateHolder(archetype.makeStateHolder(wa));
+		}
 	}
 
 	private void createInitCode() {
@@ -974,6 +978,9 @@ public class Compiler2 {
 			assert !e.getValue().contains(null) : "lost an element from "+e.getKey()+": "+e.getValue();
 			drainInstructions.add(new XDrainInstruction(e.getKey(), e.getValue()));
 		}
+
+		for (WorkerActor wa : Iterables.filter(actors, WorkerActor.class))
+			drainInstructions.add(wa.stateHolder());
 	}
 
 	//<editor-fold defaultstate="collapsed" desc="Output index function adjust/restore">

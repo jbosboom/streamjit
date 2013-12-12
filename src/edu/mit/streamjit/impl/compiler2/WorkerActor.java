@@ -20,6 +20,7 @@ import java.util.Map;
 public final class WorkerActor extends Actor {
 	private final Worker<?, ?> worker;
 	private final ActorArchetype archetype;
+	private StateHolder stateHolder;
 	public WorkerActor(Worker<?, ?> worker, ActorArchetype archetype) {
 		super(archetype.declaredInputType(), archetype.declaredOutputType());
 		this.worker = worker;
@@ -37,6 +38,14 @@ public final class WorkerActor extends Actor {
 
 	public ActorArchetype archetype() {
 		return archetype;
+	}
+
+	public StateHolder stateHolder() {
+		return stateHolder;
+	}
+
+	public void setStateHolder(StateHolder stateHolder) {
+		this.stateHolder = stateHolder;
 	}
 
 	/**
