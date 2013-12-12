@@ -97,8 +97,6 @@ public final class Bytecodifier {
 
 		try {
 			Class<?> liveClass = loader.loadClass(className);
-			//We should have removed this during static initialization.
-			assert !BOUNCER.containsKey(key) : key+" not removed from bouncer";
 			return PUBLIC_LOOKUP.findStatic(liveClass, "$invoke", handle.type());
 		} catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException ex) {
 			throw new AssertionError(ex);
