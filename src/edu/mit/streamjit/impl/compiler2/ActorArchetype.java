@@ -592,7 +592,11 @@ public class ActorArchetype {
 	}
 
 	private void remap(StoreInst inst, Klass stateHolderKlass) {
-		throw new UnsupportedOperationException("TODO: remap StoreInsts for stateful filters");
+		assert inst.getLocation() instanceof Field;
+		Argument stateHolder = inst.getParent().getParent().getArgument("$stateHolder");
+		Field stateField = stateHolderKlass.getField(inst.getLocation().getName());
+		assert stateField != null : inst;
+		inst.replaceInstWithInst(new StoreInst(stateField, inst.getData(), stateHolder));
 	}
 
 	/**
