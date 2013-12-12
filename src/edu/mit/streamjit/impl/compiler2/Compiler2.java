@@ -1191,7 +1191,7 @@ public class Compiler2 {
 		private final int index, count;
 		private Buffer buffer;
 		private BulkWriteInstruction(TokenActor a, BulkReadableConcreteStorage storage, int count) {
-			assert a.isInput() : a;
+			assert a.isOutput(): a;
 			this.token = a.token();
 			this.storage = storage;
 			this.index = a.translateInputIndex(0, 0);
