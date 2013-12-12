@@ -86,11 +86,11 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 			checkArgument(type.getParameterTypes().size() == 0);
 			checkArgument(modifiers.contains(Modifier.STATIC));
 		}
+		parent.methods().add(this);
 		this.modifiers = modifiers;
 		this.arguments = buildArguments();
 		this.basicBlocks = new ParentedList<>(this, BasicBlock.class);
 		this.localVariables = new ParentedList<>(this, LocalVariable.class);
-		parent.methods().add(this);
 	}
 
 	public boolean isMutable() {
@@ -307,6 +307,8 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 	private ImmutableList<Argument> buildArguments() {
 		ImmutableList<RegularType> paramTypes = getType().getParameterTypes();
 		ImmutableList.Builder<Argument> builder = ImmutableList.builder();
+		if (isConstructor())
+			builder.add(new Argument(this, getParent().getParent().types().getRegularType(getParent()), "this"));
 		for (int i = 0; i < paramTypes.size(); ++i) {
 			String name = (i == 0 && hasReceiver()) ? "this" : "arg"+i;
 			builder.add(new Argument(this, paramTypes.get(i), name));

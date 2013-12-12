@@ -76,7 +76,6 @@ public final class MethodUnresolver {
 
 	private final Method method;
 	private final MethodNode methodNode;
-	private final Value uninitializedThis;
 	private final Map<Value, Integer> registers;
 	private final Map<BasicBlock, LabelNode> labels;
 	private final PrimitiveType booleanType, byteType, charType, shortType,
@@ -84,7 +83,6 @@ public final class MethodUnresolver {
 	private MethodUnresolver(Method m) {
 		this.method = m;
 		this.methodNode = new MethodNode(Opcodes.ASM4);
-		this.uninitializedThis = method.isConstructor() ? findUninitializedThis() : null;
 		this.registers = new IdentityHashMap<>();
 		this.labels = new IdentityHashMap<>();
 		TypeFactory tf = m.getParent().getParent().types();
@@ -132,10 +130,6 @@ public final class MethodUnresolver {
 		//instruction producing a non-void value, the method arguments, and the
 		//local variables.
 		int regNum = 0;
-		if (method.isConstructor()) {
-			registers.put(uninitializedThis, regNum);
-			regNum += uninitializedThis.getType().getCategory();
-		}
 		for (Argument a : method.arguments()) {
 			registers.put(a, regNum);
 			regNum += a.getType().getCategory();
@@ -475,15 +469,18 @@ public final class MethodUnresolver {
 	}
 	private void emit(CallInst i, InsnList insns) {
 		Method m = i.getMethod();
+		boolean callingSuperCtor = false;
 		if (m.isConstructor()) {
-			//If we're calling super(), load uninitializedThis.
+			//If we're calling super(), load this.
 			//TODO: this will get confused if we call a superclass constructor
 			//for any reason other than our own initialization!
-			if (method.isConstructor() && method.getParent().getSuperclass().equals(m.getParent()))
-				load(uninitializedThis, insns);
-			else
+			if (method.isConstructor() && method.getParent().getSuperclass().equals(m.getParent())) {
+				load(method.arguments().get(0), insns);
+				callingSuperCtor = true;
+			} else {
 				insns.add(new TypeInsnNode(Opcodes.NEW, internalName(m.getType().getReturnType().getKlass())));
-			insns.add(new InsnNode(Opcodes.DUP));
+				insns.add(new InsnNode(Opcodes.DUP));
+			}
 		}
 		int opcode;
 		if (m.modifiers().contains(Modifier.STATIC))
@@ -511,7 +508,7 @@ public final class MethodUnresolver {
 			load(v, insns);
 		insns.add(new MethodInsnNode(opcode, owner, m.getName(), i.callDescriptor()));
 
-		if (!(i.getType() instanceof VoidType))
+		if (!(i.getType() instanceof VoidType) && !callingSuperCtor)
 			store(i, insns);
 	}
 	private void emit(CastInst i, InsnList insns) {
@@ -763,17 +760,6 @@ public final class MethodUnresolver {
 			insns.add(new VarInsnNode(Opcodes.ISTORE, reg));
 		else
 			throw new AssertionError("unstorable value: "+v);
-	}
-
-	private UninitializedValue findUninitializedThis() {
-		for (BasicBlock b : method.basicBlocks())
-			for (Instruction i : b.instructions())
-				for (Value v : i.operands())
-					if (v instanceof UninitializedValue && v.getName().equals("uninitializedThis"))
-						return (UninitializedValue)v;
-		//We didn't use it for anything, so we didn't save it, but we need one.
-		ReturnType type = method.getParent().getParent().types().getType(method.getParent());
-		return new UninitializedValue(type, "uninitializedThis");
 	}
 
 	private static String methodDescriptor(Method m) {
