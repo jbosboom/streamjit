@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
@@ -14,8 +15,10 @@ import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.util.LookupUtils;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
+import edu.mit.streamjit.util.bytecode.Access;
 import edu.mit.streamjit.util.bytecode.Argument;
 import edu.mit.streamjit.util.bytecode.BasicBlock;
 import edu.mit.streamjit.util.bytecode.Cloning;
@@ -37,6 +40,7 @@ import edu.mit.streamjit.util.bytecode.insts.CastInst;
 import edu.mit.streamjit.util.bytecode.insts.Instruction;
 import edu.mit.streamjit.util.bytecode.insts.JumpInst;
 import edu.mit.streamjit.util.bytecode.insts.LoadInst;
+import edu.mit.streamjit.util.bytecode.insts.ReturnInst;
 import edu.mit.streamjit.util.bytecode.insts.StoreInst;
 import edu.mit.streamjit.util.bytecode.types.ArrayType;
 import edu.mit.streamjit.util.bytecode.types.MethodType;
@@ -46,6 +50,7 @@ import edu.mit.streamjit.util.bytecode.types.TypeFactory;
 import edu.mit.streamjit.util.bytecode.types.WrapperType;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -78,6 +83,7 @@ public class ActorArchetype {
 	 * The Klass corresponding to the worker class.
 	 */
 	private final Klass workerKlass;
+	private MethodHandle constructStateHolder;
 	private ImmutableMap<Pair<Class<?>, Class<?>>, MethodHandle> workMethods;
 	public ActorArchetype(Class<? extends Worker<?, ?>> workerClass, Module module) {
 		this.workerClass = workerClass;
@@ -133,6 +139,7 @@ public class ActorArchetype {
 		if (Iterables.isEmpty(actors)) return;
 
 		Module module = workerKlass.getParent();
+		Klass stateHolderKlass = makeStateHolderKlass(packageName);
 		Klass archetypeKlass = new Klass(packageName + "." + workerKlass.getName()+"Archetype",
 				module.getKlass(Object.class),
 				ImmutableList.<Klass>of(),
@@ -168,6 +175,8 @@ public class ActorArchetype {
 
 		ImmutableMap.Builder<Pair<Class<?>, Class<?>>, MethodHandle> workMethodsBuilder = ImmutableMap.builder();
 		try {
+			Class<?> stateHolderClass = loader.loadClass(stateHolderKlass.getName());
+			this.constructStateHolder = LookupUtils.findConstructor(MethodHandles.publicLookup(), stateHolderClass, workerClass);
 			Class<?> archetypeClass = loader.loadClass(archetypeKlass.getName());
 			ImmutableListMultimap<String, java.lang.reflect.Method> methodsByName
 					= Multimaps.index(Arrays.asList(archetypeClass.getMethods()),
@@ -186,6 +195,66 @@ public class ActorArchetype {
 			throw new AssertionError(ex);
 		}
 		this.workMethods = workMethodsBuilder.build();
+	}
+
+	private Klass makeStateHolderKlass(String packageName) {
+		Module module = workerKlass.getParent();
+		Klass stateHolder = new Klass(packageName + "." + workerKlass.getName() + "StateHolder",
+				module.getKlass(Object.class),
+				ImmutableList.<Klass>of(),
+				module);
+		stateHolder.modifiers().add(Modifier.PUBLIC);
+
+		Map<Field, Field> workerToHolder = new HashMap<>();
+		for (Klass k = workerKlass; k.getBackingClass() != Filter.class && k.getBackingClass() != Splitter.class && k.getBackingClass() != Joiner.class; k = k.getSuperclass())
+			for (Field wf : k.fields()) {
+				//Don't bother with unused fields.
+				if (FluentIterable.from(wf.users()).filter(LoadInst.class).isEmpty()) continue;
+				Field hf = new Field(wf.getType().getFieldType(), wf.getName(), wf.modifiers(), stateHolder);
+				hf.setAccess(Access.PUBLIC);
+				workerToHolder.put(wf, hf);
+			}
+
+		TypeFactory types = module.types();
+		RegularType workerType = types.getRegularType(workerKlass);
+		RegularType stateHolderType = types.getRegularType(stateHolder);
+		Method init = new Method("<init>", types.getMethodType(stateHolderType, workerType), EnumSet.of(Modifier.PUBLIC), stateHolder);
+		Argument worker = init.arguments().get(1);
+		worker.setName("worker");
+		BasicBlock initBlock = new BasicBlock(module);
+		init.basicBlocks().add(initBlock);
+		Method superCtor = module.getKlass(Object.class).getMethods("<init>").iterator().next();
+		initBlock.instructions().add(new CallInst(superCtor));
+
+		//We need to generate field initializers, but some worker fields may be
+		//private (thus inaccessible).  Unfortunately this means we need to
+		//generate reflective code.  (MethodHandles might be easier to use (just
+		//call into LookupUtils), but we won't have the appropriate Lookup(s).)
+		Method getClass = Iterables.getOnlyElement(module.getKlass(Object.class).getMethods("getClass"));
+		CallInst workerClass = new CallInst(getClass, worker);
+		initBlock.instructions().add(workerClass);
+		Method getDeclaredField = Iterables.getOnlyElement(module.getKlass(Class.class).getMethods("getDeclaredField"));
+		Method setAccessible = module.getKlass(AccessibleObject.class).getMethod("setAccessible", types.getMethodType(void.class, AccessibleObject.class, boolean.class));
+		for (Map.Entry<Field, Field> e : workerToHolder.entrySet()) {
+			Field wf = e.getKey(), hf = e.getValue();
+			CallInst field = new CallInst(getDeclaredField, workerClass, module.constants().getConstant(wf.getName()));
+			CallInst access = new CallInst(setAccessible, field, module.constants().getConstant(true));
+			String getSuffix = "";
+			if (wf.getType().getFieldType() instanceof PrimitiveType) {
+				String typeName = wf.getType().getFieldType().getKlass().getName();
+				//Uppercase first character.
+				getSuffix = Character.toUpperCase(typeName.charAt(0)) + typeName.substring(1);
+			}
+			Method getMethod = Iterables.getOnlyElement(module.getKlass(java.lang.reflect.Field.class).getMethods("get"+getSuffix));
+			CallInst get = new CallInst(getMethod, field, worker);
+			CastInst cast = new CastInst(hf.getType().getFieldType(), get);
+			StoreInst store = new StoreInst(hf, cast, init.arguments().get(0));
+			initBlock.instructions().addAll(ImmutableList.of(field, access, get, cast, store));
+		}
+
+		initBlock.instructions().add(new ReturnInst(types.getVoidType()));
+//		stateHolder.dump(System.out);
+		return stateHolder;
 	}
 
 	private static String makeWorkMethodName(Class<?> inputType, Class<?> outputType) {
@@ -595,6 +664,11 @@ public class ActorArchetype {
 			} catch (IllegalAccessException ex) {
 				throw new AssertionError(ex);
 			}
+		try {
+			Object holder = constructStateHolder.invoke(a.worker());
+		} catch (Throwable ex) {
+			throw new AssertionError(ex);
+		}
 		return handle;
 	}
 }
