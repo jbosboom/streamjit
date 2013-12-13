@@ -34,8 +34,7 @@ public abstract class StateHolder implements DrainInstruction {
 			if (!Modifier.isFinal(wf.getModifiers()))
 				try {
 					wf.setAccessible(true);
-					wf.set(worker, ((Integer)hf.get(this)));
-					System.out.println("Stored "+hf.get(this)+" into "+wf);
+					wf.set(worker, hf.get(this));
 				} catch (IllegalAccessException ex) {
 					throw new AssertionError(ex);
 				}
