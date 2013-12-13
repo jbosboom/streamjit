@@ -33,6 +33,8 @@ import edu.mit.streamjit.impl.common.TestFilters.ArrayListHasher;
 import edu.mit.streamjit.impl.common.TestFilters.Batcher;
 import edu.mit.streamjit.impl.common.TestFilters.Multiplier;
 import edu.mit.streamjit.impl.common.TestFilters.PeekingAdder;
+import edu.mit.streamjit.impl.common.TestFilters.StatefulAdder;
+import edu.mit.streamjit.impl.common.TestFilters.StatefulMultiplier;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
@@ -115,6 +117,11 @@ public final class StreamFuzzer {
 			.add(new FuzzFilter(ArrayListHasher.class, ImmutableList.of(3)))
 			.add(new FuzzFilter(PeekingAdder.class, ImmutableList.of(3)))
 			.add(new FuzzFilter(PeekingAdder.class, ImmutableList.of(10)))
+			.add(new FuzzFilter(StatefulAdder.class, ImmutableList.of(1)))
+			.add(new FuzzFilter(StatefulAdder.class, ImmutableList.of(20)))
+			.add(new FuzzFilter(StatefulMultiplier.class, ImmutableList.of(2)))
+			.add(new FuzzFilter(StatefulMultiplier.class, ImmutableList.of(3)))
+			.add(new FuzzFilter(StatefulMultiplier.class, ImmutableList.of(100)))
 			.build();
 	private static FuzzFilter makeFilter() {
 		return FILTERS.get(rng.nextInt(FILTERS.size()));
