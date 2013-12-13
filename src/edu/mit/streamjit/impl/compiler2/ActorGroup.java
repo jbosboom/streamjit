@@ -228,7 +228,8 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 */
 	public MethodHandle specialize(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
-			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers) {
+			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers,
+			Bytecodifier.Function bytecodifier) {
 		//TokenActors are special.
 		assert !isTokenGroup() : actors();
 
@@ -285,15 +286,13 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		 * cache for data cache by unrolling, executing each actor for N
 		 * iterations worth before proceeding to the next actor.
 		 */
-		Module module = new Module();
-		ModuleClassLoader loader = new ModuleClassLoader(module);
 		String groupLoopName = String.format("Group%dIter%dTo%d", id(), iterations.lowerEndpoint(), iterations.upperEndpoint());
 		List<MethodHandle> loopHandles = new ArrayList<>(actors().size());
 		Map<int[], int[]> requiredCopies = new LinkedHashMap<>();
 		for (Actor a : actors()) {
 			MethodHandle workerLoop = makeWorkerLoop((WorkerActor)a, withRWHandlesBound.get(a), iterations.lowerEndpoint(), requiredCopies);
 			String workerLoopName = String.format("%sWorker%d", groupLoopName, a.id());
-			loopHandles.add(Bytecodifier.bytecodify(workerLoop, workerLoopName, module, loader));
+			loopHandles.add(bytecodifier.bytecodify(workerLoop, workerLoopName));
 		}
 		MethodHandle groupLoop = MethodHandles.insertArguments(OVERALL_GROUP_LOOP, 0,
 				Combinators.semicolon(loopHandles), iterations.lowerEndpoint(), iterations.upperEndpoint());
@@ -309,7 +308,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 					groupLoop);
 		}
 
-		groupLoop = Bytecodifier.bytecodify(groupLoop, "Group"+id()+"Iter"+iterations.lowerEndpoint()+"To"+iterations.upperEndpoint(), module, loader);
+		groupLoop = bytecodifier.bytecodify(groupLoop, "Group"+id()+"Iter"+iterations.lowerEndpoint()+"To"+iterations.upperEndpoint());
 		return groupLoop;
 	}
 

@@ -103,6 +103,20 @@ public final class Bytecodifier {
 		}
 	}
 
+	public static final class Function {
+		private final Module module;
+		private final ModuleClassLoader loader;
+		private final String packagePrefix;
+		public Function(Module module, ModuleClassLoader loader, String packagePrefix) {
+			this.module = module;
+			this.loader = loader;
+			this.packagePrefix = packagePrefix.endsWith(".") ? packagePrefix : packagePrefix + ".";
+		}
+		public MethodHandle bytecodify(MethodHandle handle, String className) {
+			return Bytecodifier.bytecodify(handle, packagePrefix + className, module, loader);
+		}
+	}
+
 	public static ImmutableList<Runnable> runnableProxies(List<MethodHandle> handles) {
 		ImmutableList.Builder<String> names = ImmutableList.builder();
 		for (int i = 0; i < handles.size(); ++i)

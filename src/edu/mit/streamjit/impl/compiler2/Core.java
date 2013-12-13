@@ -19,11 +19,13 @@ import java.util.Set;
 public class Core {
 	private final ImmutableMap<Storage, ConcreteStorage> globalStorage, localStorage, allStorage;
 	private final ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers, outputTransformers;
+	private final Bytecodifier.Function bytecodifier;
 	private final List<Pair<ActorGroup, Range<Integer>>> allocations = new ArrayList<>();
 	public Core(Set<Storage> storage, ImmutableMap<Storage, ConcreteStorage> globalStorage,
 			StorageFactory localStorageFactory,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
-			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers) {
+			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers,
+			Bytecodifier.Function bytecodifier) {
 		this.globalStorage = globalStorage;
 		//We make ConcreteStorage for every local storage, despite not knowing
 		//what we need yet; anything we don't use will get garbage collected
@@ -39,6 +41,7 @@ public class Core {
 		this.allStorage = CollectionUtils.union(globalStorage, localStorage);
 		this.inputTransformers = inputTransformers;
 		this.outputTransformers = outputTransformers;
+		this.bytecodifier = bytecodifier;
 	}
 
 	public void allocate(ActorGroup group, Range<Integer> iterations) {
@@ -49,7 +52,7 @@ public class Core {
 		//TODO: here's where to plug in ActorGroup ordering parameters
 		List<MethodHandle> code = new ArrayList<>(allocations.size());
 		for (Pair<ActorGroup, Range<Integer>> p : allocations)
-			code.add(p.first.specialize(p.second, allStorage, inputTransformers, outputTransformers));
+			code.add(p.first.specialize(p.second, allStorage, inputTransformers, outputTransformers, bytecodifier));
 		return Combinators.semicolon(code);
 	}
 

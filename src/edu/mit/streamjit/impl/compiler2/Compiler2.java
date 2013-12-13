@@ -105,6 +105,8 @@ public class Compiler2 {
 	private final Set<Storage> storage;
 	private ImmutableMap<ActorGroup, Integer> externalSchedule;
 	private final Module module = new Module();
+	private final ModuleClassLoader classloader = new ModuleClassLoader(module);
+	private final String packageName = "compiler"+PACKAGE_NUMBER.getAndIncrement();
 	private ImmutableMap<ActorGroup, Integer> initSchedule;
 	/**
 	 * For each token in the blob, the number of items live on that edge after
@@ -732,8 +734,7 @@ public class Compiler2 {
 	}
 
 	private void generateArchetypalCode() {
-		String packageName = "compiler"+PACKAGE_NUMBER.getAndIncrement();
-		ModuleClassLoader mcl = new ModuleClassLoader(module);
+
 		for (final ActorArchetype archetype : archetypes) {
 			Iterable<WorkerActor> workerActors = FluentIterable.from(actors)
 					.filter(WorkerActor.class)
@@ -743,7 +744,7 @@ public class Compiler2 {
 							return input.archetype().equals(archetype);
 						}
 					});
-			archetype.generateCode(packageName, mcl, workerActors);
+			archetype.generateCode(packageName, classloader, workerActors);
 			for (WorkerActor wa : workerActors)
 				wa.setStateHolder(archetype.makeStateHolder(wa));
 		}
@@ -776,7 +777,7 @@ public class Compiler2 {
 		 * time we build the token init schedule information required by the
 		 * blob host.
 		 */
-		Core initCore = new Core(storage, initStorage, MapConcreteStorage.initFactory(), inputTransformers.build(), outputTransformers.build());
+		Core initCore = new Core(storage, initStorage, MapConcreteStorage.initFactory(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".init"));
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
@@ -834,7 +835,7 @@ public class Compiler2 {
 					outputTransformers.put(a, j, param.getValue());
 				}
 			}
-			ssCores.add(new Core(storage, steadyStateStorage, InternalArrayConcreteStorage.factory(), inputTransformers.build(), outputTransformers.build()));
+			ssCores.add(new Core(storage, steadyStateStorage, InternalArrayConcreteStorage.factory(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".steadystate.")));
 		}
 
 		for (ActorGroup g : groups)
