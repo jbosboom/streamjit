@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Rate;
+import edu.mit.streamjit.api.StatefulFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -44,6 +45,40 @@ public final class TestFilters {
 		@Override
 		public String toString() {
 			return String.format("Multiplier(%d)", multiplier);
+		}
+	}
+
+	public static final class StatefulAdder extends StatefulFilter<Integer, Integer> {
+		private final int initialAddend;
+		private int addend;
+		public StatefulAdder(int initialAddend) {
+			super(1, 1);
+			this.addend = this.initialAddend = initialAddend;
+		}
+		@Override
+		public void work() {
+			push(pop() + (addend++));
+		}
+		@Override
+		public String toString() {
+			return String.format("StatefulAdder(%d)", initialAddend);
+		}
+	}
+
+	public static final class StatefulMultiplier extends StatefulFilter<Integer, Integer> {
+		private final int initialMultiplier;
+		private int multiplier;
+		public StatefulMultiplier(int multiplier) {
+			super(1, 1);
+			this.multiplier = this.initialMultiplier = multiplier;
+		}
+		@Override
+		public void work() {
+			push(pop() * (multiplier++));
+		}
+		@Override
+		public String toString() {
+			return String.format("StatefulMultiplier(%d)", initialMultiplier);
 		}
 	}
 

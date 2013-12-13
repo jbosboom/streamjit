@@ -6,6 +6,8 @@ import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.StatefulFilter;
+import edu.mit.streamjit.impl.common.TestFilters.StatefulAdder;
+import edu.mit.streamjit.impl.common.TestFilters.StatefulMultiplier;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.AbstractBenchmark;
@@ -20,30 +22,6 @@ import edu.mit.streamjit.test.Datasets;
  * @since 8/29/2013
  */
 public class StatefulSanity {
-	private static final class StatefulAdder extends StatefulFilter<Integer, Integer> {
-		private int addend;
-		private StatefulAdder(int initialAddend) {
-			super(1, 1);
-			this.addend = initialAddend;
-		}
-		@Override
-		public void work() {
-			push(pop() + (addend++));
-		}
-	}
-
-	private static final class StatefulMultiplier extends StatefulFilter<Integer, Integer> {
-		private int multiplier;
-		private StatefulMultiplier(int multiplier) {
-			super(1, 1);
-			this.multiplier = multiplier;
-		}
-		@Override
-		public void work() {
-			push(pop() * (multiplier++));
-		}
-	}
-
 	/**
 	 * This test's filters do not commute, so this tests filter ordering.
 	 * <p/>
