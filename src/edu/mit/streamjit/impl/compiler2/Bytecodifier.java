@@ -72,11 +72,11 @@ public final class Bytecodifier {
 		BasicBlock clinitBlock = new BasicBlock(module);
 		clinit.basicBlocks().add(clinitBlock);
 		LoadInst loadBouncer = new LoadInst(module.getKlass(Bytecodifier.class).getField("BOUNCER"));
-		Method chmGet = Iterables.getOnlyElement(module.getKlass(ConcurrentHashMap.class).getMethods("get"));
-		CallInst get = new CallInst(chmGet, loadBouncer, module.constants().getConstant(key));
-		CastInst unerase = new CastInst(field.getType().getFieldType(), get);
+		Method chmRemove = module.getKlass(ConcurrentHashMap.class).getMethod("remove", module.types().getMethodType(Object.class, ConcurrentHashMap.class, Object.class));
+		CallInst remove = new CallInst(chmRemove, loadBouncer, module.constants().getConstant(key));
+		CastInst unerase = new CastInst(field.getType().getFieldType(), remove);
 		StoreInst storeField = new StoreInst(field, unerase);
-		clinitBlock.instructions().addAll(ImmutableList.of(loadBouncer, get, unerase, storeField,
+		clinitBlock.instructions().addAll(ImmutableList.of(loadBouncer, remove, unerase, storeField,
 				new ReturnInst(module.types().getVoidType())));
 
 		Method invoke = new Method("$invoke",
