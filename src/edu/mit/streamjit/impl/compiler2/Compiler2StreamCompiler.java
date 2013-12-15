@@ -6,6 +6,7 @@ import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 /**
@@ -15,6 +16,7 @@ import java.util.Set;
  */
 public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 	private Configuration config;
+	private int randomSeed = -1;
 	private int maxNumCores = 1;
 	private int multiplier = 1;
 	private Path dumpFile;
@@ -25,6 +27,11 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 
 	public Compiler2StreamCompiler configuration(Configuration config) {
 		this.config = config;
+		return this;
+	}
+
+	public Compiler2StreamCompiler randomize(int randomSeed) {
+		this.randomSeed = randomSeed;
 		return this;
 	}
 
@@ -59,8 +66,10 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 	protected final Configuration getConfiguration(Set<Worker<?, ?>> workers) {
 		if (config != null)
 			return config;
-
 		Configuration defaultConfiguration = super.getConfiguration(workers);
+		if (randomSeed != -1)
+			return Configuration.randomize(defaultConfiguration, new Random(randomSeed));
+
 		Configuration.Builder builder = Configuration.builder(defaultConfiguration);
 		Configuration.IntParameter multiplierParam = (Configuration.IntParameter)builder.removeParameter("multiplier");
 		builder.addParameter(new Configuration.IntParameter("multiplier", multiplierParam.getRange(), this.multiplier));
