@@ -27,10 +27,8 @@
 package edu.mit.streamjit.test.apps.dct;
 
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
-import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Input;
-import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
@@ -39,11 +37,7 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Datasets;
-import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
-import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
-import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
-import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
-import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.test.Benchmarker;
 import java.nio.ByteOrder;
 import java.nio.file.Paths;
@@ -58,27 +52,22 @@ import java.nio.file.Paths;
  * @since Mar 13, 2013
  */
 public class DCT2 {
-
 	public static void main(String[] args) throws InterruptedException {
-		Benchmarker.runBenchmark(new DCT2Benchmark(), new DebugStreamCompiler());
+		StreamCompiler sc = new Compiler2StreamCompiler().maxNumCores(8).multiplier(256);
+		Benchmarker.runBenchmark(new DCT2Benchmark(), sc).get(0).print(System.out);
 	}
 
 	@ServiceProvider(Benchmark.class)
 	public static final class DCT2Benchmark extends SuppliedBenchmark {
+		private static final int COPIES = 300;
 		public DCT2Benchmark() {
-			super("DCT2", DCT2Kernel.class, new Dataset("idct-input-small.bin", Input.fromBinaryFile(Paths.get("data/idct-input-small.bin"), Integer.class, ByteOrder.LITTLE_ENDIAN)));
+			super("DCT2", DCT2Kernel.class, new Dataset("idct-input-small.bin", Datasets.nCopies(COPIES, Input.fromBinaryFile(Paths.get("data/idct-input-small.bin"), Integer.class, ByteOrder.LITTLE_ENDIAN))));
 		}
 	}
 
-	/**
-	 * FIXME: Original implementations is "void->void pipeline DCT2". Need to
-	 * implement file support and void input support.
-	 */
 	public static class DCT2Kernel extends Pipeline<Integer, Integer> {
 		public DCT2Kernel() {
-			// add FileReader<int>("../input/idct-input-small.bin"); // FIXME
 			add(new iDCT8x8_ieee(16));
-			// add FileWriter<int>("idct-output2.bin"); //FIXME
 		}
 	}
 
@@ -341,16 +330,13 @@ public class DCT2 {
 	 */
 	private static class iDCT_2D_reference_coarse extends
 			Filter<Integer, Integer> {
-		int size;
-		float[][] coeff;
+		private final int size;
+		private final float[][] coeff;
 
 		iDCT_2D_reference_coarse(int size) {
 			super(size * size, size * size, size * size);
-			coeff = new float[size][size];
-			init();
-		}
-
-		private void init() {
+			this.size = size;
+			this.coeff = new float[size][size];
 			for (int freq = 0; freq < size; freq++) {
 				float scale = (float) ((freq == 0) ? Math.sqrt(0.125) : 0.5);
 				for (int time = 0; time < size; time++)
@@ -408,17 +394,13 @@ public class DCT2 {
 	 */
 	private static class DCT_2D_reference_coarse extends
 			Filter<Integer, Integer> {
-		float[][] coeff;
-		int size;
+		private final float[][] coeff;
+		private final int size;
 
 		DCT_2D_reference_coarse(int size) {
 			super(size * size, size * size, size * size);
 			this.size = size;
-			coeff = new float[size][size];
-			init();
-		}
-
-		private void init() {
+			this.coeff = new float[size][size];
 			for (int i = 0; i < size; i++) {
 				float s = (float) ((i == 0) ? Math.sqrt(0.125) : 0.5);
 				for (int j = 0; j < size; j++)
@@ -469,17 +451,13 @@ public class DCT2 {
 	 *         ordered by row and then column.
 	 */
 	private static class iDCT_1D_reference_fine extends Filter<Float, Float> {
-		float[][] coeff;
-		int size;
+		private final float[][] coeff;
+		private final int size;
 
 		iDCT_1D_reference_fine(int size) {
 			super(size, size, size);
 			this.size = size;
-			coeff = new float[size][size];
-			init();
-		}
-
-		private void init() {
+			this.coeff = new float[size][size];
 			for (int x = 0; x < size; x++) {
 				for (int u = 0; u < size; u++) {
 					float Cu = 1;
@@ -517,14 +495,13 @@ public class DCT2 {
 	 *         ordered by row and then column.
 	 */
 	private static class iDCT8x8_1D_row_fast extends Filter<Integer, Integer> {
-		private static int size = 8;
-
-		int W1 = 2841; /* 2048*sqrt(2)*cos(1*pi/16) */
-		int W2 = 2676; /* 2048*sqrt(2)*cos(2*pi/16) */
-		int W3 = 2408; /* 2048*sqrt(2)*cos(3*pi/16) */
-		int W5 = 1609; /* 2048*sqrt(2)*cos(5*pi/16) */
-		int W6 = 1108; /* 2048*sqrt(2)*cos(6*pi/16) */
-		int W7 = 565; /* 2048*sqrt(2)*cos(7*pi/16) */
+		private static final int size = 8;
+		private final int W1 = 2841; /* 2048*sqrt(2)*cos(1*pi/16) */
+		private final int W2 = 2676; /* 2048*sqrt(2)*cos(2*pi/16) */
+		private final int W3 = 2408; /* 2048*sqrt(2)*cos(3*pi/16) */
+		private final int W5 = 1609; /* 2048*sqrt(2)*cos(5*pi/16) */
+		private final int W6 = 1108; /* 2048*sqrt(2)*cos(6*pi/16) */
+		private final int W7 = 565; /* 2048*sqrt(2)*cos(7*pi/16) */
 
 		iDCT8x8_1D_row_fast() {
 			super(size, size, size);
@@ -606,22 +583,20 @@ public class DCT2 {
 	 *         ordered by row and then column.
 	 */
 	private static class iDCT8x8_1D_col_fast extends Filter<Integer, Integer> {
-		static int size = 8;
-		int[] buffer;
-
-		int W1 = 2841; /* 2048*sqrt(2)*cos(1*pi/16) */
-		int W2 = 2676; /* 2048*sqrt(2)*cos(2*pi/16) */
-		int W3 = 2408; /* 2048*sqrt(2)*cos(3*pi/16) */
-		int W5 = 1609; /* 2048*sqrt(2)*cos(5*pi/16) */
-		int W6 = 1108; /* 2048*sqrt(2)*cos(6*pi/16) */
-		int W7 = 565; /* 2048*sqrt(2)*cos(7*pi/16) */
+		private static final int size = 8;
+		private final int W1 = 2841; /* 2048*sqrt(2)*cos(1*pi/16) */
+		private final int W2 = 2676; /* 2048*sqrt(2)*cos(2*pi/16) */
+		private final int W3 = 2408; /* 2048*sqrt(2)*cos(3*pi/16) */
+		private final int W5 = 1609; /* 2048*sqrt(2)*cos(5*pi/16) */
+		private final int W6 = 1108; /* 2048*sqrt(2)*cos(6*pi/16) */
+		private final int W7 = 565; /* 2048*sqrt(2)*cos(7*pi/16) */
 
 		iDCT8x8_1D_col_fast() {
 			super(size * size, size * size, size * size);
-			buffer = new int[size * size];
 		}
 
 		public void work() {
+			int[] buffer = new int[size * size];
 			for (int c = 0; c < size; c++) {
 				int x0 = peek(c + size * 0);
 				int x1 = peek(c + size * 4) << 8;
@@ -705,16 +680,15 @@ public class DCT2 {
 	private static class iDCT8x8_1D_col_fast_fine extends
 			Filter<Integer, Integer> {
 		static int size = 8;
-		int W1 = 2841; /* 2048*sqrt(2)*cos(1*pi/16) */
-		int W2 = 2676; /* 2048*sqrt(2)*cos(2*pi/16) */
-		int W3 = 2408; /* 2048*sqrt(2)*cos(3*pi/16) */
-		int W5 = 1609; /* 2048*sqrt(2)*cos(5*pi/16) */
-		int W6 = 1108; /* 2048*sqrt(2)*cos(6*pi/16) */
-		int W7 = 565; /* 2048*sqrt(2)*cos(7*pi/16) */
+		private final int W1 = 2841; /* 2048*sqrt(2)*cos(1*pi/16) */
+		private final int W2 = 2676; /* 2048*sqrt(2)*cos(2*pi/16) */
+		private final int W3 = 2408; /* 2048*sqrt(2)*cos(3*pi/16) */
+		private final int W5 = 1609; /* 2048*sqrt(2)*cos(5*pi/16) */
+		private final int W6 = 1108; /* 2048*sqrt(2)*cos(6*pi/16) */
+		private final int W7 = 565; /* 2048*sqrt(2)*cos(7*pi/16) */
 
 		iDCT8x8_1D_col_fast_fine() {
 			super(size, size);
-
 		}
 
 		public void work() {
@@ -795,17 +769,13 @@ public class DCT2 {
 	 *         column.
 	 */
 	private static class DCT_1D_reference_fine extends Filter<Float, Float> {
-		float[][] coeff;
-		int size;
+		private final float[][] coeff;
+		private final int size;
 
 		DCT_1D_reference_fine(int size) {
 			super(size, size, size);
 			this.size = size;
-			coeff = new float[size][size];
-			init();
-		}
-
-		private void init() {
+			this.coeff = new float[size][size];
 			for (int u = 0; u < size; u++) {
 				float Cu = 1;
 				if (u == 0)
