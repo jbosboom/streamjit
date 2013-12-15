@@ -2,11 +2,10 @@ package edu.mit.streamjit.test.apps.bitonicsort;
 
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
-import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Input;
-import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
@@ -14,12 +13,10 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
+import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Datasets;
-import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
-import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
-import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.Benchmarker;
@@ -61,9 +58,11 @@ import java.util.List;
 @ServiceProvider(BenchmarkProvider.class)
 public class BitonicSort implements BenchmarkProvider {
 	public static void main(String[] args) throws InterruptedException {
-		Benchmarker.runBenchmarks(new BitonicSort(), new DebugStreamCompiler());
+		StreamCompiler sc = new Compiler2StreamCompiler().maxNumCores(8).multiplier(64);
+		Benchmarker.runBenchmark(Iterables.getLast(new BitonicSort()), sc).get(0).print(System.out);
 	}
 
+	private static final int COPIES = 300;
 	@Override
 	public Iterator<Benchmark> iterator() {
 		List<Benchmark> benchmarks = new ArrayList<>();
@@ -71,6 +70,7 @@ public class BitonicSort implements BenchmarkProvider {
 			for (boolean ascending : new boolean[]{true, false}) {
 				String filename = "BitonicSort"+n+".in";
 				Input<Integer> input = Input.fromBinaryFile(Paths.get("data/"+filename), Integer.class, ByteOrder.LITTLE_ENDIAN);
+				input = Datasets.nCopies(COPIES, input);
 				Input<Integer> output = Datasets.transformAll(new GroupSorter(n, ascending), input);
 				Dataset data = new Dataset(filename, input).withOutput(output);
 				String benchmarkName = String.format("BitonicSort (N = %d, %s)", n, ascending ? "asc" : "desc");
@@ -111,7 +111,7 @@ public class BitonicSort implements BenchmarkProvider {
 	 * (DOWN). 'true' indicates UP sort and 'false' indicates DOWN sort.
 	 */
 	private static class CompareExchange extends Filter<Integer, Integer> {
-		private boolean sortdir;
+		private final boolean sortdir;
 
 		public CompareExchange(boolean sortdir) {
 			super(2, 2);
@@ -178,11 +178,9 @@ public class BitonicSort implements BenchmarkProvider {
 	 * turn is determined by <L, numseqp>)
 	 */
 	private static class StepOfMerge extends Splitjoin<Integer, Integer> {
-		int L;
-		int numseqp;
-		int dircnt;
-
-		private boolean curdir;
+		private final int L;
+		private final int numseqp;
+		private final int dircnt;
 
 		StepOfMerge(int L, int numseqp, int dircnt) {
 			super(new RoundrobinSplitter<Integer>(L),
@@ -194,6 +192,7 @@ public class BitonicSort implements BenchmarkProvider {
 		}
 
 		private void addFilters() {
+			boolean curdir;
 			for (int j = 0; j < numseqp; j++) {
 				/*
 				 * finding out the curdir is a bit tricky - the direction
@@ -211,13 +210,13 @@ public class BitonicSort implements BenchmarkProvider {
 				 * just one branch.
 				 */
 				if (L > 2)
-					add(new PartitionBitonicSequence(this.L, this.curdir));
+					add(new PartitionBitonicSequence(this.L, curdir));
 				else
 					/*
 					 * PartitionBitonicSequence of the last step (L=2) is simply
 					 * a CompareExchange
 					 */
-					add(new CompareExchange(this.curdir));
+					add(new CompareExchange(curdir));
 			}
 		}
 	}
@@ -229,10 +228,9 @@ public class BitonicSort implements BenchmarkProvider {
 	 * in the same direction - sortdir.
 	 */
 	private static class StepOfLastMerge extends Splitjoin<Integer, Integer> {
-
-		int L;
-		int numseqp;
-		boolean sortdir;
+		private final int L;
+		private final int numseqp;
+		private final boolean sortdir;
 
 		StepOfLastMerge(int L, int numseqp, boolean sortdir) {
 			super(new RoundrobinSplitter<Integer>(L),
@@ -271,17 +269,15 @@ public class BitonicSort implements BenchmarkProvider {
 	 * But, this MergeStage is implemented *iteratively* as logP STEPS.
 	 */
 	private static class MergeStage extends Pipeline<Integer, Integer> {
-		int P;
-		int N;
-		int L, numseqp, dircnt;
-
+		private final int P;
+		private final int N;
 		MergeStage(int P, int N) {
 			this.P = P;
 			this.N = N;
 			addFilters();
 		}
-
 		private void addFilters() {
+			int L, numseqp, dircnt;
 			/*
 			 * for each of the lopP steps (except the last step) of this merge
 			 * stage
@@ -313,18 +309,15 @@ public class BitonicSort implements BenchmarkProvider {
 	 * This is implemented iteratively as logN steps
 	 */
 	private static class LastMergeStage extends Pipeline<Integer, Integer> {
-		int N;
-		boolean sortdir;
-		int L, numseqp;
-
+		private final int N;
+		private final boolean sortdir;
 		LastMergeStage(int N, boolean sortdir) {
 			this.N = N;
 			this.sortdir = sortdir;
 			addFilter();
-
 		}
-
 		private void addFilter() {
+			int L, numseqp;
 			/*
 			 * for each of the logN steps (except the last step) of this merge
 			 * stage
@@ -340,7 +333,6 @@ public class BitonicSort implements BenchmarkProvider {
 				 * step
 				 */
 				numseqp = i;
-
 				add(new StepOfLastMerge(L, numseqp, sortdir));
 			}
 		}
@@ -354,15 +346,13 @@ public class BitonicSort implements BenchmarkProvider {
 	 * (sortdir determines if it is UP or DOWN).
 	 */
 	public static class BitonicSortKernel extends Pipeline<Integer, Integer> {
-		int N;
-		boolean sortdir;
-
+		private final int N;
+		private final boolean sortdir;
 		public BitonicSortKernel(int N, boolean sortdir) {
 			this.N = N;
 			this.sortdir = sortdir;
 			addFilter();
 		}
-
 		private void addFilter() {
 			for (int i = 2; i <= (N / 2); i = 2 * i) {
 				add(new MergeStage(i, N));
