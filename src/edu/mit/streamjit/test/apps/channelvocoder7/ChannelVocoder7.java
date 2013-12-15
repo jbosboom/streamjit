@@ -1,21 +1,17 @@
 package edu.mit.streamjit.test.apps.channelvocoder7;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
-import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Input;
-import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.Splitjoin;
-import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
-import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
-import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
-import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.BenchmarkProvider;
@@ -38,7 +34,8 @@ import java.util.Iterator;
 @ServiceProvider(BenchmarkProvider.class)
 public class ChannelVocoder7 implements BenchmarkProvider {
 	public static void main(String[] args) throws InterruptedException {
-		Benchmarker.runBenchmarks(new ChannelVocoder7(), new DebugStreamCompiler());
+		StreamCompiler sc = new Compiler2StreamCompiler().maxNumCores(8).multiplier(32);
+		Benchmarker.runBenchmark(Iterables.getLast(new ChannelVocoder7()), sc).get(0).print(System.out);
 	}
 
 	@Override
@@ -95,9 +92,9 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * classes.
 	 **/
 	private static class MainSplitjoin extends Splitjoin<Float, Float> {
-		int PITCH_WINDOW = 100; // the number of samples to base the pitch
+		private final int PITCH_WINDOW = 100; // the number of samples to base the pitch
 								// detection on
-		int DECIMATION = 50; // decimation factor
+		private final int DECIMATION = 50; // decimation factor
 
 		MainSplitjoin(int numFilters, int numTaps) {
 			super(new DuplicateSplitter<Float>(),
@@ -145,8 +142,8 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * the range of -.75 to .75
 	 **/
 	private static class CenterClip extends Filter<Float, Float> {
-		float MIN = -0.75f;
-		float MAX = 0.75f;
+		private final float MIN = -0.75f;
+		private final float MAX = 0.75f;
 
 		public CenterClip() {
 			super(1, 1);
@@ -171,10 +168,9 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * its value.
 	 **/
 	private static class CorrPeak extends Filter<Float, Float> {
-		int winsize;
-		int decimation;
-
-		float THRESHOLD = 0.07f;
+		private final int winsize;
+		private final int decimation;
+		private final float THRESHOLD = 0.07f;
 
 		CorrPeak(int winsize, int decimation) {
 			super(decimation, 1, winsize);
@@ -222,7 +218,7 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * A simple adder which takes in N items and pushes out the sum of them.
 	 **/
 	private static class Adder extends Filter<Float, Float> {
-		int N;
+		private final int N;
 
 		Adder(int N) {
 			super(N, 1);
@@ -263,7 +259,6 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * then add the results back together.
 	 */
 	private static class BandStopFilter extends Pipeline<Float, Float> {
-
 		BandStopFilter(float gain, float wp, float ws, int numSamples) {
 			Splitjoin<Float, Float> sp1 = new Splitjoin<>(
 					new DuplicateSplitter<Float>(),
@@ -281,13 +276,11 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * inputs M samples, and only outputs the first sample.
 	 **/
 	private static class Compressor extends Filter<Float, Float> {
-		int M;
-
+		private final int M;
 		Compressor(int M) {
 			super(M, 1);
 			this.M = M;
 		}
-
 		public void work() {
 			push(pop());
 			for (int i = 0; i < (M - 1); i++) {
@@ -302,13 +295,11 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * samples are zeros.
 	 **/
 	private static class Expander extends Filter<Float, Float> {
-		int L;
-
+		private final int L;
 		Expander(int L) {
 			super(1, L);
 			this.L = L;
 		}
-
 		public void work() {
 			push(pop());
 			for (int i = 0; i < (L - 1); i++) {
@@ -339,15 +330,14 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * is pi-ws and the field h holds h[-n].
 	 */
 	private static class HighPassFilter extends Filter<Float, Float> {
-		float g;
-		float ws;
-		int N;
-
-		float[] h;
+		private final float g;
+		private final float ws;
+		private final int N;
+		private final float[] h;
 
 		HighPassFilter(float g, float ws, int N) {
 			super(1, 1, N);
-			h = new float[N];
+			this.h = new float[N];
 			this.g = g;
 			this.ws = ws;
 			this.N = N;
@@ -413,14 +403,14 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * sin(cutoffFreq*pi*(n-N/2))/(pi*(n-N/2)). and the field h holds h[-n].
 	 */
 	private static class LowPassFilter extends Filter<Float, Float> {
-		float[] h;
-		float g;
-		float cutoffFreq;
-		int N;
+		private final float[] h;
+		private final float g;
+		private final float cutoffFreq;
+		private final int N;
 
 		LowPassFilter(float g, float cutoffFreq, int N) {
 			super(1, 1, N);
-			h = new float[N];
+			this.h = new float[N];
 			this.g = g;
 			this.cutoffFreq = cutoffFreq;
 			this.N = N;
