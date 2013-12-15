@@ -47,11 +47,9 @@ import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.DrainInstruction;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.ReadInstruction;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.WriteInstruction;
 import edu.mit.streamjit.test.Benchmark;
+import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
-import edu.mit.streamjit.test.regression.Reg20131116_104433_226;
-import edu.mit.streamjit.test.sanity.PipelineSanity;
-import edu.mit.streamjit.test.sanity.SplitjoinComputeSanity;
 import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.Combinators.*;
@@ -73,6 +71,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1345,13 +1344,28 @@ public class Compiler2 {
 	}
 
 	public static void main(String[] args) {
-		StreamCompiler sc = new Compiler2StreamCompiler().multiplier(64).maxNumCores(8);
-//		Benchmark bm = new PipelineSanity.Add15();
-		Benchmark bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
-//		Benchmark bm = new SplitjoinComputeSanity.MultiplyBenchmark();
+		StreamCompiler sc;
+		Benchmark bm;
+		if (args.length == 3) {
+			String benchmarkName = args[0];
+			int cores = Integer.parseInt(args[1]);
+			int multiplier = Integer.parseInt(args[2]);
+			sc = new Compiler2StreamCompiler().maxNumCores(cores).multiplier(multiplier);
+			bm = null;
+			for (Iterator<BenchmarkProvider> it = ServiceLoader.load(BenchmarkProvider.class).iterator(); bm == null && it.hasNext();) {
+				BenchmarkProvider provider = it.next();
+				for (Iterator<Benchmark> bit = provider.iterator(); bm == null && bit.hasNext();) {
+					Benchmark benchmark = bit.next();
+					if (benchmark.toString().equals(benchmarkName))
+						bm = benchmark;
+				}
+			}
+			if (bm == null)
+				throw new RuntimeException("no benchmark named "+benchmarkName);
+		} else {
+			sc = new Compiler2StreamCompiler().multiplier(64).maxNumCores(8);
+			bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
+		}
 		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);
 	}
-//	public static void main(String[] args) {
-//		Benchmarker.runBenchmark(new Reg20131116_104433_226(), new edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler()).get(0).print(System.out);
-//	}
 }
