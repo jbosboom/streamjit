@@ -1,17 +1,21 @@
 package edu.mit.streamjit.test.apps.des2;
 
-import edu.mit.streamjit.api.CompiledStream;
+import com.google.common.primitives.Ints;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
-import edu.mit.streamjit.api.Input;
-import edu.mit.streamjit.api.Output;
+import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
+import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.Benchmarker;
+import edu.mit.streamjit.test.Datasets;
 
 /**
  * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/des/streamit/DES2.str for original
@@ -21,6 +25,10 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
  * @since Mar 13, 2013
  */
 public class DES2 {
+	public static void main(String[] args) throws InterruptedException {
+		StreamCompiler sc = new DebugStreamCompiler();
+		Benchmarker.runBenchmark(new DES2Benchmark(), sc).get(0).print(System.out);
+	}
 
 	// used for printing descriptor in output
 	public static boolean PRINTINFO = false;
@@ -144,35 +152,15 @@ public class DES2 {
 			{ 1, 15, 13, 8, 10, 3, 7, 4, 12, 5, 6, 11, 0, 14, 9, 2 }, { 7, 11, 4, 1, 9, 12, 14, 2, 0, 6, 10, 13, 15, 3, 5, 8 },
 			{ 2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11 } };
 
-	public static void main(String[] args) throws InterruptedException {
-
-		DES2Kernel kernel = new DES2Kernel();
-
-		Input.ManualInput<Integer> input = Input.createManualInput();
-		Output.ManualOutput<Integer> output = Output.createManualOutput();
-
-		StreamCompiler sc = new DebugStreamCompiler();
-		CompiledStream stream = sc.compile(kernel, input, output);
-		Integer result;
-		for (int i = 0; i < 100000;) {
-			if (input.offer(i)) {
-				// System.out.println("Offer success " + i);
-				i++;
-			} else {
-				// System.out.println("Offer failed " + i);
-				Thread.sleep(10);
-			}
-			while ((result = output.poll()) != null)
-				System.out.println(result);
+	public static final class DES2Benchmark extends AbstractBenchmark {
+		public DES2Benchmark() {
+			super("DES2", Datasets.allIntsInRange(0, 100000));
 		}
-		input.drain();
-
-		while (!stream.isDrained())
-			while ((result = output.poll()) != null)
-				System.out.println(result);
-
-		while ((result = output.poll()) != null)
-			System.out.println(result);
+		@Override
+		@SuppressWarnings("unchecked")
+		public OneToOneElement<Object, Object> instantiate() {
+			return (OneToOneElement)new DES2Kernel();
+		}
 	}
 
 	/**
@@ -182,7 +170,7 @@ public class DES2 {
 		int testvector = 7;
 
 		DES2Kernel() {
-			// add PlainTextSource(testvector);
+			add(new PlainTextSource(testvector));
 			// add FileReader<int>("../input/input");
 			add(new DEScoder(testvector));
 			// add FileWriter<int>("des2.out");
@@ -278,7 +266,7 @@ public class DES2 {
 
 	private static class doE extends Filter<Integer, Integer> {
 		doE() {
-			super(32, 48, 48); // TODO: Verify the peek value
+			super(Rate.create(32), Rate.create(48), Rate.create(Ints.min(E), Ints.max(E)));
 		}
 
 		public void work() {
