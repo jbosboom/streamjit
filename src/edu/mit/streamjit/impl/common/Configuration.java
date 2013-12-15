@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import javax.json.Json;
@@ -1119,6 +1120,25 @@ public final class Configuration {
 			hash = 61 * hash + this.maxWorkerIdentifier;
 			return hash;
 		}
+	}
+
+	public static Configuration randomize(Configuration cfg, Random rng) {
+		Configuration.Builder builder = Configuration.builder();
+		for (Parameter p : cfg.getParametersMap().values()) {
+			if (p instanceof IntParameter) {
+				int min = ((IntParameter)p).getMin(), max = ((IntParameter)p).getMax();
+				int newValue = rng.nextInt(max-min+1) + min;
+				builder.addParameter(new IntParameter(p.getName(), min, max, newValue));
+			} else if (p instanceof SwitchParameter) {
+				SwitchParameter<?> sp = (SwitchParameter)p;
+				builder.addParameter(new SwitchParameter(sp.getName(), sp.getGenericParameter(),
+						sp.getUniverse().get(rng.nextInt(sp.getUniverse().size())), sp.getUniverse()));
+			} else
+				throw new UnsupportedOperationException("don't know how to randomize a "+p.getClass()+" named "+p.getName());
+		}
+		for (Map.Entry<String, Object> e : cfg.getExtraDataMap().entrySet())
+			builder.putExtraData(e.getKey(), e.getValue());
+		return builder.build();
 	}
 
 	public static void main(String[] args) {
