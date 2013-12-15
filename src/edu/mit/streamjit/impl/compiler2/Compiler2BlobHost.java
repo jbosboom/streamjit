@@ -126,7 +126,7 @@ public class Compiler2BlobHost implements Blob {
 		this.writeInstructions = ImmutableList.copyOf(writeInstructions);
 		this.drainInstructions = ImmutableList.copyOf(drainInstructions);
 
-		this.collectTimings = (Boolean)config.getExtraData("timings");
+		this.collectTimings = config.getExtraData("timings") != null ? (Boolean)config.getExtraData("timings") : false;
 
 		List<Map<Token, Integer>> capacityRequirements = new ArrayList<>();
 		for (ReadInstruction i : Iterables.concat(this.initReadInstructions, this.readInstructions))
