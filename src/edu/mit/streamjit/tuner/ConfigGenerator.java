@@ -212,7 +212,6 @@ public class ConfigGenerator {
 						noOfmachines));
 		}
 
-		noOfmachines = 2;
 		BlobFactory bf;
 		if (noOfmachines == 1)
 			bf = new CompilerBlobFactory();
