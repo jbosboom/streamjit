@@ -74,7 +74,7 @@ public final class GlobalConstants {
 	 * Save all configurations tired by open tuner in to
 	 * "configurations//app.name" directory.
 	 */
-	public static final boolean saveAllConfigurations = false;
+	public static final boolean saveAllConfigurations = true;
 
 	static {
 
