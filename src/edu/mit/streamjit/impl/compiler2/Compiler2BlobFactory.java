@@ -30,7 +30,7 @@ public final class Compiler2BlobFactory implements BlobFactory {
 	 * autotuner should learn to ignore any unused core variables, but we have
 	 * a limit anyway.
 	 */
-	private static final int MAX_MAX_NUM_CORES = 8;
+	public static final int MAX_MAX_NUM_CORES = 8;
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
 		Configuration.Builder builder = Configuration.builder();

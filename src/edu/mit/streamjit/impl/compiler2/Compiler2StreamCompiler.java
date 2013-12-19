@@ -17,7 +17,7 @@ import java.util.Set;
 public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 	private Configuration config;
 	private int randomSeed = -1;
-	private int maxNumCores = 1;
+	private int maxNumCores = Compiler2BlobFactory.MAX_MAX_NUM_CORES;
 	private int multiplier = 1;
 	private Path dumpFile;
 	private boolean timings = false;
