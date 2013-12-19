@@ -104,4 +104,42 @@ public final class CollectionUtils {
 			builder.putAll(t);
 		return builder.build();
 	}
+
+	/**
+	 * Returns the index of the minimum element in the list, using the elements'
+	 * natural ordering, or -1 if the list is empty.
+	 * @param list a list
+	 * @return the index of the minimum element
+	 */
+	public static <T extends Comparable<? super T>> int minIndex(List<T> list) {
+		if (list.isEmpty())
+			return -1;
+		if (list.size() == 1)
+			return 0;
+		int best = 0;
+		//TODO: alternative implementation for non-RandomAccess lists?
+		for (int i = 1; i < list.size(); ++i)
+			if (list.get(i).compareTo(list.get(best)) < 0)
+				best = i;
+		return best;
+	}
+
+	/**
+	 * Returns the index of the maximum element in the list, using the elements'
+	 * natural ordering, or -1 if the list is empty.
+	 * @param list a list
+	 * @return the index of the maximum element
+	 */
+	public static <T extends Comparable<? super T>> int maxIndex(List<T> list) {
+		if (list.isEmpty())
+			return -1;
+		if (list.size() == 1)
+			return 0;
+		int best = 0;
+		//TODO: alternative implementation for non-RandomAccess lists?
+		for (int i = 1; i < list.size(); ++i)
+			if (list.get(i).compareTo(list.get(best)) > 0)
+				best = i;
+		return best;
+	}
 }
