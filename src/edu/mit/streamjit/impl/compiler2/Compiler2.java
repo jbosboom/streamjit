@@ -706,7 +706,7 @@ public class Compiler2 {
 	 */
 	private void unbox() {
 		for (Storage s : storage) {
-			SwitchParameter<Boolean> unboxStorage = config.getParameter("unboxStorage"+s.id(), SwitchParameter.class, Boolean.class);
+			SwitchParameter<Boolean> unboxStorage = config.getParameter("unboxStorage"+s.id().toString().replace(", ", "_"), SwitchParameter.class, Boolean.class);
 			if (unboxStorage.getValue()) {
 				TypeToken<?> contents = s.contentType();
 				Class<?> type = contents.unwrap().getRawType();
