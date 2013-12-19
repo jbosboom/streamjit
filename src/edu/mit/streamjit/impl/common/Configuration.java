@@ -1226,6 +1226,11 @@ public final class Configuration {
 				int min = ((IntParameter)p).getMin(), max = ((IntParameter)p).getMax();
 				int newValue = rng.nextInt(max-min+1) + min;
 				builder.addParameter(new IntParameter(p.getName(), min, max, newValue));
+			} else if (p instanceof FloatParameter) {
+				float min = ((FloatParameter)p).getMin(), max = ((FloatParameter)p).getMax();
+				float newValue = rng.nextFloat() * (max-min) + min;
+				assert min <= newValue && newValue <= max : min +" "+newValue+" "+max;
+				builder.addParameter(new FloatParameter(p.getName(), min, max, newValue));
 			} else if (p instanceof SwitchParameter) {
 				SwitchParameter<?> sp = (SwitchParameter)p;
 				builder.addParameter(new SwitchParameter(sp.getName(), sp.getGenericParameter(),
