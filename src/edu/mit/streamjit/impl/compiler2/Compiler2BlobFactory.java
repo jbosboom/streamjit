@@ -65,7 +65,7 @@ public final class Compiler2BlobFactory implements BlobFactory {
 			builder.addParameter(Configuration.SwitchParameter.create("unboxInput"+Workers.getIdentifier(w), true));
 			builder.addParameter(Configuration.SwitchParameter.create("unboxOutput"+Workers.getIdentifier(w), true));
 		}
-		return builder.addParameter(new Configuration.IntParameter("multiplier", 1, 1000000, 1))
+		return builder.addParameter(new Configuration.IntParameter("multiplier", 1, Short.MAX_VALUE, 1))
 				.build();
 	}
 
