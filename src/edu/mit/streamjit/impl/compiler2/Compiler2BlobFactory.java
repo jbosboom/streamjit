@@ -42,7 +42,7 @@ public final class Compiler2BlobFactory implements BlobFactory {
 		for (Worker<?, ?> w : workers)
 			for (int i = 0; i < MAX_MAX_NUM_CORES; ++i) {
 				String name = String.format("node%dcore%diter", Workers.getIdentifier(w), i);
-				builder.addParameter(new Configuration.IntParameter(name, 0, 1_000_000, 1));
+				builder.addParameter(new Configuration.FloatParameter(name, 0, 1, 1f/MAX_MAX_NUM_CORES));
 			}
 		for (Worker<?, ?> w : workers)
 			for (int i = 0; i < MAX_MAX_NUM_CORES; ++i) {

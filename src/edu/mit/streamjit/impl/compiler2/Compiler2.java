@@ -16,6 +16,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
+import com.google.common.math.DoubleMath;
 import com.google.common.math.IntMath;
 import com.google.common.math.LongMath;
 import com.google.common.primitives.Ints;
@@ -39,6 +40,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.FloatParameter;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
@@ -875,20 +877,29 @@ public class Compiler2 {
 	 * @param cores the cores to fiss over, subject to the configuration
 	 */
 	private void allocateGroup(ActorGroup g, List<Core> cores) {
-		Range<Integer> toBeAllocated = Range.closedOpen(0, externalSchedule.get(g));
-		for (int core = 0; core < cores.size() && !toBeAllocated.isEmpty(); ++core) {
+		List<Float> shares = new ArrayList<>(cores.size());
+		for (int core = 0; core < cores.size(); ++core) {
 			String name = String.format("node%dcore%diter", g.id(), core);
-			IntParameter parameter = config.getParameter(name, IntParameter.class);
-			if (parameter == null || parameter.getValue() == 0) continue;
+			FloatParameter parameter = config.getParameter(name, FloatParameter.class);
+			if (parameter == null)
+				shares.add(0f);
+			else
+				shares.add(parameter.getValue());
+		}
 
-			//If the node is stateful, we must put all allocations on the
-			//same core. Arbitrarily pick the first core with an allocation.
-			//(If no cores have an allocation, we'll spread them below.)
-			int min = toBeAllocated.lowerEndpoint();
+		int totalAvailable = externalSchedule.get(g);
+		Range<Integer> toBeAllocated = Range.closedOpen(0, totalAvailable);
+		while (!toBeAllocated.isEmpty()) {
+			int max = CollectionUtils.maxIndex(shares);
+			float share = shares.get(max);
+			if (share == 0) break;
+			int amount = DoubleMath.roundToInt(share * totalAvailable, RoundingMode.HALF_EVEN);
+			int done = toBeAllocated.lowerEndpoint();
 			Range<Integer> allocation = g.isStateful() ? toBeAllocated :
-					toBeAllocated.intersection(Range.closedOpen(min, min + parameter.getValue()));
-			cores.get(core).allocate(g, allocation);
+					toBeAllocated.intersection(Range.closedOpen(done, done + amount));
+			cores.get(max).allocate(g, allocation);
 			toBeAllocated = Range.closedOpen(allocation.upperEndpoint(), toBeAllocated.upperEndpoint());
+			shares.set(max, 0f); //don't allocate to this core again
 		}
 
 		//If we have iterations left over not assigned to a core, spread them
