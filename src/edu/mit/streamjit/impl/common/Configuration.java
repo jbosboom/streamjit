@@ -532,6 +532,103 @@ public final class Configuration {
 		}
 	}
 
+	public static final class FloatParameter implements Parameter {
+		private static final long serialVersionUID = 1L;
+		private final String name;
+		private final Range<Float> range;
+		private final float value;
+		public FloatParameter(String name, float min, float max, float value) {
+			this(name, Range.closed(min, max), value);
+		}
+		public FloatParameter(String name, Range<Float> range, float value) {
+			this.name = checkNotNull(Strings.emptyToNull(name));
+			checkNotNull(range);
+			checkArgument(range.hasLowerBound() && range.lowerBoundType() == BoundType.CLOSED
+					&& range.hasUpperBound() && range.upperBoundType() == BoundType.CLOSED
+					&& !range.isEmpty());
+			this.range = range;
+			checkArgument(range.contains(value), "value %s out of range %s", value, range);
+			this.value = value;
+		}
+
+		@ServiceProvider(JsonifierFactory.class)
+		protected static final class FloatParameterJsonifier implements Jsonifier<FloatParameter>, JsonifierFactory {
+			public FloatParameterJsonifier() {}
+			@Override
+			public FloatParameter fromJson(JsonValue jsonvalue) {
+				JsonObject obj = Jsonifiers.checkClassEqual(jsonvalue, IntParameter.class);
+				String name = obj.getString("name");
+				float min = obj.getJsonNumber("min").bigDecimalValue().floatValue();
+				float max = obj.getJsonNumber("max").bigDecimalValue().floatValue();
+				float value = obj.getJsonNumber("value").bigDecimalValue().floatValue();
+				return new FloatParameter(name, min, max, value);
+			}
+
+			@Override
+			public JsonValue toJson(FloatParameter t) {
+				return Json.createObjectBuilder()
+					.add("class", Jsonifiers.toJson(FloatParameter.class))
+					.add("name", t.getName())
+					.add("min", t.getMin())
+					.add("max", t.getMax())
+					.add("value", t.getValue())
+					//Python-side support
+					.add("__module__", "sjparameters")
+					.add("__class__", "sjFloatParameter")
+					.build();
+			}
+
+			@Override
+			@SuppressWarnings("unchecked")
+			public <T> Jsonifier<T> getJsonifier(Class<T> klass) {
+				return (Jsonifier<T>)(klass.equals(FloatParameter.class) ? this : null);
+			}
+		}
+		@Override
+		public String getName() {
+			return name;
+		}
+		public float getMin() {
+			return range.lowerEndpoint();
+		}
+		public float getMax() {
+			return range.upperEndpoint();
+		}
+		public Range<Float> getRange() {
+			return range;
+		}
+		public float getValue() {
+			return value;
+		}
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			final FloatParameter other = (FloatParameter)obj;
+			if (!Objects.equals(this.name, other.name))
+				return false;
+			if (!Objects.equals(this.range, other.range))
+				return false;
+			if (this.value != other.value)
+				return false;
+			return true;
+		}
+		@Override
+		public int hashCode() {
+			int hash = 3;
+			hash = 97 * hash + Objects.hashCode(this.name);
+			hash = 97 * hash + Objects.hashCode(this.range);
+			hash = 97 * hash + Float.floatToIntBits(this.value);
+			return hash;
+		}
+		@Override
+		public String toString() {
+			return String.format("[%s: %d in %s]", name, value, range);
+		}
+	}
+
 	/**
 	 * A SwitchParameter represents a choice of one of some universe of objects.
 	 * For example, a SwitchParameter<Boolean> is a simple on-off flag, while a
