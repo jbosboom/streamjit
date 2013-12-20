@@ -58,6 +58,7 @@ class StreamJitMI(MeasurementInterface):
 			self.jvmOptions.get(key).setValue(val)
 			cmd = self.jvmOptions.get(key).getCommand()
 			commandStr += cmd
+			commandStr += ' '
 			baseargs.append(cmd)
 				
 		cur = self.tunedataDB.cursor()
@@ -66,6 +67,7 @@ class StreamJitMI(MeasurementInterface):
 		self.tunedataDB.commit()
 		
 		print commandStr
+		#baseargs.append("-XX:+PrintCommandLineFlags")
 
 		baseargs.append("-jar")
 		args = list(baseargs)
@@ -78,7 +80,7 @@ class StreamJitMI(MeasurementInterface):
 		if cfg.get('noOfMachines'):
 			self.startStreamNodes(cfg.get('noOfMachines') - 1,baseargs)
 
-		timeout = 50
+		timeout = 100
 
 		while timeout > 0 and p.poll() is None:
 			time.sleep(1)
@@ -181,7 +183,7 @@ def start(program):
 	parser = argparse.ArgumentParser(parents=opentuner.argparsers())
 	parser.add_argument('--program', help='Name of the StreamJit application')
 
-	argv = ['--program', program,  '--test-limit', '2000']
+	argv = ['--program', program,  '--test-limit', '6000']
 	args = parser.parse_args(argv)
 
 	if not args.database:
@@ -205,7 +207,7 @@ def start(program):
 		data = raw_input ( "Press Keyboard to exit..." )
 		
 
-	maxHeap = jvmPowerOfTwoParameter("maxHeap", 512, 2048, "-Xmx%dm")
+	maxHeap = jvmPowerOfTwoParameter("maxHeap", 512, 4096, "-Xmx%dm")
 
 	# Garbage First (G1) Garbage Collection Options
 	gc = jvmSwitchParameter("gc",['UseSerialGC','UseParallelGC','UseParallelOldGC','UseConcMarkSweepGC'],2, "-XX:+%s")
