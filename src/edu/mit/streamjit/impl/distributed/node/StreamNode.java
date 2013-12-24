@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.net.ConnectException;
 
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageVisitor;
@@ -178,6 +179,8 @@ public class StreamNode extends Thread {
 			tcpConnection = ConnectionFactory.getConnection(ipAddress, portNo,
 					true);
 			new StreamNode(tcpConnection).run();
+		} catch (ConnectException cex) {
+			System.out.println("No Controller is listening. Terminating.");
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.out
