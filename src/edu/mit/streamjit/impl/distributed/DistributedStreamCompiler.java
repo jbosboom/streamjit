@@ -135,6 +135,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		}
 
 		if (cfg == null) {
+			System.err
+					.println("Configuration is null. Runs the app with horizontal partitioning.");
 			Integer[] machineIds = new Integer[this.noOfnodes];
 			for (int i = 0; i < machineIds.length; i++) {
 				machineIds[i] = i + 1;
@@ -212,7 +214,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			reader.close();
 			return Configuration.fromJson(json);
 		} catch (Exception ex) {
-			System.err.println("File reader error");
+			System.err.println(String.format(
+					"File reader error. No %s configuration file.", name));
 		}
 		return null;
 	}
