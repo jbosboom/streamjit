@@ -1,7 +1,6 @@
 package edu.mit.streamjit.partitioner;
 
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -68,7 +67,7 @@ public abstract class AbstractPartitioner<I, O> implements Partitioner<I, O> {
 			if (cur instanceof Splitter<?, ?>) {
 				depth += getDepthofSplitJoin((Splitter<?, ?>) cur);
 				cur = getJoiner((Splitter<?, ?>) cur);
-			} else if (cur instanceof Worker<?, ?>) {
+			} else if (cur instanceof Filter<?, ?>) {
 				depth++;
 			} else {
 				throw new AssertionError(
