@@ -235,9 +235,9 @@ public class StreamJitApp {
 	}
 
 	/**
-	 * Goes through all workers assigned to a machine, find the workers
-	 * which are interconnected and group them as a blob workers. i.e., Group
-	 * the workers which are connected.
+	 * Goes through all workers assigned to a machine, find the workers which
+	 * are interconnected and group them as a blob workers. i.e., Group the
+	 * workers which are connected.
 	 * <p>
 	 * TODO: If any dynamic edges exists then should create interpreter blob.
 	 * 
@@ -245,7 +245,8 @@ public class StreamJitApp {
 	 * @return list of workers set which contains interconnected workers. Each
 	 *         worker set in the list is supposed to run in an individual blob.
 	 */
-	private List<Set<Worker<?, ?>>> getConnectedComponents(Set<Worker<?, ?>> workerset) {
+	private List<Set<Worker<?, ?>>> getConnectedComponents(
+			Set<Worker<?, ?>> workerset) {
 		List<Set<Worker<?, ?>>> ret = new ArrayList<Set<Worker<?, ?>>>();
 		while (!workerset.isEmpty()) {
 			Deque<Worker<?, ?>> queue = new ArrayDeque<>();
@@ -278,7 +279,7 @@ public class StreamJitApp {
 	}
 
 	private List<Set<Worker<?, ?>>> minimizeCycles(Set<Worker<?, ?>> blobworkers) {
-		Set<Splitter<?, ?>> refactorSplitters = new HashSet<>();
+		Map<Splitter<?, ?>, Joiner<?, ?>> rfctrSplitJoin = new HashMap<>();
 		Set<Splitter<?, ?>> splitterSet = getSplitters(blobworkers);
 		for (Splitter<?, ?> s : splitterSet) {
 			Joiner<?, ?> j = getJoiner(s);
@@ -286,16 +287,16 @@ public class StreamJitApp {
 				Set<Worker<?, ?>> childWorkers = new HashSet<>();
 				getAllChildWorkers(s, childWorkers);
 				if (!blobworkers.containsAll(childWorkers)) {
-					refactorSplitters.add(s);
+					rfctrSplitJoin.put(s, j);
 				}
 			}
 		}
 
 		List<Set<Worker<?, ?>>> ret = new ArrayList<>();
 
-		for (Splitter<?, ?> s : refactorSplitters) {
+		for (Splitter<?, ?> s : rfctrSplitJoin.keySet()) {
 			if (blobworkers.contains(s)) {
-				ret.add(getSplitterReachables(s, blobworkers));
+				ret.add(getSplitterReachables(s, blobworkers, rfctrSplitJoin));
 			}
 		}
 		ret.add(blobworkers);
@@ -310,33 +311,54 @@ public class StreamJitApp {
 	 * @return
 	 */
 	private Set<Worker<?, ?>> getSplitterReachables(Splitter<?, ?> s,
-			Set<Worker<?, ?>> blobworkers1) {
+			Set<Worker<?, ?>> blobworkers1,
+			Map<Splitter<?, ?>, Joiner<?, ?>> rfctrSplitJoin) {
 		assert blobworkers1.contains(s) : "Splitter s in not in blobworkers";
 		Set<Worker<?, ?>> ret = new HashSet<>();
-		Joiner<?, ?> j = getJoiner(s);
+		Set<Worker<?, ?>> exclude = new HashSet<>();
 		Deque<Worker<?, ?>> queue = new ArrayDeque<>();
 		ret.add(s);
+		exclude.add(rfctrSplitJoin.get(s));
 		blobworkers1.remove(s);
 		queue.offer(s);
 		while (!queue.isEmpty()) {
 			Worker<?, ?> wrkr = queue.poll();
 			for (Worker<?, ?> succ : Workers.getSuccessors(wrkr)) {
-				if (blobworkers1.contains(succ) && succ != j) {
-					ret.add(succ);
-					blobworkers1.remove(succ);
-					queue.offer(succ);
-				}
+				process(succ, blobworkers1, rfctrSplitJoin, exclude, queue, ret);
 			}
 
 			for (Worker<?, ?> pred : Workers.getPredecessors(wrkr)) {
-				if (blobworkers1.contains(pred) && pred != j) {
-					ret.add(pred);
-					blobworkers1.remove(pred);
-					queue.offer(pred);
-				}
+				process(pred, blobworkers1, rfctrSplitJoin, exclude, queue, ret);
 			}
 		}
 		return ret;
+	}
+
+	/**
+	 * Since the code in this method repeated in two places in
+	 * getSplitterReachables() method, It is re-factored into a private method
+	 * to avoid code duplication.
+	 */
+	private void process(Worker<?, ?> wrkr, Set<Worker<?, ?>> blobworkers1,
+			Map<Splitter<?, ?>, Joiner<?, ?>> rfctrSplitJoin,
+			Set<Worker<?, ?>> exclude, Deque<Worker<?, ?>> queue,
+			Set<Worker<?, ?>> ret) {
+		if (blobworkers1.contains(wrkr) && !exclude.contains(wrkr)) {
+			ret.add(wrkr);
+			blobworkers1.remove(wrkr);
+			queue.offer(wrkr);
+
+			for (Entry<Splitter<?, ?>, Joiner<?, ?>> e : rfctrSplitJoin
+					.entrySet()) {
+				if (e.getValue().equals(wrkr)) {
+					exclude.add(e.getKey());
+					break;
+				} else if (e.getKey().equals(wrkr)) {
+					exclude.add(e.getValue());
+					break;
+				}
+			}
+		}
 	}
 
 	/**
