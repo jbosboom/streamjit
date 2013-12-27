@@ -299,7 +299,7 @@ public class StreamJitApp {
 				ret.add(getSplitterReachables(s, blobworkers, rfctrSplitJoin));
 			}
 		}
-		ret.add(blobworkers);
+		ret.addAll(getConnectedComponents(blobworkers));
 		return ret;
 	}
 
