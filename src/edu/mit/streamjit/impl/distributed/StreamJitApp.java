@@ -222,7 +222,7 @@ public class StreamJitApp {
 		Map<Integer, List<Set<Worker<?, ?>>>> machineWorkerMap = new HashMap<>();
 		for (int machine : partition.keySet()) {
 			List<Set<Worker<?, ?>>> cycleMinimizedBlobs = new ArrayList<>();
-			List<Set<Worker<?, ?>>> machineBlobs = getBlobs(partition
+			List<Set<Worker<?, ?>>> machineBlobs = getConnectedComponents(partition
 					.get(machine));
 			{
 				for (Set<Worker<?, ?>> blobWorkers : machineBlobs) {
@@ -235,9 +235,9 @@ public class StreamJitApp {
 	}
 
 	/**
-	 * Goes through all the workers assigned to a machine, find the workers
+	 * Goes through all workers assigned to a machine, find the workers
 	 * which are interconnected and group them as a blob workers. i.e., Group
-	 * the workers such that each group can be executed as a blob.
+	 * the workers which are connected.
 	 * <p>
 	 * TODO: If any dynamic edges exists then should create interpreter blob.
 	 * 
@@ -245,7 +245,7 @@ public class StreamJitApp {
 	 * @return list of workers set which contains interconnected workers. Each
 	 *         worker set in the list is supposed to run in an individual blob.
 	 */
-	private List<Set<Worker<?, ?>>> getBlobs(Set<Worker<?, ?>> workerset) {
+	private List<Set<Worker<?, ?>>> getConnectedComponents(Set<Worker<?, ?>> workerset) {
 		List<Set<Worker<?, ?>>> ret = new ArrayList<Set<Worker<?, ?>>>();
 		while (!workerset.isEmpty()) {
 			Deque<Worker<?, ?>> queue = new ArrayDeque<>();
