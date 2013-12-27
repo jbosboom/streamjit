@@ -98,12 +98,13 @@ public class StreamJitApp {
 	 * Builds partitionsMachineMap and {@link BlobGraph} from the
 	 * {@link Configuration}, and verifies for any cycles among blobs. If it is
 	 * a valid configuration, (i.e., no cycles among the blobs), then this
-	 * objects member variables {@link StreamJitApp#blobConfiguration},
+	 * object's member variables {@link StreamJitApp#blobConfiguration},
 	 * {@link StreamJitApp#blobGraph} and
 	 * {@link StreamJitApp#partitionsMachineMap} will be assigned according to
 	 * the new configuration, no changes otherwise.
 	 * 
 	 * @param config
+	 *            New configuration form Opentuer.
 	 * @return true iff no cycles among blobs
 	 */
 	public boolean newConfiguration(Configuration config) {
@@ -184,15 +185,15 @@ public class StreamJitApp {
 	}
 
 	/**
-	 * Reads the configuration and returns a map of nodeID to list of workers
-	 * set which are assigned to the node. value of the returned map is list of
-	 * worker set where each worker set is individual blob.
+	 * Reads the configuration and returns a map of nodeID to list of set of
+	 * workers (list of blob workers) which are assigned to the node. Value of
+	 * the returned map is list of worker set where each worker set is an
+	 * individual blob.
 	 * 
 	 * @param config
 	 * @param workerset
-	 * @return map of nodeID to list of workers set which are assigned to the
-	 *         node. value is list of worker set where each set is individual
-	 *         blob.
+	 * @return map of nodeID to list of set of workers which are assigned to the
+	 *         node.
 	 */
 	private Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
 			Configuration config, Worker<?, ?> source) {
