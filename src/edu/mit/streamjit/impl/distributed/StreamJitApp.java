@@ -13,6 +13,9 @@ import java.util.Map.Entry;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
+import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Joiner;
+import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.BlobFactory;
@@ -30,6 +33,7 @@ import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 import edu.mit.streamjit.impl.interp.Interpreter;
+import edu.mit.streamjit.partitioner.AbstractPartitioner;
 
 /**
  * This class contains all information about the current streamJit application
@@ -217,7 +221,15 @@ public class StreamJitApp {
 
 		Map<Integer, List<Set<Worker<?, ?>>>> machineWorkerMap = new HashMap<>();
 		for (int machine : partition.keySet()) {
-			machineWorkerMap.put(machine, getBlobs(partition.get(machine)));
+			List<Set<Worker<?, ?>>> cycleMinimizedBlobs = new ArrayList<>();
+			List<Set<Worker<?, ?>>> machineBlobs = getBlobs(partition
+					.get(machine));
+			{
+				for (Set<Worker<?, ?>> blobWorkers : machineBlobs) {
+					cycleMinimizedBlobs.addAll(minimizeCycles(blobWorkers));
+				}
+			}
+			machineWorkerMap.put(machine, cycleMinimizedBlobs);
 		}
 		return machineWorkerMap;
 	}
@@ -263,6 +275,135 @@ public class StreamJitApp {
 			ret.add(blobworkers);
 		}
 		return ret;
+	}
+
+	private List<Set<Worker<?, ?>>> minimizeCycles(Set<Worker<?, ?>> blobworkers) {
+		Set<Splitter<?, ?>> refactorSplitters = new HashSet<>();
+		Set<Splitter<?, ?>> splitterSet = getSplitters(blobworkers);
+		for (Splitter<?, ?> s : splitterSet) {
+			Joiner<?, ?> j = getJoiner(s);
+			if (blobworkers.contains(j)) {
+				Set<Worker<?, ?>> childWorkers = new HashSet<>();
+				getAllChildWorkers(s, childWorkers);
+				if (!blobworkers.containsAll(childWorkers)) {
+					refactorSplitters.add(s);
+				}
+			}
+		}
+
+		List<Set<Worker<?, ?>>> ret = new ArrayList<>();
+
+		for (Splitter<?, ?> s : refactorSplitters) {
+			if (blobworkers.contains(s)) {
+				ret.add(getSplitterReachables(s, blobworkers));
+			}
+		}
+		ret.add(blobworkers);
+		return ret;
+	}
+
+	/**
+	 * This function has side effect. Modifies the argument.
+	 * 
+	 * @param s
+	 * @param blobworkers1
+	 * @return
+	 */
+	private Set<Worker<?, ?>> getSplitterReachables(Splitter<?, ?> s,
+			Set<Worker<?, ?>> blobworkers1) {
+		assert blobworkers1.contains(s) : "Splitter s in not in blobworkers";
+		Set<Worker<?, ?>> ret = new HashSet<>();
+		Joiner<?, ?> j = getJoiner(s);
+		Deque<Worker<?, ?>> queue = new ArrayDeque<>();
+		ret.add(s);
+		blobworkers1.remove(s);
+		queue.offer(s);
+		while (!queue.isEmpty()) {
+			Worker<?, ?> wrkr = queue.poll();
+			for (Worker<?, ?> succ : Workers.getSuccessors(wrkr)) {
+				if (blobworkers1.contains(succ) && succ != j) {
+					ret.add(succ);
+					blobworkers1.remove(succ);
+					queue.offer(succ);
+				}
+			}
+
+			for (Worker<?, ?> pred : Workers.getPredecessors(wrkr)) {
+				if (blobworkers1.contains(pred) && pred != j) {
+					ret.add(pred);
+					blobworkers1.remove(pred);
+					queue.offer(pred);
+				}
+			}
+		}
+		return ret;
+	}
+
+	/**
+	 * Copied form {@link AbstractPartitioner} class. But modified to support
+	 * nested splitjoiners.</p> Returns all {@link Filter}s in a splitjoin. Does
+	 * not include the splitter or the joiner.
+	 * 
+	 * @param splitter
+	 * @return Returns all {@link Filter}s in a splitjoin. Does not include
+	 *         splitter or joiner.
+	 */
+
+	protected void getAllChildWorkers(Splitter<?, ?> splitter,
+			Set<Worker<?, ?>> childWorkers) {
+		childWorkers.add(splitter);
+		Joiner<?, ?> joiner = getJoiner(splitter);
+		Worker<?, ?> cur;
+		for (Worker<?, ?> childWorker : Workers.getSuccessors(splitter)) {
+			cur = childWorker;
+			while (cur != joiner) {
+				if (cur instanceof Filter<?, ?>)
+					childWorkers.add(cur);
+				else if (cur instanceof Splitter<?, ?>) {
+					getAllChildWorkers((Splitter<?, ?>) cur, childWorkers);
+					cur = getJoiner((Splitter<?, ?>) cur);
+				} else
+					throw new IllegalStateException(
+							"Some thing wrong in the algorithm.");
+
+				assert Workers.getSuccessors(cur).size() == 1 : "Illegal State encounted : cur can only be either a filter or a joner";
+				cur = Workers.getSuccessors(cur).get(0);
+			}
+		}
+		childWorkers.add(joiner);
+	}
+
+	private Set<Splitter<?, ?>> getSplitters(Set<Worker<?, ?>> blobworkers) {
+		Set<Splitter<?, ?>> splitterSet = new HashSet<>();
+		for (Worker<?, ?> w : blobworkers) {
+			if (w instanceof Splitter<?, ?>) {
+				splitterSet.add((Splitter<?, ?>) w);
+			}
+		}
+		return splitterSet;
+	}
+
+	/**
+	 * Find and returns the corresponding {@link Joiner} for the passed
+	 * {@link Splitter}.
+	 * 
+	 * @param splitter
+	 *            : {@link Splitter} that needs it's {@link Joiner}.
+	 * @return Corresponding {@link Joiner} of the passed {@link Splitter}.
+	 */
+	protected Joiner<?, ?> getJoiner(Splitter<?, ?> splitter) {
+		Worker<?, ?> cur = Workers.getSuccessors(splitter).get(0);
+		int innerSplitjoinCount = 0;
+		while (!(cur instanceof Joiner<?, ?>) || innerSplitjoinCount != 0) {
+			if (cur instanceof Splitter<?, ?>)
+				innerSplitjoinCount++;
+			if (cur instanceof Joiner<?, ?>)
+				innerSplitjoinCount--;
+			assert innerSplitjoinCount >= 0 : "Joiner Count is more than splitter count. Check the algorithm";
+			cur = Workers.getSuccessors(cur).get(0);
+		}
+		assert cur instanceof Joiner<?, ?> : "Error in algorithm. Not returning a Joiner";
+		return (Joiner<?, ?>) cur;
 	}
 
 	public Configuration getStaticConfiguration() {
