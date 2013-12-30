@@ -11,12 +11,14 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
+import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.BlobThread;
+import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
@@ -88,6 +90,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		for (BlobExecuter be : blobExecuters)
 			be.start();
 	}
+
 	/**
 	 * Stop all {@link Blob}s if running. No effect if a {@link Blob} is already
 	 * stopped.
@@ -226,7 +229,13 @@ public class BlobsManagerImpl implements BlobsManager {
 			outputChannelThreads = new HashSet<>(outputChannels.values().size());
 
 			for (int i = 0; i < blob.getCoreCount(); i++) {
-				blobThreads.add(new BlobThread(blob.getCoreCode(i)));
+				StringBuilder sb = new StringBuilder("Workers-");
+				for (Worker<?, ?> w : blob.getWorkers()) {
+					sb.append(Workers.getIdentifier(w));
+					sb.append(",");
+				}
+				blobThreads.add(new BlobThread(blob.getCoreCode(i), sb
+						.toString()));
 			}
 
 			drainState = 0;
