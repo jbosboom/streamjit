@@ -92,7 +92,7 @@ public class Compiler2 {
 			new ArrayifyIndexFunctionTransformer(false),
 			new ArrayifyIndexFunctionTransformer(true)
 	);
-	public static final AllocationStrategy ALLOCATION_STRATEGY = new DescendingShareAllocationStrategy(8);
+	public static final AllocationStrategy ALLOCATION_STRATEGY = new BitsetDataParallelAllocationStrategy(8);
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
