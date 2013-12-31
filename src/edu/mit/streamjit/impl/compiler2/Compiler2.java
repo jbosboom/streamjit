@@ -92,6 +92,7 @@ public class Compiler2 {
 			new ArrayifyIndexFunctionTransformer(false),
 			new ArrayifyIndexFunctionTransformer(true)
 	);
+	public static final AllocationStrategy ALLOCATION_STRATEGY = new DescendingShareAllocationStrategy(8);
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
@@ -841,7 +842,7 @@ public class Compiler2 {
 
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
-				allocateGroup(g, ssCores);
+				ALLOCATION_STRATEGY.allocateGroup(g, Range.closedOpen(0, externalSchedule.get(g)), ssCores, config);
 			else {
 				assert g.actors().size() == 1;
 				TokenActor ta = (TokenActor)g.actors().iterator().next();
@@ -868,53 +869,6 @@ public class Compiler2 {
 					s, initStorage.get(s), steadyStateStorage.get(s)));
 
 		createDrainInstructions();
-	}
-
-	/**
-	 * Allocates executions of the given group to the given cores (i.e.,
-	 * performs data-parallel fission).
-	 * @param g the group to fiss
-	 * @param cores the cores to fiss over, subject to the configuration
-	 */
-	private void allocateGroup(ActorGroup g, List<Core> cores) {
-		List<Float> shares = new ArrayList<>(cores.size());
-		for (int core = 0; core < cores.size(); ++core) {
-			String name = String.format("node%dcore%diter", g.id(), core);
-			FloatParameter parameter = config.getParameter(name, FloatParameter.class);
-			if (parameter == null)
-				shares.add(0f);
-			else
-				shares.add(parameter.getValue());
-		}
-
-		int totalAvailable = externalSchedule.get(g);
-		Range<Integer> toBeAllocated = Range.closedOpen(0, totalAvailable);
-		while (!toBeAllocated.isEmpty()) {
-			int max = CollectionUtils.maxIndex(shares);
-			float share = shares.get(max);
-			if (share == 0) break;
-			int amount = DoubleMath.roundToInt(share * totalAvailable, RoundingMode.HALF_EVEN);
-			int done = toBeAllocated.lowerEndpoint();
-			Range<Integer> allocation = g.isStateful() ? toBeAllocated :
-					toBeAllocated.intersection(Range.closedOpen(done, done + amount));
-			cores.get(max).allocate(g, allocation);
-			toBeAllocated = Range.closedOpen(allocation.upperEndpoint(), toBeAllocated.upperEndpoint());
-			shares.set(max, 0f); //don't allocate to this core again
-		}
-
-		//If we have iterations left over not assigned to a core, spread them
-		//evenly over all cores.
-		if (!toBeAllocated.isEmpty()) {
-			int perCore = IntMath.divide(toBeAllocated.upperEndpoint() - toBeAllocated.lowerEndpoint(), cores.size(), RoundingMode.CEILING);
-			for (int i = 0; i < cores.size() && !toBeAllocated.isEmpty(); ++i) {
-				int min = toBeAllocated.lowerEndpoint();
-				Range<Integer> allocation = g.isStateful() ? toBeAllocated :
-						toBeAllocated.intersection(Range.closedOpen(min, min + perCore));
-				cores.get(i).allocate(g, allocation);
-				toBeAllocated = Range.closedOpen(allocation.upperEndpoint(), toBeAllocated.upperEndpoint());
-			}
-		}
-		assert toBeAllocated.isEmpty();
 	}
 
 	private ReadInstruction makeReadInstruction(TokenActor a, ConcreteStorage cs, int count) {

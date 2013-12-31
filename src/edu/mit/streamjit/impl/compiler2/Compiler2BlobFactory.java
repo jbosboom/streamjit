@@ -24,28 +24,15 @@ public final class Compiler2BlobFactory implements BlobFactory {
 		return new Compiler2(workers, config, maxNumCores, initialState).compile();
 	}
 
-	/**
-	 * The maximum number of cores we support data-parallelizing over.  If
-	 * maxNumCores is larger than this, we ignore the rest.  Theoretically, the
-	 * autotuner should learn to ignore any unused core variables, but we have
-	 * a limit anyway.
-	 */
-	public static final int MAX_MAX_NUM_CORES = 8;
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
 		Configuration.Builder builder = Configuration.builder();
 		for (Worker<?, ?> w : workers)
 			if (!Workers.isPeeking(w))
 				builder.addParameter(Configuration.SwitchParameter.create("fuse"+Workers.getIdentifier(w), true));
-		//One IntParameter for each worker (possibly they're all separate nodes)
-		//and each core to determine how many multiples to put on that core.
+		Compiler2.ALLOCATION_STRATEGY.makeParameters(workers, builder);
 		for (Worker<?, ?> w : workers)
-			for (int i = 0; i < MAX_MAX_NUM_CORES; ++i) {
-				String name = String.format("node%dcore%diter", Workers.getIdentifier(w), i);
-				builder.addParameter(new Configuration.FloatParameter(name, 0, 1, 1f/MAX_MAX_NUM_CORES));
-			}
-		for (Worker<?, ?> w : workers)
-			for (int i = 0; i < MAX_MAX_NUM_CORES; ++i) {
+			for (int i = 0; i < Compiler2.ALLOCATION_STRATEGY.maxNumCores(); ++i) {
 				List<String> names = new ArrayList<>();
 				for (int j = 0; j < w.getPopRates().size(); ++j)
 					names.add(String.format("Core%dWorker%dInput%dIndexFxnTransformer", i, Workers.getIdentifier(w), j));
