@@ -556,7 +556,7 @@ public final class Configuration {
 			public FloatParameterJsonifier() {}
 			@Override
 			public FloatParameter fromJson(JsonValue jsonvalue) {
-				JsonObject obj = Jsonifiers.checkClassEqual(jsonvalue, IntParameter.class);
+				JsonObject obj = Jsonifiers.checkClassEqual(jsonvalue, FloatParameter.class);
 				String name = obj.getString("name");
 				float min = obj.getJsonNumber("min").bigDecimalValue().floatValue();
 				float max = obj.getJsonNumber("max").bigDecimalValue().floatValue();
