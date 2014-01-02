@@ -226,7 +226,7 @@ public class StreamJitApp {
 					.get(machine));
 			{
 				for (Set<Worker<?, ?>> blobWorkers : machineBlobs) {
-					cycleMinimizedBlobs.addAll(minimizeCycles(blobWorkers));
+					cycleMinimizedBlobs.addAll(breakCycles(blobWorkers));
 				}
 			}
 			machineWorkerMap.put(machine, cycleMinimizedBlobs);
@@ -235,9 +235,9 @@ public class StreamJitApp {
 	}
 
 	/**
-	 * Goes through all workers assigned to a machine, find the workers which
-	 * are interconnected and group them as a blob workers. i.e., Group the
-	 * workers which are connected.
+	 * Goes through all workers in workerset which is passed as argument, find
+	 * the workers which are interconnected and group them as a blob workers.
+	 * i.e., Group the workers which are connected.
 	 * <p>
 	 * TODO: If any dynamic edges exists then should create interpreter blob.
 	 * 
@@ -278,7 +278,16 @@ public class StreamJitApp {
 		return ret;
 	}
 
-	private List<Set<Worker<?, ?>>> minimizeCycles(Set<Worker<?, ?>> blobworkers) {
+	/**
+	 * Cycles can occur iff splitter and joiner happened to fall into a blob
+	 * while some workers of that splitjoin falls into other blob. Here, we
+	 * check for the above mention condition. If cycles exists, split then in to
+	 * several blobs.
+	 * 
+	 * @param blobworkers
+	 * @return
+	 */
+	private List<Set<Worker<?, ?>>> breakCycles(Set<Worker<?, ?>> blobworkers) {
 		Map<Splitter<?, ?>, Joiner<?, ?>> rfctrSplitJoin = new HashMap<>();
 		Set<Splitter<?, ?>> splitterSet = getSplitters(blobworkers);
 		for (Splitter<?, ?> s : splitterSet) {
@@ -304,31 +313,34 @@ public class StreamJitApp {
 	}
 
 	/**
+	 * Goes through the passed set of workers, add workers those are reachable
+	 * from the splitter s, but not any conflicting splitter or joiner.
+	 * <p>
 	 * This function has side effect. Modifies the argument.
 	 * 
 	 * @param s
-	 * @param blobworkers1
+	 * @param blobworkers
 	 * @return
 	 */
 	private Set<Worker<?, ?>> getSplitterReachables(Splitter<?, ?> s,
-			Set<Worker<?, ?>> blobworkers1,
+			Set<Worker<?, ?>> blobworkers,
 			Map<Splitter<?, ?>, Joiner<?, ?>> rfctrSplitJoin) {
-		assert blobworkers1.contains(s) : "Splitter s in not in blobworkers";
+		assert blobworkers.contains(s) : "Splitter s in not in blobworkers";
 		Set<Worker<?, ?>> ret = new HashSet<>();
 		Set<Worker<?, ?>> exclude = new HashSet<>();
 		Deque<Worker<?, ?>> queue = new ArrayDeque<>();
 		ret.add(s);
 		exclude.add(rfctrSplitJoin.get(s));
-		blobworkers1.remove(s);
+		blobworkers.remove(s);
 		queue.offer(s);
 		while (!queue.isEmpty()) {
 			Worker<?, ?> wrkr = queue.poll();
 			for (Worker<?, ?> succ : Workers.getSuccessors(wrkr)) {
-				process(succ, blobworkers1, rfctrSplitJoin, exclude, queue, ret);
+				process(succ, blobworkers, rfctrSplitJoin, exclude, queue, ret);
 			}
 
 			for (Worker<?, ?> pred : Workers.getPredecessors(wrkr)) {
-				process(pred, blobworkers1, rfctrSplitJoin, exclude, queue, ret);
+				process(pred, blobworkers, rfctrSplitJoin, exclude, queue, ret);
 			}
 		}
 		return ret;
@@ -339,13 +351,13 @@ public class StreamJitApp {
 	 * getSplitterReachables() method, It is re-factored into a private method
 	 * to avoid code duplication.
 	 */
-	private void process(Worker<?, ?> wrkr, Set<Worker<?, ?>> blobworkers1,
+	private void process(Worker<?, ?> wrkr, Set<Worker<?, ?>> blobworkers,
 			Map<Splitter<?, ?>, Joiner<?, ?>> rfctrSplitJoin,
 			Set<Worker<?, ?>> exclude, Deque<Worker<?, ?>> queue,
 			Set<Worker<?, ?>> ret) {
-		if (blobworkers1.contains(wrkr) && !exclude.contains(wrkr)) {
+		if (blobworkers.contains(wrkr) && !exclude.contains(wrkr)) {
 			ret.add(wrkr);
-			blobworkers1.remove(wrkr);
+			blobworkers.remove(wrkr);
 			queue.offer(wrkr);
 
 			for (Entry<Splitter<?, ?>, Joiner<?, ?>> e : rfctrSplitJoin
