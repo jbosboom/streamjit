@@ -181,7 +181,8 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 			String topStreamClassName) {
 		checkNotNull(jarFilePath);
 		checkNotNull(topStreamClassName);
-
+		jarFilePath = this.getClass().getProtectionDomain().getCodeSource()
+				.getLocation().getPath();
 		File jarFile = new java.io.File(jarFilePath);
 		if (!jarFile.exists()) {
 			System.out.println("Jar file not found....");
