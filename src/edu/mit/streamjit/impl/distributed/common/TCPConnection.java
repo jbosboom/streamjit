@@ -234,13 +234,13 @@ public class TCPConnection implements Connection {
 
 		private final int myNodeID;
 
-		private final Map<Integer, NodeInfo> nodeInfoMap;
+		private final Map<Integer, InetAddress> iNetAddressMap;
 
 		public TCPConnectionProvider(int myNodeID,
-				Map<Integer, NodeInfo> nodeInfoMap) {
-			checkNotNull(nodeInfoMap, "nodeInfoMap is null");
+				Map<Integer, InetAddress> iNetAddressMap) {
+			checkNotNull(iNetAddressMap, "nodeInfoMap is null");
 			this.myNodeID = myNodeID;
-			this.nodeInfoMap = nodeInfoMap;
+			this.iNetAddressMap = iNetAddressMap;
 			this.allConnections = new ConcurrentHashMap<>();
 		}
 
@@ -283,10 +283,13 @@ public class TCPConnection implements Connection {
 				con = ConnectionFactory.getConnection(conInfo.getPortNo(),
 						timeOut, false);
 			} else if (conInfo.getDstID() == myNodeID) {
-				NodeInfo nodeInfo = nodeInfoMap.get(conInfo.getSrcID());
-				String ipAddress = nodeInfo.getIpAddress().getHostAddress();
+				InetAddress ipAddress = iNetAddressMap.get(conInfo.getSrcID());
+				if (ipAddress.isLoopbackAddress())
+					ipAddress = iNetAddressMap.get(0);
+
 				int portNo = conInfo.getPortNo();
-				con = ConnectionFactory.getConnection(ipAddress, portNo, false);
+				con = ConnectionFactory.getConnection(
+						ipAddress.getHostAddress(), portNo, false);
 			}
 			allConnections.put(conInfo, con);
 			return con;

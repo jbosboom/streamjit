@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.distributed.common;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.TailChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
+import edu.mit.streamjit.impl.distributed.runtimer.StreamNodeAgent;
 
 /**
  * This class is to keep track of all application level constants. So we can
@@ -20,12 +21,23 @@ public final class GlobalConstants {
 	public static final int PORTNO = 39810;
 
 	public static final String TOPLEVEL_WORKER_NAME = "TOPLEVEL_WORKER_NAME";
+
 	public static final String JARFILE_PATH = "JARFILE_PATH";
+
 	/**
 	 * nodeID to {@link NodeInfo} map is stored in the configuration in this
 	 * name.
 	 */
 	public static final String NODE_INFO_MAP = "nodeInfoMap";
+
+	/**
+	 * The actual IP addresses of the nodes that the nodes use to make connection
+	 * with the controller. We need this, because a node may have multiple
+	 * network interfaces and those may have multiple IP addresses too. See the
+	 * comment of {@link StreamNodeAgent#getAddress()}.
+	 */
+	public static final String INETADDRESS_MAP = "iNetAddressMap";
+
 	/**
 	 * tokenMachineMap that says mapped nodeID of upstream and downstream
 	 * workers of a token is stored in the configuration in this name.
@@ -60,7 +72,7 @@ public final class GlobalConstants {
 	 * To turn on or off the dead lock handler. see {@link AbstractDrainer} for
 	 * it's usage.
 	 */
-	public static final boolean needDrainDeadlockHandler = false;
+	public static final boolean needDrainDeadlockHandler = true;
 
 	/**
 	 * Just use the fixed configuration file to run the program. No tuning, no
