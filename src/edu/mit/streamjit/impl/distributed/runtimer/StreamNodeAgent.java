@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
@@ -170,7 +171,7 @@ public abstract class StreamNodeAgent {
 	 * Send a object to corresponding {@link StreamNode}. While IO threads
 	 * reading the incoming messages from the stream node, controller may send
 	 * any messages through this function.
-	 *
+	 * 
 	 * @param obj
 	 * @throws IOException
 	 */
@@ -178,10 +179,25 @@ public abstract class StreamNodeAgent {
 
 	/**
 	 * Is still the connection with corresponding {@link StreamNode} is alive?
-	 *
+	 * 
 	 * @return
 	 */
 	public abstract boolean isConnected();
+
+	/**
+	 * Returns {@link InetAddress} of the corresponding {@link StreamNode}.
+	 * <p>
+	 * This method is introduced later ( not at the initial design phase).
+	 * Initially, {@link #getNodeInfo()} is used by {@link Controller} to get
+	 * the {@link InetAddress} of the {@link StreamNode}s. But, as
+	 * InetAddress.getLocalHost().getHostAddress() returns random addresses
+	 * based on how OS orders the all available network interfaces in the
+	 * system, this method was needed to correctly keep the IP address of the
+	 * streamnode.
+	 * 
+	 * @return {@link InetAddress} of the {@link StreamNode}.
+	 */
+	public abstract InetAddress getAddress();
 
 	/**
 	 * @return the mv
@@ -205,7 +221,7 @@ public abstract class StreamNodeAgent {
 
 	/**
 	 * {@link NodeInfoProcessor} at {@link StreamNode} side.
-	 *
+	 * 
 	 * @author Sumanan sumanan@mit.edu
 	 * @since Aug 11, 2013
 	 */

@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -128,11 +129,11 @@ public class Controller {
 		Configuration.Builder builder = Configuration.builder(app
 				.getStaticConfiguration());
 
-		Map<Integer, NodeInfo> nodeInfoMap = new HashMap<>();
+		Map<Integer, InetAddress> inetMap = new HashMap<>();
 		for (StreamNodeAgent agent : StreamNodeMap.values())
-			nodeInfoMap.put(agent.getNodeID(), agent.getNodeInfo());
+			inetMap.put(agent.getNodeID(), agent.getAddress());
 
-		nodeInfoMap.put(controllerNodeID, NodeInfo.getMyinfo());
+		inetMap.put(controllerNodeID, comManager.getLocalAddress());
 
 		// TODO: Ensure the need of this switch parameter.
 		List<ChannelFactory> universe = Arrays
@@ -142,10 +143,9 @@ public class Controller {
 				universe);
 
 		builder.addParameter(cfParameter).putExtraData(
-				GlobalConstants.NODE_INFO_MAP, nodeInfoMap);
+				GlobalConstants.INETADDRESS_MAP, inetMap);
 
-		this.conProvider = new TCPConnectionProvider(controllerNodeID,
-				nodeInfoMap);
+		this.conProvider = new TCPConnectionProvider(controllerNodeID, inetMap);
 
 		ConfigurationString json = new ConfigurationString(builder.build()
 				.toJson(), ConfigType.STATIC, null);

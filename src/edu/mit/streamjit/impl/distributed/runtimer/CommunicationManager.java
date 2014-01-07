@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.Map;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
@@ -60,4 +61,12 @@ public interface CommunicationManager {
 	 * @throws IOException
 	 */
 	public void closeAllConnections() throws IOException;
+
+	/**
+	 * See the comment of {@link StreamNodeAgent#getAddress()} to figure out why
+	 * this method was introduced.
+	 * 
+	 * @return the inetaddress of the local machine.
+	 */
+	public InetAddress getLocalAddress();
 }

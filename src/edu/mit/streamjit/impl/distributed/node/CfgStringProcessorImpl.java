@@ -4,6 +4,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -31,7 +32,6 @@ import edu.mit.streamjit.impl.distributed.common.ConfigurationString.Configurati
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.json.Jsonifiers;
@@ -61,11 +61,11 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 				this.staticConfig = Jsonifiers.fromJson(json,
 						Configuration.class);
 
-				Map<Integer, NodeInfo> nodeInfoMap = (Map<Integer, NodeInfo>) staticConfig
-						.getExtraData(GlobalConstants.NODE_INFO_MAP);
+				Map<Integer, InetAddress> iNetAddressMap = (Map<Integer, InetAddress>) staticConfig
+						.getExtraData(GlobalConstants.INETADDRESS_MAP);
 
 				this.conProvider = new TCPConnectionProvider(
-						streamNode.getNodeID(), nodeInfoMap);
+						streamNode.getNodeID(), iNetAddressMap);
 			} else
 				System.err
 						.println("New static configuration received...But Ignored...");
@@ -210,7 +210,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 		URL url;
 		try {
 			url = jarFile.toURI().toURL();
-			URL[] urls = new URL[]{url};
+			URL[] urls = new URL[] { url };
 
 			ClassLoader loader = new URLClassLoader(urls);
 			Class<?> topStreamClass;
@@ -239,8 +239,8 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 		} catch (InstantiationException iex) {
 			System.err.println("InstantiationException exception.");
 			System.err
-					.println("Please ensure the top level StreamJit application" +
-							" class is public and have no argument constructor.");
+					.println("Please ensure the top level StreamJit application"
+							+ " class is public and have no argument constructor.");
 			iex.printStackTrace();
 		} catch (Exception e) {
 			System.out.println("Couldn't find the toplevel worker.");
