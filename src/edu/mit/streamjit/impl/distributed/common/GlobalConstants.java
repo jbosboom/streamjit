@@ -4,6 +4,7 @@ import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.TailChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.StreamNodeAgent;
+import edu.mit.streamjit.tuner.TCPTuner;
 
 /**
  * This class is to keep track of all application level constants. So we can
@@ -31,10 +32,10 @@ public final class GlobalConstants {
 	public static final String NODE_INFO_MAP = "nodeInfoMap";
 
 	/**
-	 * The actual IP addresses of the nodes that the nodes use to make connection
-	 * with the controller. We need this, because a node may have multiple
-	 * network interfaces and those may have multiple IP addresses too. See the
-	 * comment of {@link StreamNodeAgent#getAddress()}.
+	 * The actual IP addresses of the nodes that the nodes use to make
+	 * connection with the controller. We need this, because a node may have
+	 * multiple network interfaces and those may have multiple IP addresses too.
+	 * See the comment of {@link StreamNodeAgent#getAddress()}.
 	 */
 	public static final String INETADDRESS_MAP = "iNetAddressMap";
 
@@ -46,6 +47,7 @@ public final class GlobalConstants {
 	 * node, Value - MachineID of the destination node.
 	 */
 	public static final String TOKEN_MACHINE_MAP = "tokenMachineMap";
+
 	/**
 	 * Information of TCP portID for a token whose upstream and downstream
 	 * workers are mapped to different nodes in a distributed execution
@@ -59,6 +61,13 @@ public final class GlobalConstants {
 
 	/**
 	 * Whether to start the tuner automatically or not.
+	 * <ol>
+	 * <li>0 - Controller will start the tuner automatically.
+	 * <li>1 - User has to manually start the tuner with correct portNo as
+	 * argument. Port no 12563 is used in this case. But it can be changed at
+	 * {@link TCPTuner#startTuner(String)}. We need this option to run the
+	 * tuning on remote machines.
+	 * </ol>
 	 */
 	public static int tunerMode = 0;
 
