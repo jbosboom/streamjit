@@ -49,6 +49,8 @@ public class BitsetDataParallelAllocationStrategy implements AllocationStrategy 
 			if (param.getValue())
 				enabled.add(cores.get(i));
 		}
+		if (enabled.isEmpty())
+			enabled.addAll(cores.subList(0, count));
 		new FullDataParallelAllocationStrategy(enabled.size()).allocateGroup(group, iterations, enabled, config);
 	}
 }
