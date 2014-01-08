@@ -103,8 +103,8 @@ public class Method extends Value implements Accessible, Parented<Klass> {
 		Class<?> klass = getParent().getBackingClass();
 		if (klass == null) return null;
 		MethodType type = getType();
-		if (!modifiers().contains(Modifier.STATIC))
-			type = type.dropFirstArgument(); //drop the receiver
+		if (hasReceiver())
+			type = type.dropFirstArgument();
 		List<Class<?>> paramTypes = new ArrayList<>();
 		for (RegularType t : type.getParameterTypes()) {
 			Class<?> backingParamClass = t.getKlass().getBackingClass();
