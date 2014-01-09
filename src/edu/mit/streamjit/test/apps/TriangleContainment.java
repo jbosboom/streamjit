@@ -62,6 +62,20 @@ public final class TriangleContainment {
 		}
 	}
 
+	private static final class ManuallyFused extends Filter<String, Boolean> {
+		private ManuallyFused() {
+			super(1, 1);
+		}
+		@Override
+		public void work() {
+			String[] data = pop().split(",");
+			Polygon p = new Polygon();
+			for (int i = 0; i < TRIANGLE_SIDES*2; i += 2)
+				p.addPoint(Integer.parseInt(data[i]), Integer.parseInt(data[i+1]));
+			push(p.contains(0, 0));
+		}
+	}
+
 	private static final class TriangleContainmentBenchmark extends AbstractBenchmark {
 		private TriangleContainmentBenchmark() {
 			super(new Dataset("triangles", Input.fromIterable(generateInput())));
@@ -69,6 +83,7 @@ public final class TriangleContainment {
 		@Override
 		@SuppressWarnings("unchecked")
 		public OneToOneElement<Object, Object> instantiate() {
+//			return new Pipeline(new ManuallyFused());
 			return new Pipeline(new Parser(), new OriginTester());
 		}
 	}
