@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -109,8 +110,15 @@ public final class TriangleContainment {
 		Iterator<String> taskIterator = generateInput().iterator();
 		AtomicInteger result = new AtomicInteger(0);
 		List<Thread> threads = new ArrayList<>(NUM_THREADS);
+		List<Semaphore> readSemaphores = new ArrayList<>(NUM_THREADS), writeSemaphores = new ArrayList<>(NUM_THREADS);
+		for (int i = 0; i < NUM_THREADS; ++i) {
+			readSemaphores.add(new Semaphore(i == 0 ? 1 : 0));
+			writeSemaphores.add(new Semaphore(i == 0 ? 1 : 0));
+		}
 		for (int i = 0; i < NUM_THREADS; ++i)
-			threads.add(new ComputeThread(taskIterator, result));
+			threads.add(new ComputeThread(taskIterator, result,
+					readSemaphores.get(i), readSemaphores.get((i+1)%readSemaphores.size()),
+					writeSemaphores.get(i), writeSemaphores.get((i+1)%writeSemaphores.size())));
 		Stopwatch stopwatch = Stopwatch.createStarted();
 		for (Thread t : threads)
 			t.start();
@@ -122,12 +130,18 @@ public final class TriangleContainment {
 
 	private static final class ComputeThread extends Thread {
 		private static final int STRINGS_PER_TASK = 100000;
-		private static final Object TASK_ITERATOR_LOCK = new Object();
 		private final Iterator<String> taskIterator;
+		//A token-passing scheme to ensure tasks are issued and retired in order,
+		//for fair comparison against StreamJIT.
+		private final Semaphore readSemaphore, nextReadSemaphore, writeSemaphore, nextWriteSemaphore;
 		private final AtomicInteger result;
-		private ComputeThread(Iterator<String> taskIterator, AtomicInteger result) {
+		private ComputeThread(Iterator<String> taskIterator, AtomicInteger result, Semaphore readSemaphore, Semaphore nextReadSemaphore, Semaphore writeSemaphore, Semaphore nextWriteSemaphore) {
 			this.taskIterator = taskIterator;
 			this.result = result;
+			this.readSemaphore = readSemaphore;
+			this.nextReadSemaphore = nextReadSemaphore;
+			this.writeSemaphore = writeSemaphore;
+			this.nextWriteSemaphore = nextWriteSemaphore;
 		}
 
 		@Override
@@ -135,10 +149,10 @@ public final class TriangleContainment {
 			List<String> tasks = new ArrayList<>(STRINGS_PER_TASK);
 			while (true) {
 				tasks.clear();
-				synchronized (TASK_ITERATOR_LOCK) {
-					for (int i = 0; i < STRINGS_PER_TASK && taskIterator.hasNext(); ++i)
-						tasks.add(taskIterator.next());
-				}
+				readSemaphore.acquireUninterruptibly();
+				for (int i = 0; i < STRINGS_PER_TASK && taskIterator.hasNext(); ++i)
+					tasks.add(taskIterator.next());
+				nextReadSemaphore.release();
 				if (tasks.isEmpty())
 					return;
 
@@ -151,7 +165,10 @@ public final class TriangleContainment {
 					if (p.contains(0, 0))
 						++accum;
 				}
+
+				writeSemaphore.acquireUninterruptibly();
 				result.addAndGet(accum);
+				nextWriteSemaphore.release();
 			}
 		}
 	}
