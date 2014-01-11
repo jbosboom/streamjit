@@ -18,7 +18,8 @@ public class ConnectionFactory {
 	public static TCPConnection getConnection(String serverAddress, int portNo,
 			boolean needSync) throws IOException {
 		Ipv4Validator validator = Ipv4Validator.getInstance();
-
+		System.out.println("Trying to make a connection with - "
+				+ serverAddress + "/" + portNo);
 		if (!validator.isValid(serverAddress))
 			throw new IllegalArgumentException("Invalid Server IP address");
 
@@ -34,7 +35,8 @@ public class ConnectionFactory {
 				else
 					return new TCPConnection(socket);
 			} catch (IOException ioe) {
-				System.out.println("IO Connection failed");
+				System.out.println("IO Connection failed - " + serverAddress
+						+ "/" + portNo);
 				if (i == maxTryAttempts - 1)
 					throw ioe;
 				System.out.println("Reattempting...." + i);
@@ -59,6 +61,7 @@ public class ConnectionFactory {
 	 */
 	public static TCPConnection getConnection(int portNo, int timeOut,
 			boolean needSync) throws IOException {
+		System.out.println("Listening at - " + portNo);
 		ListenerSocket listnerSckt = new ListenerSocket(portNo);
 		Socket socket = listnerSckt.makeConnection(timeOut);
 		if (needSync)
