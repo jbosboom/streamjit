@@ -4,6 +4,7 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Uninterruptibles;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.OneToOneElement;
@@ -12,6 +13,7 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import java.awt.Polygon;
 import java.util.ArrayList;
@@ -77,15 +79,27 @@ public final class TriangleContainment {
 		}
 	}
 
+	@ServiceProvider(Benchmark.class)
 	private static final class TriangleContainmentBenchmark extends AbstractBenchmark {
 		private TriangleContainmentBenchmark() {
-			super(new Dataset("triangles", Input.fromIterable(generateInput())));
+			super("TrangleContainment", new Dataset("triangles", Input.fromIterable(generateInput())));
 		}
 		@Override
 		@SuppressWarnings("unchecked")
 		public OneToOneElement<Object, Object> instantiate() {
-//			return new Pipeline(new ManuallyFused());
 			return new Pipeline(new Parser(), new OriginTester());
+		}
+	}
+
+	@ServiceProvider(Benchmark.class)
+	private static final class ManuallyFusedTriangleContainmentBenchmark extends AbstractBenchmark {
+		private ManuallyFusedTriangleContainmentBenchmark() {
+			super("ManuallyFusedTrangleContainment", new Dataset("triangles", Input.fromIterable(generateInput())));
+		}
+		@Override
+		@SuppressWarnings("unchecked")
+		public OneToOneElement<Object, Object> instantiate() {
+			return new Pipeline(new ManuallyFused());
 		}
 	}
 
