@@ -23,9 +23,9 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
-import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
@@ -207,9 +207,9 @@ public class StreamJitApp {
 
 		Map<Integer, Set<Worker<?, ?>>> partition = new HashMap<>();
 		for (Worker<?, ?> w : workerset) {
-			IntParameter w2m = config.getParameter(String.format(
+			SwitchParameter<Integer> w2m = config.getParameter(String.format(
 					"worker%dtomachine", Workers.getIdentifier(w)),
-					IntParameter.class);
+					SwitchParameter.class);
 			int machine = w2m.getValue();
 
 			if (!partition.containsKey(machine)) {

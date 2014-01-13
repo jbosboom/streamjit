@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.distributed;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import edu.mit.streamjit.api.Worker;
@@ -62,10 +64,14 @@ public class DistributedBlobFactory implements BlobFactory {
 		}
 
 		// Configuration.Builder builder = Configuration.builder();
+		List<Integer> machinelist = new ArrayList<>(noOfMachines);
+		for (int i = 1; i <= noOfMachines; i++)
+			machinelist.add(i);
+
 		for (Worker<?, ?> w : workers) {
-			Parameter p = new Configuration.IntParameter(String.format(
-					"worker%dtomachine", Workers.getIdentifier(w)), 1,
-					noOfMachines, 1);
+			Parameter p = new Configuration.SwitchParameter<Integer>(
+					String.format("worker%dtomachine", Workers.getIdentifier(w)),
+					Integer.class, 1, machinelist);
 			builder.addParameter(p);
 		}
 
