@@ -80,8 +80,8 @@ public final class TriangleContainment {
 	}
 
 	@ServiceProvider(Benchmark.class)
-	private static final class TriangleContainmentBenchmark extends AbstractBenchmark {
-		private TriangleContainmentBenchmark() {
+	public static final class TriangleContainmentBenchmark extends AbstractBenchmark {
+		public TriangleContainmentBenchmark() {
 			super("TrangleContainment", new Dataset("triangles", Input.fromIterable(generateInput())));
 		}
 		@Override
@@ -92,8 +92,8 @@ public final class TriangleContainment {
 	}
 
 	@ServiceProvider(Benchmark.class)
-	private static final class ManuallyFusedTriangleContainmentBenchmark extends AbstractBenchmark {
-		private ManuallyFusedTriangleContainmentBenchmark() {
+	public static final class ManuallyFusedTriangleContainmentBenchmark extends AbstractBenchmark {
+		public ManuallyFusedTriangleContainmentBenchmark() {
 			super("ManuallyFusedTrangleContainment", new Dataset("triangles", Input.fromIterable(generateInput())));
 		}
 		@Override
