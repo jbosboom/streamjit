@@ -16,6 +16,7 @@ import org.bridj.ann.Ptr;
  */
 @Library("lpsolve")
 @org.bridj.ann.Runtime(CRuntime.class)
+@SuppressWarnings("deprecation")
 public final class Bindings {
 	private Bindings() {}
 
