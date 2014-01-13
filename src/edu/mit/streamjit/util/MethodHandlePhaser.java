@@ -31,9 +31,7 @@ public final class MethodHandlePhaser extends Phaser {
 		try {
 			return (boolean)barrierAction.invoke(phase, registeredParties);
 		} catch (Throwable ex) {
-			//sneaky throws
-			Thread.currentThread().stop(ex);
+			throw SneakyThrows.sneakyThrow(ex);
 		}
-		return false;
 	}
 }

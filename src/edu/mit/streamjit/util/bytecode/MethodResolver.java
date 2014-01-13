@@ -7,6 +7,7 @@ import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.MethodNodeBuilder;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.util.SneakyThrows;
 import edu.mit.streamjit.util.bytecode.insts.ArrayLengthInst;
 import edu.mit.streamjit.util.bytecode.insts.ArrayLoadInst;
 import edu.mit.streamjit.util.bytecode.insts.ArrayStoreInst;
@@ -105,8 +106,7 @@ public final class MethodResolver {
 		try {
 			this.methodNode = MethodNodeBuilder.buildMethodNode(method);
 		} catch (IOException | NoSuchMethodException ex) {
-			Thread.currentThread().stop(ex);
-			throw new AssertionError();
+			throw SneakyThrows.sneakyThrow(ex);
 		}
 		if (m.isConstructor())
 			this.uninitializedThis = new UninitializedValue(typeFactory.getType(m.getParent()), "uninitializedThis");
@@ -907,7 +907,7 @@ public final class MethodResolver {
 		try {
 			c = Class.forName(binaryName);
 		} catch (ClassNotFoundException ex) {
-			Thread.currentThread().stop(ex);
+			throw SneakyThrows.sneakyThrow(ex);
 		}
 		return module.getKlass(c);
 	}

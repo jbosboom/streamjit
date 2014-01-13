@@ -268,8 +268,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 		try {
 			return (T)mhGetPrevious.invoke(t);
 		} catch (Throwable ex) {
-			Thread.currentThread().stop(ex);
-			throw new AssertionError("unreachable");
+			throw SneakyThrows.sneakyThrow(ex);
 		}
 	}
 	private T setPrevious(T t, T newPrevious) {
@@ -277,7 +276,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 		try {
 			mhSetPrevious.invoke(t, newPrevious);
 		} catch (Throwable ex) {
-			Thread.currentThread().stop(ex);
+			throw SneakyThrows.sneakyThrow(ex);
 		}
 		return oldPrevious;
 	}
@@ -285,8 +284,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 		try {
 			return (T)mhGetNext.invoke(t);
 		} catch (Throwable ex) {
-			Thread.currentThread().stop(ex);
-			throw new AssertionError("unreachable");
+			throw SneakyThrows.sneakyThrow(ex);
 		}
 	}
 	private T setNext(T t, T newNext) {
@@ -294,7 +292,7 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 		try {
 			mhSetNext.invoke(t, newNext);
 		} catch (Throwable ex) {
-			Thread.currentThread().stop(ex);
+			throw SneakyThrows.sneakyThrow(ex);
 		}
 		return oldNext;
 	}

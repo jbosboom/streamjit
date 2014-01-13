@@ -82,7 +82,7 @@ public class ParentedList<P, C extends Parented<P>> extends IntrusiveList<C> {
 		try {
 			mhSetParent.invoke(t, newParent);
 		} catch (Throwable ex) {
-			Thread.currentThread().stop(ex);
+			throw SneakyThrows.sneakyThrow(ex);
 		}
 	}
 

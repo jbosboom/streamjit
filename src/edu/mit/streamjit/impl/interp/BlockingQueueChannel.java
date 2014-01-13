@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.interp;
 
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.Iterables;
+import edu.mit.streamjit.util.SneakyThrows;
 import java.util.Iterator;
 import java.util.concurrent.BlockingQueue;
 
@@ -19,12 +20,11 @@ public class BlockingQueueChannel<E> implements Channel<E> {
 	}
 
 	@Override
-	@SuppressWarnings("deprecation")
 	public void push(E element) {
 		try {
 			queue.put(element);
 		} catch (InterruptedException ex) {
-			Thread.currentThread().stop(ex);
+			throw SneakyThrows.sneakyThrow(ex);
 		}
 	}
 
@@ -34,13 +34,11 @@ public class BlockingQueueChannel<E> implements Channel<E> {
 	}
 
 	@Override
-	@SuppressWarnings("deprecation")
 	public E pop() {
 		try {
 			return queue.take();
 		} catch (InterruptedException ex) {
-			Thread.currentThread().stop(ex);
-			throw new AssertionError("Can't happen: unreachable statement");
+			throw SneakyThrows.sneakyThrow(ex);
 		}
 	}
 
