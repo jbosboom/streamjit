@@ -272,8 +272,7 @@ public final class Benchmarker {
 		else
 			counter = new CountingOutputBufferFactory();
 		try {
-			Stopwatch stopwatch = new Stopwatch();
-			stopwatch.start();
+			Stopwatch stopwatch = Stopwatch.createStarted();
 			CompiledStream stream = compiler.compile(benchmark.instantiate(), input.input(),
 					OutputBufferFactory.wrap((OutputBufferFactory)counter));
 			compileMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
