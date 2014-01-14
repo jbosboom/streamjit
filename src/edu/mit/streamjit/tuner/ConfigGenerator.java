@@ -23,7 +23,7 @@ import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.BenchmarkProvider;
-import edu.mit.streamjit.test.sanity.minimal.Minimal;
+import edu.mit.streamjit.test.apps.fmradio.FMRadio;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
@@ -219,12 +219,11 @@ public class ConfigGenerator {
 			bf = new DistributedBlobFactory(noOfmachines);
 
 		// BenchmarkProvider provider = new ChannelVocoder7();
-		// BenchmarkProvider provider = new FMRadio.FMRadioBenchmarkProvider();
+		BenchmarkProvider provider = new FMRadio.FMRadioBenchmarkProvider();
 		// BenchmarkProvider provider = new BitonicSort();
 		// BenchmarkProvider provider = new FileInputSanity();
 		// BenchmarkProvider provider = new SplitjoinOrderSanity();
 		// BenchmarkProvider provider = new HelperFunctionSanity();
-		BenchmarkProvider provider = new Minimal.MinimalBenchmarkProvider();
 
 		ConfigGenerator cfgGen = new ConfigGenerator();
 		cfgGen.generate(provider, bf);
