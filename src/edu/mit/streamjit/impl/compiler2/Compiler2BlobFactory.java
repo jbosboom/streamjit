@@ -27,6 +27,7 @@ public final class Compiler2BlobFactory implements BlobFactory {
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
 		Configuration.Builder builder = Configuration.builder();
+		Compiler2.REMOVAL_STRATEGY.makeParameters(workers, builder);
 		Compiler2.FUSION_STRATEGY.makeParameters(workers, builder);
 		Compiler2.ALLOCATION_STRATEGY.makeParameters(workers, builder);
 		for (Worker<?, ?> w : workers)
@@ -41,9 +42,6 @@ public final class Compiler2BlobFactory implements BlobFactory {
 							Compiler2.INDEX_FUNCTION_TRANSFORMERS.asList().get(0),
 							Compiler2.INDEX_FUNCTION_TRANSFORMERS));
 			}
-		for (Worker<?, ?> w : workers)
-			if (Compiler2.REMOVABLE_WORKERS.contains(w.getClass()))
-				builder.addParameter(Configuration.SwitchParameter.create("remove"+Workers.getIdentifier(w), true));
 		for (IOInfo i : IOInfo.allEdges(workers))
 			builder.addParameter(Configuration.SwitchParameter.create("unboxStorage"+i.token().toString().replace(", ", "_"), i.isInternal()));
 		for (Worker<?, ?> w : workers) {

@@ -92,6 +92,7 @@ public class Compiler2 {
 			new ArrayifyIndexFunctionTransformer(false),
 			new ArrayifyIndexFunctionTransformer(true)
 	);
+	public static final RemovalStrategy REMOVAL_STRATEGY = new BitsetRemovalStrategy();
 	public static final FusionStrategy FUSION_STRATEGY = new BitsetFusionStrategy();
 	public static final AllocationStrategy ALLOCATION_STRATEGY = new CountDataParallelAllocationStrategy(8);
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
@@ -213,13 +214,9 @@ public class Compiler2 {
 
 	private void findRemovals() {
 		ImmutableSortedSet.Builder<WorkerActor> builder = ImmutableSortedSet.naturalOrder();
-		for (WorkerActor a : Iterables.filter(actors, WorkerActor.class)) {
-			SwitchParameter<Boolean> param = config.getParameter("remove"+a.id(), SwitchParameter.class, Boolean.class);
-			if (param != null && param.getValue()) {
-				assert REMOVABLE_WORKERS.contains(a.worker().getClass()) : a;
+		for (WorkerActor a : Iterables.filter(actors, WorkerActor.class))
+			if (REMOVABLE_WORKERS.contains(a.worker().getClass()) && REMOVAL_STRATEGY.remove(a, config))
 				builder.add(a);
-			}
-		}
 		this.actorsToBeRemoved = builder.build();
 	}
 
