@@ -26,7 +26,7 @@ import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
  * Online tuner does continues learning.
- * 
+ *
  * @author Sumanan sumanan@mit.edu
  * @since Oct 8, 2013
  */
@@ -112,8 +112,7 @@ public class OnlineTuner implements Runnable {
 					drainer.setBlobGraph(app.blobGraph);
 					System.err.println("Reconfiguring...");
 					if (manager.reconfigure()) {
-						Stopwatch stopwatch = new Stopwatch();
-						stopwatch.start();
+						Stopwatch stopwatch = Stopwatch.createStarted();
 						manager.awaitForFixInput();
 						stopwatch.stop();
 						// TODO: need to check the manager's status before
@@ -150,7 +149,7 @@ public class OnlineTuner implements Runnable {
 
 	/**
 	 * Just excerpted from run() method for better readability.
-	 * 
+	 *
 	 * @throws IOException
 	 */
 	private void handleTermination() throws IOException {
@@ -171,7 +170,7 @@ public class OnlineTuner implements Runnable {
 	/**
 	 * TODO: Just copied from the run method. Code duplication between this
 	 * method and the run() method. Try to avoid duplicate code.
-	 * 
+	 *
 	 * @param pythonDict
 	 */
 	private void runForever(String pythonDict) {
@@ -227,7 +226,7 @@ public class OnlineTuner implements Runnable {
 	 * configuration object can be updated from the python dict string. Now we
 	 * are destructing the old confg object and recreating a new one every time.
 	 * Not a appreciatable way.
-	 * 
+	 *
 	 * @param pythonDict
 	 *            Python dictionary string. Autotuner gives a dictionary of
 	 *            features with trial values.
@@ -276,7 +275,7 @@ public class OnlineTuner implements Runnable {
 	/**
 	 * TODO: This method is totally unnecessary if we remove the usage of the
 	 * name "class" in side {@link Configuration}.
-	 * 
+	 *
 	 * @param cfg
 	 * @return
 	 */

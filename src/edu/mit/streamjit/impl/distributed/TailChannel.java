@@ -64,8 +64,7 @@ public class TailChannel extends TCPInputChannel {
 			}
 			while (++i < 30) {
 				try {
-					Stopwatch stopwatch = new Stopwatch();
-					stopwatch.start();
+					Stopwatch stopwatch = Stopwatch.createStarted();
 					latch.await();
 					stopwatch.stop();
 					Long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
