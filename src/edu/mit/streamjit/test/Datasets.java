@@ -55,7 +55,8 @@ public final class Datasets {
 	}
 
 	public static <I> Input<I> nCopies(final int n, final Input<I> input) {
-		checkArgument(n > 0,"n must be a positive number");
+		checkArgument(n > 0, "%s must be nonnegative", n);
+		if (n == 1) return input;
 		return InputBufferFactory.wrap(new InputBufferFactory() {
 			@Override
 			public Buffer createReadableBuffer(int readerMinSize) {
