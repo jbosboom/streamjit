@@ -734,7 +734,6 @@ public class Compiler2 {
 	}
 
 	private void generateArchetypalCode() {
-
 		for (final ActorArchetype archetype : archetypes) {
 			Iterable<WorkerActor> workerActors = FluentIterable.from(actors)
 					.filter(WorkerActor.class)
