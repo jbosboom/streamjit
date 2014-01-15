@@ -92,6 +92,7 @@ public class Compiler2 {
 			new ArrayifyIndexFunctionTransformer(false),
 			new ArrayifyIndexFunctionTransformer(true)
 	);
+	public static final FusionStrategy FUSION_STRATEGY = new BitsetFusionStrategy();
 	public static final AllocationStrategy ALLOCATION_STRATEGY = new CountDataParallelAllocationStrategy(8);
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
@@ -245,9 +246,11 @@ public class Compiler2 {
 					if (!s.initialData().isEmpty())
 						continue try_fuse;
 
-				String paramName = String.format("fuse%d", g.id());
-				SwitchParameter<Boolean> fuseParam = config.getParameter(paramName, SwitchParameter.class, Boolean.class);
-				if (!fuseParam.getValue())
+				//We are assuming FusionStrategies are all happy to work
+				//group-by-group.  If later we want to make all decisions at
+				//once, we'll refactor existing FusionStrategies to inherit from
+				//a base class containing this loop.
+				if (!FUSION_STRATEGY.fuseUpward(g, config))
 					continue try_fuse;
 
 				ActorGroup gpred = Iterables.getOnlyElement(g.predecessorGroups());
@@ -1328,7 +1331,7 @@ public class Compiler2 {
 			if (bm == null)
 				throw new RuntimeException("no benchmark named "+benchmarkName);
 		} else {
-			sc = new Compiler2StreamCompiler().multiplier(64).maxNumCores(8);
+			sc = new Compiler2StreamCompiler().multiplier(64).maxNumCores(4);
 			bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
 		}
 		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);

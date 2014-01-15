@@ -27,9 +27,7 @@ public final class Compiler2BlobFactory implements BlobFactory {
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
 		Configuration.Builder builder = Configuration.builder();
-		for (Worker<?, ?> w : workers)
-			if (!Workers.isPeeking(w))
-				builder.addParameter(Configuration.SwitchParameter.create("fuse"+Workers.getIdentifier(w), true));
+		Compiler2.FUSION_STRATEGY.makeParameters(workers, builder);
 		Compiler2.ALLOCATION_STRATEGY.makeParameters(workers, builder);
 		for (Worker<?, ?> w : workers)
 			for (int i = 0; i < Compiler2.ALLOCATION_STRATEGY.maxNumCores(); ++i) {
