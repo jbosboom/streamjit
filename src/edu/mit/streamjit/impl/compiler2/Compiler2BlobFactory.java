@@ -5,7 +5,6 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.Workers;
 import java.util.ArrayList;
 import java.util.List;

@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.math.IntMath;
 import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;

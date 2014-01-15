@@ -5,7 +5,6 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 

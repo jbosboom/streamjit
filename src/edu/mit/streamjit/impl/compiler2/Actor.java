@@ -10,8 +10,6 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
 import com.google.common.reflect.TypeToken;
-import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;

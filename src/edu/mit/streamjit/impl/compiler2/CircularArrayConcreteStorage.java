@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.math.IntMath;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.LookupUtils.findGetter;

@@ -10,12 +10,10 @@ import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.util.Pair;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 /**
