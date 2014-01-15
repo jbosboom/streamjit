@@ -12,7 +12,6 @@ import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio.FMRadioCore;
-import edu.mit.streamjit.test.apps.fmradio.FMRadioReplicated.FMRadioCoreReplicated;
 
 public class ConfigurationEditor {
 
