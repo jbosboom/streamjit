@@ -413,11 +413,9 @@ public class Interpreter implements Blob {
 						if (item != null) {
 							unsatChannel.push(item);
 							continue recurse; //try again
-						} else
-							return false; //Couldn't fire.
+						}
 					}
-					else
-						return false; //Couldn't fire.
+					return false; //Couldn't fire.
 				}
 
 				//Otherwise, recursively fire the worker blocking us.
