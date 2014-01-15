@@ -131,6 +131,7 @@ public class StreamJitAppManager {
 
 		return isRunning;
 	}
+
 	/**
 	 * Setup the headchannel and tailchannel.
 	 * 
@@ -223,7 +224,12 @@ public class StreamJitAppManager {
 	public void drainingFinished(boolean isFinal) {
 		System.out.println("App Manager : Draining Finished...");
 		if (tailChannel != null) {
-			tailChannel.stop(isFinal);
+			if (isFinal)
+				tailChannel.stop(1);
+			else if (GlobalConstants.useDrainData)
+				tailChannel.stop(2);
+			else
+				tailChannel.stop(3);
 			try {
 				tailThread.join();
 			} catch (InterruptedException e) {

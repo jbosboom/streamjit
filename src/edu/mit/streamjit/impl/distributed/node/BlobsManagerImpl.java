@@ -262,7 +262,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		private void stop() {
 
 			for (BoundaryInputChannel bc : inputChannels.values()) {
-				bc.stop(true);
+				bc.stop(1);
 			}
 
 			for (BoundaryOutputChannel bc : outputChannels.values()) {
@@ -282,7 +282,12 @@ public class BlobsManagerImpl implements BlobsManager {
 			drainState = 1;
 
 			for (BoundaryInputChannel bc : inputChannels.values()) {
-				bc.stop(!this.reqDrainData);
+				if (!this.reqDrainData)
+					bc.stop(1);
+				else if (GlobalConstants.useDrainData)
+					bc.stop(2);
+				else
+					bc.stop(3);
 			}
 
 			for (Thread t : inputChannelThreads) {

@@ -63,13 +63,24 @@ public interface BoundaryChannel {
 		 * be full forever to write and there might be even more data in the
 		 * intermediate kernel buffer. In this case, before exiting, extraBuffer
 		 * should be filled with all unconsumed data in the kernel buffer.
+		 * 
+		 * <p>
+		 * Based on the type argument, implementation may treat uncounsumed data
+		 * differently
+		 * <ol>
+		 * <li>1 - No extraBuffer. Wait and push all received data in to the
+		 * actual buffer. May be used at final draining.
+		 * <li>2 - Create extra buffer and put all unconsumed data. This can be
+		 * send to the controller as draindata. May be used at intermediate
+		 * draining.
+		 * <li>3 - Discard all unconsumed data. This is useful, if we don't care
+		 * about the data while tuning for performance.
 		 * </p>
 		 * 
-		 * @param isFinal
-		 *            : If true, don't create extraBuffer. Wait and push all
-		 *            received data in to the actual buffer.
+		 * @param type
+		 *            : Can be 1, 2 or 3. rest are illegal.
 		 */
-		void stop(boolean isFinal);
+		void stop(int type);
 
 		/**
 		 * Receive data from other node.
