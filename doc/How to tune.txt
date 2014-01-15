@@ -1,0 +1,15 @@
+Go to lib/opentuner/ folder and run venv-bootstrap.py. This will setup a virtual environment with all essential python packages for Opentuner.
+
+Run the edu.mit.streamjit.tuner.ConfigGenerator.java to generate configuration information for a particular app. Tuner.java will update the apps table in the streamjit.db with name, configuration, location and class name of the streamjit app.
+
+Build the edu.mit.streamjit.tuner.RunApp.java and export it as runnable jar in to stramjit folder. If you need to change the input size, you can change it inside the function runApp() in the RunApp class.
+
+Run lib/opentuner/streamjit/tuner2.py.
+
+Notes - tuner2.py reads streamjit.db and tunes all entries in the apps table sequentially. If you are only interested in a single app then you can comment everything inside the __main__ block and just call the start(PROGRAM_NAME).
+
+Inside the start function you can change the arguments of opentuner such as --test-limit, tune-time and etc.
+
+Once tuning is done, finalresults table in the streamjit.db will be updated with the final configuration and the best tune time.
+
+Compilerd Bin folder should be available to RunApp.jar to instantiate appropriate StreamJit app class. (e.g, Fmradio.class). So if you are going to run the application on a remote machine, copy the bin folder and hard code the jarFilePath = "bin"; at main method in RunApp.java.

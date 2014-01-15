@@ -10,7 +10,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  * @author Sumanan sumanan@mit.edu
  * @since May 17, 2013
  */
-public enum Error implements MessageElement {
+public enum Error implements SNMessageElement {
 
 	FILE_NOT_FOUND {
 		@Override
@@ -23,16 +23,10 @@ public enum Error implements MessageElement {
 		public void process(ErrorProcessor errorProcessor) {
 			errorProcessor.processWORKER_NOT_FOUND();
 		}
-	},
-	BLOB_NOT_FOUND {
-		@Override
-		public void process(ErrorProcessor errorProcessor) {
-			errorProcessor.processBLOB_NOT_FOUND();
-		}
 	};
 
 	@Override
-	public void accept(MessageVisitor visitor) {
+	public void accept(SNMessageVisitor visitor) {
 		visitor.visit(this);
 	}
 
@@ -65,8 +59,6 @@ public enum Error implements MessageElement {
 		public void processFILE_NOT_FOUND();
 
 		public void processWORKER_NOT_FOUND();
-		
-		public void processBLOB_NOT_FOUND();
 
 	}
 };

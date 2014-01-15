@@ -15,7 +15,7 @@ import edu.mit.streamjit.impl.distributed.node.StreamNode;
  * @author Sumanan sumanan@mit.edu
  * @since May 7, 2013
  */
-public class NodeInfo implements MessageElement {
+public class NodeInfo implements SNMessageElement {
 
 	private static final long serialVersionUID = -2627560179074739731L;
 
@@ -113,7 +113,7 @@ public class NodeInfo implements MessageElement {
 	}
 
 	@Override
-	public void accept(MessageVisitor visitor) {
+	public void accept(SNMessageVisitor visitor) {
 		visitor.visit(this);
 	}
 

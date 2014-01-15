@@ -11,7 +11,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  * @author Sumanan sumanan@mit.edu
  * @since May 17, 2013
  */
-public enum AppStatus implements MessageElement {
+public enum AppStatus implements SNMessageElement {
 	/**
 	 * Stream application is still running.
 	 */
@@ -58,10 +58,28 @@ public enum AppStatus implements MessageElement {
 		public void process(AppStatusProcessor apstatusProcessor) {
 			apstatusProcessor.processNO_APP();
 		}
+	},
+	/**
+	 * Blobs are compiled. Ready for execution.
+	 */
+	COMPILED {
+		@Override
+		public void process(AppStatusProcessor apstatusProcessor) {
+			apstatusProcessor.processCOMPILED();
+		}
+	},
+	/**
+	 * Compile time error/exception. Mainly due to illegal configuration.
+	 */
+	COMPILATION_ERROR {
+		@Override
+		public void process(AppStatusProcessor apstatusProcessor) {
+			apstatusProcessor.processCOMPILATION_ERROR();
+		}
 	};
 
 	@Override
-	public void accept(MessageVisitor visitor) {
+	public void accept(SNMessageVisitor visitor) {
 		visitor.visit(this);
 	}
 
@@ -85,5 +103,9 @@ public enum AppStatus implements MessageElement {
 		public void processNOT_STARTED();
 
 		public void processNO_APP();
+
+		public void processCOMPILED();
+
+		public void processCOMPILATION_ERROR();
 	}
 }

@@ -10,7 +10,13 @@ bin/
 .project
 .classpath
 .settings
+.factorypath
 *.bak
 # heap dumps
 *.hprof
 .factorypath
+# python bytecode
+*.pyc
+venv/
+*~
+*.db

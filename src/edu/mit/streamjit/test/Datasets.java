@@ -1,5 +1,6 @@
 package edu.mit.streamjit.test;
 
+import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Function;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
@@ -29,6 +30,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.objectweb.asm.util.CheckAnnotationAdapter;
+
 /**
  * Factories for Benchmark.Dataset instances.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
@@ -54,26 +57,39 @@ public final class Datasets {
 	}
 
 	public static <I> Input<I> nCopies(final int n, final Input<I> input) {
+		checkArgument(n > 0,"n must be a positive number");
 		return InputBufferFactory.wrap(new InputBufferFactory() {
 			@Override
 			public Buffer createReadableBuffer(int readerMinSize) {
 				final Buffer first = InputBufferFactory.unwrap(input).createReadableBuffer(readerMinSize);
-				final int initialSize = first.size()*n;
+				final int initialSize = first.size();
+				checkArgument(initialSize >= 0,String.format("Size of input data set is %d. Possible int overflow.", initialSize));
 				return new AbstractReadOnlyBuffer() {
 					private Buffer currentBuffer = first;
 					private int size = initialSize;
+					private int nCopy =  n;
 					@Override
 					public Object read() {
-						if (size == 0)
+						if (size == 0 && nCopy == 0)
 							return null;
+						if(size == 0)
+						{
+							nCopy--;
+							size = initialSize;
+						}
 						if (currentBuffer.size() == 0)
 							currentBuffer = InputBufferFactory.unwrap(input).createReadableBuffer(initialSize);
 						--size;
 						return currentBuffer.read();
 					}
+
 					@Override
 					public int size() {
-						return size;
+						// Following is not the correct way because s becomes 0 even though data are there to be read.
+						// int s = size + nCopy*initialSize;
+						// return s>=0?s:Integer.MAX_VALUE;
+
+						return nCopy > 0 ? Integer.MAX_VALUE:size;
 					}
 				};
 			}

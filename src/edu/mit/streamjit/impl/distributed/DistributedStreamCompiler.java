@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.distributed;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,32 +14,37 @@ import java.util.concurrent.TimeoutException;
 import com.google.common.collect.ImmutableMap;
 
 import edu.mit.streamjit.api.CompiledStream;
+import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.Splitjoin;
-import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.common.BlobGraph;
+import edu.mit.streamjit.impl.common.AbstractDrainer;
+import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
-import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
+import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 import edu.mit.streamjit.impl.distributed.runtimer.DistributedDrainer;
+import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
+import edu.mit.streamjit.impl.distributed.HeadChannel.HeadBuffer;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
 
@@ -57,6 +64,11 @@ import edu.mit.streamjit.partitioner.Partitioner;
  * @since May 6, 2013
  */
 public class DistributedStreamCompiler implements StreamCompiler {
+
+	/**
+	 * Configuration from Opentuner.
+	 */
+	Configuration cfg;
 
 	/**
 	 * Total number of nodes including controller node.
@@ -82,7 +94,16 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		this(1);
 	}
 
-	@Override
+	/**
+	 * Run the application with the passed configureation.
+	 */
+	public DistributedStreamCompiler(int noOfnodes, Configuration cfg) {
+		if (noOfnodes < 1)
+			throw new IllegalArgumentException("noOfnodes must be 1 or greater");
+		this.noOfnodes = noOfnodes;
+		this.cfg = cfg;
+	}
+
 	public <I, O> CompiledStream compile(OneToOneElement<I, O> stream,
 			Input<I> input, Output<O> output) {
 
@@ -93,50 +114,38 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Worker<I, ?> source = (Worker<I, ?>) primitiveConnector.getSource();
 		Worker<?, O> sink = (Worker<?, O>) primitiveConnector.getSink();
 
-		// TODO: derive a algorithm to find good buffer size and use here.
-		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
-				1000);
-		Buffer tail = OutputBufferFactory.unwrap(output).createWritableBuffer(
-				1000);
-
-		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
-				.<Token, Buffer> builder();
-
-		bufferMapBuilder.put(Token.createOverallInputToken(source), head);
-		bufferMapBuilder.put(Token.createOverallOutputToken(sink), tail);
-
 		VerifyStreamGraph verifier = new VerifyStreamGraph();
 		stream.visit(verifier);
 
 		Map<CommunicationType, Integer> conTypeCount = new HashMap<>();
-		conTypeCount.put(CommunicationType.LOCAL, 1);
-		conTypeCount.put(CommunicationType.TCP, this.noOfnodes - 1);
+		// conTypeCount.put(CommunicationType.LOCAL, 1);
+		conTypeCount.put(CommunicationType.TCP, this.noOfnodes);
 		Controller controller = new Controller();
 		controller.connect(conTypeCount);
 
-		Map<Integer, Integer> coreCounts = controller.getCoreCount();
+		StreamJitApp app = new StreamJitApp(stream.getClass().getSimpleName(),
+				stream.getClass().getName(), source, sink);
 
-		// As we are just running small benchmark applications, lets utilize
-		// just a single core per node. TODO: When running big
-		// real world applications utilize all available cores. For that simply
-		// comment the following lines.
-		for (Integer key : coreCounts.keySet()) {
-			coreCounts.put(key, 1);
+		if (GlobalConstants.useCfgFile)
+			this.cfg = readConfiguration(stream.getClass().getSimpleName());
+		else {
+			BlobFactory bf = new DistributedBlobFactory(noOfnodes);
+			this.cfg = bf.getDefaultConfiguration(Workers
+					.getAllWorkersInGraph(source));
 		}
 
-		int totalCores = 0;
-		for (int coreCount : coreCounts.values())
-			totalCores += coreCount;
-
-		// TODO: Need to map the machines and the partitions precisely. Now just
-		// it is mapped based on the list order.
-		Partitioner<I, O> horzPartitioner = new HorizontalPartitioner<>();
-		List<Set<Worker<?, ?>>> partitionList = horzPartitioner
-				.partitionEqually(stream, source, sink, totalCores);
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = mapPartitionstoMachines(
-				partitionList, coreCounts);
-
-		BlobGraph bg = new BlobGraph(partitionList);
+		if (cfg == null) {
+			System.err
+					.println("Configuration is null. Runs the app with horizontal partitioning.");
+			Integer[] machineIds = new Integer[this.noOfnodes];
+			for (int i = 0; i < machineIds.length; i++) {
+				machineIds[i] = i + 1;
+			}
+			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
+					machineIds, stream, source, sink);
+			app.newPartitionMap(partitionsMachineMap);
+		} else
+			app.newConfiguration(cfg);
 
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
 		// context.
@@ -148,17 +157,20 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 
-		String jarFilePath = this.getClass().getProtectionDomain()
-				.getCodeSource().getLocation().getPath();
+		StreamJitAppManager manager = new StreamJitAppManager(controller, app);
+		final AbstractDrainer drainer = new DistributedDrainer(manager);
+		drainer.setBlobGraph(app.blobGraph);
 
-		controller.setPartition(partitionsMachineMap, jarFilePath, stream
-				.getClass().getName(), constraints, source, sink,
-				bufferMapBuilder.build());
+		// TODO: derive a algorithm to find good buffer size and use here.
+		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
+				1000);
+		Buffer tail = OutputBufferFactory.unwrap(output).createWritableBuffer(
+				1000);
 
-		final DistributedCompiledStream cs = new DistributedCompiledStream(bg,
-				controller);
+		boolean needTermination;
 
-		if (input instanceof ManualInput)
+		if (input instanceof ManualInput) {
+			needTermination = false;
 			InputBufferFactory
 					.setManualInputDelegate(
 							(ManualInput<I>) input,
@@ -166,44 +178,64 @@ public class DistributedStreamCompiler implements StreamCompiler {
 									head) {
 								@Override
 								public void drain() {
-									cs.drain();
+									drainer.startDraining(2);
 								}
 							});
-		else
-			cs.drain();
+		} else {
+			needTermination = true;
+			head = new HeadBuffer(head, drainer);
+		}
+
+		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
+				.<Token, Buffer> builder();
+
+		bufferMapBuilder.put(Token.createOverallInputToken(source), head);
+		bufferMapBuilder.put(Token.createOverallOutputToken(sink), tail);
+
+		app.bufferMap = bufferMapBuilder.build();
+		app.constraints = constraints;
+
+		manager.reconfigure();
+		CompiledStream cs = new DistributedCompiledStream(drainer);
+
+		if (!GlobalConstants.useCfgFile && this.cfg != null) {
+			OnlineTuner tuner = new OnlineTuner(drainer, manager, app,
+					needTermination);
+			new Thread(tuner, "OnlineTuner").start();
+		}
 		return cs;
 	}
 
-	// TODO: Need to do precise mapping. For the moment just mapping in order.
-	private Map<Integer, List<Set<Worker<?, ?>>>> mapPartitionstoMachines(
-			List<Set<Worker<?, ?>>> partitionList,
-			Map<Integer, Integer> coreCountMap) {
+	private Configuration readConfiguration(String simpeName) {
+		String name = String.format("%s.cfg", simpeName);
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(name));
+			String json = reader.readLine();
+			reader.close();
+			return Configuration.fromJson(json);
+		} catch (Exception ex) {
+			System.err.println(String.format(
+					"File reader error. No %s configuration file.", name));
+		}
+		return null;
+	}
+
+	private <I, O> Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
+			Integer[] machineIds, OneToOneElement<I, O> stream,
+			Worker<I, ?> source, Worker<?, O> sink) {
+		int totalCores = machineIds.length;
+
+		Partitioner<I, O> horzPartitioner = new HorizontalPartitioner<>();
+		List<Set<Worker<?, ?>>> partitionList = horzPartitioner
+				.partitionEqually(stream, source, sink, totalCores);
 
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = new HashMap<Integer, List<Set<Worker<?, ?>>>>();
-		for (Integer machineID : coreCountMap.keySet()) {
-			partitionsMachineMap.put(
-					machineID,
-					new ArrayList<Set<Worker<?, ?>>>(coreCountMap
-							.get(machineID)));
+		for (Integer machineID : machineIds) {
+			partitionsMachineMap.put(machineID,
+					new ArrayList<Set<Worker<?, ?>>>());
 		}
 
 		int index = 0;
-		for (Integer machineID : partitionsMachineMap.keySet()) {
-			if (!(index < partitionList.size()))
-				break;
-			for (int i = 0; i < coreCountMap.get(machineID); i++) {
-				if (!(index < partitionList.size()))
-					break;
-				partitionsMachineMap.get(machineID).add(
-						partitionList.get(index++));
-			}
-		}
-
-		// In case we received more partitions than available cores. Assign the
-		// remaining partitions in round robin fashion. This case
-		// shouldn't happen if the partitioning is correctly done based on the
-		// available core count. This code is added just to ensure
-		// the correctness of the program and to avoid the bugs.
 		while (index < partitionList.size()) {
 			for (Integer machineID : partitionsMachineMap.keySet()) {
 				if (!(index < partitionList.size()))
@@ -236,23 +268,15 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 	private static class DistributedCompiledStream implements CompiledStream {
 
-		Controller controller;
 		AbstractDrainer drainer;
 
-		public DistributedCompiledStream(BlobGraph blobGraph,
-				Controller controller) {
-			this.controller = controller;
-			this.drainer = new DistributedDrainer(blobGraph, false, controller);
-			this.controller.start();
+		public DistributedCompiledStream(AbstractDrainer drainer) {
+			this.drainer = drainer;
 		}
 
 		@Override
 		public boolean isDrained() {
 			return drainer.isDrained();
-		}
-
-		private void drain() {
-			drainer.startDraining();
 		}
 
 		@Override

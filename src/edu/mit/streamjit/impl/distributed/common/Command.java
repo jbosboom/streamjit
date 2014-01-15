@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.distributed.common;
 
-import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
@@ -11,7 +10,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  * @author Sumanan sumanan@mit.edu
  * @since May 17, 2013
  */
-public enum Command implements MessageElement {
+public enum Command implements CTRLRMessageElement {
 	/**
 	 * Starts the StreamJit Application. Once all blobs are set, Stream nodes
 	 * will wait for start command from the controller to start the execution.
@@ -33,28 +32,10 @@ public enum Command implements MessageElement {
 		public void process(CommandProcessor commandProcessor) {
 			commandProcessor.processSTOP();
 		}
-	},
-	/**
-	 * Properly drain the stream blob.
-	 */
-	DRAIN {
-		@Override
-		public void process(CommandProcessor commandProcessor) {
-			commandProcessor.processDRAIN();
-		}
-	},
-	/**
-	 * This command is to ask StreamNode to exit.
-	 */
-	EXIT {
-		@Override
-		public void process(CommandProcessor commandProcessor) {
-			commandProcessor.processEXIT();
-		}
 	};
 
 	@Override
-	public void accept(MessageVisitor visitor) {
+	public void accept(CTRLRMessageVisitor visitor) {
 		visitor.visit(this);
 	}
 
@@ -74,8 +55,5 @@ public enum Command implements MessageElement {
 
 		public void processSTOP();
 
-		public void processDRAIN();
-
-		public void processEXIT();
 	}
 }

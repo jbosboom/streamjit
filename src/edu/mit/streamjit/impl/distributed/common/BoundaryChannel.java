@@ -2,6 +2,8 @@ package edu.mit.streamjit.impl.distributed.common;
 
 import java.io.IOException;
 
+import com.google.common.collect.ImmutableList;
+
 import edu.mit.streamjit.impl.blob.Buffer;
 
 /**
@@ -15,6 +17,8 @@ import edu.mit.streamjit.impl.blob.Buffer;
  * @since May 28, 2013
  */
 public interface BoundaryChannel {
+
+	String name();
 
 	/**
 	 * Close the connection.
@@ -39,11 +43,7 @@ public interface BoundaryChannel {
 	 */
 	int getOtherNodeID();
 
-	/**
-	 * Stop the actions. If it is {@link BoundaryOutputChannel} then stop
-	 * sending, if {@link BoundaryInputChannel} then stop receiving.
-	 */
-	void stop();
+	public ImmutableList<Object> getUnprocessedData();
 
 	/**
 	 * Interface that represents input channels.
@@ -51,15 +51,53 @@ public interface BoundaryChannel {
 	public interface BoundaryInputChannel extends BoundaryChannel {
 
 		/**
+		 * <p>
+		 * No more data will be sent by corresponding
+		 * {@link BoundaryOutputChannel}. So stop receiving.
+		 * </p>
+		 * <p>
+		 * There may be data in middle, specifically in intermediate buffers
+		 * like kernel's socket buffer. Its implementations responsibility to
+		 * receive all data those are in middle and try to fill the actual
+		 * buffer. But in some case, after Stop() is called, actual buffer might
+		 * be full forever to write and there might be even more data in the
+		 * intermediate kernel buffer. In this case, before exiting, extraBuffer
+		 * should be filled with all unconsumed data in the kernel buffer.
+		 * </p>
+		 * 
+		 * @param isFinal
+		 *            : If true, don't create extraBuffer. Wait and push all
+		 *            received data in to the actual buffer.
+		 */
+		void stop(boolean isFinal);
+
+		/**
 		 * Receive data from other node.
 		 */
 		void receiveData();
+
+		/**
+		 * @return unconsumed data after Stop() is called. Returning buffer may
+		 *         or may not be thread safe. Or null also can be returned if
+		 *         there is no data.
+		 */
+		Buffer getExtraBuffer();
 	}
 
 	/**
 	 * Interface that represents output channels.
 	 */
 	public interface BoundaryOutputChannel extends BoundaryChannel {
+
+		/**
+		 * Stop sending. If isFinal is true, send all data in the buffer before
+		 * stop. Else just stop and leave the buffer as it is. i.e., call
+		 * stop(true) for final stop. call stop(false) for onlinetuning's
+		 * intermediate stop.
+		 * 
+		 * @param isFinal
+		 */
+		void stop(boolean isFinal);
 
 		/**
 		 * Send data to other node.

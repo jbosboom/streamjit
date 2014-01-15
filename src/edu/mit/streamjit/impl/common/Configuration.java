@@ -476,8 +476,8 @@ public final class Configuration {
 					.add("max", t.getMax())
 					.add("value", t.getValue())
 					//Python-side support
-					.add("__module__", "parameters")
-					.add("__class__", IntParameter.class.getSimpleName())
+					.add("__module__", "sjparameters")
+					.add("__class__", "sjIntegerParameter")
 					.build();
 			}
 
@@ -744,8 +744,8 @@ public final class Configuration {
 						.add("universe", Jsonifiers.toJson(t.universe.toArray()))
 						.add("value", t.value)
 						//Python-side support
-						.add("__module__", "parameters")
-						.add("__class__", SwitchParameter.class.getSimpleName())
+						.add("__module__", "sjparameters")
+						.add("__class__", "sjSwitchParameter")
 						.build();
 			}
 
@@ -1138,8 +1138,8 @@ public final class Configuration {
 						.add("blobFactoryUniverse", blobFactoryUniverse)
 						.add("machineBlobMap", blobsBuilder)
 						//Python-side support
-						.add("__module__", "parameters")
-						.add("__class__", PartitionParameter.class.getSimpleName())
+						.add("__module__", "sjparameters")
+						.add("__class__", "sjPartitionParameter")
 						.build();
 			}
 

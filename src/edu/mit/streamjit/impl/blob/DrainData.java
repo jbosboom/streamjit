@@ -7,6 +7,9 @@ import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.util.CollectionUtils;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +24,7 @@ import java.util.Set;
 public class DrainData implements Serializable {
 	private static final long serialVersionUID = 1L;
 	private ImmutableMap<Token, ImmutableList<Object>> data;
-	private ImmutableTable<Integer, String, Object> state;
+	private transient ImmutableTable<Integer, String, Object> state;
 	//TODO: in-flight messages
 
 	public DrainData(Map<Token, ? extends List<Object>> data, Table<Integer, String, Object> state) {
@@ -30,6 +33,16 @@ public class DrainData implements Serializable {
 			dataBuilder.put(e.getKey(), ImmutableList.copyOf(e.getValue()));
 		this.data = dataBuilder.build();
 		this.state = ImmutableTable.copyOf(state);
+	}
+
+	public ImmutableMap<Token, ImmutableList<Object>> getData()
+	{
+		return data;
+	}
+
+	public ImmutableTable<Integer, String, Object> getState()
+	{
+		return state;
 	}
 
 	public ImmutableList<Object> getData(Token token) {
@@ -67,7 +80,7 @@ public class DrainData implements Serializable {
 	/**
 	 * Returns a subset of this DrainData limited to the given set of worker
 	 * identifiers.  The returned set contains data for every token containing
-	 * one of the worker identifiers and state for all fields for each of the
+	 * down stream worker identifier and state for all fields for each of the
 	 * given identifiers.
 	 * @param workerIds the set of worker identifiers
 	 * @return a subset of this DrainData limited to the given set of
@@ -76,8 +89,7 @@ public class DrainData implements Serializable {
 	public DrainData subset(Set<Integer> workerIds) {
 		ImmutableMap.Builder<Token, ImmutableList<Object>> dataBuilder = ImmutableMap.builder();
 		for (Map.Entry<Token, ? extends List<Object>> e : data.entrySet())
-			if (workerIds.contains(e.getKey().getUpstreamIdentifier()) ||
-					workerIds.contains(e.getKey().getDownstreamIdentifier()))
+			if (workerIds.contains(e.getKey().getDownstreamIdentifier()))
 				dataBuilder.put(e.getKey(), ImmutableList.copyOf(e.getValue()));
 
 		ImmutableTable.Builder<Integer, String, Object> stateBuilder = ImmutableTable.builder();
@@ -90,5 +102,20 @@ public class DrainData implements Serializable {
 	@Override
 	public String toString() {
 		return String.format("[%s, %s]", data, state);
+	}
+
+	private void writeObject(ObjectOutputStream oos) throws IOException {
+		oos.defaultWriteObject();
+		oos.writeObject(state.rowMap());
+	}
+
+	private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+		ois.defaultReadObject();
+		ImmutableMap<Integer, Map<String, Object>> map = (ImmutableMap<Integer, Map<String, Object>>) ois.readObject();
+		ImmutableTable.Builder<Integer, String, Object> builder = ImmutableTable.builder();
+		for (Map.Entry<Integer, Map<String, Object>> e1 : map.entrySet())
+			for (Map.Entry<String, Object> e2 : e1.getValue().entrySet())
+				builder.put(e1.getKey(), e2.getKey(), e2.getValue());
+		state = builder.build();
 	}
 }

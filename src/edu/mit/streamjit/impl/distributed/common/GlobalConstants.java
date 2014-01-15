@@ -1,6 +1,10 @@
 package edu.mit.streamjit.impl.distributed.common;
 
+import edu.mit.streamjit.impl.common.AbstractDrainer;
+import edu.mit.streamjit.impl.distributed.TailChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
+import edu.mit.streamjit.impl.distributed.runtimer.StreamNodeAgent;
+import edu.mit.streamjit.tuner.TCPTuner;
 
 /**
  * This class is to keep track of all application level constants. So we can
@@ -18,12 +22,23 @@ public final class GlobalConstants {
 	public static final int PORTNO = 39810;
 
 	public static final String TOPLEVEL_WORKER_NAME = "TOPLEVEL_WORKER_NAME";
+
 	public static final String JARFILE_PATH = "JARFILE_PATH";
+
 	/**
 	 * nodeID to {@link NodeInfo} map is stored in the configuration in this
 	 * name.
 	 */
 	public static final String NODE_INFO_MAP = "nodeInfoMap";
+
+	/**
+	 * The actual IP addresses of the nodes that the nodes use to make
+	 * connection with the controller. We need this, because a node may have
+	 * multiple network interfaces and those may have multiple IP addresses too.
+	 * See the comment of {@link StreamNodeAgent#getAddress()}.
+	 */
+	public static final String INETADDRESS_MAP = "iNetAddressMap";
+
 	/**
 	 * tokenMachineMap that says mapped nodeID of upstream and downstream
 	 * workers of a token is stored in the configuration in this name.
@@ -32,6 +47,7 @@ public final class GlobalConstants {
 	 * node, Value - MachineID of the destination node.
 	 */
 	public static final String TOKEN_MACHINE_MAP = "tokenMachineMap";
+
 	/**
 	 * Information of TCP portID for a token whose upstream and downstream
 	 * workers are mapped to different nodes in a distributed execution
@@ -41,5 +57,47 @@ public final class GlobalConstants {
 	 */
 	public static final String PORTID_MAP = "portIdMap";
 	public static final String PARTITION = "partition";
+	public static final String CONINFOMAP = "ConInfoMap";
 
+	/**
+	 * Whether to start the tuner automatically or not.
+	 * <ol>
+	 * <li>0 - Controller will start the tuner automatically.
+	 * <li>1 - User has to manually start the tuner with correct portNo as
+	 * argument. Port no 12563 is used in this case. But it can be changed at
+	 * {@link TCPTuner#startTuner(String)}. We need this option to run the
+	 * tuning on remote machines.
+	 * </ol>
+	 */
+	public static int tunerMode = 0;
+
+	/**
+	 * To turn on or turn off the drain data. If this is false, drain data will
+	 * be ignored and every new reconfiguration will run with fresh inputs.
+	 */
+	public static final boolean useDrainData = false;
+
+	/**
+	 * To turn on or off the dead lock handler. see {@link AbstractDrainer} for
+	 * it's usage.
+	 */
+	public static final boolean needDrainDeadlockHandler = true;
+
+	/**
+	 * Just use the fixed configuration file to run the program. No tuning, no
+	 * intermediate draining. In this mode, time taken to pass fixed number of
+	 * input will be measured for 30 rounds and logged into FixedOutPut.txt. See
+	 * {@link TailChannel} for the file logging details.
+	 */
+	public static final boolean useCfgFile = false;
+
+	/**
+	 * Save all configurations tired by open tuner in to
+	 * "configurations//app.name" directory.
+	 */
+	public static final boolean saveAllConfigurations = true;
+
+	static {
+
+	}
 }

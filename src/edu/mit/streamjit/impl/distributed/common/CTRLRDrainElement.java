@@ -2,8 +2,6 @@ package edu.mit.streamjit.impl.distributed.common;
 
 import java.util.Set;
 
-import com.google.common.collect.ImmutableMap;
-
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
@@ -19,13 +17,13 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  * @author Sumanan sumanan@mit.edu
  * @since Jul 29, 2013
  */
-public abstract class DrainElement implements MessageElement {
+public abstract class CTRLRDrainElement implements CTRLRMessageElement {
 	private static final long serialVersionUID = 1L;
 
-	public abstract void process(DrainProcessor dp);
+	public abstract void process(CTRLRDrainProcessor dp);
 
 	@Override
-	public void accept(MessageVisitor visitor) {
+	public void accept(CTRLRMessageVisitor visitor) {
 		visitor.visit(this);
 	}
 
@@ -34,7 +32,7 @@ public abstract class DrainElement implements MessageElement {
 	 * drained data of the blobs. stream nodes which receive this object should
 	 * reply with their drained data.
 	 */
-	public static final class DrainDataRequest extends DrainElement {
+	public static final class DrainDataRequest extends CTRLRDrainElement {
 		private static final long serialVersionUID = 1L;
 
 		/**
@@ -48,7 +46,7 @@ public abstract class DrainElement implements MessageElement {
 		}
 
 		@Override
-		public void process(DrainProcessor dp) {
+		public void process(CTRLRDrainProcessor dp) {
 			dp.process(this);
 		}
 	}
@@ -59,7 +57,7 @@ public abstract class DrainElement implements MessageElement {
 	 * Unfortunately the name of this class became a verb. Anyway the purpose of
 	 * sending an object of this class is to initiate a draining action.
 	 */
-	public static final class DoDrain extends DrainElement {
+	public static final class DoDrain extends CTRLRDrainElement {
 		private static final long serialVersionUID = 1L;
 
 		/**
@@ -82,52 +80,7 @@ public abstract class DrainElement implements MessageElement {
 		}
 
 		@Override
-		public void process(DrainProcessor dp) {
-			dp.process(this);
-		}
-	}
-
-	/**
-	 * {@link StreamNode}s shall send this object to inform {@link Controller}
-	 * that draining of a particular blob is done.
-	 */
-	public static final class Drained extends DrainElement {
-		private static final long serialVersionUID = 1L;
-
-		/**
-		 * Identifies the blob. Since {@link Blob}s do not have an unique
-		 * identifier them self, the minimum input token of that blob is used as
-		 * identifier.
-		 */
-		public final Token blobID;
-
-		public Drained(Token blobID) {
-			this.blobID = blobID;
-		}
-
-		@Override
-		public void process(DrainProcessor dp) {
-			dp.process(this);
-		}
-	}
-
-	/**
-	 * Contains map of {@link DrainData} of drained {@link Blob}s.
-	 * {@link StreamNode}s shall send this back to {@link Controller} to submit
-	 * the drain data of the blobs after the draining. See {@link DrainData} for
-	 * more information.
-	 */
-	public static final class DrainedDataMap extends DrainElement {
-		private static final long serialVersionUID = 1L;
-
-		public final ImmutableMap<Token, DrainData> drainData;
-
-		public DrainedDataMap(ImmutableMap<Token, DrainData> drainData) {
-			this.drainData = drainData;
-		}
-
-		@Override
-		public void process(DrainProcessor dp) {
+		public void process(CTRLRDrainProcessor dp) {
 			dp.process(this);
 		}
 	}
@@ -139,14 +92,10 @@ public abstract class DrainElement implements MessageElement {
 	 * We do not need explicit processXXX() functions as it is done for all
 	 * enums such as {@link Error}, {@link AppStatus} and {@link Request}.
 	 */
-	public interface DrainProcessor {
+	public interface CTRLRDrainProcessor {
 
 		public void process(DrainDataRequest drnDataReq);
 
 		public void process(DoDrain drain);
-
-		public void process(Drained drained);
-
-		public void process(DrainedDataMap drainedData);
 	}
 }

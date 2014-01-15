@@ -2,42 +2,43 @@ package edu.mit.streamjit.impl.concurrent;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.impl.blob.Blob;
-import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
-import edu.mit.streamjit.impl.common.BlobGraph;
-import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
+import edu.mit.streamjit.impl.common.AbstractDrainer;
+import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
 import edu.mit.streamjit.impl.common.BlobThread;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.IntParameter;
+import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
-import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
-import java.util.Collections;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /**
  * A stream compiler that partitions a streamgraph into multiple blobs and
@@ -55,6 +56,17 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 	 *            blob on each thread.
 	 */
 	public ConcurrentStreamCompiler(int noOfBlobs) {
+		if (noOfBlobs < 1)
+			throw new IllegalArgumentException(
+					"noOfBlobs should be 1 or greater");
+		this.noOfBlobs = noOfBlobs;
+	}
+
+	public ConcurrentStreamCompiler(Configuration cfg) {
+
+		IntParameter threadCount = cfg.getParameter("threadCount",
+				IntParameter.class);
+		this.noOfBlobs = threadCount.getValue();
 		if (noOfBlobs < 1)
 			throw new IllegalArgumentException(
 					"noOfBlobs should be 1 or greater");
@@ -98,7 +110,8 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 
 		Set<Blob> blobSet = new HashSet<>();
 		for (Set<Worker<?, ?>> partition : partitionList) {
-			blobSet.add(new Interpreter(partition, constraints, makeConfig()));
+			blobSet.add(new Interpreter(partition, constraints, makeConfig(),
+					null));
 		}
 
 		BlobGraph bg = new BlobGraph(partitionList);
@@ -210,7 +223,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 				blobThreads.add(t);
 				threadMap.put(b, Collections.singleton(t));
 			}
-			this.drainer = new ConcurrentDrainer(blobGraph, false, threadMap);
+			this.drainer = new ConcurrentDrainer(blobGraph, threadMap);
 			start(blobThreads);
 		}
 
@@ -226,7 +239,7 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		}
 
 		protected void drain() {
-			drainer.startDraining();
+			drainer.startDraining(2);
 		}
 
 		@Override

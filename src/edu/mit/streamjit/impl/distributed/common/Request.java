@@ -10,7 +10,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
  * @author Sumanan sumanan@mit.edu
  * @since May 20, 2013
  */
-public enum Request implements MessageElement {
+public enum Request implements CTRLRMessageElement {
 	/**
 	 * Status of the streaming application. Once this is received,
 	 * {@link StreamNode} must send it's app status to the controller. See
@@ -52,10 +52,19 @@ public enum Request implements MessageElement {
 		public void process(RequestProcessor reqProcessor) {
 			reqProcessor.processNodeInfo();
 		}
+	},
+	/**
+	 * This command is to ask StreamNode to exit.
+	 */
+	EXIT {
+		@Override
+		public void process(RequestProcessor reqProcessor) {
+			reqProcessor.processEXIT();
+		}
 	};
 
 	@Override
-	public void accept(MessageVisitor visitor) {
+	public void accept(CTRLRMessageVisitor visitor) {
 		visitor.visit(this);
 	}
 
@@ -76,5 +85,7 @@ public enum Request implements MessageElement {
 		public void processMachineID();
 
 		public void processNodeInfo();
+
+		public void processEXIT();
 	}
 }

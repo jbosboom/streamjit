@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.util.HashSet;
 import java.util.List;
@@ -9,12 +10,12 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
 
-import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.MessageElement;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection;
+import edu.mit.streamjit.impl.distributed.common.Request;
+import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
+import edu.mit.streamjit.impl.distributed.common.SynchronizedTCPConnection;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
@@ -30,6 +31,8 @@ public class BlockingCommunicationManager implements CommunicationManager {
 	private ImmutableMap<Integer, StreamNodeAgent> SNAgentMap; // (machineID,
 	// StreamNodeAgent)
 	private int listenPort;
+
+	private InetAddress inetAddress;
 
 	private Set<SNAgentRunner> SNRunners;
 
@@ -67,12 +70,19 @@ public class BlockingCommunicationManager implements CommunicationManager {
 						// Controller
 						// handles the head and tail channels.
 		int establishedConnection = 0;
+		List<Socket> acceptedSocketList;
 		while (true) {
-			List<Socket> acceptedSocketList = listnerSckt.getAcceptedSockets();
+			acceptedSocketList = listnerSckt.getAcceptedSockets();
 			for (Socket s : acceptedSocketList) {
-				Connection connection = new TCPConnection(s);
+
+				Connection connection = new SynchronizedTCPConnection(s);
 				StreamNodeAgent snAgent = new StreamNodeAgentImpl(nodeID++,
-						connection);
+						connection, s.getInetAddress());
+
+				if (!s.getLocalAddress().isLoopbackAddress()
+						&& inetAddress == null)
+					inetAddress = s.getLocalAddress();
+
 				SNAgentMapbuilder.put(snAgent.getNodeID(), snAgent);
 				SNAgentRunner runner = new SNAgentRunner(snAgent, connection);
 				runner.start();
@@ -98,6 +108,9 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		}
 		listnerSckt.stopListening();
 		this.SNAgentMap = SNAgentMapbuilder.build();
+		if (inetAddress == null) {
+			inetAddress = acceptedSocketList.get(0).getLocalAddress();
+		}
 		return SNAgentMap;
 	}
 
@@ -109,9 +122,8 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		new Thread() {
 			public void run() {
 				try {
-					ConnectionFactory cf = new ConnectionFactory();
-					Connection connection = cf.getConnection("127.0.0.1",
-							listenPort);
+					Connection connection = ConnectionFactory.getConnection(
+							"127.0.0.1", listenPort, true);
 					StreamNode.getInstance(connection).start();
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
@@ -135,11 +147,15 @@ public class BlockingCommunicationManager implements CommunicationManager {
 	 * 
 	 */
 	private static class StreamNodeAgentImpl extends StreamNodeAgent {
-		Connection connection;
+		private final Connection connection;
 
-		private StreamNodeAgentImpl(int machineID, Connection connection) {
+		private final InetAddress address;
+
+		private StreamNodeAgentImpl(int machineID, Connection connection,
+				InetAddress address) {
 			super(machineID);
 			this.connection = connection;
+			this.address = address;
 		}
 
 		@Override
@@ -150,6 +166,11 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		@Override
 		public boolean isConnected() {
 			return connection.isStillConnected();
+		}
+
+		@Override
+		public InetAddress getAddress() {
+			return address;
 		}
 	}
 
@@ -164,6 +185,7 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		Connection connection;
 
 		private SNAgentRunner(StreamNodeAgent SNAgent, Connection connection) {
+			super(String.format("SNAgentRunner - %d", SNAgent.getNodeID()));
 			this.SNAgent = SNAgent;
 			this.connection = connection;
 		}
@@ -171,7 +193,7 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		public void run() {
 			while (!SNAgent.isStopRequested() && connection.isStillConnected()) {
 				try {
-					MessageElement me = connection.readObject();
+					SNMessageElement me = connection.readObject();
 					me.accept(SNAgent.getMv());
 				} catch (ClassNotFoundException e) {
 					// TODO Auto-generated catch block
@@ -186,12 +208,17 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		public void close() {
 			try {
 				SNAgent.stopRequest();
-				connection.writeObject(Command.EXIT);
+				connection.writeObject(Request.EXIT);
 				connection.closeConnection();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
+	}
+
+	@Override
+	public InetAddress getLocalAddress() {
+		return inetAddress;
 	}
 }

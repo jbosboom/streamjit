@@ -8,14 +8,12 @@ import com.google.common.collect.ImmutableMap;
 
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.common.BlobGraph.AbstractDrainer;
-import edu.mit.streamjit.impl.common.BlobGraph;
+import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.BlobThread;
-import edu.mit.streamjit.impl.common.BlobGraph.BlobNode;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 
 /**
- * Drainer for {@link ConcurrentStreamCompiler}. traverse through
+ * Drainer for {@link ConcurrentStreamCompiler}. Traverse through
  * {@link BlobNode}s of the {@link BlobGraph} and performs the draining.
  * 
  * @author Sumanan sumanan@mit.edu
@@ -24,85 +22,79 @@ import edu.mit.streamjit.impl.distributed.common.Utils;
 public final class ConcurrentDrainer extends AbstractDrainer {
 
 	/**
-	 * Each blob is mapped to a blobnode in the blob graph.
+	 * Each blob in the stream graph and it's blobID.
 	 */
-	ImmutableMap<BlobNode, Blob> blobMap;
+	ImmutableMap<Token, Blob> blobMap;
+
 	/**
 	 * Set of threads that each blob is having.
 	 */
 	ImmutableMap<Blob, Set<BlobThread>> threadMap;
 
-	public ConcurrentDrainer(BlobGraph blobGraph, boolean needDrainData,
+	public ConcurrentDrainer(BlobGraph blobGraph,
 			Map<Blob, Set<BlobThread>> threadMap) {
-		super(blobGraph, needDrainData);
-		Set<Blob> blobSet = threadMap.keySet();
-		blobMap = buildBlobMap(blobGraph.getBlobNodes(), blobSet);
+		setBlobGraph(blobGraph);
+		blobMap = buildBlobMap(threadMap.keySet());
 		this.threadMap = ImmutableMap.copyOf(threadMap);
 	}
 
-	private ImmutableMap<BlobNode, Blob> buildBlobMap(
-			Set<BlobNode> blobNodeSet, Set<Blob> blobSet) {
-		ImmutableMap.Builder<BlobNode, Blob> builder = new ImmutableMap.Builder<>();
-		for (Blob b : blobSet) {
-			Token t = Utils.getBlobID(b);
-			if (t == null)
-				throw new AssertionError("Blob with no identifier");
-
-			BlobNode node = getBlobNode(blobNodeSet, t);
-			checkNotNull(node);
-
-			builder.put(node, b);
-		}
-		ImmutableMap<BlobNode, Blob> blobMap = builder.build();
-
-		if (!blobMap.keySet().equals(blobNodeSet))
-			throw new AssertionError("Not all blob nodes have matching blobs");
-
-		return blobMap;
-	}
-
-	private BlobNode getBlobNode(Set<BlobNode> blobNodeSet, Token t) {
-		for (BlobNode node : blobNodeSet) {
-			if (node.getBlobID().equals(t))
-				return node;
-		}
-		return null;
+	@Override
+	protected void drainingDone(boolean isFinal) {
+		System.out.println("Draining Finished");
 	}
 
 	@Override
-	protected void drain(BlobNode node) {
-		checkNotNull(node);
-		Blob blob = blobMap.get(node);
+	protected void drain(Token blobID, boolean isFinal) {
+		Blob blob = blobMap.get(blobID);
 		checkNotNull(blob);
 
-		Runnable callback = new DrainerCallBack(node);
+		Runnable callback = new DrainerCallBack(this, blobID);
 		blob.drain(callback);
 	}
 
 	@Override
-	protected void drained(BlobNode node) {
-		Blob blob = blobMap.get(node);
+	protected void drainingDone(Token blobID, boolean isFinal) {
+		Blob blob = blobMap.get(blobID);
 		Set<BlobThread> blobThreads = threadMap.get(blob);
 		checkNotNull(blobThreads);
 		for (BlobThread thread : blobThreads)
 			thread.requestStop();
 	}
 
-	private class DrainerCallBack implements Runnable {
-		BlobNode node;
+	private ImmutableMap<Token, Blob> buildBlobMap(Set<Blob> blobSet) {
+		ImmutableMap.Builder<Token, Blob> builder = new ImmutableMap.Builder<>();
+		for (Blob b : blobSet) {
+			Token t = Utils.getBlobID(b);
+			if (t == null)
+				throw new AssertionError("Blob with no identifier");
 
-		private DrainerCallBack(BlobNode node) {
-			this.node = node;
+			builder.put(t, b);
+		}
+		ImmutableMap<Token, Blob> blobMap = builder.build();
+
+		if (!blobMap.keySet().equals(blobGraph.getBlobIds()))
+			throw new AssertionError("Not all blob nodes have matching blobs");
+
+		return blobMap;
+	}
+
+	private class DrainerCallBack implements Runnable {
+		AbstractDrainer drainer;
+		Token blobID;
+
+		private DrainerCallBack(AbstractDrainer drainer, Token blobID) {
+			this.drainer = drainer;
+			this.blobID = blobID;
 		}
 
 		@Override
 		public void run() {
-			node.drained();
+			drainer.drained(blobID);
 		}
 	}
 
 	@Override
-	protected void drainingFinished() {
-		System.out.println("Draining Finished");
+	protected void prepareDraining(boolean isFinal) {
+		// TODO Auto-generated method stub
 	}
 }
