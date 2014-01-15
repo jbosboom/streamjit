@@ -29,6 +29,7 @@ public final class Compiler2BlobFactory implements BlobFactory {
 		Configuration.Builder builder = Configuration.builder();
 		Compiler2.REMOVAL_STRATEGY.makeParameters(workers, builder);
 		Compiler2.FUSION_STRATEGY.makeParameters(workers, builder);
+		Compiler2.UNBOXING_STRATEGY.makeParameters(workers, builder);
 		Compiler2.ALLOCATION_STRATEGY.makeParameters(workers, builder);
 		for (Worker<?, ?> w : workers)
 			for (int i = 0; i < Compiler2.ALLOCATION_STRATEGY.maxNumCores(); ++i) {
@@ -42,12 +43,6 @@ public final class Compiler2BlobFactory implements BlobFactory {
 							Compiler2.INDEX_FUNCTION_TRANSFORMERS.asList().get(0),
 							Compiler2.INDEX_FUNCTION_TRANSFORMERS));
 			}
-		for (IOInfo i : IOInfo.allEdges(workers))
-			builder.addParameter(Configuration.SwitchParameter.create("unboxStorage"+i.token().toString().replace(", ", "_"), i.isInternal()));
-		for (Worker<?, ?> w : workers) {
-			builder.addParameter(Configuration.SwitchParameter.create("unboxInput"+Workers.getIdentifier(w), true));
-			builder.addParameter(Configuration.SwitchParameter.create("unboxOutput"+Workers.getIdentifier(w), true));
-		}
 		return builder.addParameter(new Configuration.IntParameter("multiplier", 1, Short.MAX_VALUE, 1))
 				.build();
 	}

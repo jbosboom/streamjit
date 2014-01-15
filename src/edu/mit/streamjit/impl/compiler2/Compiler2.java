@@ -94,6 +94,7 @@ public class Compiler2 {
 	);
 	public static final RemovalStrategy REMOVAL_STRATEGY = new BitsetRemovalStrategy();
 	public static final FusionStrategy FUSION_STRATEGY = new BitsetFusionStrategy();
+	public static final UnboxingStrategy UNBOXING_STRATEGY = new BitsetUnboxingStrategy();
 	public static final AllocationStrategy ALLOCATION_STRATEGY = new CountDataParallelAllocationStrategy(8);
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
@@ -707,8 +708,7 @@ public class Compiler2 {
 	 */
 	private void unbox() {
 		for (Storage s : storage) {
-			SwitchParameter<Boolean> unboxStorage = config.getParameter("unboxStorage"+s.id().toString().replace(", ", "_"), SwitchParameter.class, Boolean.class);
-			if (unboxStorage.getValue()) {
+			if (UNBOXING_STRATEGY.unboxStorage(s, config)) {
 				TypeToken<?> contents = s.contentType();
 				Class<?> type = contents.unwrap().getRawType();
 				s.setType(type);
@@ -718,15 +718,13 @@ public class Compiler2 {
 		}
 
 		for (WorkerActor a : Iterables.filter(actors, WorkerActor.class)) {
-			SwitchParameter<Boolean> unboxInput = config.getParameter("unboxInput"+a.id(), SwitchParameter.class, Boolean.class);
-			SwitchParameter<Boolean> unboxOutput = config.getParameter("unboxOutput"+a.id(), SwitchParameter.class, Boolean.class);
-			if (unboxInput.getValue()) {
+			if (UNBOXING_STRATEGY.unboxInput(a, config)) {
 				TypeToken<?> oldType = a.inputType();
 				a.setInputType(oldType.unwrap());
 //				if (!a.declaredInputType().equals(oldType))
 //					System.out.println("unboxed input of "+a+": "+oldType+" -> "+a.inputType());
 			}
-			if (unboxOutput.getValue()) {
+			if (UNBOXING_STRATEGY.unboxOutput(a, config)) {
 				TypeToken<?> oldType = a.outputType();
 				a.setOutputType(oldType.unwrap());
 //				if (!a.declaredOutputType().equals(oldType))
