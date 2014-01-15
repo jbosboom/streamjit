@@ -30,8 +30,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.objectweb.asm.util.CheckAnnotationAdapter;
-
 /**
  * Factories for Benchmark.Dataset instances.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
