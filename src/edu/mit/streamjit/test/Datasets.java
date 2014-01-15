@@ -8,6 +8,7 @@ import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
+import com.google.common.math.IntMath;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.OneToOneElement;
@@ -55,40 +56,32 @@ public final class Datasets {
 	}
 
 	public static <I> Input<I> nCopies(final int n, final Input<I> input) {
+		//0 would be valid (an empty input), but would usually be a bug.
 		checkArgument(n > 0, "%s must be nonnegative", n);
 		if (n == 1) return input;
 		return InputBufferFactory.wrap(new InputBufferFactory() {
 			@Override
-			public Buffer createReadableBuffer(int readerMinSize) {
-				final Buffer first = InputBufferFactory.unwrap(input).createReadableBuffer(readerMinSize);
-				final int initialSize = first.size();
-				checkArgument(initialSize >= 0,String.format("Size of input data set is %d. Possible int overflow.", initialSize));
+			public Buffer createReadableBuffer(final int readerMinSize) {
 				return new AbstractReadOnlyBuffer() {
-					private Buffer currentBuffer = first;
-					private int size = initialSize;
-					private int nCopy =  n;
+					private Buffer currentBuffer = InputBufferFactory.unwrap(input).createReadableBuffer(readerMinSize);
+					private final int bufferSize = currentBuffer.size();
+					private int copiesRemaining = n - 1;
 					@Override
 					public Object read() {
-						if (size == 0 && nCopy == 0)
-							return null;
-						if(size == 0)
-						{
-							nCopy--;
-							size = initialSize;
+						if (currentBuffer.size() == 0 && copiesRemaining > 0) {
+							currentBuffer = InputBufferFactory.unwrap(input).createReadableBuffer(readerMinSize);
+							--copiesRemaining;
 						}
-						if (currentBuffer.size() == 0)
-							currentBuffer = InputBufferFactory.unwrap(input).createReadableBuffer(initialSize);
-						--size;
 						return currentBuffer.read();
 					}
 
 					@Override
 					public int size() {
-						// Following is not the correct way because s becomes 0 even though data are there to be read.
-						// int s = size + nCopy*initialSize;
-						// return s>=0?s:Integer.MAX_VALUE;
-
-						return nCopy > 0 ? Integer.MAX_VALUE:size;
+						try {
+							return IntMath.checkedAdd(currentBuffer.size(), IntMath.checkedMultiply(copiesRemaining, bufferSize));
+						} catch (ArithmeticException overflow) {
+							return Integer.MAX_VALUE;
+						}
 					}
 				};
 			}
