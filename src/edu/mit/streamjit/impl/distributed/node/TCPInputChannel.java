@@ -7,7 +7,7 @@ import java.io.OptionalDataException;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Queue;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.collect.ImmutableList;
 
@@ -48,9 +48,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private Connection tcpConnection;
 
-	private final AtomicBoolean stopFlag;
-
-	private volatile boolean isFinal;
+	private final AtomicInteger stopType;
 
 	private final String name;
 
@@ -67,14 +65,13 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		this.buffer = buffer;
 		this.conProvider = conProvider;
 		this.conInfo = conInfo;
-		this.stopFlag = new AtomicBoolean(false);
 		this.name = "TCPInputChannel - " + bufferTokenName;
 		this.debugPrint = debugPrint;
 		this.softClosed = false;
 		this.extraBuffer = null;
 		this.unProcessedData = null;
 		this.isClosed = false;
-		this.isFinal = false;
+		this.stopType = new AtomicInteger(0);
 		count = 0;
 
 		FileWriter w = null;
@@ -114,12 +111,16 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						e.printStackTrace();
 					}
 				}
-				while (!stopFlag.get() && !softClosed) {
+				while (stopType.get() == 0 && !softClosed) {
 					receiveData();
 				}
 
-				if (!softClosed)
-					finalReceive();
+				if (!softClosed) {
+					if (stopType.get() == 3)
+						discardAll();
+					else
+						finalReceive();
+				}
 
 				try {
 					closeConnection();
@@ -171,7 +172,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				if (stopFlag.get() && !isFinal && ++bufFullCount > 5) {
+				if (stopType.get() > 1 && ++bufFullCount > 5) {
 					this.extraBuffer = new ExtraBuffer();
 					extraBuffer.write(obj);
 					System.err
@@ -197,7 +198,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			// Other side is closed.
 			System.out
 					.println("receiveData:Closing by EOFExp. Not by softClose");
-			stopFlag.set(true);
+			stopType.set(2);
 		} catch (IOException e) {
 			// TODO: Verify the program quality. Try to reconnect until it
 			// is told to stop.
@@ -215,6 +216,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	 * in the kernel's TCP buffer. Otherwise those data will be lost forever.
 	 */
 	private void finalReceive() {
+		assert stopType.get() == 1 || stopType.get() == 2 : "Illegal stopType state";
 		boolean hasData;
 		int bufFullCount;
 		Buffer buffer;
@@ -258,7 +260,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						e.printStackTrace();
 					}
 
-					if (!isFinal && ++bufFullCount > 5) {
+					if (stopType.get() == 2 && ++bufFullCount > 5) {
 						assert buffer != this.extraBuffer : "ExtraBuffer is full. This shouldn't be the case.";
 						assert this.extraBuffer == null : "Extra buffer has already been created.";
 						this.extraBuffer = new ExtraBuffer();
@@ -293,8 +295,33 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		} while (hasData);
 	}
 
+	/**
+	 * Just discards all data in the input buffers. This is useful if we don't
+	 * care about the data and just tuning a app for performance.
+	 */
+	private void discardAll() {
+		System.out.println("Discarding input data...");
+		boolean hasData;
+		do {
+			try {
+				Object obj = tcpConnection.readObject();
+				hasData = true;
+			} catch (ClassNotFoundException e) {
+				hasData = true;
+				e.printStackTrace();
+			} catch (OptionalDataException e) {
+				softClosed = true;
+				hasData = false;
+			} catch (IOException e) {
+				System.out
+						.println("finalReceive:Closing by IOException. Not by softClose.");
+				hasData = false;
+			}
+		} while (hasData);
+	}
+
 	private void reConnect() {
-		while (!stopFlag.get()) {
+		while (stopType.get() == 0) {
 			try {
 				System.out.println("TCPInputChannel : Reconnecting...");
 				this.tcpConnection.closeConnection();
@@ -316,9 +343,9 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	}
 
 	@Override
-	public void stop(boolean isFinal) {
-		this.isFinal = isFinal;
-		this.stopFlag.set(true);
+	public void stop(int type) {
+		assert 0 < type && type < 4 : "Undefined stop type";
+		this.stopType.set(type);
 	}
 
 	@Override
