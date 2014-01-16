@@ -232,10 +232,15 @@ public final class Storage implements Comparable<Storage> {
 	public void computeSteadyStateRequirements(Map<ActorGroup, Integer> externalSchedule) {
 		ImmutableSortedSet<Integer> readIndices = readIndices(externalSchedule);
 		ImmutableSortedSet<Integer> writeIndices = writeIndices(externalSchedule);
+		assert readIndices.isEmpty() == writeIndices.isEmpty() : readIndices+" "+writeIndices;
 		this.throughput = writeIndices.size();
-		int minIdx = Math.min(readIndices.first(), writeIndices.first());
-		int maxIdx = Math.max(readIndices.last(), writeIndices.last());
-		this.steadyStateCapacity = maxIdx - minIdx + 1;
+		if (readIndices.isEmpty())
+			this.steadyStateCapacity = 0;
+		else {
+			int minIdx = Math.min(readIndices.first(), writeIndices.first());
+			int maxIdx = Math.max(readIndices.last(), writeIndices.last());
+			this.steadyStateCapacity = maxIdx - minIdx + 1;
+		}
 	}
 
 	@Override

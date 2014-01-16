@@ -217,7 +217,6 @@ public final class ILPSolver {
 		}
 
 		public LinearExpr asLinearExpr(int coefficient) {
-			checkArgument(coefficient != 0);
 			return new LinearExpr(ImmutableMap.of(this, coefficient));
 		}
 
@@ -235,7 +234,6 @@ public final class ILPSolver {
 		private ImmutableMap<Variable, Integer> coefficients;
 		private LinearExpr(Map<Variable, Integer> coefficients) {
 			assert !coefficients.isEmpty();
-			assert !coefficients.values().contains(0);
 			this.coefficients = ImmutableMap.copyOf(coefficients);
 		}
 

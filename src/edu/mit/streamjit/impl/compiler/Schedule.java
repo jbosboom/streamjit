@@ -111,7 +111,7 @@ public final class Schedule<T> {
 				this.downstream = downstream;
 			}
 			public ConstraintBuilder push(int pushRate) {
-				checkArgument(pushRate > 0);
+				checkArgument(pushRate >= 0);
 				this.pushRate = pushRate;
 				return this;
 			}

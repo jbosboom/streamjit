@@ -149,6 +149,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * the given iterations
 	 */
 	public ContiguousSet<Integer> peeks(int input, ContiguousSet<Integer> iterations) {
+		if (iterations.isEmpty()) return ContiguousSet.create(Range.closedOpen(0, 0), DiscreteDomain.integers());
 		return ContiguousSet.create(Range.closedOpen(iterations.first() * pop(input), (iterations.last() + 1) * pop(input) + excessPeeks(input)), DiscreteDomain.integers());
 	}
 

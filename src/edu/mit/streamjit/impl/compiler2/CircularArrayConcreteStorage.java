@@ -26,6 +26,7 @@ public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadab
 	private final MethodHandle readHandle, writeHandle, adjustHandle;
 	public CircularArrayConcreteStorage(Storage s) {
 		this.capacity = s.steadyStateCapacity();
+		assert capacity > 0 : s + " has capacity "+capacity;
 		this.array = Array.newInstance(s.type(), capacity);
 		this.throughput = s.throughput();
 		this.head = 0;
@@ -123,6 +124,8 @@ public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadab
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {
+				if (storage.steadyStateCapacity() == 0)
+					return new EmptyConcreteStorage(storage);
 				return new CircularArrayConcreteStorage(storage);
 			}
 		};

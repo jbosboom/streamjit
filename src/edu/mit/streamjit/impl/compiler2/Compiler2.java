@@ -867,7 +867,9 @@ public class Compiler2 {
 		Storage s = Iterables.getOnlyElement(a.outputs());
 		MethodHandle idxFxn = Iterables.getOnlyElement(a.outputIndexFunctions());
 		ReadInstruction retval;
-		if (!s.type().isPrimitive() &&
+		if (count == 0)
+			retval = new NopReadInstruction(a.token());
+		else if (!s.type().isPrimitive() &&
 				cs instanceof BulkWritableConcreteStorage &&
 				contiguouslyIncreasing(idxFxn, 0, count)) {
 			retval = new BulkReadInstruction(a, (BulkWritableConcreteStorage)cs, count);
@@ -882,7 +884,9 @@ public class Compiler2 {
 		Storage s = Iterables.getOnlyElement(a.inputs());
 		MethodHandle idxFxn = Iterables.getOnlyElement(a.inputIndexFunctions());
 		WriteInstruction retval;
-		if (!s.type().isPrimitive() &&
+		if (count == 0)
+			retval = new NopWriteInstruction(a.token());
+		else if (!s.type().isPrimitive() &&
 				cs instanceof BulkReadableConcreteStorage &&
 				contiguouslyIncreasing(idxFxn, 0, count)) {
 			retval = new BulkWriteInstruction(a, (BulkReadableConcreteStorage)cs, count);
@@ -1148,6 +1152,31 @@ public class Compiler2 {
 		}
 	}
 
+	/**
+	 * Doesn't read anything, but does respond to getMinimumBufferCapacity().
+	 */
+	private static final class NopReadInstruction implements ReadInstruction {
+		private final Token token;
+		public NopReadInstruction(Token token) {
+			this.token = token;
+		}
+		@Override
+		public void init(Map<Token, Buffer> buffers) {
+		}
+		@Override
+		public Map<Token, Integer> getMinimumBufferCapacity() {
+			return ImmutableMap.of(token, 0);
+		}
+		@Override
+		public boolean load() {
+			return true;
+		}
+		@Override
+		public Map<Token, Object[]> unload() {
+			return ImmutableMap.of();
+		}
+	}
+
 	private static final class BulkWriteInstruction implements WriteInstruction {
 		private final Token token;
 		private final BulkReadableConcreteStorage storage;
@@ -1217,6 +1246,26 @@ public class Compiler2 {
 			for (int written = 0; written != data.length;) {
 				written += buffer.write(data, written, data.length-written);
 			}
+		}
+	}
+
+	/**
+	 * Doesn't write anything, but does respond to getMinimumBufferCapacity().
+	 */
+	private static final class NopWriteInstruction implements WriteInstruction {
+		private final Token token;
+		public NopWriteInstruction(Token token) {
+			this.token = token;
+		}
+		@Override
+		public void init(Map<Token, Buffer> buffers) {
+		}
+		@Override
+		public Map<Token, Integer> getMinimumBufferCapacity() {
+			return ImmutableMap.of(token, 0);
+		}
+		@Override
+		public void run() {
 		}
 	}
 
