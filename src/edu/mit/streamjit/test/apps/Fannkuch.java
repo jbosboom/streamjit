@@ -16,6 +16,7 @@ import edu.mit.streamjit.test.Datasets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * http://benchmarksgame.alioth.debian.org/u32/performance.php?test=fannkuchredux#about
@@ -32,8 +33,8 @@ import java.util.List;
 public final class Fannkuch {
 	private Fannkuch() {}
 
+	private static final int LIST_SIZE = 11;
 	public static final class FannkuchBenchmark extends AbstractBenchmark {
-		private static final int LIST_SIZE = 11;
 		public FannkuchBenchmark() {
 			super("Fannkuch", Datasets.fromIterable("permutations(1.."+LIST_SIZE+")",
 					Collections2.permutations(ContiguousSet.create(Range.closed(1, LIST_SIZE), DiscreteDomain.integers()))));
@@ -41,6 +42,17 @@ public final class Fannkuch {
 		@Override
 		public OneToOneElement<Object, Object> instantiate() {
 			return new Pipeline(new FannkuchFilter(), new Max());
+		}
+	}
+
+	public static final class FannkuchAtomicBenchmark extends AbstractBenchmark {
+		public FannkuchAtomicBenchmark() {
+			super("FannkuchAtomic", Datasets.fromIterable("permutations(1.."+LIST_SIZE+")",
+					Collections2.permutations(ContiguousSet.create(Range.closed(1, LIST_SIZE), DiscreteDomain.integers()))));
+		}
+		@Override
+		public OneToOneElement<Object, Object> instantiate() {
+			return new Pipeline(new FannkuchFilter(), new AtomicMax());
 		}
 	}
 
@@ -75,9 +87,28 @@ public final class Fannkuch {
 		}
 	}
 
+	private static final class AtomicMax extends Filter<Integer, Void> {
+		private final AtomicInteger max = new AtomicInteger(Integer.MIN_VALUE);
+		private AtomicMax() {
+			super(1, 0);
+		}
+		@Override
+		public void work() {
+			int us = pop();
+			int cur = max.get();
+			while (us > cur) {
+				if (max.compareAndSet(cur, us)) break;
+				cur = max.get();
+			}
+		}
+		public int max() {
+			return max.get();
+		}
+	}
+
 	public static void main(String[] args) {
 //		StreamCompiler sc = new DebugStreamCompiler();
 		StreamCompiler sc = new Compiler2StreamCompiler().maxNumCores(4).multiplier(256);
-		Benchmarker.runBenchmark(new FannkuchBenchmark(), sc).get(0).print(System.out);
+		Benchmarker.runBenchmark(new FannkuchAtomicBenchmark(), sc).get(0).print(System.out);
 	}
 }
