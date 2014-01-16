@@ -4,6 +4,7 @@ import com.google.common.collect.Collections2;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
@@ -11,6 +12,7 @@ import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.Datasets;
 import java.util.ArrayList;
@@ -34,6 +36,7 @@ public final class Fannkuch {
 	private Fannkuch() {}
 
 	private static final int LIST_SIZE = 11;
+	@ServiceProvider(Benchmark.class)
 	public static final class FannkuchBenchmark extends AbstractBenchmark {
 		public FannkuchBenchmark() {
 			super("Fannkuch", Datasets.fromIterable("permutations(1.."+LIST_SIZE+")",
@@ -45,6 +48,7 @@ public final class Fannkuch {
 		}
 	}
 
+	@ServiceProvider(Benchmark.class)
 	public static final class FannkuchAtomicBenchmark extends AbstractBenchmark {
 		public FannkuchAtomicBenchmark() {
 			super("FannkuchAtomic", Datasets.fromIterable("permutations(1.."+LIST_SIZE+")",
