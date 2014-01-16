@@ -15,6 +15,7 @@ import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
 import com.google.common.primitives.Ints;
+import com.google.common.primitives.Primitives;
 import com.google.common.reflect.TypeResolver;
 import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.api.DuplicateSplitter;
@@ -697,7 +698,7 @@ public class Compiler2 {
 	 */
 	private void unbox() {
 		for (Storage s : storage) {
-			if (UNBOXING_STRATEGY.unboxStorage(s, config)) {
+			if (isUnboxable(s.contentType()) && UNBOXING_STRATEGY.unboxStorage(s, config)) {
 				TypeToken<?> contents = s.contentType();
 				Class<?> type = contents.unwrap().getRawType();
 				s.setType(type);
@@ -707,19 +708,23 @@ public class Compiler2 {
 		}
 
 		for (WorkerActor a : Iterables.filter(actors, WorkerActor.class)) {
-			if (UNBOXING_STRATEGY.unboxInput(a, config)) {
+			if (isUnboxable(a.inputType()) && UNBOXING_STRATEGY.unboxInput(a, config)) {
 				TypeToken<?> oldType = a.inputType();
 				a.setInputType(oldType.unwrap());
 //				if (!a.inputType().equals(oldType))
 //					System.out.println("unboxed input of "+a+": "+oldType+" -> "+a.inputType());
 			}
-			if (UNBOXING_STRATEGY.unboxOutput(a, config)) {
+			if (isUnboxable(a.outputType()) && UNBOXING_STRATEGY.unboxOutput(a, config)) {
 				TypeToken<?> oldType = a.outputType();
 				a.setOutputType(oldType.unwrap());
 //				if (!a.outputType().equals(oldType))
 //					System.out.println("unboxed output of "+a+": "+oldType+" -> "+a.outputType());
 			}
 		}
+	}
+
+	private boolean isUnboxable(TypeToken<?> type) {
+		return Primitives.isWrapperType(type.getRawType()) && !type.getRawType().equals(Void.class);
 	}
 
 	private void generateArchetypalCode() {
