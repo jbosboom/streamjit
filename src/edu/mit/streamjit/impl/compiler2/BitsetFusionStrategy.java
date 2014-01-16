@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
@@ -15,7 +16,7 @@ public final class BitsetFusionStrategy implements FusionStrategy {
 	public void makeParameters(Set<Worker<?, ?>> workers, Configuration.Builder builder) {
 		for (Worker<?, ?> w : workers)
 			if (!Workers.isPeeking(w))
-				builder.addParameter(Configuration.SwitchParameter.create("fuse"+Workers.getIdentifier(w), true));
+				builder.addParameter(Configuration.SwitchParameter.create("fuse"+Workers.getIdentifier(w), !(w instanceof StatefulFilter)));
 	}
 
 	@Override
