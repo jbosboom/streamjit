@@ -710,13 +710,13 @@ public class Compiler2 {
 			if (UNBOXING_STRATEGY.unboxInput(a, config)) {
 				TypeToken<?> oldType = a.inputType();
 				a.setInputType(oldType.unwrap());
-//				if (!a.declaredInputType().equals(oldType))
+//				if (!a.inputType().equals(oldType))
 //					System.out.println("unboxed input of "+a+": "+oldType+" -> "+a.inputType());
 			}
 			if (UNBOXING_STRATEGY.unboxOutput(a, config)) {
 				TypeToken<?> oldType = a.outputType();
 				a.setOutputType(oldType.unwrap());
-//				if (!a.declaredOutputType().equals(oldType))
+//				if (!a.outputType().equals(oldType))
 //					System.out.println("unboxed output of "+a+": "+oldType+" -> "+a.outputType());
 			}
 		}
