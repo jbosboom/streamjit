@@ -123,8 +123,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Controller controller = new Controller();
 		controller.connect(conTypeCount);
 
-		StreamJitApp app = new StreamJitApp(stream.getClass().getSimpleName(),
-				stream.getClass().getName(), source, sink);
+		StreamJitApp app = new StreamJitApp(stream, source, sink);
 		ConfigurationManager cfgManager = new WorkerMachine(app);
 
 		if (GlobalConstants.useCfgFile)
