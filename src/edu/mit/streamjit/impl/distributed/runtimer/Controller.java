@@ -16,7 +16,6 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
-import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
@@ -125,9 +124,8 @@ public class Controller {
 		return coreCounts;
 	}
 
-	public void newApp(StreamJitApp app) {
-		Configuration.Builder builder = Configuration.builder(app
-				.getStaticConfiguration());
+	public void newApp(Configuration staticCfg) {
+		Configuration.Builder builder = Configuration.builder(staticCfg);
 
 		Map<Integer, InetAddress> inetMap = new HashMap<>();
 		for (StreamNodeAgent agent : StreamNodeMap.values())
