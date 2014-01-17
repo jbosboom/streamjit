@@ -42,12 +42,12 @@ public interface ConfigurationManager {
 	 * @param streamGraph
 	 * @param source
 	 * @param sink
-	 * @param noOfPartitions
+	 * @param noOfMachines
 	 * @return
 	 */
 	public Configuration getDefaultConfiguration(
 			OneToOneElement<?, ?> streamGraph, Worker<?, ?> source,
-			Worker<?, ?> sink, int noOfPartitions);
+			Worker<?, ?> sink, int noOfMachines);
 
 	/**
 	 * When opentuner gives a new configuration, this method may be called to
