@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
-import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Blob.Token;
@@ -45,9 +44,8 @@ public interface ConfigurationManager {
 	 * @param noOfMachines
 	 * @return
 	 */
-	public Configuration getDefaultConfiguration(
-			OneToOneElement<?, ?> streamGraph, Worker<?, ?> source,
-			Worker<?, ?> sink, int noOfMachines);
+	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers,
+			int noOfMachines);
 
 	/**
 	 * When opentuner gives a new configuration, this method may be called to
