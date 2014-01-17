@@ -18,16 +18,12 @@ import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.BlobFactory;
-import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
-import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
+import edu.mit.streamjit.impl.distributed.ConfigurationManager.AbstractConfigurationManager;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.Utils;
-import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.AbstractPartitioner;
 
 /**
@@ -48,11 +44,10 @@ import edu.mit.streamjit.partitioner.AbstractPartitioner;
  * @since Jan 16, 2014
  * 
  */
-public class WorkerMachine implements ConfigurationManager {
-	private final StreamJitApp app;
+public final class WorkerMachine extends AbstractConfigurationManager {
 
 	WorkerMachine(StreamJitApp app) {
-		this.app = app;
+		super(app);
 	}
 
 	@Override
@@ -347,43 +342,6 @@ public class WorkerMachine implements ConfigurationManager {
 		builder.putExtraData(GlobalConstants.JARFILE_PATH, app.jarFilePath)
 				.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME,
 						app.topLevelClass);
-		return builder.build();
-	}
-
-	@Override
-	public Configuration getDynamicConfiguration() {
-		Configuration.Builder builder = Configuration.builder();
-
-		Map<Integer, Integer> coresPerMachine = new HashMap<>();
-		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine : app.partitionsMachineMap
-				.entrySet()) {
-			coresPerMachine.put(machine.getKey(), machine.getValue().size());
-		}
-
-		PartitionParameter.Builder partParam = PartitionParameter.builder(
-				GlobalConstants.PARTITION, coresPerMachine);
-
-		BlobFactory factory = new Interpreter.InterpreterBlobFactory();
-		partParam.addBlobFactory(factory);
-
-		app.blobtoMachineMap = new HashMap<>();
-
-		for (Integer machineID : app.partitionsMachineMap.keySet()) {
-			List<Set<Worker<?, ?>>> blobList = app.partitionsMachineMap
-					.get(machineID);
-			for (Set<Worker<?, ?>> blobWorkers : blobList) {
-				// TODO: One core per blob. Need to change this.
-				partParam.addBlob(machineID, 1, factory, blobWorkers);
-
-				// TODO: Temp fix to build.
-				Token t = Utils.getblobID(blobWorkers);
-				app.blobtoMachineMap.put(t, machineID);
-			}
-		}
-
-		builder.addParameter(partParam.build());
-		if (app.blobConfiguration != null)
-			builder.addSubconfiguration("blobConfigs", app.blobConfiguration);
 		return builder.build();
 	}
 }
