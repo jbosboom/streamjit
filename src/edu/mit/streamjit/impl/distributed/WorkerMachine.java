@@ -53,7 +53,7 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 	@Override
 	public Configuration getDefaultConfiguration(
 			OneToOneElement<?, ?> streamGraph, Worker<?, ?> source,
-			Worker<?, ?> sink, int noOfPartitions) {
+			Worker<?, ?> sink, int noOfMachines) {
 		// TODO Auto-generated method stub
 		return null;
 	}
