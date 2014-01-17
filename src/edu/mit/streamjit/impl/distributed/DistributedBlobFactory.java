@@ -37,8 +37,16 @@ public class DistributedBlobFactory implements BlobFactory {
 
 	private int noOfMachines;
 
-	public DistributedBlobFactory(int noOfMachines) {
+	private final ConfigurationManager cfgManager;
+
+	public DistributedBlobFactory(ConfigurationManager cfgManager,
+			int noOfMachines) {
+		this.cfgManager = cfgManager;
 		this.noOfMachines = noOfMachines;
+	}
+
+	public DistributedBlobFactory(int noOfMachines) {
+		this(new WorkerMachine(null), noOfMachines);
 	}
 
 	@Override
@@ -50,10 +58,16 @@ public class DistributedBlobFactory implements BlobFactory {
 
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
+
+		Configuration distCfg = cfgManager.getDefaultConfiguration(workers,
+				noOfMachines);
+		Configuration.Builder builder = Configuration.builder(distCfg);
+
 		BlobFactory compilerBf = new CompilerBlobFactory();
 		Configuration compilercfg = compilerBf.getDefaultConfiguration(workers);
+		for (Parameter p : compilercfg.getParametersMap().values())
+			builder.addParameter(p);
 
-		Configuration.Builder builder = Configuration.builder(compilercfg);
 		Configuration.IntParameter multiplierParam = (Configuration.IntParameter) builder
 				.removeParameter("multiplier");
 
@@ -63,30 +77,8 @@ public class DistributedBlobFactory implements BlobFactory {
 					multiplierParam.getValue()));
 		}
 
-		// Configuration.Builder builder = Configuration.builder();
-		List<Integer> machinelist = new ArrayList<>(noOfMachines);
-		for (int i = 1; i <= noOfMachines; i++)
-			machinelist.add(i);
-
-		for (Worker<?, ?> w : workers) {
-			Parameter p = new Configuration.SwitchParameter<Integer>(
-					String.format("worker%dtomachine", Workers.getIdentifier(w)),
-					Integer.class, 1, machinelist);
-			builder.addParameter(p);
-		}
-
-		// This parameter cannot be tuned. Its added here because we need this
-		// parameter to run the app.
-		// TODO: Consider using partition parameter and extradata to store this
-		// kind of not tunable data.
-		IntParameter noOfMachinesParam = new IntParameter("noOfMachines",
-				noOfMachines, noOfMachines, noOfMachines);
-
-		builder.addParameter(noOfMachinesParam);
-
 		return builder.build();
 	}
-
 	@Override
 	public boolean equals(Object o) {
 		return getClass() == o.getClass()
