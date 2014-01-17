@@ -125,6 +125,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		StreamJitApp app = new StreamJitApp(stream.getClass().getSimpleName(),
 				stream.getClass().getName(), source, sink);
+		ConfigurationManager cfgManager = new WorkerMachine(app);
 
 		if (GlobalConstants.useCfgFile)
 			this.cfg = readConfiguration(stream.getClass().getSimpleName());
@@ -145,7 +146,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 					machineIds, stream, source, sink);
 			app.newPartitionMap(partitionsMachineMap);
 		} else
-			app.newConfiguration(cfg);
+			cfgManager.newConfiguration(cfg);
 
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
 		// context.
@@ -157,7 +158,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 
-		StreamJitAppManager manager = new StreamJitAppManager(controller, app);
+		StreamJitAppManager manager = new StreamJitAppManager(controller, app,
+				cfgManager);
 		final AbstractDrainer drainer = new DistributedDrainer(manager);
 		drainer.setBlobGraph(app.blobGraph);
 
@@ -200,7 +202,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		if (!GlobalConstants.useCfgFile && this.cfg != null) {
 			OnlineTuner tuner = new OnlineTuner(drainer, manager, app,
-					needTermination);
+					cfgManager, needTermination);
 			new Thread(tuner, "OnlineTuner").start();
 		}
 		return cs;
