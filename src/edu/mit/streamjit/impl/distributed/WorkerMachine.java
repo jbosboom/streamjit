@@ -14,7 +14,6 @@ import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Joiner;
-import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
@@ -51,9 +50,8 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 	}
 
 	@Override
-	public Configuration getDefaultConfiguration(
-			OneToOneElement<?, ?> streamGraph, Worker<?, ?> source,
-			Worker<?, ?> sink, int noOfMachines) {
+	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers,
+			int noOfMachines) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -344,4 +342,5 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 						app.topLevelClass);
 		return builder.build();
 	}
+
 }
