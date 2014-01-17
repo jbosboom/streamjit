@@ -45,6 +45,12 @@ public class DistributedBlobFactory implements BlobFactory {
 		this.noOfMachines = noOfMachines;
 	}
 
+	/**
+	 * If {@link ConfigurationManager} is not passed as a constructor argument
+	 * then {@link WorkerMachine} will be used as default one.
+	 * 
+	 * @param noOfMachines
+	 */
 	public DistributedBlobFactory(int noOfMachines) {
 		this(new WorkerMachine(null), noOfMachines);
 	}
