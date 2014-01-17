@@ -20,6 +20,8 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
+import edu.mit.streamjit.impl.common.Configuration.IntParameter;
+import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager.AbstractConfigurationManager;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
@@ -52,8 +54,27 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers,
 			int noOfMachines) {
-		// TODO Auto-generated method stub
-		return null;
+		Configuration.Builder builder = Configuration.builder();
+		List<Integer> machinelist = new ArrayList<>(noOfMachines);
+		for (int i = 1; i <= noOfMachines; i++)
+			machinelist.add(i);
+
+		for (Worker<?, ?> w : workers) {
+			Parameter p = new Configuration.SwitchParameter<Integer>(
+					String.format("worker%dtomachine", Workers.getIdentifier(w)),
+					Integer.class, 1, machinelist);
+			builder.addParameter(p);
+		}
+
+		// This parameter cannot be tuned. Its added here because we need this
+		// parameter to run the app.
+		// TODO: Consider using partition parameter and extradata to store this
+		// kind of not tunable data.
+		IntParameter noOfMachinesParam = new IntParameter("noOfMachines",
+				noOfMachines, noOfMachines, noOfMachines);
+
+		builder.addParameter(noOfMachinesParam);
+		return builder.build();
 	}
 
 	/**
