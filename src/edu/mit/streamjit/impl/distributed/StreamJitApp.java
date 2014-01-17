@@ -8,6 +8,7 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
 
+import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.BlobFactory;
@@ -50,6 +51,8 @@ public class StreamJitApp {
 
 	public final String name;
 
+	final OneToOneElement<?, ?> streamGraph;
+
 	public BlobGraph blobGraph;
 
 	public Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap;
@@ -73,15 +76,15 @@ public class StreamJitApp {
 	 */
 	public Configuration blobConfiguration = null;
 
-	public StreamJitApp(String name, String topLevelClass, Worker<?, ?> source,
+	public StreamJitApp(OneToOneElement<?, ?> streamGraph, Worker<?, ?> source,
 			Worker<?, ?> sink) {
-		this.name = name;
-		this.topLevelClass = topLevelClass;
+		this.streamGraph = streamGraph;
+		this.name = streamGraph.getClass().getSimpleName();
+		this.topLevelClass = streamGraph.getClass().getName();
 		this.source = source;
 		this.sink = sink;
 		this.jarFilePath = this.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
-
 	}
 
 	/**
