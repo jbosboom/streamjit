@@ -19,7 +19,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
-import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
+import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmark.Dataset;
@@ -138,8 +138,8 @@ public class RunApp {
 		StreamCompiler sc;
 		IntParameter p = cfg.getParameter("noOfMachines", IntParameter.class);
 		if (p == null) {
-			CompilerStreamCompiler csc = new CompilerStreamCompiler();
-			csc.setConfig(cfg);
+			Compiler2StreamCompiler csc = new Compiler2StreamCompiler();
+			csc.configuration(cfg);
 			sc = csc;
 		} else {
 			sc = new DistributedStreamCompiler(p.getValue(), cfg);
