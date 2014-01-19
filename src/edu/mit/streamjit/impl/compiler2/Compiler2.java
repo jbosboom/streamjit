@@ -78,9 +78,9 @@ public class Compiler2 {
 			RoundrobinSplitter.class, WeightedRoundrobinSplitter.class, DuplicateSplitter.class,
 			RoundrobinJoiner.class, WeightedRoundrobinJoiner.class);
 	public static final ImmutableSet<IndexFunctionTransformer> INDEX_FUNCTION_TRANSFORMERS = ImmutableSet.<IndexFunctionTransformer>of(
-			new IdentityIndexFunctionTransformer(),
-			new ArrayifyIndexFunctionTransformer(false),
-			new ArrayifyIndexFunctionTransformer(true)
+			new IdentityIndexFunctionTransformer()
+//			new ArrayifyIndexFunctionTransformer(false),
+//			new ArrayifyIndexFunctionTransformer(true)
 	);
 	public static final RemovalStrategy REMOVAL_STRATEGY = new BitsetRemovalStrategy();
 	public static final FusionStrategy FUSION_STRATEGY = new BitsetFusionStrategy();
