@@ -10,10 +10,6 @@ import java.sql.SQLException;
 
 import com.google.common.base.Splitter;
 
-import edu.mit.streamjit.api.CompiledStream;
-import edu.mit.streamjit.api.Input;
-import edu.mit.streamjit.api.OneToOneElement;
-import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
@@ -22,7 +18,6 @@ import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.test.Benchmark;
-import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.tuner.ConfigGenerator.sqliteAdapter;
@@ -98,17 +93,36 @@ public class RunApp {
 		Configuration cfg2 = rebuildConfiguration(pyDict, config);
 
 		Benchmark app = Benchmarker.getBenchmarkByName(benchmarkName);
+		StreamCompiler sc;
+		IntParameter p = cfg2.getParameter("noOfMachines", IntParameter.class);
+		if (p == null) {
+			Compiler2StreamCompiler csc = new Compiler2StreamCompiler();
+			csc.configuration(cfg2);
+			sc = csc;
+		} else {
+			sc = new DistributedStreamCompiler(p.getValue(), cfg2);
+		}
+
 		double time = 0;
-		MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
 		try {
-			time = runApp(app, cfg2);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-			time = -1;
+			Benchmarker.Result benchmarkResult = Benchmarker.runBenchmark(app, sc).get(0);
+			if (benchmarkResult.isOK())
+				time = benchmarkResult.runMillis();
+			else if (benchmarkResult.kind() == Benchmarker.Result.Kind.TIMEOUT)
+				time = -1;
+			else if (benchmarkResult.kind() == Benchmarker.Result.Kind.EXCEPTION) {
+				benchmarkResult.throwable().printStackTrace();
+				time = -2;
+			} else if (benchmarkResult.kind() == Benchmarker.Result.Kind.WRONG_OUTPUT) {
+				System.out.println("WRONG OUTPUT");
+				time = -2;
+			}
 		} catch (Exception e) {
+			//The Benchmarker should catch everything, but just in case...
 			e.printStackTrace();
 			time = -2;
 		} catch (OutOfMemoryError er) {
+			MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
 			System.out.println("******OutOfMemoryError******");
 			MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
 			int MEGABYTE = 1024 * 1024;
@@ -131,42 +145,6 @@ public class RunApp {
 		String s2 = s1.replaceAll("javaClassPath", "class");
 		String s3 = s2.replaceAll("ttttt", "__class__");
 		return s3;
-	}
-
-	private static double runApp(Benchmark app, Configuration cfg)
-			throws InterruptedException {
-		StreamCompiler sc;
-		IntParameter p = cfg.getParameter("noOfMachines", IntParameter.class);
-		if (p == null) {
-			Compiler2StreamCompiler csc = new Compiler2StreamCompiler();
-			csc.configuration(cfg);
-			sc = csc;
-		} else {
-			sc = new DistributedStreamCompiler(p.getValue(), cfg);
-		}
-		Dataset dataset = app.inputs().get(0);
-
-		Input<Object> input = dataset.input();
-		// Input<Object> input = Datasets.nCopies(10, dataset.input());
-		// Output<Object> output = Output.blackHole();
-		Output<Object> output = Output.<Object> toPrintStream(System.out);
-
-		long startTime = System.nanoTime();
-		run(sc, app.instantiate(), input, output);
-		long endTime = System.nanoTime();
-		double diff = (endTime - startTime) / 1e6;
-		return diff;
-	}
-
-	private static void run(StreamCompiler compiler,
-			OneToOneElement<Object, Object> streamGraph, Input<Object> input,
-			Output<Object> output) {
-		CompiledStream stream = compiler.compile(streamGraph, input, output);
-		try {
-			stream.awaitDrained();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
 	}
 
 	/**
