@@ -322,6 +322,7 @@ public final class Benchmarker {
 			this.runMillis = runMillis;
 			this.outputsProduced = outputsProduced;
 		}
+		//<editor-fold defaultstate="collapsed" desc="Factory methods">
 		private static Result ok(Benchmark benchmark, Dataset dataset, StreamCompiler compiler, long compileMillis, long runMillis, long outputsProduced) {
 			return new Result(Kind.OK, benchmark, dataset, compiler, null, null, null, null, compileMillis, runMillis, outputsProduced);
 		}
@@ -334,6 +335,24 @@ public final class Benchmarker {
 		private static Result timeout(Benchmark benchmark, Dataset dataset, StreamCompiler compiler) {
 			return new Result(Kind.TIMEOUT, benchmark, dataset, compiler, null, null, null, null, -1, -1, -1);
 		}
+		//</editor-fold>
+		public Kind kind() {
+			return kind;
+		}
+		public boolean isOK() {
+			return kind() == Kind.OK;
+		}
+		//TODO: use a TimeUnit-based interface to permit sub-/super-milliseconds?
+		public long compileMillis() {
+			return compileMillis;
+		}
+		public long runMillis() {
+			return runMillis;
+		}
+		public Throwable throwable() {
+			return throwable;
+		}
+		//<editor-fold defaultstate="collapsed" desc="Formatting methods">
 		public void print(OutputStream stream) {
 			print(stream, new HumanResultFormatter());
 		}
@@ -354,6 +373,7 @@ public final class Benchmarker {
 		public String toString() {
 			return new HumanResultFormatter().format(this);
 		}
+		//</editor-fold>
 	}
 
 	/**
