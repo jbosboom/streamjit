@@ -2,19 +2,13 @@ package edu.mit.streamjit.tuner;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ServiceLoader;
 
 import com.google.common.base.Splitter;
-import com.google.common.base.Strings;
 
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Input;
@@ -29,7 +23,7 @@ import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmark.Dataset;
-import edu.mit.streamjit.test.BenchmarkProvider;
+import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.tuner.ConfigGenerator.sqliteAdapter;
 
@@ -38,10 +32,10 @@ import edu.mit.streamjit.tuner.ConfigGenerator.sqliteAdapter;
  * information from streamjit.db based on the passed arguments, runs the
  * streamJit app and update the database with the execution time. StreamJit's
  * opentuner Python script calls this to run the streamJit application.
- * 
+ *
  * @author Sumanan sumanan@mit.edu
  * @since Sep 10, 2013
- * 
+ *
  */
 public class RunApp {
 
@@ -55,11 +49,11 @@ public class RunApp {
 			throw new IllegalArgumentException(
 					"Not enough arguments to run the app");
 
-		String program = args[0];
+		String benchmarkName = args[0];
 		int round = Integer.parseInt(args[1]);
 
 		System.out.println(String.format("JAVA Executing: %s Round - %d",
-				program, round));
+				benchmarkName, round));
 
 		String dbPath = "streamjit.db";
 
@@ -75,16 +69,11 @@ public class RunApp {
 		sqlite.connectDB(dbPath);
 
 		ResultSet result = sqlite.executeQuery(String.format(
-				"SELECT * FROM apps WHERE name='%s'", program));
+				"SELECT * FROM apps WHERE name='%s'", benchmarkName));
 
 		String confgString = result.getString("configuration");
-		String jarFilePath = result.getString("location");
-		String className = result.getString("classname");
 
-		// We can just run locally with the relative path as well. If the IDE is
-		// Eclipse IDE then 'bin', if Netbeans the 'build'
-		jarFilePath = "bin";
-		String sjDbPath = "sj" + program + ".db";
+		String sjDbPath = "sj" + benchmarkName + ".db";
 		sqliteAdapter sjDb;
 		try {
 			sjDb = new sqliteAdapter();
@@ -108,8 +97,7 @@ public class RunApp {
 
 		Configuration cfg2 = rebuildConfiguration(pyDict, config);
 
-		BenchmarkProvider provider = getClass(jarFilePath, className);
-		Benchmark app = provider.iterator().next();
+		Benchmark app = Benchmarker.getBenchmarkByName(benchmarkName);
 		double time = 0;
 		MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
 		try {
@@ -143,79 +131,6 @@ public class RunApp {
 		String s2 = s1.replaceAll("javaClassPath", "class");
 		String s3 = s2.replaceAll("ttttt", "__class__");
 		return s3;
-	}
-
-	/**
-	 * @param jarFilePath
-	 * @param className
-	 * @return : T
-	 */
-	private static <T> T getClass(String jarFilePath, String className) {
-		checkNotNull(jarFilePath);
-		checkNotNull(className);
-
-		File jarFile = new java.io.File(jarFilePath);
-		if (!jarFile.exists()) {
-			System.err.println("Jar file not found....");
-			return null;
-		}
-
-		// Most of the cases benchmark is written as an inner class.
-		String outterClassName = null;
-		if (className.contains("$")) {
-			int pos = className.indexOf("$");
-			outterClassName = (String) className.subSequence(0, pos);
-			className = className.substring(pos + 1);
-		}
-
-		URL url;
-		try {
-			url = jarFile.toURI().toURL();
-			URL[] urls = new URL[]{url};
-
-			ClassLoader loader = new URLClassLoader(urls);
-			Class<?> topStreamClass;
-			if (!Strings.isNullOrEmpty(outterClassName)) {
-				Class<?> clazz1 = loader.loadClass(outterClassName);
-				topStreamClass = getInngerClass(clazz1, className);
-			} else {
-				topStreamClass = loader.loadClass(className);
-			}
-			return (T) topStreamClass.newInstance();
-
-		} catch (MalformedURLException e) {
-			e.printStackTrace();
-			System.err.println("Couldn't find the benchmark class...Exiting");
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.err.println("Couldn't find the benchmark class.");
-		}
-		return null;
-	}
-
-	private static Class<?> getInngerClass(Class<?> OutterClass,
-			String InnterClassName) throws ClassNotFoundException {
-		Class<?>[] kl = OutterClass.getClasses();
-		for (Class<?> k : kl) {
-			if (InnterClassName.equals(k.getSimpleName())) {
-				return k;
-			}
-		}
-		throw new ClassNotFoundException(
-				String.format(
-						"Innter class %s is not found in the outter class %s. Check the accessibility/visibility of the inner class",
-						InnterClassName, OutterClass.getName()));
-	}
-
-	private static Benchmark getBenchmark(String appName) {
-		ServiceLoader<BenchmarkProvider> loader = ServiceLoader
-				.load(BenchmarkProvider.class);
-		for (BenchmarkProvider benchProvider : loader) {
-			Benchmark bench = benchProvider.iterator().next();
-			if (bench.toString().equals(appName))
-				return bench;
-		}
-		throw new AssertionError("Benchmark not found");
 	}
 
 	private static double runApp(Benchmark app, Configuration cfg)
@@ -262,7 +177,7 @@ public class RunApp {
 	 * configuration object can be updated from the python dict string. Now we
 	 * are destructing the old confg object and recreating a new one every time.
 	 * Not a appreciatable way.
-	 * 
+	 *
 	 * @param pythonDict
 	 *            Python dictionary string. Autotuner gives a dictionary of
 	 *            features with trial values.
