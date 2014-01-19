@@ -1356,17 +1356,7 @@ public class Compiler2 {
 			int cores = Integer.parseInt(args[1]);
 			int multiplier = Integer.parseInt(args[2]);
 			sc = new Compiler2StreamCompiler().maxNumCores(cores).multiplier(multiplier);
-			bm = null;
-			for (Iterator<BenchmarkProvider> it = ServiceLoader.load(BenchmarkProvider.class).iterator(); bm == null && it.hasNext();) {
-				BenchmarkProvider provider = it.next();
-				for (Iterator<Benchmark> bit = provider.iterator(); bm == null && bit.hasNext();) {
-					Benchmark benchmark = bit.next();
-					if (benchmark.toString().equals(benchmarkName))
-						bm = benchmark;
-				}
-			}
-			if (bm == null)
-				throw new RuntimeException("no benchmark named "+benchmarkName);
+			bm = Benchmarker.getBenchmarkByName(benchmarkName);
 		} else {
 			sc = new Compiler2StreamCompiler().multiplier(64).maxNumCores(4);
 			bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
