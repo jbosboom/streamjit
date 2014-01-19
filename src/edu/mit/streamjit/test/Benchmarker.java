@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -259,6 +260,19 @@ public final class Benchmarker {
 		for (Dataset input : benchmark.inputs())
 			results.add(run(benchmark, input, compiler));
 		return results.build();
+	}
+
+	/**
+	 * Returns the Benchmark with the given name, or throws an exception.
+	 * @param name the benchmark name to look up
+	 * @return the Benchmark instance with the given name
+	 */
+	public static Benchmark getBenchmarkByName(String name) {
+		for (BenchmarkProvider provider : ServiceLoader.load(BenchmarkProvider.class))
+			for (Benchmark benchmark : provider)
+				if (benchmark.toString().equals(name))
+					return benchmark;
+		throw new NoSuchElementException("no benchmark named "+name);
 	}
 
 	private static final long TIMEOUT_DURATION = 1;
