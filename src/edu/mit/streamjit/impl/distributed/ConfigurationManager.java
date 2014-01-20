@@ -200,5 +200,9 @@ public interface ConfigurationManager {
 			return (Joiner<?, ?>) cur;
 		}
 
+		protected String getParamName(Integer id) {
+			assert id > -1 : "Worker id cannot be negative";
+			return String.format("worker%dtomachine", id);
+		}
 	}
 }
