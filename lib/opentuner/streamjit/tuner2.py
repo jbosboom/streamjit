@@ -50,35 +50,33 @@ class StreamJitMI(MeasurementInterface):
 		self.trycount = self.trycount + 1
 		print '\n**********New Run - %d **********'%self.trycount
 		#self.niceprint(cfg)
-		commandStr = ''
-		baseargs = ["java"]
+
+		#TODO: find a better place for these system-specific constants
+		#the path to the Java executable, or "java" to use system's default
+		javaPath = "java"
+		#the classpath, suitable as the value of the '-cp' java argument
+		javaClassPath = "dist/jstreamit.jar:lib/ASM/asm-debug-all-4.1.jar:lib/BridJ/bridj-0.6.2-c-only.jar:lib/CopyLibs/org-netbeans-modules-java-j2seproject-copylibstask.jar:lib/Guava/guava-15.0.jar:lib/Guava/guava-15.0-javadoc.jar:lib/Guava/guava-15.0-sources.jar:lib/JOptSimple/jopt-simple-4.5.jar:lib/JOptSimple/jopt-simple-4.5-javadoc.jar:lib/JOptSimple/jopt-simple-4.5-sources.jar:lib/jsonp/javax.json-1.0-fab.jar:lib/jsonp/javax.json-api-1.0-SNAPSHOT-javadoc.jar:lib/ServiceProviderProcessor/ServiceProviderProcessor.jar:lib/sqlite/sqlite-jdbc-3.7.15-M1.jar"
+
+		args = [javaPath, "-cp", javaClassPath]
+		jvmArgs = []
 		for key in self.jvmOptions.keys():
-			#print "\t", key
-  			val = cfg[key]
-			self.jvmOptions.get(key).setValue(val)
+			self.jvmOptions.get(key).setValue(cfg[key])
 			cmd = self.jvmOptions.get(key).getCommand()
-			commandStr += cmd
-			commandStr += ' '
-			baseargs.append(cmd)
-				
+			if len(cmd) > 0:
+				jvmArgs.append(cmd)
+		args.extend(jvmArgs)
+		args.append("edu.mit.streamjit.tuner.RunApp")
+		args.append(str(self.program))
+		args.append(str(self.trycount))
+
 		cur = self.tunedataDB.cursor()
-		query = 'INSERT INTO results VALUES (%d,"%s","%s", "%f")'%(self.trycount, commandStr, cfg, -1)
+		query = 'INSERT INTO results VALUES (%d,"%s","%s", "%f")'%(self.trycount, " ".join(jvmArgs), cfg, -1)
 		cur.execute(query)
 		self.tunedataDB.commit()
-		
-		print commandStr
-		#baseargs.append("-XX:+PrintCommandLineFlags")
 
-		baseargs.append("-jar")
-		args = list(baseargs)
-		args.append("RunApp.jar")
-		args.append("%s"%self.program)
-		args.append("%d"%self.trycount)
-
-		#p = subprocess.Popen(["java",'%s'%commandStr, "-jar","RunApp.jar", "%s"%self.program, "%d"%self.trycount])
 		p = subprocess.Popen(args, stderr=subprocess.PIPE)
 		if cfg.get('noOfMachines'):
-			self.startStreamNodes(cfg.get('noOfMachines') - 1,baseargs)
+			self.startStreamNodes(cfg.get('noOfMachines') - 1, args)
 
 		timeout = 100
 
