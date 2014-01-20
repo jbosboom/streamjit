@@ -353,13 +353,4 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 		return (Joiner<?, ?>) cur;
 	}
 
-	@Override
-	public Configuration getStaticConfiguration() {
-		Configuration.Builder builder = Configuration.builder();
-		builder.putExtraData(GlobalConstants.JARFILE_PATH, app.jarFilePath)
-				.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME,
-						app.topLevelClass);
-		return builder.build();
-	}
-
 }
