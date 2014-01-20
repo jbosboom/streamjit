@@ -218,7 +218,7 @@ def start(program):
 
 	# Performance Options
 	aggressiveOpts = jvmFlag("aggressiveOpts", "-XX:+AggressiveOpts")
-	compileThreshold = jvmIntegerParameter("compileThreshold", 1000, 100000, 1500, "-XX:CompileThreshold=%d")
+	compileThreshold = jvmIntegerParameter("compileThreshold", 50, 1000, 300, "-XX:CompileThreshold=%d")
 	largePageSizeInBytes = jvmPowerOfTwoParameter("largePageSizeInBytes", 2, 256, "-XX:LargePageSizeInBytes=%dm")
 	maxHeapFreeRatio = jvmIntegerParameter("maxHeapFreeRatio", 10, 100, 70, "-XX:MaxHeapFreeRatio=%d")
 	minHeapFreeRatio = jvmIntegerParameter("minHeapFreeRatio", 5, 100, 70, "-XX:MinHeapFreeRatio=%d")
@@ -233,9 +233,14 @@ def start(program):
 	useCompressedStrings = jvmFlag("useCompressedStrings", "-XX:+UseCompressedStrings")
 	optimizeStringConcat = jvmFlag("optimizeStringConcat", "-XX:+OptimizeStringConcat")
 
-	#jvmOptions = {"gc":gc, "maxHeap":maxHeap, "newRatio":newRatio, "maxPermSize":maxPermSize, "maxGCPauseMillis":maxGCPauseMillis, "survivorRatio":survivorRatio, "parallelGCThreads":parallelGCThreads, "concGCThreads":concGCThreads, "aggressiveOpts":aggressiveOpts,  "compileThreshold":compileThreshold, "largePageSizeInBytes":largePageSizeInBytes, "maxHeapFreeRatio":maxHeapFreeRatio, "minHeapFreeRatio":minHeapFreeRatio, "threadStackSize":threadStackSize, "useBiasedLocking":useBiasedLocking, "useFastAccessorMethods":useFastAccessorMethods, "useISM":useISM, "useLargePages":useLargePages, "useStringCache":useStringCache, "allocatePrefetchLines":allocatePrefetchLines, "allocatePrefetchStyle":allocatePrefetchStyle, "useCompressedStrings":useCompressedStrings, "optimizeStringConcat":optimizeStringConcat}
+	# options controlling inlining
+	freqInlineSize = jvmIntegerParameter("freqInlineSize", 100, 10000, 325, "-XX:FreqInlineSize=%d")
+	inlineSmallCode = jvmIntegerParameter("inlineSmallCode", 500, 10000, 1000, "-XX:InlineSmallCode=%d")
+	maxInlineSize = jvmIntegerParameter("maxInlineSize", 20, 1000, 35, "-XX:MaxInlineSize=%d")
+	maxInlineLevel = jvmIntegerParameter("maxInlineLevel", 5, 20, 9, "-XX:MaxInlineLevel=%d")
 
-	jvmOptions = {"gc":gc, "maxHeap":maxHeap, "newRatio":newRatio, "maxPermSize":maxPermSize, "maxGCPauseMillis":maxGCPauseMillis, "survivorRatio":survivorRatio, "parallelGCThreads":parallelGCThreads, "concGCThreads":concGCThreads, "aggressiveOpts":aggressiveOpts,  "compileThreshold":compileThreshold, "largePageSizeInBytes":largePageSizeInBytes, "threadStackSize":threadStackSize}
+	enabledJvmOptions = [aggressiveOpts, compileThreshold, freqInlineSize, maxInlineSize, maxInlineLevel]
+	jvmOptions = {x.name:x for x in enabledJvmOptions}
 
 	main(args, cfgparams, jvmOptions)
 
