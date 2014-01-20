@@ -58,8 +58,8 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 
 		for (Worker<?, ?> w : workers) {
 			Parameter p = new Configuration.SwitchParameter<Integer>(
-					String.format("worker%dtomachine", Workers.getIdentifier(w)),
-					Integer.class, 1, machinelist);
+					getParamName(Workers.getIdentifier(w)), Integer.class, 1,
+					machinelist);
 			builder.addParameter(p);
 		}
 
@@ -120,8 +120,8 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 
 		Map<Integer, Set<Worker<?, ?>>> partition = new HashMap<>();
 		for (Worker<?, ?> w : workerset) {
-			SwitchParameter<Integer> w2m = config.getParameter(String.format(
-					"worker%dtomachine", Workers.getIdentifier(w)),
+			SwitchParameter<Integer> w2m = config.getParameter(
+					getParamName(Workers.getIdentifier(w)),
 					SwitchParameter.class);
 			int machine = w2m.getValue();
 
