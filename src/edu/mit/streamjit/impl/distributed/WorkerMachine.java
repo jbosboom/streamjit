@@ -291,12 +291,10 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 
 	/**
 	 * Copied form {@link AbstractPartitioner} class. But modified to support
-	 * nested splitjoiners.</p> Returns all {@link Filter}s in a splitjoin. Does
-	 * not include the splitter or the joiner.
+	 * nested splitjoiners.</p> Returns all {@link Worker}s in a splitjoin.
 	 * 
 	 * @param splitter
-	 * @return Returns all {@link Filter}s in a splitjoin. Does not include
-	 *         splitter or joiner.
+	 * @return Returns all {@link Filter}s in a splitjoin.
 	 */
 	protected void getAllChildWorkers(Splitter<?, ?> splitter,
 			Set<Worker<?, ?>> childWorkers) {
