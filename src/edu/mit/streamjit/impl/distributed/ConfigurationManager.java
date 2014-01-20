@@ -6,15 +6,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
+import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Joiner;
+import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.interp.Interpreter;
+import edu.mit.streamjit.partitioner.AbstractPartitioner;
 
 /**
  * ConfigurationManager deals with {@link Configuration}. Mainly, It does
@@ -83,11 +88,11 @@ public interface ConfigurationManager {
 	 * @author Sumanan sumanan@mit.edu
 	 * @since Jan 17, 2014
 	 */
-	public static abstract class AbstractConfigurationManager
-			implements
-				ConfigurationManager {
+	public static abstract class AbstractConfigurationManager implements
+			ConfigurationManager {
 
 		protected final StreamJitApp app;
+
 		AbstractConfigurationManager(StreamJitApp app) {
 			this.app = app;
 		}
@@ -139,5 +144,61 @@ public interface ConfigurationManager {
 						app.blobConfiguration);
 			return builder.build();
 		}
+
+		/**
+		 * Copied form {@link AbstractPartitioner} class. But modified to
+		 * support nested splitjoiners.</p> Returns all {@link Worker}s in a
+		 * splitjoin.
+		 * 
+		 * @param splitter
+		 * @return Returns all {@link Filter}s in a splitjoin.
+		 */
+		protected void getAllChildWorkers(Splitter<?, ?> splitter,
+				Set<Worker<?, ?>> childWorkers) {
+			childWorkers.add(splitter);
+			Joiner<?, ?> joiner = getJoiner(splitter);
+			Worker<?, ?> cur;
+			for (Worker<?, ?> childWorker : Workers.getSuccessors(splitter)) {
+				cur = childWorker;
+				while (cur != joiner) {
+					if (cur instanceof Filter<?, ?>)
+						childWorkers.add(cur);
+					else if (cur instanceof Splitter<?, ?>) {
+						getAllChildWorkers((Splitter<?, ?>) cur, childWorkers);
+						cur = getJoiner((Splitter<?, ?>) cur);
+					} else
+						throw new IllegalStateException(
+								"Some thing wrong in the algorithm.");
+
+					assert Workers.getSuccessors(cur).size() == 1 : "Illegal State encounted : cur can only be either a filter or a joner";
+					cur = Workers.getSuccessors(cur).get(0);
+				}
+			}
+			childWorkers.add(joiner);
+		}
+
+		/**
+		 * Find and returns the corresponding {@link Joiner} for the passed
+		 * {@link Splitter}.
+		 * 
+		 * @param splitter
+		 *            : {@link Splitter} that needs it's {@link Joiner}.
+		 * @return Corresponding {@link Joiner} of the passed {@link Splitter}.
+		 */
+		protected Joiner<?, ?> getJoiner(Splitter<?, ?> splitter) {
+			Worker<?, ?> cur = Workers.getSuccessors(splitter).get(0);
+			int innerSplitjoinCount = 0;
+			while (!(cur instanceof Joiner<?, ?>) || innerSplitjoinCount != 0) {
+				if (cur instanceof Splitter<?, ?>)
+					innerSplitjoinCount++;
+				if (cur instanceof Joiner<?, ?>)
+					innerSplitjoinCount--;
+				assert innerSplitjoinCount >= 0 : "Joiner Count is more than splitter count. Check the algorithm";
+				cur = Workers.getSuccessors(cur).get(0);
+			}
+			assert cur instanceof Joiner<?, ?> : "Error in algorithm. Not returning a Joiner";
+			return (Joiner<?, ?>) cur;
+		}
+
 	}
 }
