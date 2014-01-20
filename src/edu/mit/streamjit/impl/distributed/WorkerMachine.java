@@ -12,7 +12,6 @@ import java.util.Map.Entry;
 
 import com.google.common.collect.ImmutableSet;
 
-import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
@@ -24,8 +23,6 @@ import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager.AbstractConfigurationManager;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.partitioner.AbstractPartitioner;
 
 /**
  * This class implements one type of search space. Adds "worker to machine"
@@ -289,37 +286,6 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 		}
 	}
 
-	/**
-	 * Copied form {@link AbstractPartitioner} class. But modified to support
-	 * nested splitjoiners.</p> Returns all {@link Worker}s in a splitjoin.
-	 * 
-	 * @param splitter
-	 * @return Returns all {@link Filter}s in a splitjoin.
-	 */
-	protected void getAllChildWorkers(Splitter<?, ?> splitter,
-			Set<Worker<?, ?>> childWorkers) {
-		childWorkers.add(splitter);
-		Joiner<?, ?> joiner = getJoiner(splitter);
-		Worker<?, ?> cur;
-		for (Worker<?, ?> childWorker : Workers.getSuccessors(splitter)) {
-			cur = childWorker;
-			while (cur != joiner) {
-				if (cur instanceof Filter<?, ?>)
-					childWorkers.add(cur);
-				else if (cur instanceof Splitter<?, ?>) {
-					getAllChildWorkers((Splitter<?, ?>) cur, childWorkers);
-					cur = getJoiner((Splitter<?, ?>) cur);
-				} else
-					throw new IllegalStateException(
-							"Some thing wrong in the algorithm.");
-
-				assert Workers.getSuccessors(cur).size() == 1 : "Illegal State encounted : cur can only be either a filter or a joner";
-				cur = Workers.getSuccessors(cur).get(0);
-			}
-		}
-		childWorkers.add(joiner);
-	}
-
 	private Set<Splitter<?, ?>> getSplitters(Set<Worker<?, ?>> blobworkers) {
 		Set<Splitter<?, ?>> splitterSet = new HashSet<>();
 		for (Worker<?, ?> w : blobworkers) {
@@ -329,28 +295,4 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 		}
 		return splitterSet;
 	}
-
-	/**
-	 * Find and returns the corresponding {@link Joiner} for the passed
-	 * {@link Splitter}.
-	 * 
-	 * @param splitter
-	 *            : {@link Splitter} that needs it's {@link Joiner}.
-	 * @return Corresponding {@link Joiner} of the passed {@link Splitter}.
-	 */
-	protected Joiner<?, ?> getJoiner(Splitter<?, ?> splitter) {
-		Worker<?, ?> cur = Workers.getSuccessors(splitter).get(0);
-		int innerSplitjoinCount = 0;
-		while (!(cur instanceof Joiner<?, ?>) || innerSplitjoinCount != 0) {
-			if (cur instanceof Splitter<?, ?>)
-				innerSplitjoinCount++;
-			if (cur instanceof Joiner<?, ?>)
-				innerSplitjoinCount--;
-			assert innerSplitjoinCount >= 0 : "Joiner Count is more than splitter count. Check the algorithm";
-			cur = Workers.getSuccessors(cur).get(0);
-		}
-		assert cur instanceof Joiner<?, ?> : "Error in algorithm. Not returning a Joiner";
-		return (Joiner<?, ?>) cur;
-	}
-
 }
