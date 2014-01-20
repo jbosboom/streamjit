@@ -15,6 +15,8 @@ import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio.FMRadioCore;
+import edu.mit.streamjit.test.apps.fmradio.FMRadioReplicated.FMRadioCoreReplicated;
+import edu.mit.streamjit.test.sanity.nestedsplitjoinexample2.NestedSplitJoin2;
 
 public class ConfigurationEditor {
 
@@ -26,9 +28,9 @@ public class ConfigurationEditor {
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		// generate(new FMRadioCore());
-		// edit(name, noofwrks);
-		print("4366NestedSplitJoinCore.cfg");
+		generate(new NestedSplitJoin2.NestedSplitJoinCore());
+		edit(name, noofwrks);
+		// print("4366NestedSplitJoinCore.cfg");
 	}
 
 	private static void generate(OneToOneElement<?, ?> stream) {
@@ -76,19 +78,20 @@ public class ConfigurationEditor {
 
 		for (int i = 0; i < maxWor; i++) {
 			String s = String.format("worker%dtomachine", i);
-			IntParameter p = (IntParameter) cfg.getParameter(s);
+			SwitchParameter<Integer> p = (SwitchParameter<Integer>) cfg
+					.getParameter(s);
 			System.out.println(p.getName() + " - " + p.getValue());
 			int val = Integer.parseInt(keyinreader.readLine());
-
 			builder.removeParameter(s);
-			builder.addParameter(new IntParameter(s, p.getMin(), p.getMax(),
-					val));
+			builder.addParameter(new SwitchParameter<Integer>(s, Integer.class,
+					val, p.getUniverse()));
 		}
 
 		cfg = builder.build();
 		FileWriter writer = new FileWriter(name);
 		writer.write(cfg.toJson());
 		writer.close();
+		System.out.println("Successfully updated");
 	}
 
 	private static void print(String name) {
