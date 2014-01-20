@@ -5,11 +5,14 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Map;
 
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
+import edu.mit.streamjit.impl.common.Configuration.Parameter;
+import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio.FMRadioCore;
 
@@ -17,13 +20,15 @@ public class ConfigurationEditor {
 
 	static String name;
 	static int noofwrks;
+
 	/**
 	 * @param args
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		generate(new FMRadioCore());
-		edit(name, noofwrks);
+		// generate(new FMRadioCore());
+		// edit(name, noofwrks);
+		print("4366NestedSplitJoinCore.cfg");
 	}
 
 	private static void generate(OneToOneElement<?, ?> stream) {
@@ -84,5 +89,27 @@ public class ConfigurationEditor {
 		FileWriter writer = new FileWriter(name);
 		writer.write(cfg.toJson());
 		writer.close();
+	}
+
+	private static void print(String name) {
+		Configuration cfg;
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(name));
+			String json = reader.readLine();
+			cfg = Configuration.fromJson(json);
+			reader.close();
+		} catch (Exception ex) {
+			System.err.println("File reader error");
+			return;
+		}
+
+		for (Map.Entry<String, Parameter> en : cfg.getParametersMap()
+				.entrySet()) {
+			if (en.getValue() instanceof SwitchParameter<?>) {
+				SwitchParameter<Integer> sp = (SwitchParameter<Integer>) en
+						.getValue();
+				System.out.println(sp.getName() + " - " + sp.getValue());
+			}
+		}
 	}
 }
