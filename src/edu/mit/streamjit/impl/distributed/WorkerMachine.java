@@ -1,19 +1,14 @@
 package edu.mit.streamjit.impl.distributed;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Map.Entry;
 
 import com.google.common.collect.ImmutableSet;
 
-import edu.mit.streamjit.api.Joiner;
-import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.Configuration;
@@ -145,154 +140,5 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 			machineWorkerMap.put(machine, cycleMinimizedBlobs);
 		}
 		return machineWorkerMap;
-	}
-
-	/**
-	 * Goes through all workers in workerset which is passed as argument, find
-	 * the workers which are interconnected and group them as a blob workers.
-	 * i.e., Group the workers which are connected.
-	 * <p>
-	 * TODO: If any dynamic edges exists then should create interpreter blob.
-	 * 
-	 * @param workerset
-	 * @return list of workers set which contains interconnected workers. Each
-	 *         worker set in the list is supposed to run in an individual blob.
-	 */
-	private List<Set<Worker<?, ?>>> getConnectedComponents(
-			Set<Worker<?, ?>> workerset) {
-		List<Set<Worker<?, ?>>> ret = new ArrayList<Set<Worker<?, ?>>>();
-		while (!workerset.isEmpty()) {
-			Deque<Worker<?, ?>> queue = new ArrayDeque<>();
-			Set<Worker<?, ?>> blobworkers = new HashSet<>();
-			Worker<?, ?> w = workerset.iterator().next();
-			blobworkers.add(w);
-			workerset.remove(w);
-			queue.offer(w);
-			while (!queue.isEmpty()) {
-				Worker<?, ?> wrkr = queue.poll();
-				for (Worker<?, ?> succ : Workers.getSuccessors(wrkr)) {
-					if (workerset.contains(succ)) {
-						blobworkers.add(succ);
-						workerset.remove(succ);
-						queue.offer(succ);
-					}
-				}
-
-				for (Worker<?, ?> pred : Workers.getPredecessors(wrkr)) {
-					if (workerset.contains(pred)) {
-						blobworkers.add(pred);
-						workerset.remove(pred);
-						queue.offer(pred);
-					}
-				}
-			}
-			ret.add(blobworkers);
-		}
-		return ret;
-	}
-
-	/**
-	 * Cycles can occur iff splitter and joiner happened to fall into a blob
-	 * while some workers of that splitjoin falls into other blob. Here, we
-	 * check for the above mention condition. If cycles exists, split then in to
-	 * several blobs.
-	 * 
-	 * @param blobworkers
-	 * @return
-	 */
-	private List<Set<Worker<?, ?>>> breakCycles(Set<Worker<?, ?>> blobworkers) {
-		Map<Splitter<?, ?>, Joiner<?, ?>> rfctrSplitJoin = new HashMap<>();
-		Set<Splitter<?, ?>> splitterSet = getSplitters(blobworkers);
-		for (Splitter<?, ?> s : splitterSet) {
-			Joiner<?, ?> j = getJoiner(s);
-			if (blobworkers.contains(j)) {
-				Set<Worker<?, ?>> childWorkers = new HashSet<>();
-				getAllChildWorkers(s, childWorkers);
-				if (!blobworkers.containsAll(childWorkers)) {
-					rfctrSplitJoin.put(s, j);
-				}
-			}
-		}
-
-		List<Set<Worker<?, ?>>> ret = new ArrayList<>();
-
-		for (Splitter<?, ?> s : rfctrSplitJoin.keySet()) {
-			if (blobworkers.contains(s)) {
-				ret.add(getSplitterReachables(s, blobworkers, rfctrSplitJoin));
-			}
-		}
-		ret.addAll(getConnectedComponents(blobworkers));
-		return ret;
-	}
-
-	/**
-	 * Goes through the passed set of workers, add workers those are reachable
-	 * from the splitter s, but not any conflicting splitter or joiner.
-	 * <p>
-	 * This function has side effect. Modifies the argument.
-	 * 
-	 * @param s
-	 * @param blobworkers
-	 * @return
-	 */
-	private Set<Worker<?, ?>> getSplitterReachables(Splitter<?, ?> s,
-			Set<Worker<?, ?>> blobworkers,
-			Map<Splitter<?, ?>, Joiner<?, ?>> rfctrSplitJoin) {
-		assert blobworkers.contains(s) : "Splitter s in not in blobworkers";
-		Set<Worker<?, ?>> ret = new HashSet<>();
-		Set<Worker<?, ?>> exclude = new HashSet<>();
-		Deque<Worker<?, ?>> queue = new ArrayDeque<>();
-		ret.add(s);
-		exclude.add(rfctrSplitJoin.get(s));
-		blobworkers.remove(s);
-		queue.offer(s);
-		while (!queue.isEmpty()) {
-			Worker<?, ?> wrkr = queue.poll();
-			for (Worker<?, ?> succ : Workers.getSuccessors(wrkr)) {
-				process(succ, blobworkers, rfctrSplitJoin, exclude, queue, ret);
-			}
-
-			for (Worker<?, ?> pred : Workers.getPredecessors(wrkr)) {
-				process(pred, blobworkers, rfctrSplitJoin, exclude, queue, ret);
-			}
-		}
-		return ret;
-	}
-
-	/**
-	 * Since the code in this method repeated in two places in
-	 * getSplitterReachables() method, It is re-factored into a private method
-	 * to avoid code duplication.
-	 */
-	private void process(Worker<?, ?> wrkr, Set<Worker<?, ?>> blobworkers,
-			Map<Splitter<?, ?>, Joiner<?, ?>> rfctrSplitJoin,
-			Set<Worker<?, ?>> exclude, Deque<Worker<?, ?>> queue,
-			Set<Worker<?, ?>> ret) {
-		if (blobworkers.contains(wrkr) && !exclude.contains(wrkr)) {
-			ret.add(wrkr);
-			blobworkers.remove(wrkr);
-			queue.offer(wrkr);
-
-			for (Entry<Splitter<?, ?>, Joiner<?, ?>> e : rfctrSplitJoin
-					.entrySet()) {
-				if (e.getValue().equals(wrkr)) {
-					exclude.add(e.getKey());
-					break;
-				} else if (e.getKey().equals(wrkr)) {
-					exclude.add(e.getValue());
-					break;
-				}
-			}
-		}
-	}
-
-	private Set<Splitter<?, ?>> getSplitters(Set<Worker<?, ?>> blobworkers) {
-		Set<Splitter<?, ?>> splitterSet = new HashSet<>();
-		for (Worker<?, ?> w : blobworkers) {
-			if (w instanceof Splitter<?, ?>) {
-				splitterSet.add((Splitter<?, ?>) w);
-			}
-		}
-		return splitterSet;
 	}
 }
