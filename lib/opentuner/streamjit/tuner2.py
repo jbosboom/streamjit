@@ -3,6 +3,7 @@ import argparse
 import logging
 import json
 import sjparameters
+import sjtechniques
 import configuration
 import streamjit
 import sys
@@ -23,6 +24,7 @@ from jvmparameters import *
 class StreamJitMI(MeasurementInterface):
 	''' Measurement Interface for tunning a StreamJit application'''
 	def __init__(self, args, jvmOptions, manipulator, inputmanager, objective):
+		args.technique = ['StreamJITBandit']
 		super(StreamJitMI, self).__init__(args = args, program_name = args.program, manipulator = manipulator, input_manager = inputmanager, objective = objective)
 		self.trycount = 0
 		self.jvmOptions = jvmOptions
