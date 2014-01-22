@@ -1,71 +1,78 @@
 import json
 import sjparameters
 
-
-def convert_to_builtin_type(obj):
-    # Convert objects to a dictionary of their representation
-    d = { '__class__':obj.__class__.__name__, 
-          '__module__':obj.__module__,
-          }
-    d.update(obj.__dict__)
-    return d
-	
 def dict_to_object(d):
-    if '__class__' in d:
-        class_name = d.pop('__class__')
-        module_name = d.pop('__module__')
-        module = __import__(module_name)
-        #print 'MODULE:', module
-        class_ = getattr(module, class_name)
-        #print 'CLASS:', class_
-        args = dict( (key.encode('ascii'), value) for key, value in d.items())
-        #print 'INSTANCE ARGS:', args
-        inst = class_(**args)		
-    else:
-        inst = d
-    return inst
+	if '__class__' in d:
+		class_name = d.pop('__class__')
+		module_name = d.pop('__module__')
+		module = __import__(module_name)
+		#print 'MODULE:', module
+		class_ = getattr(module, class_name)
+		#print 'CLASS:', class_
+		args = dict( (key.encode('ascii'), value) for key, value in d.items())
+		#print 'INSTANCE ARGS:', args
+		# work around 'class' being reserved
+		args['javaClass'] = args['class']
+		del args['class']
+		inst = class_(**args)
+		return inst
+	return d
+
+class SJJSONEncoder(json.JSONEncoder):
+	def default(self, o):
+		if hasattr(o, 'json_replacement'):
+			d = {'__class__':o.__class__.__name__, '__module__':o.__module__}
+			d.update(o.json_replacement())
+			return d
+		else:
+			return json.JSONEncoder.default(self, o)
 
 def getConfiguration(cfgString):
 	return json.loads(cfgString, object_hook=dict_to_object)
 
 class Configuration:
-	def __init__(self, params, subconfigs,extraData,javaClassPath):
+	def __init__(self, params, subconfigs, extraData, javaClass):
 		self.params = params
 		self.subconfigs = subconfigs
-		self.javaClassPath = javaClassPath
-		
+		# Extra data is a mapping of string keys to 2-element lists, where the
+		# first element is the Java class name and the second element is the
+		# data itself.  This is required to avoid ambiguity when deserializing
+		# on the Java side.
+		self.extraData = extraData
+		self.javaClass = javaClass
+
 	def addParameter(self, id, param):
 		self.params.update({id:param})
-		
+
 	def getParameter(self, id):
 		return self.params[id]
-		
+
 	def deleteParameter(self, id):
 		del self.params[id]
 
-	def getJavaClassPath(self):
-		return self.javaClassPath
-		
 	def addSubConfiguration(self, id, subconfig):
 		self.subconfigs.update({id:subconfig})
-		
+
 	def getSubConfiguration(self, id):
 		return self.subconfigs[id]
-		
+
 	def deleteSubConfiguration(self, id):
 		del self.subconfigs[id]
 
 	def getAllParameters(self):
 		return self.params
 
-# To test the class		
-if __name__ == '__main__':
-	c = Configuration({},{}, 'no.1.class.path')
-	subconfig = Configuration({},{},'no.sub1.class.path')
-	ip = sjIntegerParameter('fooip', 3, 5, 6, 'no.2.class.path')
-	subip = sjIntegerParameter('subip', 0, 15, 10, 'no.sub2.class.path')
-	subconfig.addParameter('subip',subip)
-	c.addParameter('foo', ip)
-	c.addSubConfiguration('fstsubconfg', subconfig)
-	print c.getSubConfiguration('fstsubconfg').getParameter('subip').getJavaClassPath()
-	
+	def get_extra_data(self, key):
+		return self.extraData[key][2]
+
+	def put_extra_data(self, key, data, javaClass):
+		self.extraData[key] = [javaClass, data]
+
+	def json_replacement(self):
+		return {"params": self.params,
+			"subconfigs": self.subconfigs,
+			"extraData": self.extraData,
+			"class": self.javaClass}
+
+	def toJSON(self):
+		return json.dumps(self, cls=SJJSONEncoder)
