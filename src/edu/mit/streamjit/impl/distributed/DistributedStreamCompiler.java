@@ -124,14 +124,14 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		controller.connect(conTypeCount);
 
 		StreamJitApp app = new StreamJitApp(stream, source, sink);
-		ConfigurationManager cfgManager = new WorkerMachine(app);
+		ConfigurationManager cfgManager = new HotSpotTuning(app);
 
-		if (GlobalConstants.useCfgFile)
-			this.cfg = readConfiguration(stream.getClass().getSimpleName());
-		else {
-			BlobFactory bf = new DistributedBlobFactory(noOfnodes);
+		if (GlobalConstants.tune) {
+			BlobFactory bf = new DistributedBlobFactory(cfgManager, noOfnodes);
 			this.cfg = bf.getDefaultConfiguration(Workers
 					.getAllWorkersInGraph(source));
+		} else {
+			this.cfg = readConfiguration(stream.getClass().getSimpleName());
 		}
 
 		if (cfg == null) {
@@ -199,7 +199,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		manager.reconfigure();
 		CompiledStream cs = new DistributedCompiledStream(drainer);
 
-		if (!GlobalConstants.useCfgFile && this.cfg != null) {
+		if (GlobalConstants.tune && this.cfg != null) {
 			OnlineTuner tuner = new OnlineTuner(drainer, manager, app,
 					cfgManager, needTermination);
 			new Thread(tuner, "OnlineTuner").start();

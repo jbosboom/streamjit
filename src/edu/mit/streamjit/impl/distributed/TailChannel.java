@@ -28,7 +28,7 @@ public class TailChannel extends TCPInputChannel {
 		this.limit = limit;
 		count = 0;
 		latch = new CountDownLatch(1);
-		if (GlobalConstants.useCfgFile)
+		if (!GlobalConstants.tune)
 			new performanceLogger().start();
 	}
 
