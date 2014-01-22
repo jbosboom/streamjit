@@ -281,11 +281,12 @@ public class Compiler2 {
 						.bufferExactly(0);
 			}
 		}
-		scheduleBuilder.multiply(config.getParameter("multiplier", IntParameter.class).getValue());
+		int multiplier = config.getParameter("multiplier", IntParameter.class).getValue();
+		scheduleBuilder.multiply(multiplier);
 		try {
 			externalSchedule = scheduleBuilder.build().getSchedule();
 		} catch (Schedule.ScheduleException ex) {
-			throw new StreamCompilationFailedException("couldn't find external schedule", ex);
+			throw new StreamCompilationFailedException("couldn't find external schedule; mult = "+multiplier, ex);
 		}
 	}
 
