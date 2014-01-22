@@ -48,8 +48,8 @@ class StreamJITMI(MeasurementInterface):
 
 		if len(stderr) > 0:
 			print stderr.strip(" \t\n\r")
-			if (stderr.find("TIMED OUT")):
-				return opentuner.resultsdb.models.Result(state='TIMEOUT')
+			if "TIMED OUT" in stderr:
+				return opentuner.resultsdb.models.Result(state='TIMEOUT', time=float('inf'))
 			else:
 				return opentuner.resultsdb.models.Result(state='ERROR', time=float('inf'))
 		else:
