@@ -1,4 +1,5 @@
 import deps #fix sys.path
+import random
 import opentuner
 from opentuner.search.manipulator import IntegerParameter, FloatParameter, SwitchParameter, ArrayParameter
 
@@ -81,6 +82,45 @@ class sjCompositionParameter(ArrayParameter):
 			sum += p.get_value(config)
 		for p in self.sub_parameters():
 			p.set_value(config, p.get_value(config)/sum)
+
+	def manipulators(self, config):
+		manipulators = [self.randomize, self.equal_division]
+		zeroes = len(self.zeroes(config))
+		if zeroes > 0:
+			manipulators.append(self.add_core)
+		if zeroes < (self.count - 1):
+			manipulators.append(self.remove_core)
+		return manipulators
+
+	def equal_division(self, config):
+		for p in self.sub_parameters():
+			p.set_value(config, 1.0/self.count)
+
+	# TODO: swap_cores? shuffle_cores?
+
+	def add_core(self, config):
+		"""Take a fraction of each non-zero core and move it to a zero core."""
+		nonzeroes = self.nonzeroes(config)
+		fraction = 1.0/(len(nonzeroes) + 1)
+		random.choice(self.zeroes(config)).set_value(config, fraction)
+		for p in nonzeroes:
+			p.set_value(config, p.get_value(config) * (1.0 - fraction))
+
+	def remove_core(self, config):
+		"""Zero a core, equally distributing its value among other nonzero cores."""
+		nonzeroes = self.nonzeroes(config)
+		victim = random.choice(nonzeroes)
+		v = victim.get_value(config)
+		victim.set_value(config, 0.0)
+		for p in nonzeroes:
+			if p is not victim:
+				p.set_value(config, p.get_value(config) + v/(len(nonzeroes)-1))
+
+	def zeroes(self, config):
+		return [p for p in self.sub_parameters() if p.get_value(config) == 0]
+
+	def nonzeroes(self, config):
+		return [p for p in self.sub_parameters() if p.get_value(config) > 0]
 
 	def update_value_for_json(self, config):
 		for (i, p) in zip(xrange(self.count), self.sub_parameters()):
