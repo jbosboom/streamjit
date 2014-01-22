@@ -1,8 +1,10 @@
 package edu.mit.streamjit.impl.distributed;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import edu.mit.streamjit.api.Filter;
@@ -11,6 +13,7 @@ import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
+import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamVisitor;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.Configuration;
@@ -19,8 +22,12 @@ import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager.AbstractConfigurationManager;
+import edu.mit.streamjit.tuner.OfflineTuner;
 
 public final class HotSpotTuning extends AbstractConfigurationManager {
+
+	Map<Integer, List<Worker<?, ?>>> partitionGroup;
+	Map<Splitter<?, ?>, Set<Worker<?, ?>>> skippedSplitters;
 
 	public HotSpotTuning(StreamJitApp app) {
 		super(app);
@@ -48,7 +55,92 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 				System.out.println(p.getName() + " - Unknown type");
 		}
 
+		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(config);
+		try {
+			app.varifyConfiguration(partitionsMachineMap);
+		} catch (StreamCompilationFailedException ex) {
+			return false;
+		}
+		app.blobConfiguration = config;
 		return true;
+	}
+
+	private Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
+			Configuration config) {
+		Map<Integer, Set<Worker<?, ?>>> partition = new HashMap<>();
+
+		for (Integer id : partitionGroup.keySet()) {
+			int machine = getAssignedMachine(id, config, partition);
+
+			int val;
+			List<Worker<?, ?>> workerList = partitionGroup.get(id);
+			IntParameter cutParam = (IntParameter) config.getParameter(String
+					.format("worker%dcut", id));
+			if (cutParam != null)
+				val = cutParam.getValue();
+			else
+				val = 1;
+
+			for (int i = 0; i < val; i++) {
+				Worker<?, ?> w = workerList.get(i);
+				if (skippedSplitters.containsKey(w)) {
+					partition.get(machine).addAll(skippedSplitters.get(w));
+				} else
+					partition.get(machine).add(w);
+			}
+
+			if (val < workerList.size()) {
+				Worker<?, ?> w = workerList.get(workerList.size() - 1);
+				if (skippedSplitters.containsKey(w)) {
+					w = getJoiner((Splitter<?, ?>) w);
+				}
+				Worker<?, ?> down = Workers.getSuccessors(w).get(0);
+				int nextmachine = getAssignedMachine(
+						Workers.getIdentifier(down), config, partition);
+				for (int j = val; j < workerList.size(); j++) {
+					Worker<?, ?> w1 = workerList.get(j);
+					if (skippedSplitters.containsKey(w1)) {
+						partition.get(nextmachine).addAll(
+								skippedSplitters.get(w1));
+					} else
+						partition.get(nextmachine).add(w1);
+				}
+			}
+		}
+
+		Map<Integer, List<Set<Worker<?, ?>>>> machineWorkerMap = new HashMap<>();
+		for (int machine : partition.keySet()) {
+			List<Set<Worker<?, ?>>> cycleMinimizedBlobs = new ArrayList<>();
+			List<Set<Worker<?, ?>>> machineBlobs = getConnectedComponents(partition
+					.get(machine));
+			{
+				for (Set<Worker<?, ?>> blobWorkers : machineBlobs) {
+					cycleMinimizedBlobs.addAll(breakCycles(blobWorkers));
+				}
+			}
+			machineWorkerMap.put(machine, cycleMinimizedBlobs);
+		}
+		return machineWorkerMap;
+	}
+
+	private int getAssignedMachine(int id, Configuration config,
+			Map<Integer, Set<Worker<?, ?>>> partition) {
+		String name = getParamName(id);
+		SwitchParameter<Integer> sp = (SwitchParameter<Integer>) config
+				.getParameter(name);
+		if (sp == null) {
+			throw new IllegalArgumentException(
+					"Some parameters are missing in the passed Configuration");
+		}
+
+		int machine = sp.getValue();
+
+		if (!partition.containsKey(machine)) {
+			Set<Worker<?, ?>> set = new HashSet<>();
+			partition.put(machine, set);
+		}
+
+		return machine;
 	}
 
 	private class PickHotSpots extends StreamVisitor {
@@ -74,6 +166,12 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 		private int minSplitjoinSize = 20;
 
 		/**
+		 * Workers those are going to be part {@link OfflineTuner}
+		 * {@link #currentHotSpot}.
+		 */
+		List<Worker<?, ?>> workerGropups;
+
+		/**
 		 * This is needed for {@link SwitchParameter} as an universe argument.
 		 * See its constructor.
 		 */
@@ -96,6 +194,8 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 			depth = 0;
 			paramCount = 0;
 			skip = false;
+			partitionGroup = new HashMap<>();
+			skippedSplitters = new HashMap<>();
 		}
 
 		@Override
@@ -129,6 +229,7 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 				if (childWorkers.size() < minSplitjoinSize) {
 					skip = true;
 					skipJoiner = getJoiner(splitter);
+					skippedSplitters.put(splitter, childWorkers);
 				}
 			}
 		}
@@ -172,31 +273,16 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 		private void visitWorker(Worker<?, ?> w) {
 			assert depth <= cutLimit : "depth can not be greater than cutLimit. Verify the algorithm";
 
-			if (currentHotSpot == null) // Handles first visit case.
+			if (currentHotSpot == null) { // Handles first visit case.
 				currentHotSpot = w;
+				workerGropups = new ArrayList<>();
+				workerGropups.add(currentHotSpot);
+			}
 			depth++;
-			if (depth > cutLimit) {
+			if (depth > cutLimit || addThis) {
+				int id = Workers.getIdentifier(currentHotSpot);
 				Parameter p = new Configuration.SwitchParameter<Integer>(
-						String.format("worker%dtomachine",
-								Workers.getIdentifier(currentHotSpot)),
-						Integer.class, 1, machinelist);
-				builder.addParameter(p);
-				if (depth > 1) {
-					Parameter cut = new Configuration.IntParameter(
-							String.format("worker%dcut",
-									Workers.getIdentifier(currentHotSpot)), 1,
-							cutLimit, cutLimit);
-
-					builder.addParameter(cut);
-				}
-				depth = 1;
-				currentHotSpot = w;
-				paramCount++;
-			} else if (addThis) {
-				Parameter p = new Configuration.SwitchParameter<Integer>(
-						String.format("worker%dtomachine",
-								Workers.getIdentifier(currentHotSpot)),
-						Integer.class, 1, machinelist);
+						getParamName(id), Integer.class, 1, machinelist);
 				builder.addParameter(p);
 				if (depth > 2) {
 					Parameter cut = new Configuration.IntParameter(
@@ -207,10 +293,16 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 					builder.addParameter(cut);
 					paramCount++;
 				}
+
+				currentHotSpot = w;
+				partitionGroup.put(id, workerGropups);
+				workerGropups = new ArrayList<>();
+				workerGropups.add(currentHotSpot);
 				addThis = false;
 				depth = 1;
-				currentHotSpot = w;
 				paramCount++;
+			} else {
+				workerGropups.add(w);
 			}
 		}
 	}
