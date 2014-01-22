@@ -1,7 +1,6 @@
 import deps #fix sys.path
 import opentuner
-from opentuner.search.manipulator import (IntegerParameter,
-                                          FloatParameter, SwitchParameter)
+from opentuner.search.manipulator import IntegerParameter, FloatParameter, SwitchParameter, ArrayParameter
 
 class sjIntegerParameter(IntegerParameter):
 	def __init__(self, name, min, max, value, javaClass = None, **kwargs):
@@ -11,6 +10,9 @@ class sjIntegerParameter(IntegerParameter):
 
 	def getValue(self):
 		return self.value
+
+	def update_value_for_json(self, config):
+		self.value = self.get_value(config)
 
 	def json_replacement(self):
 		(min, max) = self.legal_range(None)
@@ -28,6 +30,9 @@ class sjFloatParameter(FloatParameter):
 
 	def getValue(self):
 		return self.value
+
+	def update_value_for_json(self, config):
+		self.value = self.get_value(config)
 
 	def json_replacement(self):
 		(min, max) = self.legal_range(None)
@@ -54,11 +59,36 @@ class sjSwitchParameter(SwitchParameter):
 	def getUniverseType(self):
 		return self.universeType
 
+	def update_value_for_json(self, config):
+		self.value = self._get(config)
+
 	def json_replacement(self):
 		return {"name": self.name,
 			"value": self.value,
 			"universeType": self.universeType,
 			"universe": self.universe,
+			"class": self.javaClass}
+
+class sjCompositionParameter(ArrayParameter):
+	def __init__(self, name, values, javaClass):
+		super(sjCompositionParameter, self).__init__(name, len(values), FloatParameter, 0.0, 1.0)
+		self.values = values
+		self.javaClass = javaClass
+
+	def normalize(self, config):
+		sum = 0
+		for p in self.sub_parameters():
+			sum += p.get_value(config)
+		for p in self.sub_parameters():
+			p.set_value(config, p.get_value(config)/sum)
+
+	def update_value_for_json(self, config):
+		for (i, p) in zip(xrange(self.count), self.sub_parameters()):
+			self.values[i] = p.get_value(config)
+
+	def json_replacement(self):
+		return {"name": self.name,
+			"values": self.values,
 			"class": self.javaClass}
 
 if __name__ == '__main__':

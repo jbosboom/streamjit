@@ -30,10 +30,8 @@ class StreamJITMI(MeasurementInterface):
 
 	def run(self, desired_result, input, limit):
 		cfg_data = desired_result.configuration.data
-		#TODO: will this handle subparams correctly?
-		for k in cfg_data:
-			if k in self.config.params:
-				self.config.getParameter(k).value = cfg_data[k]
+		for k in self.config.params:
+			self.config.getParameter(k).update_value_for_json(cfg_data)
 		jvm_args = []
 		for key in self.jvm_options.keys():
 			self.jvm_options.get(key).setValue(cfg_data[key])

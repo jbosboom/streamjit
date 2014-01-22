@@ -10,6 +10,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
+import com.google.common.math.DoubleMath;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Pipeline;
@@ -1219,6 +1220,104 @@ public final class Configuration {
 		}
 	}
 
+	/**
+	 * Represents a composition of 1.0 into N addends (which may include 0),
+	 * where the order is relevant.  (This isn't a mathematical composition, but
+	 * it's close, and "PartitionParameter" was taken.  "SubdivisionParameter"?)
+	 *
+	 * Array jsonification is special-cased for Python's convenience.
+	 */
+	public static final class CompositionParameter implements Parameter {
+		private static final long serialVersionUID = 1L;
+		private final String name;
+		private final double[] values;
+		public CompositionParameter(String name, int length) {
+			this.name = name;
+			this.values = new double[length];
+			Arrays.fill(this.values, 1.0/length);
+		}
+		private CompositionParameter(String name, double[] values) {
+			this.name = name;
+			this.values = values;
+			double sum = 0;
+			for (double d : values)
+				sum += d;
+			//check we're close, at least.
+			if (!DoubleMath.fuzzyEquals(sum, 1, 0.00001))
+				throw new IllegalArgumentException("sums to "+sum);
+		}
+
+		@ServiceProvider(JsonifierFactory.class)
+		protected static final class CompositionParameterJsonifier implements Jsonifier<CompositionParameter>, JsonifierFactory {
+			public CompositionParameterJsonifier() {}
+			@Override
+			public CompositionParameter fromJson(JsonValue jsonvalue) {
+				JsonObject obj = Jsonifiers.checkClassEqual(jsonvalue, CompositionParameter.class);
+				String name = obj.getString("name");
+				JsonArray arr = obj.getJsonArray("values");
+				double[] values = new double[arr.size()];
+				for (int i = 0; i < arr.size(); ++i)
+					values[i] = arr.getJsonNumber(i).doubleValue();
+				return new CompositionParameter(name, values);
+			}
+
+			@Override
+			public JsonValue toJson(CompositionParameter t) {
+				JsonArrayBuilder arr = Json.createArrayBuilder();
+				for (double d : t.values)
+					arr.add(d);
+				return Json.createObjectBuilder()
+					.add("class", Jsonifiers.toJson(CompositionParameter.class))
+					.add("name", t.getName())
+					.add("values", arr)
+					//Python-side support
+					.add("__module__", "sjparameters")
+					.add("__class__", "sjCompositionParameter")
+					.build();
+			}
+
+			@Override
+			@SuppressWarnings("unchecked")
+			public <T> Jsonifier<T> getJsonifier(Class<T> klass) {
+				return (Jsonifier<T>)(klass.equals(CompositionParameter.class) ? this : null);
+			}
+		}
+		@Override
+		public String getName() {
+			return name;
+		}
+		public int getLength() {
+			return values.length;
+		}
+		public double getValue(int slot) {
+			return values[slot];
+		}
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			final CompositionParameter other = (CompositionParameter)obj;
+			if (!Objects.equals(this.name, other.name))
+				return false;
+			if (!Arrays.equals(this.values, other.values))
+				return false;
+			return true;
+		}
+		@Override
+		public int hashCode() {
+			int hash = 7;
+			hash = 83 * hash + Objects.hashCode(this.name);
+			hash = 83 * hash + Arrays.hashCode(this.values);
+			return hash;
+		}
+		@Override
+		public String toString() {
+			return String.format("[%s: %s]", name, Arrays.toString(values));
+		}
+	}
+
 	public static Configuration randomize(Configuration cfg, Random rng) {
 		Configuration.Builder builder = Configuration.builder();
 		for (Parameter p : cfg.getParametersMap().values()) {
@@ -1248,6 +1347,12 @@ public final class Configuration {
 		builder.addParameter(new IntParameter("foo", 0, 10, 8));
 		builder.addParameter(SwitchParameter.create("bar", true));
 		builder.addParameter(new SwitchParameter<>("baz", Integer.class, 3, Arrays.asList(1, 2, 3, 4)));
+		builder.addParameter(new CompositionParameter("comp", 8));
+		Configuration cfg = builder.build();
+		String cfgJson = cfg.toJson();
+		System.out.println(cfgJson);
+		Configuration cfgrt = Configuration.fromJson(cfgJson);
+		System.out.println(cfgrt);
 
 		Identity<Integer> first = new Identity<>(), second = new Identity<>();
 		Pipeline<Integer, Integer> pipeline = new Pipeline<>(first, second);

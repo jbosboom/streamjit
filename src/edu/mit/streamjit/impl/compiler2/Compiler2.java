@@ -85,7 +85,7 @@ public class Compiler2 {
 	public static final RemovalStrategy REMOVAL_STRATEGY = new BitsetRemovalStrategy();
 	public static final FusionStrategy FUSION_STRATEGY = new BitsetFusionStrategy();
 	public static final UnboxingStrategy UNBOXING_STRATEGY = new BitsetUnboxingStrategy();
-	public static final AllocationStrategy ALLOCATION_STRATEGY = new CountDataParallelAllocationStrategy(8);
+	public static final AllocationStrategy ALLOCATION_STRATEGY = new CompositionAllocationStrategy(8);
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
