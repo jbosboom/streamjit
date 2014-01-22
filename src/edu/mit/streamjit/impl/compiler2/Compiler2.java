@@ -307,7 +307,7 @@ public class Compiler2 {
 			Schedule<Actor> schedule = scheduleBuilder.build();
 			g.setSchedule(schedule.getSchedule());
 		} catch (Schedule.ScheduleException ex) {
-			throw new StreamCompilationFailedException("couldn't find internal schedule for group "+g.id(), ex);
+			throw new StreamCompilationFailedException("couldn't find internal schedule for group "+g+"\n"+scheduleBuilder.toString(), ex);
 		}
 	}
 
