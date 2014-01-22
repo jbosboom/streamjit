@@ -275,8 +275,10 @@ public final class Benchmarker {
 		throw new NoSuchElementException("no benchmark named "+name);
 	}
 
-	private static final long TIMEOUT_DURATION = 1;
-	private static final TimeUnit TIMEOUT_UNIT = TimeUnit.MINUTES;
+	private static final long COMPILE_TIMEOUT_DURATION = 15;
+	private static final TimeUnit COMPILE_TIMEOUT_UNIT = TimeUnit.SECONDS;
+	private static final long RUN_TIMEOUT_DURATION = 1;
+	private static final TimeUnit RUN_TIMEOUT_UNIT = TimeUnit.MINUTES;
 	private static Result run(Benchmark benchmark, Dataset input, StreamCompiler compiler) {
 		long compileMillis, runMillis;
 		VerifyingOutputBufferFactory verifier = null;
@@ -286,11 +288,18 @@ public final class Benchmarker {
 		else
 			counter = new CountingOutputBufferFactory();
 		try {
+			CompileThread ct = new CompileThread(compiler, benchmark, input, counter);
 			Stopwatch stopwatch = Stopwatch.createStarted();
-			CompiledStream stream = compiler.compile(benchmark.instantiate(), input.input(),
-					OutputBufferFactory.wrap((OutputBufferFactory)counter));
+			ct.start();
+			ct.join(TimeUnit.MILLISECONDS.convert(COMPILE_TIMEOUT_DURATION, COMPILE_TIMEOUT_UNIT));
 			compileMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
-			stream.awaitDrained(TIMEOUT_DURATION, TIMEOUT_UNIT);
+			if (ct.isAlive())
+				throw new TimeoutException();
+			if (ct.throwable != null)
+				throw ct.throwable;
+
+			CompiledStream stream = ct.stream;
+			stream.awaitDrained(RUN_TIMEOUT_DURATION, RUN_TIMEOUT_UNIT);
 			stopwatch.stop();
 			runMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS) - compileMillis;
 		} catch (TimeoutException ex) {
@@ -308,6 +317,30 @@ public final class Benchmarker {
 						verifier.buffer.extents, verifier.buffer.missingOutput, verifier.buffer.excessOutput);
 		}
 		return Result.ok(benchmark, input, compiler, compileMillis, runMillis, outputs);
+	}
+
+	private static final class CompileThread extends Thread {
+		private final StreamCompiler compiler;
+		private final Benchmark benchmark;
+		private final Dataset input;
+		private final OutputCounter counter;
+		public CompiledStream stream;
+		public Throwable throwable;
+		public CompileThread(StreamCompiler compiler, Benchmark benchmark, Dataset input, OutputCounter counter) {
+			this.compiler = compiler;
+			this.benchmark = benchmark;
+			this.input = input;
+			this.counter = counter;
+		}
+		@Override
+		public void run() {
+			try {
+				stream = compiler.compile(benchmark.instantiate(), input.input(),
+						OutputBufferFactory.wrap((OutputBufferFactory)counter));
+			} catch (Throwable t) {
+				throwable = t;
+			}
+		}
 	}
 
 	public static final class Result {
