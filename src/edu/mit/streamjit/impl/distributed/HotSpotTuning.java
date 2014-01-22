@@ -276,7 +276,6 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 			if (currentHotSpot == null) { // Handles first visit case.
 				currentHotSpot = w;
 				workerGropups = new ArrayList<>();
-				workerGropups.add(currentHotSpot);
 			}
 			depth++;
 			if (depth > cutLimit || addThis) {
