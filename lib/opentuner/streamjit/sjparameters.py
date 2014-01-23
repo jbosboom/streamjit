@@ -97,7 +97,7 @@ class sjCompositionParameter(ArrayParameter):
 			pass
 
 	def manipulators(self, config):
-		manipulators = [self.randomize, self.equal_division]
+		manipulators = [self.randomize, self.shuffle_cores, self.equal_division]
 		zeroes = len(self.zeroes(config))
 		if zeroes > 0:
 			manipulators.append(self.add_core)
@@ -109,7 +109,11 @@ class sjCompositionParameter(ArrayParameter):
 		for p in self.sub_parameters():
 			p.set_value(config, 1.0/self.count)
 
-	# TODO: swap_cores? shuffle_cores?
+	def shuffle_cores(self, config):
+		values = [p.get_value(config) for p in self.sub_parameters()]
+		random.shuffle(values)
+		for (p, v) in zip(self.sub_parameters(), values):
+			p.set_value(config, v)
 
 	def add_core(self, config):
 		"""Take a fraction of each non-zero core and move it to a zero core."""
