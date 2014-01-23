@@ -83,6 +83,9 @@ class sjCompositionParameter(ArrayParameter):
 		for p in self.sub_parameters():
 			p.set_value(config, p.get_value(config)/sum)
 
+	def seed_value(self):
+		return [1.0/self.count for p in self.sub_parameters()]
+
 	def manipulators(self, config):
 		manipulators = [self.randomize, self.equal_division]
 		zeroes = len(self.zeroes(config))
