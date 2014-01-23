@@ -86,6 +86,16 @@ class sjCompositionParameter(ArrayParameter):
 	def seed_value(self):
 		return [1.0/self.count for p in self.sub_parameters()]
 
+	def add_difference(self, cfg_dst, scale, cfg_b, cfg_c):
+		b_cores = len(self.nonzeroes(cfg_b))
+		c_cores = len(self.nonzeroes(cfg_c))
+		if b_cores > c_cores and self.add_core in self.manipulators(cfg_dst):
+			self.add_core(cfg_dst)
+		elif c_cores > b_cores and self.remove_core in self.manipulators(cfg_dst):
+			self.remove_core(cfg_dst)
+		else:
+			pass
+
 	def manipulators(self, config):
 		manipulators = [self.randomize, self.equal_division]
 		zeroes = len(self.zeroes(config))
