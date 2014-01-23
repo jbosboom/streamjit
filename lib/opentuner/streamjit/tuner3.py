@@ -9,6 +9,7 @@ import streamjit
 import sys
 import subprocess
 import tempfile
+import os
 
 import deps #fix sys.path
 import opentuner
