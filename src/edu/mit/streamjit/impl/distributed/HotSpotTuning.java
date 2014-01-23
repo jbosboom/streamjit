@@ -94,6 +94,8 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 				if (skippedSplitters.containsKey(w)) {
 					w = getJoiner((Splitter<?, ?>) w);
 				}
+				if (app.sink.equals(w))
+					continue;
 				Worker<?, ?> down = Workers.getSuccessors(w).get(0);
 				int nextmachine = getAssignedMachine(
 						Workers.getIdentifier(down), config, partition);
@@ -273,9 +275,11 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 		private void visitWorker(Worker<?, ?> w) {
 			assert depth <= cutLimit : "depth can not be greater than cutLimit. Verify the algorithm";
 
-			if (currentHotSpot == null) { // Handles first visit case.
+			if (currentHotSpot == null) { // Handles first visit case. Source.
 				currentHotSpot = w;
 				workerGropups = new ArrayList<>();
+			} else if (app.sink.equals(w)) { // Handles last case. Sink.
+				addThis = true;
 			}
 			depth++;
 			if (depth > cutLimit || addThis) {
