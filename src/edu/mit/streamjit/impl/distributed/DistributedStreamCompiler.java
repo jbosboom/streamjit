@@ -125,11 +125,12 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		StreamJitApp app = new StreamJitApp(stream, source, sink);
 		ConfigurationManager cfgManager = new HotSpotTuning(app);
+		BlobFactory bf = new DistributedBlobFactory(cfgManager, noOfnodes);
+		this.cfg = bf.getDefaultConfiguration(Workers
+				.getAllWorkersInGraph(source));
 
 		if (GlobalConstants.tune) {
-			BlobFactory bf = new DistributedBlobFactory(cfgManager, noOfnodes);
-			this.cfg = bf.getDefaultConfiguration(Workers
-					.getAllWorkersInGraph(source));
+
 		} else {
 			this.cfg = readConfiguration(stream.getClass().getSimpleName());
 		}
