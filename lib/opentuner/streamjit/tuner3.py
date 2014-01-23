@@ -51,6 +51,11 @@ class StreamJITMI(MeasurementInterface):
 			if "TIMED OUT" in stderr:
 				return opentuner.resultsdb.models.Result(state='TIMEOUT', time=float('inf'))
 			else:
+				with tempfile.NamedTemporaryFile(dir=os.getcwd(), suffix=".cfg", delete=False) as f:
+					f.write(self.config.toJSON())
+					f.write("\n")
+					f.write(stderr)
+					f.flush()
 				return opentuner.resultsdb.models.Result(state='ERROR', time=float('inf'))
 		else:
 			print stdout.strip(" \t\n\r")
