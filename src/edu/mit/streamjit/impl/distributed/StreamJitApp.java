@@ -124,6 +124,16 @@ public class StreamJitApp {
 	 */
 	public void varifyConfiguration(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
+		for (int machine : partitionsMachineMap.keySet()) {
+			System.err.print("\nMachine - " + machine);
+			for (Set<Worker<?, ?>> blobworkers : partitionsMachineMap
+					.get(machine)) {
+				System.err.print("\n\tBlob worker set : ");
+				for (Worker<?, ?> w : blobworkers) {
+					System.err.print(Workers.getIdentifier(w) + " ");
+				}
+			}
+		}
 		List<Set<Worker<?, ?>>> partitionList = new ArrayList<>();
 		for (List<Set<Worker<?, ?>>> lst : partitionsMachineMap.values()) {
 			partitionList.addAll(lst);
