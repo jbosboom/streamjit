@@ -129,19 +129,35 @@ public class BlobsManagerImpl implements BlobsManager {
 				minOutputBufCapaciy.keySet(), localTokens);
 
 		for (Token t : localTokens) {
-			int bufSize;
-			bufSize = lcm(minInputBufCapaciy.get(t), minOutputBufCapaciy.get(t));
-			// TODO: Just to increase the performance. Change it later
-			bufSize = Math.max(1000, bufSize);
-			Buffer buf = new ConcurrentArrayBuffer(bufSize);
-			bufferMapBuilder.put(t, buf);
+			int bufSize = lcm(minInputBufCapaciy.get(t),
+					minOutputBufCapaciy.get(t));
+			addBuffer(t, bufSize, bufferMapBuilder);
 		}
 
-		for (Token t : Sets.union(globalInputTokens, globalOutputTokens)) {
-			bufferMapBuilder.put(t, new ConcurrentArrayBuffer(1000));
+		for (Token t : globalInputTokens) {
+			int bufSize = minInputBufCapaciy.get(t);
+			addBuffer(t, bufSize, bufferMapBuilder);
 		}
 
+		for (Token t : globalOutputTokens) {
+			int bufSize = minOutputBufCapaciy.get(t);
+			addBuffer(t, bufSize, bufferMapBuilder);
+		}
 		return bufferMapBuilder.build();
+	}
+
+	/**
+	 * Just introduced to avoid code duplication.
+	 * 
+	 * @param t
+	 * @param minSize
+	 * @param bufferMapBuilder
+	 */
+	private void addBuffer(Token t, int minSize,
+			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder) {
+		// TODO: Just to increase the performance. Change it later
+		int bufSize = Math.max(1000, minSize);
+		bufferMapBuilder.put(t, new ConcurrentArrayBuffer(bufSize));
 	}
 
 	private int gcd(int a, int b) {
