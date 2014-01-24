@@ -25,7 +25,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecifier;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
-import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
+import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
@@ -135,7 +135,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 				blobConfigs = staticConfig;
 				bf = new Interpreter.InterpreterBlobFactory();
 			} else {
-				bf = new CompilerBlobFactory();
+				bf = new Compiler2BlobFactory();
 			}
 
 			for (BlobSpecifier bs : blobList) {

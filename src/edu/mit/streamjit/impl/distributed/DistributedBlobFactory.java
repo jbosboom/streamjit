@@ -8,8 +8,8 @@ import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
-import edu.mit.streamjit.impl.compiler.Compiler;
-import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
+import edu.mit.streamjit.impl.compiler2.Compiler2;
+import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.interp.Interpreter.InterpreterBlobFactory;
 
 /**
@@ -54,7 +54,7 @@ public class DistributedBlobFactory implements BlobFactory {
 	@Override
 	public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config,
 			int maxNumCores, DrainData initialState) {
-		return new Compiler(workers, config, maxNumCores, initialState)
+		return new Compiler2(workers, config, maxNumCores, initialState)
 				.compile();
 	}
 
@@ -65,7 +65,7 @@ public class DistributedBlobFactory implements BlobFactory {
 				noOfMachines);
 		Configuration.Builder builder = Configuration.builder(distCfg);
 
-		BlobFactory compilerBf = new CompilerBlobFactory();
+		BlobFactory compilerBf = new Compiler2BlobFactory();
 		Configuration compilercfg = compilerBf.getDefaultConfiguration(workers);
 		for (Parameter p : compilercfg.getParametersMap().values())
 			builder.addParameter(p);
