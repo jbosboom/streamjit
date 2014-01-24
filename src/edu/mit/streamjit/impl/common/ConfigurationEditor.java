@@ -10,13 +10,10 @@ import java.util.Map;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.BlobFactory;
-import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
-import edu.mit.streamjit.test.apps.fmradio.FMRadio.FMRadioCore;
-import edu.mit.streamjit.test.apps.fmradio.FMRadioReplicated.FMRadioCoreReplicated;
-import edu.mit.streamjit.test.sanity.nestedsplitjoinexample2.NestedSplitJoin2;
+import edu.mit.streamjit.test.sanity.nestedsplitjoinexample.NestedSplitJoin;
 
 public class ConfigurationEditor {
 
@@ -28,7 +25,7 @@ public class ConfigurationEditor {
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		generate(new NestedSplitJoin2.NestedSplitJoinCore());
+		generate(new NestedSplitJoin.NestedSplitJoinCore());
 		edit(name, noofwrks);
 		// print("4366NestedSplitJoinCore.cfg");
 	}
