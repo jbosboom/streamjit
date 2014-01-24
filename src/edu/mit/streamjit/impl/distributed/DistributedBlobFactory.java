@@ -1,7 +1,5 @@
 package edu.mit.streamjit.impl.distributed;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 import edu.mit.streamjit.api.Worker;
@@ -9,9 +7,7 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
-import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.compiler.Compiler;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.interp.Interpreter.InterpreterBlobFactory;
@@ -74,17 +70,9 @@ public class DistributedBlobFactory implements BlobFactory {
 		for (Parameter p : compilercfg.getParametersMap().values())
 			builder.addParameter(p);
 
-		Configuration.IntParameter multiplierParam = (Configuration.IntParameter) builder
-				.removeParameter("multiplier");
-
-		for (int i = 0; i < noOfMachines; i++) {
-			builder.addParameter(new Configuration.IntParameter(String.format(
-					"multiplier%d", (i + 1)), multiplierParam.getRange(),
-					multiplierParam.getValue()));
-		}
-
 		return builder.build();
 	}
+
 	@Override
 	public boolean equals(Object o) {
 		return getClass() == o.getClass()
