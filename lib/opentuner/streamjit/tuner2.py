@@ -3,6 +3,7 @@ import argparse
 import logging
 import json
 import sjparameters
+import sjtechniques
 import configuration
 import streamjit
 import sys
@@ -23,6 +24,7 @@ from jvmparameters import *
 class StreamJitMI(MeasurementInterface):
 	''' Measurement Interface for tunning a StreamJit application'''
 	def __init__(self, args, jvmOptions, manipulator, inputmanager, objective):
+		args.technique = ['StreamJITBandit']
 		super(StreamJitMI, self).__init__(args = args, program_name = args.program, manipulator = manipulator, input_manager = inputmanager, objective = objective)
 		self.trycount = 0
 		self.jvmOptions = jvmOptions
@@ -50,35 +52,33 @@ class StreamJitMI(MeasurementInterface):
 		self.trycount = self.trycount + 1
 		print '\n**********New Run - %d **********'%self.trycount
 		#self.niceprint(cfg)
-		commandStr = ''
-		baseargs = ["java"]
+
+		#TODO: find a better place for these system-specific constants
+		#the path to the Java executable, or "java" to use system's default
+		javaPath = "java"
+		#the classpath, suitable as the value of the '-cp' java argument
+		javaClassPath = "dist/jstreamit.jar:lib/ASM/asm-debug-all-4.1.jar:lib/BridJ/bridj-0.6.2-c-only.jar:lib/CopyLibs/org-netbeans-modules-java-j2seproject-copylibstask.jar:lib/Guava/guava-15.0.jar:lib/Guava/guava-15.0-javadoc.jar:lib/Guava/guava-15.0-sources.jar:lib/JOptSimple/jopt-simple-4.5.jar:lib/JOptSimple/jopt-simple-4.5-javadoc.jar:lib/JOptSimple/jopt-simple-4.5-sources.jar:lib/jsonp/javax.json-1.0-fab.jar:lib/jsonp/javax.json-api-1.0-SNAPSHOT-javadoc.jar:lib/ServiceProviderProcessor/ServiceProviderProcessor.jar:lib/sqlite/sqlite-jdbc-3.7.15-M1.jar"
+
+		args = [javaPath, "-cp", javaClassPath]
+		jvmArgs = []
 		for key in self.jvmOptions.keys():
-			#print "\t", key
-  			val = cfg[key]
-			self.jvmOptions.get(key).setValue(val)
+			self.jvmOptions.get(key).setValue(cfg[key])
 			cmd = self.jvmOptions.get(key).getCommand()
-			commandStr += cmd
-			commandStr += ' '
-			baseargs.append(cmd)
-				
+			if len(cmd) > 0:
+				jvmArgs.append(cmd)
+		args.extend(jvmArgs)
+		args.append("edu.mit.streamjit.tuner.RunApp")
+		args.append(str(self.program))
+		args.append(str(self.trycount))
+
 		cur = self.tunedataDB.cursor()
-		query = 'INSERT INTO results VALUES (%d,"%s","%s", "%f")'%(self.trycount, commandStr, cfg, -1)
+		query = 'INSERT INTO results VALUES (%d,"%s","%s", "%f")'%(self.trycount, " ".join(jvmArgs), cfg, -1)
 		cur.execute(query)
 		self.tunedataDB.commit()
-		
-		print commandStr
-		#baseargs.append("-XX:+PrintCommandLineFlags")
 
-		baseargs.append("-jar")
-		args = list(baseargs)
-		args.append("RunApp.jar")
-		args.append("%s"%self.program)
-		args.append("%d"%self.trycount)
-
-		#p = subprocess.Popen(["java",'%s'%commandStr, "-jar","RunApp.jar", "%s"%self.program, "%d"%self.trycount])
 		p = subprocess.Popen(args, stderr=subprocess.PIPE)
 		if cfg.get('noOfMachines'):
-			self.startStreamNodes(cfg.get('noOfMachines') - 1,baseargs)
+			self.startStreamNodes(cfg.get('noOfMachines') - 1, args)
 
 		timeout = 100
 
@@ -220,7 +220,7 @@ def start(program):
 
 	# Performance Options
 	aggressiveOpts = jvmFlag("aggressiveOpts", "-XX:+AggressiveOpts")
-	compileThreshold = jvmIntegerParameter("compileThreshold", 1000, 100000, 1500, "-XX:CompileThreshold=%d")
+	compileThreshold = jvmIntegerParameter("compileThreshold", 50, 1000, 300, "-XX:CompileThreshold=%d")
 	largePageSizeInBytes = jvmPowerOfTwoParameter("largePageSizeInBytes", 2, 256, "-XX:LargePageSizeInBytes=%dm")
 	maxHeapFreeRatio = jvmIntegerParameter("maxHeapFreeRatio", 10, 100, 70, "-XX:MaxHeapFreeRatio=%d")
 	minHeapFreeRatio = jvmIntegerParameter("minHeapFreeRatio", 5, 100, 70, "-XX:MinHeapFreeRatio=%d")
@@ -235,9 +235,14 @@ def start(program):
 	useCompressedStrings = jvmFlag("useCompressedStrings", "-XX:+UseCompressedStrings")
 	optimizeStringConcat = jvmFlag("optimizeStringConcat", "-XX:+OptimizeStringConcat")
 
-	#jvmOptions = {"gc":gc, "maxHeap":maxHeap, "newRatio":newRatio, "maxPermSize":maxPermSize, "maxGCPauseMillis":maxGCPauseMillis, "survivorRatio":survivorRatio, "parallelGCThreads":parallelGCThreads, "concGCThreads":concGCThreads, "aggressiveOpts":aggressiveOpts,  "compileThreshold":compileThreshold, "largePageSizeInBytes":largePageSizeInBytes, "maxHeapFreeRatio":maxHeapFreeRatio, "minHeapFreeRatio":minHeapFreeRatio, "threadStackSize":threadStackSize, "useBiasedLocking":useBiasedLocking, "useFastAccessorMethods":useFastAccessorMethods, "useISM":useISM, "useLargePages":useLargePages, "useStringCache":useStringCache, "allocatePrefetchLines":allocatePrefetchLines, "allocatePrefetchStyle":allocatePrefetchStyle, "useCompressedStrings":useCompressedStrings, "optimizeStringConcat":optimizeStringConcat}
+	# options controlling inlining
+	freqInlineSize = jvmIntegerParameter("freqInlineSize", 100, 10000, 325, "-XX:FreqInlineSize=%d")
+	inlineSmallCode = jvmIntegerParameter("inlineSmallCode", 500, 10000, 1000, "-XX:InlineSmallCode=%d")
+	maxInlineSize = jvmIntegerParameter("maxInlineSize", 20, 1000, 35, "-XX:MaxInlineSize=%d")
+	maxInlineLevel = jvmIntegerParameter("maxInlineLevel", 5, 20, 9, "-XX:MaxInlineLevel=%d")
 
-	jvmOptions = {"gc":gc, "maxHeap":maxHeap, "newRatio":newRatio, "maxPermSize":maxPermSize, "maxGCPauseMillis":maxGCPauseMillis, "survivorRatio":survivorRatio, "parallelGCThreads":parallelGCThreads, "concGCThreads":concGCThreads, "aggressiveOpts":aggressiveOpts,  "compileThreshold":compileThreshold, "largePageSizeInBytes":largePageSizeInBytes, "threadStackSize":threadStackSize}
+	enabledJvmOptions = [aggressiveOpts, compileThreshold, freqInlineSize, maxInlineSize, maxInlineLevel]
+	jvmOptions = {x.name:x for x in enabledJvmOptions}
 
 	main(args, cfgparams, jvmOptions)
 

@@ -78,14 +78,14 @@ public class Compiler2 {
 			RoundrobinSplitter.class, WeightedRoundrobinSplitter.class, DuplicateSplitter.class,
 			RoundrobinJoiner.class, WeightedRoundrobinJoiner.class);
 	public static final ImmutableSet<IndexFunctionTransformer> INDEX_FUNCTION_TRANSFORMERS = ImmutableSet.<IndexFunctionTransformer>of(
-			new IdentityIndexFunctionTransformer(),
-			new ArrayifyIndexFunctionTransformer(false),
-			new ArrayifyIndexFunctionTransformer(true)
+			new IdentityIndexFunctionTransformer()
+//			new ArrayifyIndexFunctionTransformer(false),
+//			new ArrayifyIndexFunctionTransformer(true)
 	);
 	public static final RemovalStrategy REMOVAL_STRATEGY = new BitsetRemovalStrategy();
 	public static final FusionStrategy FUSION_STRATEGY = new BitsetFusionStrategy();
 	public static final UnboxingStrategy UNBOXING_STRATEGY = new BitsetUnboxingStrategy();
-	public static final AllocationStrategy ALLOCATION_STRATEGY = new CountDataParallelAllocationStrategy(8);
+	public static final AllocationStrategy ALLOCATION_STRATEGY = new CompositionAllocationStrategy(8);
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
@@ -281,11 +281,12 @@ public class Compiler2 {
 						.bufferExactly(0);
 			}
 		}
-		scheduleBuilder.multiply(config.getParameter("multiplier", IntParameter.class).getValue());
+		int multiplier = config.getParameter("multiplier", IntParameter.class).getValue();
+		scheduleBuilder.multiply(multiplier);
 		try {
 			externalSchedule = scheduleBuilder.build().getSchedule();
 		} catch (Schedule.ScheduleException ex) {
-			throw new StreamCompilationFailedException("couldn't find external schedule", ex);
+			throw new StreamCompilationFailedException("couldn't find external schedule; mult = "+multiplier, ex);
 		}
 	}
 
@@ -307,7 +308,7 @@ public class Compiler2 {
 			Schedule<Actor> schedule = scheduleBuilder.build();
 			g.setSchedule(schedule.getSchedule());
 		} catch (Schedule.ScheduleException ex) {
-			throw new StreamCompilationFailedException("couldn't find internal schedule for group "+g.id(), ex);
+			throw new StreamCompilationFailedException("couldn't find internal schedule for group "+g+"\n"+scheduleBuilder.toString(), ex);
 		}
 	}
 
@@ -1356,17 +1357,7 @@ public class Compiler2 {
 			int cores = Integer.parseInt(args[1]);
 			int multiplier = Integer.parseInt(args[2]);
 			sc = new Compiler2StreamCompiler().maxNumCores(cores).multiplier(multiplier);
-			bm = null;
-			for (Iterator<BenchmarkProvider> it = ServiceLoader.load(BenchmarkProvider.class).iterator(); bm == null && it.hasNext();) {
-				BenchmarkProvider provider = it.next();
-				for (Iterator<Benchmark> bit = provider.iterator(); bm == null && bit.hasNext();) {
-					Benchmark benchmark = bit.next();
-					if (benchmark.toString().equals(benchmarkName))
-						bm = benchmark;
-				}
-			}
-			if (bm == null)
-				throw new RuntimeException("no benchmark named "+benchmarkName);
+			bm = Benchmarker.getBenchmarkByName(benchmarkName);
 		} else {
 			sc = new Compiler2StreamCompiler().multiplier(64).maxNumCores(4);
 			bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();

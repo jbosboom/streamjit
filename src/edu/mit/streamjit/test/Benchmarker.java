@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -261,8 +262,23 @@ public final class Benchmarker {
 		return results.build();
 	}
 
-	private static final long TIMEOUT_DURATION = 1;
-	private static final TimeUnit TIMEOUT_UNIT = TimeUnit.MINUTES;
+	/**
+	 * Returns the Benchmark with the given name, or throws an exception.
+	 * @param name the benchmark name to look up
+	 * @return the Benchmark instance with the given name
+	 */
+	public static Benchmark getBenchmarkByName(String name) {
+		for (BenchmarkProvider provider : ServiceLoader.load(BenchmarkProvider.class))
+			for (Benchmark benchmark : provider)
+				if (benchmark.toString().equals(name))
+					return benchmark;
+		throw new NoSuchElementException("no benchmark named "+name);
+	}
+
+	private static final long COMPILE_TIMEOUT_DURATION = 15;
+	private static final TimeUnit COMPILE_TIMEOUT_UNIT = TimeUnit.SECONDS;
+	private static final long RUN_TIMEOUT_DURATION = 1;
+	private static final TimeUnit RUN_TIMEOUT_UNIT = TimeUnit.MINUTES;
 	private static Result run(Benchmark benchmark, Dataset input, StreamCompiler compiler) {
 		long compileMillis, runMillis;
 		VerifyingOutputBufferFactory verifier = null;
@@ -272,11 +288,18 @@ public final class Benchmarker {
 		else
 			counter = new CountingOutputBufferFactory();
 		try {
+			CompileThread ct = new CompileThread(compiler, benchmark, input, counter);
 			Stopwatch stopwatch = Stopwatch.createStarted();
-			CompiledStream stream = compiler.compile(benchmark.instantiate(), input.input(),
-					OutputBufferFactory.wrap((OutputBufferFactory)counter));
+			ct.start();
+			ct.join(TimeUnit.MILLISECONDS.convert(COMPILE_TIMEOUT_DURATION, COMPILE_TIMEOUT_UNIT));
 			compileMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS);
-			stream.awaitDrained(TIMEOUT_DURATION, TIMEOUT_UNIT);
+			if (ct.isAlive())
+				throw new TimeoutException();
+			if (ct.throwable != null)
+				throw ct.throwable;
+
+			CompiledStream stream = ct.stream;
+			stream.awaitDrained(RUN_TIMEOUT_DURATION, RUN_TIMEOUT_UNIT);
 			stopwatch.stop();
 			runMillis = stopwatch.elapsed(TimeUnit.MILLISECONDS) - compileMillis;
 		} catch (TimeoutException ex) {
@@ -294,6 +317,30 @@ public final class Benchmarker {
 						verifier.buffer.extents, verifier.buffer.missingOutput, verifier.buffer.excessOutput);
 		}
 		return Result.ok(benchmark, input, compiler, compileMillis, runMillis, outputs);
+	}
+
+	private static final class CompileThread extends Thread {
+		private final StreamCompiler compiler;
+		private final Benchmark benchmark;
+		private final Dataset input;
+		private final OutputCounter counter;
+		public CompiledStream stream;
+		public Throwable throwable;
+		public CompileThread(StreamCompiler compiler, Benchmark benchmark, Dataset input, OutputCounter counter) {
+			this.compiler = compiler;
+			this.benchmark = benchmark;
+			this.input = input;
+			this.counter = counter;
+		}
+		@Override
+		public void run() {
+			try {
+				stream = compiler.compile(benchmark.instantiate(), input.input(),
+						OutputBufferFactory.wrap((OutputBufferFactory)counter));
+			} catch (Throwable t) {
+				throwable = t;
+			}
+		}
 	}
 
 	public static final class Result {
@@ -322,6 +369,7 @@ public final class Benchmarker {
 			this.runMillis = runMillis;
 			this.outputsProduced = outputsProduced;
 		}
+		//<editor-fold defaultstate="collapsed" desc="Factory methods">
 		private static Result ok(Benchmark benchmark, Dataset dataset, StreamCompiler compiler, long compileMillis, long runMillis, long outputsProduced) {
 			return new Result(Kind.OK, benchmark, dataset, compiler, null, null, null, null, compileMillis, runMillis, outputsProduced);
 		}
@@ -334,6 +382,24 @@ public final class Benchmarker {
 		private static Result timeout(Benchmark benchmark, Dataset dataset, StreamCompiler compiler) {
 			return new Result(Kind.TIMEOUT, benchmark, dataset, compiler, null, null, null, null, -1, -1, -1);
 		}
+		//</editor-fold>
+		public Kind kind() {
+			return kind;
+		}
+		public boolean isOK() {
+			return kind() == Kind.OK;
+		}
+		//TODO: use a TimeUnit-based interface to permit sub-/super-milliseconds?
+		public long compileMillis() {
+			return compileMillis;
+		}
+		public long runMillis() {
+			return runMillis;
+		}
+		public Throwable throwable() {
+			return throwable;
+		}
+		//<editor-fold defaultstate="collapsed" desc="Formatting methods">
 		public void print(OutputStream stream) {
 			print(stream, new HumanResultFormatter());
 		}
@@ -354,6 +420,7 @@ public final class Benchmarker {
 		public String toString() {
 			return new HumanResultFormatter().format(this);
 		}
+		//</editor-fold>
 	}
 
 	/**

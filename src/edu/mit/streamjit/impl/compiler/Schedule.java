@@ -171,6 +171,11 @@ public final class Schedule<T> {
 		public Schedule<T> build() {
 			return schedule(ImmutableSet.copyOf(things), ImmutableSet.copyOf(constraints), multiplier);
 		}
+
+		@Override
+		public String toString() {
+			return "["+things+"; "+constraints+"; x"+multiplier+"]";
+		}
 	}
 
 	private static class Constraint<T> {
@@ -189,6 +194,13 @@ public final class Schedule<T> {
 			this.excessPeeks = Math.max(0, peekRate - popRate);
 			this.condition = condition;
 			this.bufferDelta = bufferDelta;
+		}
+		@Override
+		public String toString() {
+			return String.format("%s (push %d) -> %s (peek %d pop %d) %s %d",
+					upstream, pushRate,
+					downstream, popRate + excessPeeks, popRate,
+					condition, bufferDelta);
 		}
 	}
 
