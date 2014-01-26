@@ -21,7 +21,6 @@ import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.LookupUtils.findConstructor;
 import static edu.mit.streamjit.util.LookupUtils.findVirtual;
-import edu.mit.streamjit.util.MethodHandlePhaser;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.SwitchPoint;
@@ -151,7 +150,15 @@ public class Compiler2BlobHost implements Blob {
 		}
 		this.coreCode = Bytecodifier.runnableProxies(coreCodeHandles.build());
 		MethodHandle throwAE = THROW_NEW_ASSERTION_ERROR.bindTo("Can't happen! Barrier action reached after draining?");
-		this.barrier = new MethodHandlePhaser(sp1.guardWithTest(doInit, sp2.guardWithTest(doAdjust, throwAE)), coreCode.size());
+		MethodHandle barrierAction = sp1.guardWithTest(doInit, sp2.guardWithTest(doAdjust, throwAE));
+		final Runnable onAdvanceRunnable = Bytecodifier.runnableProxies(ImmutableList.of(barrierAction)).get(0);
+		this.barrier = new Phaser(coreCode.size()) {
+			@Override
+			protected boolean onAdvance(int phase, int registeredParties) {
+				onAdvanceRunnable.run();
+				return super.onAdvance(phase, registeredParties);
+			}
+		};
 	}
 
 	@Override
