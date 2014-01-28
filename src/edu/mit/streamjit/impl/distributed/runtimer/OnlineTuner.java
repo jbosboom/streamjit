@@ -81,8 +81,6 @@ public class OnlineTuner implements Runnable {
 				System.out
 						.println("----------------------------------------------");
 				System.out.println(tryCount++);
-				// Configuration config = rebuildConfiguration(cfgJson,
-				// app.blobConfiguration);
 
 				Configuration config = Configuration.fromJson(cfgJson);
 
@@ -161,7 +159,8 @@ public class OnlineTuner implements Runnable {
 	private void handleTermination() throws IOException {
 		String finalConfg = tuner.readLine();
 		System.out.println("Tuning finished");
-		saveConfg(rebuildConfiguration(finalConfg, app.blobConfiguration), 0);
+		Configuration config = Configuration.fromJson(finalConfg);
+		saveConfg(config, 0);
 		if (needTermination) {
 			if (manager.isRunning()) {
 				drainer.startDraining(1);
@@ -181,8 +180,7 @@ public class OnlineTuner implements Runnable {
 	 */
 	private void runForever(String cfgJson) {
 		System.out.println("runForever");
-		Configuration config = rebuildConfiguration(cfgJson,
-				app.blobConfiguration);
+		Configuration config = Configuration.fromJson(cfgJson);
 		try {
 			if (!cfgManager.newConfiguration(config)) {
 				System.err.println("Invalid final configuration.");
@@ -222,60 +220,6 @@ public class OnlineTuner implements Runnable {
 			System.err
 					.println("Couldn't compile the stream graph with this configuration");
 		}
-	}
-
-	/**
-	 * Creates a new {@link Configuration} from the received python dictionary
-	 * string. This is not a good way to do.
-	 * <p>
-	 * TODO: Need to add a method to {@link Configuration} so that the
-	 * configuration object can be updated from the python dict string. Now we
-	 * are destructing the old confg object and recreating a new one every time.
-	 * Not a appreciatable way.
-	 * 
-	 * @param cfgJson
-	 *            Python dictionary string. Autotuner gives a dictionary of
-	 *            features with trial values.
-	 * @param config
-	 *            Old configuration object.
-	 * @return New configuration object with updated values from the cfgJson.
-	 */
-	private Configuration rebuildConfiguration(String cfgJson,
-			Configuration config) {
-		// System.out.println(cfgJson);
-		checkNotNull(cfgJson, "Received Python dictionary is null");
-		cfgJson = cfgJson.replaceAll("u'", "");
-		cfgJson = cfgJson.replaceAll("':", "");
-		cfgJson = cfgJson.replaceAll("\\{", "");
-		cfgJson = cfgJson.replaceAll("\\}", "");
-		Splitter dictSplitter = Splitter.on(", ").omitEmptyStrings()
-				.trimResults();
-		Configuration.Builder builder = Configuration.builder();
-		System.out.println("New parameter values from Opentuner...");
-		for (String s : dictSplitter.split(cfgJson)) {
-			String[] str = s.split(" ");
-			if (str.length != 2)
-				throw new AssertionError("Wrong python dictionary...");
-			Parameter p = config.getParameter(str[0]);
-			if (p == null)
-				continue;
-			// System.out.println(String.format("\t%s = %s", str[0], str[1]));
-			if (p instanceof IntParameter) {
-				IntParameter ip = (IntParameter) p;
-				builder.addParameter(new IntParameter(ip.getName(),
-						ip.getMin(), ip.getMax(), Integer.parseInt(str[1])));
-
-			} else if (p instanceof SwitchParameter<?>) {
-				SwitchParameter sp = (SwitchParameter) p;
-				Class<?> type = sp.getGenericParameter();
-				int val = Integer.parseInt(str[1]);
-				SwitchParameter<?> sp1 = new SwitchParameter(sp.getName(),
-						type, sp.getUniverse().get(val), sp.getUniverse());
-				builder.addParameter(sp1);
-			}
-
-		}
-		return builder.build();
 	}
 
 	/**
