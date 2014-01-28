@@ -99,6 +99,12 @@ public final class GlobalConstants {
 	 */
 	public static final boolean saveAllConfigurations = true;
 
+	/**
+	 * Output count for tuning. Tuner measures the running time for this number
+	 * of outputs.
+	 */
+	public static final int outputCount = 100000;
+
 	static {
 
 	}

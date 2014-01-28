@@ -176,7 +176,7 @@ public class StreamJitAppManager {
 
 		tailChannel = new TailChannel(bufferMap.get(tailToken),
 				controller.getConProvider(), tailconInfo, "tailChannel - "
-						+ tailToken.toString(), 0, 1000);
+						+ tailToken.toString(), 0, GlobalConstants.outputCount);
 	}
 
 	/**
