@@ -1,21 +1,15 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-import com.google.common.base.Splitter;
 import com.google.common.base.Stopwatch;
 
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.Configuration.IntParameter;
-import edu.mit.streamjit.impl.common.Configuration.Parameter;
-import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
@@ -62,7 +56,6 @@ public class OnlineTuner implements Runnable {
 			tuner.writeLine(app.name);
 
 			tuner.writeLine("confg");
-			// String s = getConfigurationString(app.blobConfiguration);
 			tuner.writeLine(Jsonifiers.toJson(app.blobConfiguration).toString());
 
 			System.out.println("New tune run.............");
