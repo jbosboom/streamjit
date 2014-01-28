@@ -245,7 +245,6 @@ public class StreamJitAppManager {
 
 		if (isFinal) {
 			this.status = AppStatus.STOPPED;
-			tailChannel.reset();
 			controller.closeAll();
 		}
 		isRunning = false;
