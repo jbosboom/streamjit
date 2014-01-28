@@ -85,7 +85,7 @@ public class OnlineTuner implements Runnable {
 				Configuration config = Configuration.fromJson(cfgJson);
 
 				if (GlobalConstants.saveAllConfigurations)
-					saveConfg(config, tryCount);
+					saveConfg(cfgJson, tryCount);
 
 				try {
 					if (!cfgManager.newConfiguration(config)) {
@@ -159,8 +159,7 @@ public class OnlineTuner implements Runnable {
 	private void handleTermination() throws IOException {
 		String finalConfg = tuner.readLine();
 		System.out.println("Tuning finished");
-		Configuration config = Configuration.fromJson(finalConfg);
-		saveConfg(config, 0);
+		saveConfg(finalConfg, 0);
 		if (needTermination) {
 			if (manager.isRunning()) {
 				drainer.startDraining(1);
@@ -225,8 +224,7 @@ public class OnlineTuner implements Runnable {
 	/**
 	 * Save the configuration.
 	 */
-	private void saveConfg(Configuration config, int round) {
-		String json = config.toJson();
+	private void saveConfg(String json, int round) {
 		try {
 
 			File dir = new File(String.format("configurations%s%s",
