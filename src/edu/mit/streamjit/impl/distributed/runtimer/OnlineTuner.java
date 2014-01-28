@@ -279,21 +279,6 @@ public class OnlineTuner implements Runnable {
 	}
 
 	/**
-	 * TODO: This method is totally unnecessary if we remove the usage of the
-	 * name "class" in side {@link Configuration}.
-	 * 
-	 * @param cfg
-	 * @return
-	 */
-	private String getConfigurationString(Configuration cfg) {
-		String s = Jsonifiers.toJson(cfg).toString();
-		String s1 = s.replaceAll("__class__", "ttttt");
-		String s2 = s1.replaceAll("class", "javaClassPath");
-		String s3 = s2.replaceAll("ttttt", "__class__");
-		return s3;
-	}
-
-	/**
 	 * Save the configuration.
 	 */
 	private void saveConfg(Configuration config, int round) {
