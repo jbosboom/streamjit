@@ -67,13 +67,13 @@ public class OnlineTuner implements Runnable {
 
 			System.out.println("New tune run.............");
 			while (manager.getStatus() != AppStatus.STOPPED) {
-				String pythonDict = tuner.readLine();
-				if (pythonDict == null)
+				String cfgJson = tuner.readLine();
+				if (cfgJson == null)
 					break;
 
 				// At the end of the tuning, Opentuner will send "Completed"
 				// msg. This means no more tuning.
-				if (pythonDict.equals("Completed")) {
+				if (cfgJson.equals("Completed")) {
 					handleTermination();
 					break;
 				}
@@ -81,10 +81,10 @@ public class OnlineTuner implements Runnable {
 				System.out
 						.println("----------------------------------------------");
 				System.out.println(tryCount++);
-				// Configuration config = rebuildConfiguration(pythonDict,
+				// Configuration config = rebuildConfiguration(cfgJson,
 				// app.blobConfiguration);
 
-				Configuration config = Configuration.fromJson(pythonDict);
+				Configuration config = Configuration.fromJson(cfgJson);
 
 				if (GlobalConstants.saveAllConfigurations)
 					saveConfg(config, tryCount);
@@ -177,11 +177,11 @@ public class OnlineTuner implements Runnable {
 	 * TODO: Just copied from the run method. Code duplication between this
 	 * method and the run() method. Try to avoid duplicate code.
 	 * 
-	 * @param pythonDict
+	 * @param cfgJson
 	 */
-	private void runForever(String pythonDict) {
+	private void runForever(String cfgJson) {
 		System.out.println("runForever");
-		Configuration config = rebuildConfiguration(pythonDict,
+		Configuration config = rebuildConfiguration(cfgJson,
 				app.blobConfiguration);
 		try {
 			if (!cfgManager.newConfiguration(config)) {
@@ -233,26 +233,26 @@ public class OnlineTuner implements Runnable {
 	 * are destructing the old confg object and recreating a new one every time.
 	 * Not a appreciatable way.
 	 * 
-	 * @param pythonDict
+	 * @param cfgJson
 	 *            Python dictionary string. Autotuner gives a dictionary of
 	 *            features with trial values.
 	 * @param config
 	 *            Old configuration object.
-	 * @return New configuration object with updated values from the pythonDict.
+	 * @return New configuration object with updated values from the cfgJson.
 	 */
-	private Configuration rebuildConfiguration(String pythonDict,
+	private Configuration rebuildConfiguration(String cfgJson,
 			Configuration config) {
-		// System.out.println(pythonDict);
-		checkNotNull(pythonDict, "Received Python dictionary is null");
-		pythonDict = pythonDict.replaceAll("u'", "");
-		pythonDict = pythonDict.replaceAll("':", "");
-		pythonDict = pythonDict.replaceAll("\\{", "");
-		pythonDict = pythonDict.replaceAll("\\}", "");
+		// System.out.println(cfgJson);
+		checkNotNull(cfgJson, "Received Python dictionary is null");
+		cfgJson = cfgJson.replaceAll("u'", "");
+		cfgJson = cfgJson.replaceAll("':", "");
+		cfgJson = cfgJson.replaceAll("\\{", "");
+		cfgJson = cfgJson.replaceAll("\\}", "");
 		Splitter dictSplitter = Splitter.on(", ").omitEmptyStrings()
 				.trimResults();
 		Configuration.Builder builder = Configuration.builder();
 		System.out.println("New parameter values from Opentuner...");
-		for (String s : dictSplitter.split(pythonDict)) {
+		for (String s : dictSplitter.split(cfgJson)) {
 			String[] str = s.split(" ");
 			if (str.length != 2)
 				throw new AssertionError("Wrong python dictionary...");
