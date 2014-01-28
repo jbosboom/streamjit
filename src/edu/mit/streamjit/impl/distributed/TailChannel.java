@@ -4,6 +4,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.base.Stopwatch;
 
@@ -21,6 +22,8 @@ public class TailChannel extends TCPInputChannel {
 
 	private volatile CountDownLatch latch;
 
+	private performanceLogger pLogger = null;
+
 	public TailChannel(Buffer buffer, TCPConnectionProvider conProvider,
 			TCPConnectionInfo conInfo, String bufferTokenName, int debugPrint,
 			int limit) {
@@ -28,8 +31,10 @@ public class TailChannel extends TCPInputChannel {
 		this.limit = limit;
 		count = 0;
 		latch = new CountDownLatch(1);
-		if (!GlobalConstants.tune)
-			new performanceLogger().start();
+		if (!GlobalConstants.tune) {
+			pLogger = new performanceLogger();
+			pLogger.start();
+		}
 	}
 
 	@Override
@@ -39,6 +44,15 @@ public class TailChannel extends TCPInputChannel {
 		// System.err.println(count);
 		if (count > limit)
 			latch.countDown();
+	}
+
+	@Override
+	public void stop(int type) {
+		super.stop(type);
+		if (pLogger != null) {
+			reset();
+			pLogger.stopLogging();
+		}
 	}
 
 	public void awaitForFixInput() throws InterruptedException {
@@ -53,6 +67,12 @@ public class TailChannel extends TCPInputChannel {
 
 	private class performanceLogger extends Thread {
 
+		private AtomicBoolean stopFlag;
+
+		private performanceLogger() {
+			stopFlag = new AtomicBoolean(false);
+		}
+
 		public void run() {
 			int i = 0;
 			FileWriter writer;
@@ -62,15 +82,15 @@ public class TailChannel extends TCPInputChannel {
 				e1.printStackTrace();
 				return;
 			}
-			while (++i < 30) {
+			while (++i < 30 && !stopFlag.get()) {
 				try {
 					Stopwatch stopwatch = Stopwatch.createStarted();
 					latch.await();
 					stopwatch.stop();
 					Long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 
-					 System.out.println("Execution time is " + time
-					 + " milli seconds");
+					System.out.println("Execution time is " + time
+							+ " milli seconds");
 
 					writer.write(time.toString());
 					writer.write('\n');
@@ -87,6 +107,10 @@ public class TailChannel extends TCPInputChannel {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+		}
+
+		public void stopLogging() {
+			stopFlag.set(true);
 		}
 	}
 }
