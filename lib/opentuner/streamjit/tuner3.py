@@ -129,7 +129,7 @@ def make_jvm_options():
 if __name__ == '__main__':
 	logging.basicConfig(level=logging.INFO)
 	parser = argparse.ArgumentParser(parents=opentuner.argparsers())
-	parser.add_argument('--program', help='StreamJIT benchmark to tune (with first input)')
+	parser.add_argument('program', help='StreamJIT benchmark to tune (with first input)')
 	args = parser.parse_args()
 	(cfg_json, error_str) = call_java([], "edu.mit.streamjit.tuner.ConfigGenerator2",
 		["edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory", args.program])
