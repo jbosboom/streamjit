@@ -15,6 +15,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
+import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.test.Benchmark;
@@ -27,10 +28,10 @@ import edu.mit.streamjit.tuner.ConfigGenerator.sqliteAdapter;
  * information from streamjit.db based on the passed arguments, runs the
  * streamJit app and update the database with the execution time. StreamJit's
  * opentuner Python script calls this to run the streamJit application.
- *
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since Sep 10, 2013
- *
+ * 
  */
 public class RunApp {
 
@@ -50,62 +51,39 @@ public class RunApp {
 		System.out.println(String.format("JAVA Executing: %s Round - %d",
 				benchmarkName, round));
 
-		String dbPath = "streamjit.db";
-
-		sqliteAdapter sqlite;
-		try {
-			sqlite = new sqliteAdapter();
-		} catch (ClassNotFoundException e) {
-			System.err
-					.println("Sqlite3 database not found...couldn't update the database with the configutaion.");
-			e.printStackTrace();
-			return;
-		}
-		sqlite.connectDB(dbPath);
-
-		ResultSet result = sqlite.executeQuery(String.format(
-				"SELECT * FROM apps WHERE name='%s'", benchmarkName));
-
-		String confgString = result.getString("configuration");
-
 		String sjDbPath = "sj" + benchmarkName + ".db";
 		sqliteAdapter sjDb;
 		try {
 			sjDb = new sqliteAdapter();
 		} catch (ClassNotFoundException e1) {
-			// Actually this exception will not occur. If Sqlite3 did not
-			// exists then it would have exit at previous return point.
 			System.err
 					.println("Sqlite3 database not found...couldn't update the database with the configutaion.");
 			e1.printStackTrace();
 			return;
 		}
-		sjDb.connectDB(sjDbPath);
 
-		ResultSet result1 = sjDb.executeQuery(String.format(
+		sjDb.connectDB(sjDbPath);
+		ResultSet result = sjDb.executeQuery(String.format(
 				"SELECT * FROM results WHERE Round=%d", round));
 
-		String pyDict = result1.getString("SJConfig");
-
-		Configuration config = Configuration
-				.fromJson(getConfigurationString(confgString));
-
-		Configuration cfg2 = rebuildConfiguration(pyDict, config);
+		String cfgJson = result.getString("SJConfig");
+		Configuration cfg = Configuration.fromJson(cfgJson);
 
 		Benchmark app = Benchmarker.getBenchmarkByName(benchmarkName);
 		StreamCompiler sc;
-		IntParameter p = cfg2.getParameter("noOfMachines", IntParameter.class);
+		IntParameter p = cfg.getParameter("noOfMachines", IntParameter.class);
 		if (p == null) {
-			Compiler2StreamCompiler csc = new Compiler2StreamCompiler();
-			csc.configuration(cfg2);
+			CompilerStreamCompiler csc = new CompilerStreamCompiler();
+			csc.setConfig(cfg);
 			sc = csc;
 		} else {
-			sc = new DistributedStreamCompiler(p.getValue(), cfg2);
+			sc = new DistributedStreamCompiler(p.getValue(), cfg);
 		}
 
 		double time = 0;
 		try {
-			Benchmarker.Result benchmarkResult = Benchmarker.runBenchmark(app, sc).get(0);
+			Benchmarker.Result benchmarkResult = Benchmarker.runBenchmark(app,
+					sc).get(0);
 			if (benchmarkResult.isOK())
 				time = benchmarkResult.runMillis();
 			else if (benchmarkResult.kind() == Benchmarker.Result.Kind.TIMEOUT)
@@ -118,7 +96,7 @@ public class RunApp {
 				time = -2;
 			}
 		} catch (Exception e) {
-			//The Benchmarker should catch everything, but just in case...
+			// The Benchmarker should catch everything, but just in case...
 			e.printStackTrace();
 			time = -2;
 		} catch (OutOfMemoryError er) {
@@ -155,7 +133,7 @@ public class RunApp {
 	 * configuration object can be updated from the python dict string. Now we
 	 * are destructing the old confg object and recreating a new one every time.
 	 * Not a appreciatable way.
-	 *
+	 * 
 	 * @param pythonDict
 	 *            Python dictionary string. Autotuner gives a dictionary of
 	 *            features with trial values.
