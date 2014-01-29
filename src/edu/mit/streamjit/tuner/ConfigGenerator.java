@@ -19,6 +19,7 @@ import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.test.Benchmark;
@@ -102,7 +103,8 @@ public class ConfigGenerator {
 		Configuration cfg = factory.getDefaultConfiguration(workers);
 
 		String name = app.toString();
-		String confString = getConfigurationString(cfg);
+		// String confString = getConfigurationString(cfg);
+		String confString = cfg.toJson();
 
 		try {
 			sqlite.executeUpdate(String.format(
@@ -214,7 +216,7 @@ public class ConfigGenerator {
 
 		BlobFactory bf;
 		if (noOfmachines == 1)
-			bf = new Compiler2BlobFactory();
+			bf = new CompilerBlobFactory();
 		else
 			bf = new DistributedBlobFactory(noOfmachines);
 
