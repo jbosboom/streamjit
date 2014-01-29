@@ -139,12 +139,13 @@ class StreamJitMI(MeasurementInterface):
 
 	def save_final_config(self, configuration):
 		'''called at the end of autotuning with the best resultsdb.models.Configuration'''
-		cfg = dict.copy(configuration.data)
+		cfg_data = dict.copy(configuration.data)
+
 		print "\033[32;1mFinal Config...\033[0m"
-		(state, time) = self.runApp(cfg)
+		(state, time) = self.runApp(cfg_data)
 		conn = sqlite3.connect('streamjit.db', 100)
 		cur = conn.cursor()
-		query = 'INSERT INTO FinalResult VALUES ("%s","%s", %d, "%s", "%f")'%(self.program, cfg, self.trycount, state, float(time))
+		query = "INSERT INTO FinalResult VALUES ('%s','%s', %d, '%s', '%f')"%(self.program, self.config.toJSON(), self.trycount, state, float(time))
 		cur.execute(query)
 		conn.commit()
 
