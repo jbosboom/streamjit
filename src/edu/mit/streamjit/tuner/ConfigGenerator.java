@@ -25,7 +25,6 @@ import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
-import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
  * ConfigGenerator generates {@link Configuration} of an application and stores
@@ -33,7 +32,7 @@ import edu.mit.streamjit.util.json.Jsonifiers;
  * In this way, Opentuner can start and stop the StreamJit app for each tuning
  * try so that Opentuner can tune JVM parameters such as heapsize,
  * inlinethreshold, GCpausetime, etc as well.
- *
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since Sep 10, 2013
  */
@@ -41,23 +40,8 @@ import edu.mit.streamjit.util.json.Jsonifiers;
 public class ConfigGenerator {
 
 	/**
-	 * TODO: Need to remove the string "class" from the {@link Configuration}
-	 * jsonifiers. Once it is done, this method can be removed.
-	 *
-	 * @param cfg
-	 * @return
-	 */
-	private String getConfigurationString(Configuration cfg) {
-		String s = Jsonifiers.toJson(cfg).toString();
-		String s1 = s.replaceAll("__class__", "ttttt");
-		String s2 = s1.replaceAll("class", "javaClassPath");
-		String s3 = s2.replaceAll("ttttt", "__class__");
-		return s3;
-	}
-
-	/**
 	 * Generates configuration for the passed provider.
-	 *
+	 * 
 	 * @param provider
 	 *            Only first benchmark is used to generate configuration. i.e.,
 	 *            only first benchmark will be tuned.
@@ -103,7 +87,6 @@ public class ConfigGenerator {
 		Configuration cfg = factory.getDefaultConfiguration(workers);
 
 		String name = app.toString();
-		// String confString = getConfigurationString(cfg);
 		String confString = cfg.toJson();
 
 		try {
@@ -141,14 +124,13 @@ public class ConfigGenerator {
 				statement.setQueryTimeout(30); // set timeout to 30 sec.
 
 			} catch (SQLException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
 
 		/**
 		 * Creates table iff it is not exists
-		 *
+		 * 
 		 * @param table
 		 *            Name of the table
 		 * @param signature
