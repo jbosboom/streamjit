@@ -19,7 +19,6 @@ import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.test.Benchmark;
@@ -198,7 +197,7 @@ public class ConfigGenerator {
 
 		BlobFactory bf;
 		if (noOfmachines == 1)
-			bf = new CompilerBlobFactory();
+			bf = new Compiler2BlobFactory();
 		else
 			bf = new DistributedBlobFactory(noOfmachines);
 
