@@ -80,7 +80,7 @@ public final class ILPSolver {
 		try {
 			//Row 0 is the objective function.  Col 0 is apparently the right-hand
 			//side but the API hides this.
-			lp = makeLp(constraints.size()+1, variables.size());
+			lp = makeLp(constraints.size(), variables.size());
 			row = Pointer.allocateDoubles(variables.size()+1);
 			column = Pointer.allocateDoubles(constraints.size()+1);
 			if (lp == null || row == null || column == null)
