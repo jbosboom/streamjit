@@ -115,9 +115,9 @@ public class Interpreter implements Blob {
 			Workers.getInputChannels(info.downstream()).set(info.getDownstreamChannelIndex(), channel);
 			if (initialState != null) {
 				ImmutableList<Object> data = initialState.getData(info.token());
-				System.out.println(String.format(
-						"Internal edge: InitialData of %s is %d", info.token(),
-						data.size()));
+//				System.out.println(String.format(
+//						"Internal edge: InitialData of %s is %d", info.token(),
+//						data.size()));
 				for (Object o : data != null ? data : ImmutableList.of())
 					channel.push(o);
 			}
@@ -151,9 +151,9 @@ public class Interpreter implements Blob {
 				//as input in the downstream blob.
 				if (initialState != null) {
 					ImmutableList<Object> data = initialState.getData(info.token());
-					System.out.println(String.format(
-							"External edge: InitialData of %s is %d",
-							info.token(), data.size()));
+//					System.out.println(String.format(
+//							"External edge: InitialData of %s is %d",
+//							info.token(), data.size()));
 					for (Object o : data != null ? data : ImmutableList.of())
 						channel.push(o);
 				}
