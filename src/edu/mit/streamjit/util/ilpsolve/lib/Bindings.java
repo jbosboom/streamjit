@@ -286,4 +286,13 @@ public final class Bindings {
 	@Convention(Convention.Style.StdCall)
 	@Name("set_outputfile")
 	protected native static byte setOutputfile(@Ptr long lp, @Ptr long filename);
+
+	@Convention(Convention.Style.StdCall)
+	@Name("print_lp")
+	public static void printLp(Pointer<lprec > lp) {
+		printLp(Pointer.getPeer(lp));
+	}
+	@Convention(Convention.Style.StdCall)
+	@Name("print_lp")
+	protected native static void printLp(@Ptr long lp);
 }
