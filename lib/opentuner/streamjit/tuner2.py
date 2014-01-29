@@ -105,7 +105,7 @@ class StreamJitMI(MeasurementInterface):
 			print "\033[31;1mException Found\033[0m"
 			self.waitForStreamNodes(True)
 			cur = self.tunedataDB.cursor()
-			str1 = str(commandStr)
+			str1 = str(jvmArgs)
 			str2 = self.config.toJSON()
 			cur.execute('INSERT INTO exceptions VALUES (?,?,?)', (err, str1, str2))
 			self.tunedataDB.commit()
