@@ -4,6 +4,7 @@ import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicate;
 import com.google.common.base.Supplier;
+import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
@@ -169,6 +170,21 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	}
 
 	/**
+	 * Returns the physical indices read from the given storage during the given
+	 * group iterations.
+	 * @param s the storage being read from
+	 * @param iterations the group iterations
+	 * @return the physical indices read
+	 */
+	public ImmutableSortedSet<Integer> reads(Storage s, Range<Integer> iterations) {
+		iterations = iterations.canonical(DiscreteDomain.integers());
+		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+		for (Actor a : actors())
+			builder.addAll(a.reads(s, Range.closedOpen(iterations.lowerEndpoint() * schedule.get(a), iterations.upperEndpoint() * schedule.get(a))));
+		return builder.build();
+	}
+
+	/**
 	 * Returns a map mapping each input Storage to the set of physical indices
 	 * read in that Storage during the given ActorGroup iteration.
 	 * @param iteration the iteration to simulate
@@ -194,6 +210,20 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
 		for (Actor a : actors())
 			builder.addAll(a.writes(s, Range.closedOpen(iteration * schedule.get(a), (iteration+1) * schedule.get(a))));
+		return builder.build();
+	}
+
+	/**
+	 * Returns the physical indices written to the given storage during the
+	 * given group iteration.
+	 * @param s the storage being written to
+	 * @param iterations the group iterations
+	 * @return the physical indices written
+	 */
+	public ImmutableSortedSet<Integer> writes(Storage s, Range<Integer> iterations) {
+		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+		for (Actor a : actors())
+			builder.addAll(a.writes(s, Range.closedOpen(iterations.lowerEndpoint() * schedule.get(a), iterations.upperEndpoint() * schedule.get(a))));
 		return builder.build();
 	}
 
