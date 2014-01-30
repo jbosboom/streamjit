@@ -1,6 +1,8 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
+import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
@@ -34,18 +36,37 @@ public class CountDataParallelAllocationStrategy implements AllocationStrategy {
 
 	@Override
 	public void makeParameters(Set<Worker<?, ?>> workers, Configuration.Builder builder) {
+		ImmutableList.Builder<Integer> integersBuilder = ImmutableList.builder();
+		for (int i = 0; i < maxNumCores(); ++i)
+			integersBuilder.add(i);
+		ImmutableList<Integer> integers = integersBuilder.build();
+
 		for (Worker<?, ?> w : workers) {
-			String name = String.format("Group%dCores", Workers.getIdentifier(w));
-			builder.addParameter(new Configuration.IntParameter(name, 1, maxNumCores(), maxNumCores()));
+			int id = Workers.getIdentifier(w);
+			//If stateful, which core?
+			if (w instanceof StatefulFilter)
+				builder.addParameter(new Configuration.SwitchParameter<>("Group"+id+"Core", Integer.class, 0, integers));
+			//Otherwise, how many cores?
+			else
+				builder.addParameter(new Configuration.IntParameter("Group"+id+"Cores", 1, maxNumCores(), maxNumCores()));
 		}
 	}
 
 	@Override
 	public void allocateGroup(ActorGroup group, Range<Integer> iterations, List<Core> cores, Configuration config) {
-		String name = String.format("Group%dCores", group.id());
-		Configuration.IntParameter param = config.getParameter(name, Configuration.IntParameter.class);
-		int count = Math.min(Math.min(cores.size(), maxNumCores()), param.getValue());
-		assert count > 0 : count;
-		new FullDataParallelAllocationStrategy(count).allocateGroup(group, iterations, cores.subList(0, count), config);
+		if (group.isStateful()) {
+			int minStatefulId = Integer.MAX_VALUE;
+			for (Actor a : group.actors())
+				if (a instanceof WorkerActor && ((WorkerActor)a).archetype().isStateful())
+					minStatefulId = Math.min(minStatefulId, a.id());
+			Configuration.SwitchParameter<Integer> param = config.getParameter("Group"+minStatefulId+"Core", Configuration.SwitchParameter.class, Integer.class);
+			cores.get(param.getValue() % cores.size()).allocate(group, iterations);
+		} else {
+			String name = String.format("Group%dCores", group.id());
+			Configuration.IntParameter param = config.getParameter(name, Configuration.IntParameter.class);
+			int count = Math.min(Math.min(cores.size(), maxNumCores()), param.getValue());
+			assert count > 0 : count;
+			new FullDataParallelAllocationStrategy(count).allocateGroup(group, iterations, cores.subList(0, count), config);
+		}
 	}
 }
