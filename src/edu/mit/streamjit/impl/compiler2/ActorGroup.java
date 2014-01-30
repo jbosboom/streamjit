@@ -108,8 +108,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		return Sets.filter(allEdges(), new Predicate<Storage>() {
 			@Override
 			public boolean apply(Storage input) {
-				return Iterables.getOnlyElement(input.upstream()).group() == ActorGroup.this &&
-						Iterables.getOnlyElement(input.downstream()).group() == ActorGroup.this;
+				return input.isInternal();
 			}
 		});
 	}
