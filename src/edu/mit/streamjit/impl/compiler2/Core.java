@@ -65,15 +65,6 @@ public class Core {
 		return allocations.isEmpty();
 	}
 
-	/**
-	 * Returns the ConcreteStorage instances allocated for internal Storage by
-	 * this core.
-	 * @return local ConcreteStorage instances
-	 */
-	public ImmutableMap<Storage, ConcreteStorage> localStorage() {
-		return allStorage;
-	}
-
 	@Override
 	public String toString() {
 		return allocations.toString();
