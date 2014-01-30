@@ -1,5 +1,6 @@
 package edu.mit.streamjit.util.affinity;
 
+import com.google.common.primitives.Longs;
 import org.bridj.BridJ;
 import org.bridj.CRuntime;
 import org.bridj.LastError;
@@ -21,7 +22,7 @@ final class LinuxAffinityStrategy implements AffinityStrategy {
 		Pointer<Long> pmask = null;
 		try {
 			pmask = Pointer.allocateLong();
-			int ret = sched_getaffinity(0, new SizeT(Long.BYTES), pmask);
+			int ret = sched_getaffinity(0, new SizeT(Longs.BYTES), pmask);
 			if (ret != 0)
 				throw new RuntimeException();
 			return pmask.get();
@@ -36,7 +37,7 @@ final class LinuxAffinityStrategy implements AffinityStrategy {
 		try {
 			pmask = Pointer.allocateLong();
 			pmask.set(mask);
-			int ret = sched_setaffinity(0, new SizeT(Long.BYTES), pmask);
+			int ret = sched_setaffinity(0, new SizeT(Longs.BYTES), pmask);
 			if (ret != 0)
 				throw new RuntimeException();
 		} finally {
