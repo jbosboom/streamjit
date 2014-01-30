@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -16,10 +17,15 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 	private static final MethodHandle ADJUST = findVirtual(LOOKUP, InternalArrayConcreteStorage.class, "adjust", void.class);;
 	private final Object array;
 	private final MethodHandle readHandle, writeHandle;
-	public InternalArrayConcreteStorage(Storage s, int capacity) {
+	public InternalArrayConcreteStorage(Storage s, int capacity, int offset) {
 		this.array = Array.newInstance(s.type(), capacity);
-		this.readHandle = MethodHandles.arrayElementGetter(array.getClass()).bindTo(array);
-		this.writeHandle = MethodHandles.arrayElementSetter(array.getClass()).bindTo(array);
+		MethodHandle subOffset = Combinators.sub(MethodHandles.identity(int.class), offset);
+		this.readHandle = MethodHandles.filterArguments(
+				MethodHandles.arrayElementGetter(array.getClass()).bindTo(array),
+				0, subOffset);
+		this.writeHandle = MethodHandles.filterArguments(
+				MethodHandles.arrayElementSetter(array.getClass()).bindTo(array),
+				0, subOffset);
 	}
 
 	@Override
@@ -73,7 +79,7 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {
-				return new InternalArrayConcreteStorage(storage, storage.steadyStateCapacity());
+				return new InternalArrayConcreteStorage(storage, storage.steadyStateCapacity(), 0);
 			}
 		};
 	}
