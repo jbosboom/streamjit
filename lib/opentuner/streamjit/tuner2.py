@@ -60,18 +60,15 @@ class StreamJitMI(MeasurementInterface):
 		#TODO: find a better place for these system-specific constants
 		#the path to the Java executable, or "java" to use system's default
 		javaPath = "java"
-		#the classpath, suitable as the value of the '-cp' java argument
-		javaClassPath = "dist/jstreamit.jar:lib/ASM/asm-debug-all-4.1.jar:lib/BridJ/bridj-0.6.2-c-only.jar:lib/CopyLibs/org-netbeans-modules-java-j2seproject-copylibstask.jar:lib/Guava/guava-15.0.jar:lib/Guava/guava-15.0-javadoc.jar:lib/Guava/guava-15.0-sources.jar:lib/JOptSimple/jopt-simple-4.5.jar:lib/JOptSimple/jopt-simple-4.5-javadoc.jar:lib/JOptSimple/jopt-simple-4.5-sources.jar:lib/jsonp/javax.json-1.0-fab.jar:lib/jsonp/javax.json-api-1.0-SNAPSHOT-javadoc.jar:lib/ServiceProviderProcessor/ServiceProviderProcessor.jar:lib/sqlite/sqlite-jdbc-3.7.15-M1.jar"
 
-		args = [javaPath, "-cp", javaClassPath]
 		jvmArgs = []
 		for key in self.jvmOptions.keys():
 			self.jvmOptions.get(key).setValue(cfg_data[key])
 			cmd = self.jvmOptions.get(key).getCommand()
 			if len(cmd) > 0:
 				jvmArgs.append(cmd)
-		args.extend(jvmArgs)
-		args.append("edu.mit.streamjit.tuner.RunApp")
+
+		args = self.getArgs1(javaPath, jvmArgs)
 		args.append(str(self.program))
 		args.append(str(self.trycount))
 
@@ -124,6 +121,22 @@ class StreamJitMI(MeasurementInterface):
 			print "\033[32;1mExecution time is %f ms\033[0m"%exetime
 			self.waitForStreamNodes(False)
 			return ('OK',exetime)
+
+	# Return args that is to run a runnable jar file.
+	def getArgs1(self, javaPath, jvmArgs):
+		args = [javaPath]
+		args.extend(jvmArgs)
+		args.append("-jar")
+		args.append("RunApp.jar")
+		return args
+
+	# Return args that is to run from class file.
+	def getArgs2(self, javaPath, jvmArgs):
+		#the classpath, suitable as the value of the '-cp' java argument
+		javaClassPath = "dist/jstreamit.jar:lib/ASM/asm-debug-all-4.1.jar:lib/BridJ/bridj-0.7-20140122.002307-56-c-only.jar:lib/CopyLibs/org-netbeans-modules-java-j2seproject-copylibstask.jar:lib/Guava/guava-15.0.jar:lib/Guava/guava-15.0-javadoc.jar:lib/Guava/guava-15.0-sources.jar:lib/JOptSimple/jopt-simple-4.5.jar:lib/JOptSimple/jopt-simple-4.5-javadoc.jar:lib/JOptSimple/jopt-simple-4.5-sources.jar:lib/jsonp/javax.json-1.0-fab.jar:lib/jsonp/javax.json-api-1.0-SNAPSHOT-javadoc.jar:lib/ServiceProviderProcessor/ServiceProviderProcessor.jar:lib/sqlite/sqlite-jdbc-3.7.15-M1.jar"
+		args = [javaPath, "-cp", javaClassPath]
+		args.append("edu.mit.streamjit.tuner.RunApp")
+		return args
 
 	def niceprint(self, cfg_data):
 		print "\n--------------------------------------------------"
