@@ -2,6 +2,7 @@ package edu.mit.streamjit.util.affinity;
 
 import com.google.common.collect.ImmutableSet;
 import java.util.Set;
+import org.bridj.Platform;
 
 /**
  * Provides static methods for getting and setting the CPU affinity of the
@@ -12,10 +13,12 @@ import java.util.Set;
 public final class Affinity {
 	private static final AffinityStrategy STRATEGY;
 	static {
-		if (System.getProperty("os.name").contains("Windows"))
+		if (Platform.isWindows())
 			STRATEGY = new NullAffinityStrategy();
-		else
+		else if (Platform.isUnix())
 			STRATEGY = new LinuxAffinityStrategy();
+		else
+			STRATEGY = new NullAffinityStrategy();
 	}
 
 	public static ImmutableSet<Integer> get() {
