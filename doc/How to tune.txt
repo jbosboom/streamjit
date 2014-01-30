@@ -2,7 +2,7 @@ Go to lib/opentuner/ folder and run venv-bootstrap.py. This will setup a virtual
 
 Run the edu.mit.streamjit.tuner.ConfigGenerator.java to generate configuration information for a particular app. Tuner.java will update the apps table in the streamjit.db with name, configuration, location and class name of the streamjit app.
 
-Build the edu.mit.streamjit.tuner.RunApp.java and export it as runnable jar in to stramjit folder. If you need to change the input size, you can change it inside the function runApp() in the RunApp class.
+Build the edu.mit.streamjit.tuner.RunApp.java and export it as runnable jar in to stramjit folder.
 
 Run lib/opentuner/streamjit/tuner2.py.
 
