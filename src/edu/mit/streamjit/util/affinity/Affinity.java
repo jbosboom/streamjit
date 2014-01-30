@@ -14,7 +14,7 @@ public final class Affinity {
 	private static final AffinityStrategy STRATEGY;
 	static {
 		if (Platform.isWindows())
-			STRATEGY = new NullAffinityStrategy();
+			STRATEGY = new WindowsAffinityStrategy();
 		else if (Platform.isUnix())
 			STRATEGY = new LinuxAffinityStrategy();
 		else
