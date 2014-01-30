@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Range;
 import edu.mit.streamjit.util.CollectionUtils;
@@ -9,6 +10,7 @@ import edu.mit.streamjit.util.Pair;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -17,7 +19,8 @@ import java.util.Set;
  * @since 10/17/2013
  */
 public class Core {
-	private final ImmutableMap<Storage, ConcreteStorage> globalStorage, localStorage, allStorage;
+	private final ImmutableMap<Storage, ConcreteStorage> globalStorage;
+	private final StorageFactory localStorageFactory;
 	private final ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers, outputTransformers;
 	private final Bytecodifier.Function bytecodifier;
 	private final List<Pair<ActorGroup, Range<Integer>>> allocations = new ArrayList<>();
@@ -27,18 +30,7 @@ public class Core {
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers,
 			Bytecodifier.Function bytecodifier) {
 		this.globalStorage = globalStorage;
-		//We make ConcreteStorage for every local storage, despite not knowing
-		//what we need yet; anything we don't use will get garbage collected
-		//when the compiler state is discarded after instantiating the Blob.
-		//TODO: this wastes space if we're assigned only part of a fissed
-		//schedule; we should wait until we're building code and can compute
-		//the space requirement.
-		ImmutableMap.Builder<Storage, ConcreteStorage> localStorageBuilder = ImmutableMap.builder();
-		for (Storage s : storage)
-			if (s.isInternal())
-				localStorageBuilder.put(s, localStorageFactory.make(s));
-		this.localStorage = localStorageBuilder.build();
-		this.allStorage = CollectionUtils.union(globalStorage, localStorage);
+		this.localStorageFactory = localStorageFactory;
 		this.inputTransformers = inputTransformers;
 		this.outputTransformers = outputTransformers;
 		this.bytecodifier = bytecodifier;
@@ -49,6 +41,19 @@ public class Core {
 	}
 
 	public MethodHandle code() {
+		ImmutableMap.Builder<Storage, ConcreteStorage> localStorage = ImmutableMap.builder();
+		for (Pair<ActorGroup, Range<Integer>> p : allocations) {
+			ActorGroup g = p.first;
+			Range<Integer> iterations = p.second;
+			for (Storage s : g.internalEdges()) {
+				ImmutableSortedSet<Integer> reads = g.reads(s, iterations);
+				assert reads.equals(g.writes(s, iterations));
+				//StorageFactory doesn't let us specify a capacity or offset.
+				localStorage.put(s, new InternalArrayConcreteStorage(s, reads.last() - reads.first() + 1, reads.first()));
+			}
+		}
+
+		Map<Storage, ConcreteStorage> allStorage = CollectionUtils.union(globalStorage, localStorage.build());
 		//TODO: here's where to plug in ActorGroup ordering parameters
 		List<MethodHandle> code = new ArrayList<>(allocations.size());
 		for (Pair<ActorGroup, Range<Integer>> p : allocations)
