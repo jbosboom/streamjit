@@ -105,6 +105,11 @@ public final class GlobalConstants {
 	 */
 	public static final int outputCount = 100000;
 
+	/**
+	 * if true uses Compiler2, interpreter otherwise.
+	 */
+	public static final boolean useCompilerBlob = true;
+
 	static {
 
 	}
