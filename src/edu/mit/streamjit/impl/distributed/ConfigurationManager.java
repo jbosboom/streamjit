@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.distributed;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,9 +20,13 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
+import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
+import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
+import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
+import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.AbstractPartitioner;
 
@@ -125,17 +130,21 @@ public interface ConfigurationManager {
 			PartitionParameter.Builder partParam = PartitionParameter.builder(
 					GlobalConstants.PARTITION, coresPerMachine);
 
-			BlobFactory factory = new Interpreter.InterpreterBlobFactory();
-			partParam.addBlobFactory(factory);
-
+			BlobFactory intFactory = new Interpreter.InterpreterBlobFactory();
+			BlobFactory comp2Factory = new Compiler2BlobFactory();
+			partParam.addBlobFactory(intFactory);
+			partParam.addBlobFactory(comp2Factory);
 			app.blobtoMachineMap = new HashMap<>();
 
+			BlobFactory bf = GlobalConstants.useCompilerBlob
+					? comp2Factory
+					: intFactory;
 			for (Integer machineID : app.partitionsMachineMap.keySet()) {
 				List<Set<Worker<?, ?>>> blobList = app.partitionsMachineMap
 						.get(machineID);
 				for (Set<Worker<?, ?>> blobWorkers : blobList) {
 					// TODO: One core per blob. Need to change this.
-					partParam.addBlob(machineID, 1, factory, blobWorkers);
+					partParam.addBlob(machineID, 1, bf, blobWorkers);
 
 					// TODO: Temp fix to build.
 					Token t = Utils.getblobID(blobWorkers);
@@ -144,9 +153,25 @@ public interface ConfigurationManager {
 			}
 
 			builder.addParameter(partParam.build());
-			if (app.blobConfiguration != null)
+			if (GlobalConstants.useCompilerBlob)
 				builder.addSubconfiguration("blobConfigs",
 						app.blobConfiguration);
+			else
+				builder.addSubconfiguration("blobConfigs",
+						getInterpreterConfg());
+			return builder.build();
+		}
+
+		private Configuration getInterpreterConfg() {
+			Configuration.Builder builder = Configuration.builder();
+			// TODO: Ensure the need of this switch parameter.
+			List<ChannelFactory> universe = Arrays
+					.<ChannelFactory> asList(new ConcurrentChannelFactory());
+			SwitchParameter<ChannelFactory> cfParameter = new SwitchParameter<ChannelFactory>(
+					"channelFactory", ChannelFactory.class, universe.get(0),
+					universe);
+
+			builder.addParameter(cfParameter);
 			return builder.build();
 		}
 
