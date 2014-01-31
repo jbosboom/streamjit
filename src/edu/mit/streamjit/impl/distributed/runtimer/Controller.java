@@ -3,7 +3,6 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -13,9 +12,7 @@ import java.util.Set;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
@@ -29,7 +26,6 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.distributed.runtimer.StreamNodeAgent;
-import edu.mit.streamjit.impl.interp.ChannelFactory;
 
 /**
  * {@link Controller} controls all {@link StreamNode}s in runtime. It has
@@ -126,25 +122,13 @@ public class Controller {
 
 	public void newApp(Configuration staticCfg) {
 		Configuration.Builder builder = Configuration.builder(staticCfg);
-
 		Map<Integer, InetAddress> inetMap = new HashMap<>();
 		for (StreamNodeAgent agent : StreamNodeMap.values())
 			inetMap.put(agent.getNodeID(), agent.getAddress());
 
 		inetMap.put(controllerNodeID, comManager.getLocalAddress());
-
-		// TODO: Ensure the need of this switch parameter.
-		List<ChannelFactory> universe = Arrays
-				.<ChannelFactory> asList(new ConcurrentChannelFactory());
-		SwitchParameter<ChannelFactory> cfParameter = new SwitchParameter<ChannelFactory>(
-				"channelFactory", ChannelFactory.class, universe.get(0),
-				universe);
-
-		builder.addParameter(cfParameter).putExtraData(
-				GlobalConstants.INETADDRESS_MAP, inetMap);
-
+		builder.putExtraData(GlobalConstants.INETADDRESS_MAP, inetMap);
 		this.conProvider = new TCPConnectionProvider(controllerNodeID, inetMap);
-
 		ConfigurationString json = new ConfigurationString(builder.build()
 				.toJson(), ConfigType.STATIC, null);
 		sendToAll(json);
