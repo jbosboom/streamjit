@@ -60,10 +60,13 @@ class StreamJitMI(MeasurementInterface):
 
 	def save_final_config(self, configuration):
 		'''called at the end of autotuning with the best resultsdb.models.Configuration'''
-		cfg = configuration.data
-		print "Final configuration", cfg
+		cfg_data = configuration.data
+		print "Final configuration", cfg_data
+		for k in self.config.params:
+			self.config.getParameter(k).update_value_for_json(cfg_data)
+
 		self.connection.sendmsg("Completed")
-		self.connection.sendmsg("%s\n"%cfg)
+		self.connection.sendmsg(self.config.toJSON())
 		self.connection.close()
 		sys.exit(0)
 
