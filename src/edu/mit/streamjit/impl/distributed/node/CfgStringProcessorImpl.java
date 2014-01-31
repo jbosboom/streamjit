@@ -25,14 +25,12 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecifier;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
-import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
-import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
@@ -128,32 +126,25 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 			if (blobList == null)
 				return blobSet.build();
 
-			BlobFactory bf;
 			Configuration blobConfigs = dyncfg
 					.getSubconfiguration("blobConfigs");
-			if (blobConfigs == null) {
-				blobConfigs = staticConfig;
-				bf = new Interpreter.InterpreterBlobFactory();
-			} else {
-				bf = new Compiler2BlobFactory();
-			}
 
 			for (BlobSpecifier bs : blobList) {
 				Set<Integer> workIdentifiers = bs.getWorkerIdentifiers();
-				// DEBUG
+				// DEBUG MSG
 				System.out.println(String.format(
 						"A new blob with workers %s has been created.",
 						workIdentifiers.toString()));
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
 
 				try {
+					BlobFactory bf = bs.getBlobFactory();
 					Blob b = bf.makeBlob(workerset, blobConfigs, 1, drainData);
 					blobSet.add(b);
 				} catch (Exception ex) {
 					return null;
 				}
 			}
-
 			return blobSet.build();
 		} else
 			return null;
@@ -200,7 +191,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 		URL url;
 		try {
 			url = jarFile.toURI().toURL();
-			URL[] urls = new URL[] { url };
+			URL[] urls = new URL[]{url};
 
 			ClassLoader loader = new URLClassLoader(urls);
 			Class<?> topStreamClass;

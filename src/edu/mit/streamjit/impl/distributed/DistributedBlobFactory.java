@@ -9,6 +9,7 @@ import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.interp.Interpreter.InterpreterBlobFactory;
 
 /**
@@ -61,13 +62,14 @@ public class DistributedBlobFactory implements BlobFactory {
 
 		Configuration distCfg = cfgManager.getDefaultConfiguration(workers,
 				noOfMachines);
-		Configuration.Builder builder = Configuration.builder(distCfg);
+		if (!GlobalConstants.useCompilerBlob)
+			return distCfg;
 
+		Configuration.Builder builder = Configuration.builder(distCfg);
 		BlobFactory compilerBf = new Compiler2BlobFactory();
 		Configuration compilercfg = compilerBf.getDefaultConfiguration(workers);
 		for (Parameter p : compilercfg.getParametersMap().values())
 			builder.addParameter(p);
-
 		return builder.build();
 	}
 
