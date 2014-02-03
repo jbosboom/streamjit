@@ -171,6 +171,14 @@ public class OnlineTuner implements Runnable {
 		String finalConfg = tuner.readLine();
 		System.out.println("Tuning finished");
 		saveConfg(finalConfg, 0);
+
+		Configuration cfg = Configuration.fromJson(finalConfg);
+		evaluateConfig(cfg, "Final configuration");
+
+		Configuration handCfg = readConfiguration(String.format("hand_%s.cfg",
+				app.name));
+		evaluateConfig(handCfg, "Handtuned configuration");
+
 		if (needTermination) {
 			if (manager.isRunning()) {
 				drainer.startDraining(1);
@@ -230,6 +238,55 @@ public class OnlineTuner implements Runnable {
 			System.err
 					.println("Couldn't compile the stream graph with this configuration");
 		}
+	}
+
+	/**
+	 * Evaluates a configuration.
+	 * 
+	 * @param cfg
+	 *            configuration that needs to be evaluated
+	 * @param cfgName
+	 *            name of the configuration. This is just for logging purpose.
+	 */
+	private void evaluateConfig(Configuration cfg, String cfgName) {
+		FileWriter writer;
+		double total = 0;
+		int count = 3;
+		try {
+			writer = new FileWriter(String.format("Eval_%s.txt", app.name),
+					true);
+			writer.write("\n----------------------------------------\n");
+			writer.write(String.format("Configuration name = %s\n", cfgName));
+			if (cfg != null) {
+				for (int i = 0; i < count; i++) {
+					Pair<Boolean, Long> ret = reconfigure(cfg);
+					writer.write(ret.second.toString());
+					writer.write('\n');
+					total += ret.second;
+				}
+				double avg = total / count;
+				writer.write(String.format("Average execution time = %f%n\n",
+						avg));
+			} else {
+				writer.write("Null configuration\n");
+			}
+			writer.close();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+	}
+
+	private Configuration readConfiguration(String name) {
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(name));
+			String json = reader.readLine();
+			reader.close();
+			return Configuration.fromJson(json);
+		} catch (Exception ex) {
+			System.err.println(String.format(
+					"File reader error. No %s configuration file.", name));
+		}
+		return null;
 	}
 
 	/**
