@@ -32,6 +32,7 @@ public class OnlineTuner implements Runnable {
 	private final StreamJitApp app;
 	private final ConfigurationManager cfgManager;
 	private final boolean needTermination;
+	private int round;
 
 	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
 			StreamJitApp app, ConfigurationManager cfgManager,
@@ -42,11 +43,11 @@ public class OnlineTuner implements Runnable {
 		this.cfgManager = cfgManager;
 		this.tuner = new TCPTuner();
 		this.needTermination = needTermination;
+		this.round = 0;
 	}
 
 	@Override
 	public void run() {
-		int round = 0;
 		try {
 			tuner.startTuner(String.format(
 					"lib%sopentuner%sstreamjit%sstreamjit2.py", File.separator,
