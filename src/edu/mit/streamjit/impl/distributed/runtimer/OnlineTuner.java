@@ -46,7 +46,7 @@ public class OnlineTuner implements Runnable {
 
 	@Override
 	public void run() {
-		int tryCount = 0;
+		int round = 0;
 		try {
 			tuner.startTuner(String.format(
 					"lib%sopentuner%sstreamjit%sstreamjit2.py", File.separator,
@@ -73,12 +73,12 @@ public class OnlineTuner implements Runnable {
 
 				System.out
 						.println("----------------------------------------------");
-				System.out.println(tryCount++);
+				System.out.println(round++);
 
 				Configuration config = Configuration.fromJson(cfgJson);
 
 				if (GlobalConstants.saveAllConfigurations)
-					saveConfg(cfgJson, tryCount);
+					saveConfg(cfgJson, round);
 
 				try {
 					if (!cfgManager.newConfiguration(config)) {
