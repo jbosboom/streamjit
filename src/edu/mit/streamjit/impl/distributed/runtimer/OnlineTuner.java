@@ -17,6 +17,7 @@ import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.tuner.OpenTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
+import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
@@ -32,7 +33,6 @@ public class OnlineTuner implements Runnable {
 	private final StreamJitApp app;
 	private final ConfigurationManager cfgManager;
 	private final boolean needTermination;
-	private int round;
 
 	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
 			StreamJitApp app, ConfigurationManager cfgManager,
@@ -43,11 +43,11 @@ public class OnlineTuner implements Runnable {
 		this.cfgManager = cfgManager;
 		this.tuner = new TCPTuner();
 		this.needTermination = needTermination;
-		this.round = 0;
 	}
 
 	@Override
 	public void run() {
+		int round = 0;
 		try {
 			tuner.startTuner(String.format(
 					"lib%sopentuner%sstreamjit%sstreamjit2.py", File.separator,
@@ -58,6 +58,8 @@ public class OnlineTuner implements Runnable {
 
 			tuner.writeLine("confg");
 			tuner.writeLine(Jsonifiers.toJson(app.blobConfiguration).toString());
+
+			Pair<Boolean, Long> ret;
 
 			System.out.println("New tune run.............");
 			while (manager.getStatus() != AppStatus.STOPPED) {
@@ -72,65 +74,12 @@ public class OnlineTuner implements Runnable {
 					break;
 				}
 
-				System.out
-						.println("----------------------------------------------");
-				System.out.println(round++);
-
-				Configuration config = Configuration.fromJson(cfgJson);
-
-				if (GlobalConstants.saveAllConfigurations)
-					saveConfg(cfgJson, round);
-
-				try {
-					if (!cfgManager.newConfiguration(config)) {
-						tuner.writeLine("-1");
-						continue;
-					}
-
-					if (manager.isRunning()) {
-						boolean state = drainer.startDraining(0);
-						if (!state) {
-							System.err
-									.println("Final drain has already been called. no more tuning.");
-							tuner.writeLine("exit");
-							break;
-						}
-
-						System.err.println("awaitDrainedIntrmdiate");
-						drainer.awaitDrainedIntrmdiate();
-
-						if (GlobalConstants.useDrainData) {
-							System.err.println("awaitDrainData...");
-							drainer.awaitDrainData();
-							DrainData drainData = drainer.getDrainData();
-							app.drainData = drainData;
-						}
-					}
-
-					drainer.setBlobGraph(app.blobGraph);
-					System.err.println("Reconfiguring...");
-					if (manager.reconfigure()) {
-						Stopwatch stopwatch = Stopwatch.createStarted();
-						manager.awaitForFixInput();
-						stopwatch.stop();
-						// TODO: need to check the manager's status before
-						// passing
-						// the time. Exceptions, final drain, etc may causes app
-						// to
-						// stop executing.
-						long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
-
-						System.out.println("Execution time is " + time
-								+ " milli seconds");
-						tuner.writeLine(new Double(time).toString());
-					} else {
-						tuner.writeLine("-1");
-						continue;
-					}
-				} catch (Exception ex) {
-					System.err
-							.println("Couldn't compile the stream graph with this configuration");
-					tuner.writeLine("-1");
+				ret = reconfigure(cfgJson, round++);
+				if (ret.first) {
+					tuner.writeLine(new Double(ret.second).toString());
+				} else {
+					tuner.writeLine("exit");
+					break;
 				}
 			}
 
@@ -143,6 +92,71 @@ public class OnlineTuner implements Runnable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	/**
+	 * @param cfgJson
+	 * @param round
+	 * @return if ret.first == false, then no more tuning. ret.second = running
+	 *         time in milliseconds.
+	 */
+	private Pair<Boolean, Long> reconfigure(String cfgJson, int round) {
+		long time;
+		System.out.println("----------------------------------------------");
+		System.out.println(round);
+		Configuration config = Configuration.fromJson(cfgJson);
+
+		if (GlobalConstants.saveAllConfigurations || round == 0)
+			saveConfg(cfgJson, round);
+
+		try {
+			if (!cfgManager.newConfiguration(config)) {
+				return new Pair<Boolean, Long>(true, -1l);
+			}
+
+			if (manager.isRunning()) {
+				boolean state = drainer.startDraining(0);
+				if (!state) {
+					System.err
+							.println("Final drain has already been called. no more tuning.");
+					return new Pair<Boolean, Long>(false, -1l);
+				}
+
+				System.err.println("awaitDrainedIntrmdiate");
+				drainer.awaitDrainedIntrmdiate();
+
+				if (GlobalConstants.useDrainData) {
+					System.err.println("awaitDrainData...");
+					drainer.awaitDrainData();
+					DrainData drainData = drainer.getDrainData();
+					app.drainData = drainData;
+				}
+			}
+
+			drainer.setBlobGraph(app.blobGraph);
+			System.err.println("Reconfiguring...");
+			if (manager.reconfigure()) {
+				Stopwatch stopwatch = Stopwatch.createStarted();
+				manager.awaitForFixInput();
+				stopwatch.stop();
+				// TODO: need to check the manager's status before
+				// passing
+				// the time. Exceptions, final drain, etc may causes app
+				// to
+				// stop executing.
+				time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+
+				System.out.println("Execution time is " + time
+						+ " milli seconds");
+			} else {
+				time = -1l;
+			}
+		} catch (Exception ex) {
+			System.err
+					.println("Couldn't compile the stream graph with this configuration");
+			time = -1l;
+		}
+		return new Pair<Boolean, Long>(true, time);
 	}
 
 	/**
