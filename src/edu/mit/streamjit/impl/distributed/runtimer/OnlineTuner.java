@@ -186,56 +186,12 @@ public class OnlineTuner implements Runnable {
 				manager.stop();
 			}
 		} else {
-			runForever(finalcfg);
-		}
-	}
-
-	/**
-	 * TODO: Just copied from the reconfigure method. Code duplication between
-	 * this method and the reconfigure() method. Try to avoid duplicate code.
-	 * 
-	 * @param config
-	 */
-	private void runForever(Configuration config) {
-		System.out.println("runForever");
-		try {
-			if (!cfgManager.newConfiguration(config)) {
-				System.err.println("Invalid final configuration.");
-				return;
-			}
-
-			if (manager.isRunning()) {
-				boolean state = drainer.startDraining(0);
-				if (!state) {
-					System.err
-							.println("Final drain has already been called. no more tuning.");
-					return;
-				}
-
-				System.err.println("awaitDrainedIntrmdiate");
-				drainer.awaitDrainedIntrmdiate();
-
-				if (GlobalConstants.useDrainData) {
-					System.err.println("awaitDrainData...");
-					drainer.awaitDrainData();
-					DrainData drainData = drainer.getDrainData();
-					app.drainData = drainData;
-				}
-
-				drainer.setBlobGraph(app.blobGraph);
-			}
-
-			System.err.println("Reconfiguring...");
-			boolean var = manager.reconfigure();
-			if (var) {
+			Pair<Boolean, Long> ret = reconfigure(finalcfg);
+			if (ret.first && ret.second > 0)
 				System.out
-						.println("Application is running with the final configuration.");
-			} else {
+						.println("Application is running forever with the final configuration.");
+			else
 				System.err.println("Invalid final configuration.");
-			}
-		} catch (Exception ex) {
-			System.err
-					.println("Couldn't compile the stream graph with this configuration");
 		}
 	}
 
