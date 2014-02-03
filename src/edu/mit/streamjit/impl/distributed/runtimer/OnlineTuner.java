@@ -172,8 +172,8 @@ public class OnlineTuner implements Runnable {
 		System.out.println("Tuning finished");
 		saveConfg(finalConfg, 0);
 
-		Configuration cfg = Configuration.fromJson(finalConfg);
-		evaluateConfig(cfg, "Final configuration");
+		Configuration finalcfg = Configuration.fromJson(finalConfg);
+		evaluateConfig(finalcfg, "Final configuration");
 
 		Configuration handCfg = readConfiguration(String.format("hand_%s.cfg",
 				app.name));
@@ -186,19 +186,18 @@ public class OnlineTuner implements Runnable {
 				manager.stop();
 			}
 		} else {
-			runForever(finalConfg);
+			runForever(finalcfg);
 		}
 	}
 
 	/**
-	 * TODO: Just copied from the run method. Code duplication between this
-	 * method and the run() method. Try to avoid duplicate code.
+	 * TODO: Just copied from the reconfigure method. Code duplication between
+	 * this method and the reconfigure() method. Try to avoid duplicate code.
 	 * 
-	 * @param cfgJson
+	 * @param config
 	 */
-	private void runForever(String cfgJson) {
+	private void runForever(Configuration config) {
 		System.out.println("runForever");
-		Configuration config = Configuration.fromJson(cfgJson);
 		try {
 			if (!cfgManager.newConfiguration(config)) {
 				System.err.println("Invalid final configuration.");
