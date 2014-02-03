@@ -34,14 +34,14 @@ import edu.mit.streamjit.partitioner.AbstractPartitioner;
  * ConfigurationManager deals with {@link Configuration}. Mainly, It does
  * following two tasks.
  * <ol>
- * <li>Generates configuration for with appropriate tuning parameters for
- * tuning.
+ * <li>Generates configuration with appropriate tuning parameters (Based on the
+ * search space design strategy) for tuning.
  * <li>Dispatch the configuration given by the open tuner and make blobs
  * accordingly.
  * </ol>
  * 
  * One can implement this interface to try different search space designs as
- * they want.
+ * he want.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Jan 16, 2014
@@ -164,7 +164,6 @@ public interface ConfigurationManager {
 
 		private Configuration getInterpreterConfg() {
 			Configuration.Builder builder = Configuration.builder();
-			// TODO: Ensure the need of this switch parameter.
 			List<ChannelFactory> universe = Arrays
 					.<ChannelFactory> asList(new ConcurrentChannelFactory());
 			SwitchParameter<ChannelFactory> cfParameter = new SwitchParameter<ChannelFactory>(

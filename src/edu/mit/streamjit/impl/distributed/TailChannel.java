@@ -82,7 +82,7 @@ public class TailChannel extends TCPInputChannel {
 				e1.printStackTrace();
 				return;
 			}
-			while (++i < 30 && !stopFlag.get()) {
+			while (++i < 10 && !stopFlag.get()) {
 				try {
 					Stopwatch stopwatch = Stopwatch.createStarted();
 					latch.await();
