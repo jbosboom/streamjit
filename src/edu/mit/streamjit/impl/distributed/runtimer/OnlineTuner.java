@@ -1,6 +1,8 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -74,7 +76,15 @@ public class OnlineTuner implements Runnable {
 					break;
 				}
 
-				ret = reconfigure(cfgJson, round++);
+				System.out
+						.println("----------------------------------------------");
+				System.out.println(round++);
+				Configuration config = Configuration.fromJson(cfgJson);
+
+				if (GlobalConstants.saveAllConfigurations)
+					saveConfg(cfgJson, round);
+
+				ret = reconfigure(config);
 				if (ret.first) {
 					tuner.writeLine(new Double(ret.second).toString());
 				} else {
@@ -100,15 +110,8 @@ public class OnlineTuner implements Runnable {
 	 * @return if ret.first == false, then no more tuning. ret.second = running
 	 *         time in milliseconds.
 	 */
-	private Pair<Boolean, Long> reconfigure(String cfgJson, int round) {
+	private Pair<Boolean, Long> reconfigure(Configuration config) {
 		long time;
-		System.out.println("----------------------------------------------");
-		System.out.println(round);
-		Configuration config = Configuration.fromJson(cfgJson);
-
-		if (GlobalConstants.saveAllConfigurations || round == 0)
-			saveConfg(cfgJson, round);
-
 		try {
 			if (!cfgManager.newConfiguration(config)) {
 				return new Pair<Boolean, Long>(true, -1l);
