@@ -47,17 +47,17 @@ final class LinuxAffinityStrategy implements AffinityStrategy {
 
 	@Override
 	public long getProcessAffinity() {
-		throw new UnsupportedOperationException("TODO");
+		return new NullAffinityStrategy().getProcessAffinity();
 	}
 
 	@Override
 	public void setProcessAffinity(long mask) {
-		throw new UnsupportedOperationException("TODO");
+		new NullAffinityStrategy().setProcessAffinity(mask);
 	}
 
 	@Override
 	public long getMaximalAffinityMask() {
-		throw new UnsupportedOperationException("TODO");
+		return new NullAffinityStrategy().getMaximalAffinityMask();
 	}
 
 	static {
