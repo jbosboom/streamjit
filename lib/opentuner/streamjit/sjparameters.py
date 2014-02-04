@@ -1,7 +1,7 @@
 import deps #fix sys.path
 import random
 import opentuner
-from opentuner.search.manipulator import IntegerParameter, FloatParameter, SwitchParameter, ArrayParameter
+from opentuner.search.manipulator import IntegerParameter, FloatParameter, SwitchParameter, PermutationParameter, ArrayParameter
 
 class sjIntegerParameter(IntegerParameter):
 	def __init__(self, name, min, max, value, javaClass = None, **kwargs):
@@ -66,6 +66,22 @@ class sjSwitchParameter(SwitchParameter):
 	def json_replacement(self):
 		return {"name": self.name,
 			"value": self.value,
+			"universeType": self.universeType,
+			"universe": self.universe,
+			"class": self.javaClass}
+
+class sjPermutationParameter(PermutationParameter):
+	def __init__(self, name, universeType, universe, javaClass):
+		self.javaClass = javaClass
+		self.universeType = universeType
+		self.universe = universe
+		super(sjPermutationParameter, self).__init__(name, universe)
+
+	def update_value_for_json(self, config):
+		self.value = self._get(config)
+
+	def json_replacement(self):
+		return {"name": self.name,
 			"universeType": self.universeType,
 			"universe": self.universe,
 			"class": self.javaClass}

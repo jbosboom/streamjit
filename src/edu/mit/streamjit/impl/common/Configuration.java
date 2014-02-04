@@ -814,6 +814,91 @@ public final class Configuration {
 		}
 	}
 
+	public static final class PermutationParameter<T> implements GenericParameter<T> {
+		private static final long serialVersionUID = 1L;
+		private final String name;
+		private final Class<T> universeType;
+		private final ImmutableList<? extends T> universe;
+		public PermutationParameter(String name, Class<T> universeType, Iterable<? extends T> universe) {
+			this.name = checkNotNull(name);
+			this.universeType = checkNotNull(universeType);
+			this.universe = ImmutableList.copyOf(universe);
+			for (T t : universe)
+				checkArgument(universeType.isInstance(t), "%s not a %s", t, universeType);
+		}
+		@Override
+		public String getName() {
+			return name;
+		}
+		@Override
+		public Class<?> getGenericParameter() {
+			return universeType;
+		}
+		public ImmutableList<? extends T> getUniverse() {
+			return universe;
+		}
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			final PermutationParameter<?> other = (PermutationParameter<?>)obj;
+			if (!Objects.equals(this.name, other.name))
+				return false;
+			if (!Objects.equals(this.universeType, other.universeType))
+				return false;
+			if (!Objects.equals(this.universe, other.universe))
+				return false;
+			return true;
+		}
+		@Override
+		public int hashCode() {
+			int hash = 3;
+			hash = 79 * hash + Objects.hashCode(this.name);
+			hash = 79 * hash + Objects.hashCode(this.universeType);
+			hash = 79 * hash + Objects.hashCode(this.universe);
+			return hash;
+		}
+		@Override
+		public String toString() {
+			return String.format("[%s: %s]", name, universe);
+		}
+
+		@ServiceProvider(JsonifierFactory.class)
+		protected static final class PermutationParameterJsonifier implements Jsonifier<PermutationParameter<?>>, JsonifierFactory {
+			public PermutationParameterJsonifier() {}
+			@Override
+			@SuppressWarnings({"unchecked", "rawtypes"})
+			public PermutationParameter<?> fromJson(JsonValue value) {
+				JsonObject obj = Jsonifiers.checkClassEqual(value, PermutationParameter.class);
+				String name = obj.getString("name");
+				Class<?> universeType = Jsonifiers.fromJson(obj.get("universeType"), Class.class);
+				ImmutableList<?> universe = ImmutableList.copyOf(Jsonifiers.fromJson(obj.get("universe"), ReflectionUtils.getArrayType(universeType)));
+				//We should have caught this in fromJson(v, universeType).
+				assert Jsonifiers.notHeapPolluted(universe, universeType);
+				return new PermutationParameter(name, universeType, universe);
+			}
+			@Override
+			public JsonValue toJson(PermutationParameter<?> t) {
+				return Json.createObjectBuilder()
+						.add("class", Jsonifiers.toJson(PermutationParameter.class))
+						.add("name", t.getName())
+						.add("universeType", Jsonifiers.toJson(t.universeType))
+						.add("universe", Jsonifiers.toJson(t.universe.toArray()))
+						//Python-side support
+						.add("__module__", "sjparameters")
+						.add("__class__", "sjPermutationParameter")
+						.build();
+			}
+			@Override
+			@SuppressWarnings("unchecked")
+			public <T> Jsonifier<T> getJsonifier(Class<T> klass) {
+				return (Jsonifier<T>)(klass.equals(PermutationParameter.class) ? this : null);
+			}
+		}
+	}
+
 	/**
 	 * A PartitionParameter represents a partitioning of a stream graph
 	 * (workers) into Blobs, the kind of those Blobs, and the mapping of Blobs
