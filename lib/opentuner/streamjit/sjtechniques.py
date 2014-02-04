@@ -1,27 +1,38 @@
+import abc
 from opentuner.search import technique
 from sjparameters import sjSwitchParameter, sjCompositionParameter
 
-# Looks for sjSwitchParameters whose name starts with a given prefix and forces
-# their value to true.  (TODO: make boolean sjSwitchParameters extend BooleanParameter instead)
-class ForceTrue(technique.SearchTechnique):
+# base class for techniques that mutate the best configuration
+class BestBasedTechnique(technique.SearchTechnique):
+	__metaclass__ = abc.ABCMeta
+
+	def __init__(self, *pargs, **kwargs):
+		super(BestBasedTechnique, self).__init__(*pargs, **kwargs)
+
+	def desired_configuration(self):
+		for result in self.driver.results_query(objective_ordered = True):
+			data = self.manipulator.copy(result.configuration.data)
+			next_data = self.mutate(self.manipulator.parameters(data), data)
+			next_cfg = self.driver.get_configuration(next_data)
+			if next_cfg.id is not None: # don't resubmit
+				continue
+			return next_cfg
+		return None
+
+	@abc.abstractmethod
+	def mutate(self, params, data):
+		pass
+
+class ForceTrue(BestBasedTechnique):
 	def __init__(self, prefix, *pargs, **kwargs):
 		super(ForceTrue, self).__init__(*pargs, **kwargs)
 		self.prefix = prefix
 
-	def desired_configuration(self):
-		for result in self.driver.results_query(objective_ordered = True):
-			truecfg = self.force(result.configuration)
-			if self.driver.has_results(truecfg):
-				continue
-			return truecfg
-		return None
-
-	def force(self, cfg):
-		new_data = self.manipulator.copy(cfg.data)
-		for param in self.manipulator.parameters(cfg.data):
+	def mutate(self, params, data):
+		for param in params:
 			if isinstance(param, sjSwitchParameter) and param.name.startswith(self.prefix):
-				param._set(new_data, 1) # corresponds to true
-		return self.driver.get_configuration(new_data)
+				param._set(data, 1)
+		return data
 
 class ForceRemove(ForceTrue):
 	def __init__(self, *pargs, **kwargs):
