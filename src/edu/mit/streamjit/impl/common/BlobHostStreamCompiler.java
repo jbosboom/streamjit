@@ -16,6 +16,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
+import edu.mit.streamjit.util.affinity.Affinity;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -47,7 +48,8 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
 		stream.visit(cwv);
 		ImmutableSet<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
-		Blob blob = blobFactory.makeBlob(workers, getConfiguration(workers), getMaxNumCores(), null);
+		Configuration config = getConfiguration(workers);
+		Blob blob = blobFactory.makeBlob(workers, config, getMaxNumCores(), null);
 
 		Token inputToken = Iterables.getOnlyElement(blob.getInputs());
 		Token outputToken = Iterables.getOnlyElement(blob.getOutputs());
@@ -59,9 +61,11 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 				.build();
 		blob.installBuffers(bufferMap);
 
+		Configuration.PermutationParameter<Integer> affinityParam = config.getParameter("$affinity", Configuration.PermutationParameter.class, Integer.class);
+		ImmutableList<? extends Integer> affinityList = affinityParam.getUniverse();
 		ImmutableList.Builder<PollingCoreThread> threadsBuilder = ImmutableList.builder();
 		for (int i = 0; i < blob.getCoreCount(); ++i) {
-			PollingCoreThread thread = new PollingCoreThread(blob.getCoreCode(i), blob.toString()+"-"+i);
+			PollingCoreThread thread = new PollingCoreThread(affinityList.get(i % affinityList.size()), blob.getCoreCode(i), blob.toString()+"-"+i);
 			threadsBuilder.add(thread);
 		}
 		ImmutableList<PollingCoreThread> threads = threadsBuilder.build();
@@ -90,7 +94,9 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 	 * @return a configuration
 	 */
 	protected Configuration getConfiguration(Set<Worker<?, ?>> workers) {
-		return blobFactory.getDefaultConfiguration(workers);
+		Configuration.Builder builder = Configuration.builder(blobFactory.getDefaultConfiguration(workers));
+		Configuration.PermutationParameter<Integer> affinity = new Configuration.PermutationParameter<>("$affinity", Integer.class, Affinity.getMaximalAffinity());
+		return builder.addParameter(affinity).build();
 	}
 
 	protected int getMaxNumCores() {
@@ -138,15 +144,18 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 	}
 
 	private static final class PollingCoreThread extends Thread {
+		private final int cpu;
 		private final Runnable coreCode;
 		private volatile boolean running = true;
 		private volatile CountDownLatch latch;
-		private PollingCoreThread(Runnable target, String name) {
+		private PollingCoreThread(int cpu, Runnable target, String name) {
 			super(name);
+			this.cpu = cpu;
 			this.coreCode = target;
 		}
 		@Override
 		public void run() {
+			Affinity.setThreadAffinity(ImmutableSet.of(cpu));
 			try {
 				while (running)
 					coreCode.run();
