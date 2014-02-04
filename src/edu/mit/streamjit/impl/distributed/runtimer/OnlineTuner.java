@@ -204,6 +204,7 @@ public class OnlineTuner implements Runnable {
 	 *            name of the configuration. This is just for logging purpose.
 	 */
 	private void evaluateConfig(Configuration cfg, String cfgName) {
+		System.out.println("Evaluating " + cfgName);
 		FileWriter writer;
 		double total = 0;
 		int count = 3;
