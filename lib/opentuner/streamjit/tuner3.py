@@ -101,12 +101,13 @@ def make_jvm_options():
 	optimizeStringConcat = jvmFlag("optimizeStringConcat", "-XX:+OptimizeStringConcat")
 
 	# options controlling inlining
+	clipInlining = jvmFlag("clipInlining", "-XX:-ClipInlining") # on by default, we turn it off
 	freqInlineSize = jvmIntegerParameter("freqInlineSize", 100, 10000, 325, "-XX:FreqInlineSize=%d")
 	inlineSmallCode = jvmIntegerParameter("inlineSmallCode", 500, 10000, 1000, "-XX:InlineSmallCode=%d")
 	maxInlineSize = jvmIntegerParameter("maxInlineSize", 20, 1000, 35, "-XX:MaxInlineSize=%d")
 	maxInlineLevel = jvmIntegerParameter("maxInlineLevel", 5, 20, 9, "-XX:MaxInlineLevel=%d")
 
-	enabledJvmOptions = [aggressiveOpts, compileThreshold, freqInlineSize, maxInlineSize, maxInlineLevel]
+	enabledJvmOptions = [aggressiveOpts, compileThreshold, clipInlining, freqInlineSize, maxInlineSize, maxInlineLevel]
 	return {x.name:x for x in enabledJvmOptions}
 
 if __name__ == '__main__':
