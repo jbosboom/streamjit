@@ -44,16 +44,16 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 	@Override
 	public boolean newConfiguration(Configuration config) {
 
-		for (Parameter p : config.getParametersMap().values()) {
-			if (p instanceof IntParameter) {
-				IntParameter ip = (IntParameter) p;
-				System.out.println(ip.getName() + " - " + ip.getValue());
-			} else if (p instanceof SwitchParameter<?>) {
-				SwitchParameter<?> sp = (SwitchParameter<?>) p;
-				System.out.println(sp.getName() + " - " + sp.getValue());
-			} else
-				System.out.println(p.getName() + " - Unknown type");
-		}
+		// for (Parameter p : config.getParametersMap().values()) {
+		// if (p instanceof IntParameter) {
+		// IntParameter ip = (IntParameter) p;
+		// System.out.println(ip.getName() + " - " + ip.getValue());
+		// } else if (p instanceof SwitchParameter<?>) {
+		// SwitchParameter<?> sp = (SwitchParameter<?>) p;
+		// System.out.println(sp.getName() + " - " + sp.getValue());
+		// } else
+		// System.out.println(p.getName() + " - Unknown type");
+		// }
 
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(config);
 		try {
@@ -165,11 +165,10 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 
 		private Joiner<?, ?> skipJoiner;
 
-		private int minSplitjoinSize = 20;
+		private int minSplitjoinSize = 8;
 
 		/**
-		 * Workers those are going to be part {@link OfflineTuner}
-		 * {@link #currentHotSpot}.
+		 * Workers those are going to be part of {@link #currentHotSpot}.
 		 */
 		List<Worker<?, ?>> workerGropups;
 
