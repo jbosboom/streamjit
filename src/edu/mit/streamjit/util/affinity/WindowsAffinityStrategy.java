@@ -1,5 +1,6 @@
 package edu.mit.streamjit.util.affinity;
 
+import edu.mit.streamjit.util.Pair;
 import org.bridj.BridJ;
 import org.bridj.CRuntime;
 import org.bridj.LastError;
@@ -14,7 +15,7 @@ import org.bridj.ann.Library;
 final class WindowsAffinityStrategy implements AffinityStrategy {
 	WindowsAffinityStrategy() {}
 	@Override
-	public long get() {
+	public long getThreadAffinity() {
 		Pointer<Long> tbi = null;
 		try {
 			tbi = Pointer.allocateLongs(ntdll.QUADWORD_SIZEOF_THREAD_BASIC_INFORMATION);
@@ -28,10 +29,42 @@ final class WindowsAffinityStrategy implements AffinityStrategy {
 	}
 
 	@Override
-	public void set(long mask) {
+	public void setThreadAffinity(long mask) {
 		long ret = kernel32.SetThreadAffinityMask(kernel32.GetCurrentThread(), mask);
 		if (ret == 0)
 			throw new RuntimeException();
+	}
+
+	@Override
+	public long getProcessAffinity() {
+		return getProcessAndSystemAffinityMask().first;
+	}
+
+	@Override
+	public void setProcessAffinity(long mask) {
+		int ret = kernel32.SetProcessAffinityMask(kernel32.GetCurrentProcess(), mask);
+		if (ret == 0)
+			throw new RuntimeException();
+	}
+
+	@Override
+	public long getMaximalAffinityMask() {
+		return getProcessAndSystemAffinityMask().second;
+	}
+
+	private Pair<Long, Long> getProcessAndSystemAffinityMask() {
+		Pointer<Long> process = null, system = null;
+		try {
+			process = Pointer.allocateLong();
+			system = Pointer.allocateLong();
+			int ret = kernel32.GetProcessAffinityMask(kernel32.GetCurrentProcess(), process, system);
+			if (ret == 0)
+				throw new RuntimeException();
+			return Pair.make(process.get(), system.get());
+		} finally {
+			if (process != null) process.release();
+			if (system != null) system.release();
+		}
 	}
 
 	@Library("kernel32")
@@ -42,6 +75,8 @@ final class WindowsAffinityStrategy implements AffinityStrategy {
 		}
 		@Convention(Convention.Style.StdCall)
 		public static native int GetProcessAffinityMask(int hProcess, Pointer<Long> lpProcessAffinityMask, Pointer<Long> lpSystemAffinityMask) throws LastError;
+		@Convention(Convention.Style.StdCall)
+		public static native int SetProcessAffinityMask(int hProcess, long dwProcessAffinityMask) throws LastError;
 		@Convention(Convention.Style.StdCall)
 		public static native long SetThreadAffinityMask(int hThread, long lpThreadAffinityMask) throws LastError;
 		@Convention(Convention.Style.StdCall)

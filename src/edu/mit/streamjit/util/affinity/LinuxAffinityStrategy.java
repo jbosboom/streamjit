@@ -18,7 +18,7 @@ import org.bridj.ann.Library;
 final class LinuxAffinityStrategy implements AffinityStrategy {
 	LinuxAffinityStrategy() {}
 	@Override
-	public long get() {
+	public long getThreadAffinity() {
 		Pointer<Long> pmask = null;
 		try {
 			pmask = Pointer.allocateLong();
@@ -32,7 +32,7 @@ final class LinuxAffinityStrategy implements AffinityStrategy {
 	}
 
 	@Override
-	public void set(long mask) {
+	public void setThreadAffinity(long mask) {
 		Pointer<Long> pmask = null;
 		try {
 			pmask = Pointer.allocateLong();
@@ -43,6 +43,21 @@ final class LinuxAffinityStrategy implements AffinityStrategy {
 		} finally {
 			if (pmask != null) pmask.release();
 		}
+	}
+
+	@Override
+	public long getProcessAffinity() {
+		throw new UnsupportedOperationException("TODO");
+	}
+
+	@Override
+	public void setProcessAffinity(long mask) {
+		throw new UnsupportedOperationException("TODO");
+	}
+
+	@Override
+	public long getMaximalAffinityMask() {
+		throw new UnsupportedOperationException("TODO");
 	}
 
 	static {

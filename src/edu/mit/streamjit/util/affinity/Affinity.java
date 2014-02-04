@@ -5,8 +5,8 @@ import java.util.Set;
 import org.bridj.Platform;
 
 /**
- * Provides static methods for getting and setting the CPU affinity of the
- * current thread.
+ * Provides static methods for getting and setting thread or process CPU
+ * affinity.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 1/29/2014
  */
@@ -21,11 +21,20 @@ public final class Affinity {
 			STRATEGY = new NullAffinityStrategy();
 	}
 
-	public static ImmutableSet<Integer> get() {
-		return expand(STRATEGY.get());
+	public static ImmutableSet<Integer> getThreadAffinity() {
+		return expand(STRATEGY.getThreadAffinity());
 	}
-	public static void set(Set<Integer> cpus) {
-		STRATEGY.set(contract(cpus));
+	public static void setThreadAffinity(Set<Integer> cpus) {
+		STRATEGY.setThreadAffinity(contract(cpus));
+	}
+	public static ImmutableSet<Integer> getProcessAffinity() {
+		return expand(STRATEGY.getProcessAffinity());
+	}
+	public static void setProcessAffinity(Set<Integer> cpus) {
+		STRATEGY.setProcessAffinity(contract(cpus));
+	}
+	public static ImmutableSet<Integer> getMaximalAffinity() {
+		return expand(STRATEGY.getMaximalAffinityMask());
 	}
 
 	private static ImmutableSet<Integer> expand(long mask) {
@@ -46,8 +55,8 @@ public final class Affinity {
 	}
 
 	public static void main(String[] args) {
-		System.out.println(get());
-		set(ImmutableSet.of(2));
-		System.out.println(get());
+		System.out.println(getThreadAffinity());
+		setThreadAffinity(ImmutableSet.of(2));
+		System.out.println(getThreadAffinity());
 	}
 }

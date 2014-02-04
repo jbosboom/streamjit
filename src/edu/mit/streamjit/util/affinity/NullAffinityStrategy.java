@@ -9,11 +9,26 @@ import com.google.common.math.LongMath;
  */
 final class NullAffinityStrategy implements AffinityStrategy {
 	@Override
-	public long get() {
-		return LongMath.pow(2, Runtime.getRuntime().availableProcessors())-1;
+	public long getThreadAffinity() {
+		return getMaximalAffinityMask();
 	}
 	@Override
-	public void set(long mask) {
+	public void setThreadAffinity(long mask) {
 		//do nothing
+	}
+
+	@Override
+	public long getProcessAffinity() {
+		return getMaximalAffinityMask();
+	}
+
+	@Override
+	public void setProcessAffinity(long mask) {
+		//do nothing
+	}
+
+	@Override
+	public long getMaximalAffinityMask() {
+		return LongMath.pow(2, Runtime.getRuntime().availableProcessors())-1;
 	}
 }

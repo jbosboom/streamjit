@@ -1,5 +1,5 @@
 /**
- * Provides static methods for getting and setting the CPU affinity of the
- * current thread.
+ * Provides static methods for getting and setting thread or process CPU
+ * affinity.
  */
 package edu.mit.streamjit.util.affinity;
