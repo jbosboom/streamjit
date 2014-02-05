@@ -32,8 +32,8 @@ public class ConfigurationEditor {
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		 generate(new ChannelVocoder7.ChannelVocoder7Kernel());
-		 edit(name, noofwrks);
+		generate(new ChannelVocoder7.ChannelVocoder7Kernel());
+		edit(name, noofwrks);
 		// print("4366NestedSplitJoinCore.cfg");
 		// convert();
 	}
