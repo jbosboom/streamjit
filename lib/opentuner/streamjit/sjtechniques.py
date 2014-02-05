@@ -1,4 +1,13 @@
 import abc
+import os
+import subprocess
+try:
+	from xml import etree
+except ImportError:
+	try:
+		import xml.etree.cElementTree as etree
+	except ImportError:
+		import xml.etree.ElementTree as etree
 from opentuner.search import technique
 from sjparameters import sjSwitchParameter, sjCompositionParameter
 
@@ -56,6 +65,35 @@ class ForceEqualDivision(BestBasedTechnique):
 				param.equal_division(data)
 		return data
 
+class CrossSocketBeforeHyperthreadingAffinity(BestBasedTechnique):
+	def __init__(self):
+		super(CrossSocketBeforeHyperthreadingAffinity, self).__init__()
+		pid = os.getpid()
+		lstopo_args = ["lstopo", "--of", "xml", "--pid", str(pid)]
+		stdout, stderr = subprocess.Popen(lstopo_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+		if stderr:
+			print "lstopo error", stderr
+		root = etree.ElementTree.fromstring(stdout)
+		all_cpus = [int(x.get('os_index')) for x in root.findall(".//object[type='PU']")]
+		self.desired_perm = []
+		while len(self.desired_perm) < len(all_cpus):
+			for socket in root.findall(".//object[type='Socket']"):
+				for core in socket.findall(".//object[type='Core']"):
+					# Pick just one PU from this core each time we get here.
+					for unit in core.findall(".//object[type='PU']"):
+						index = int(unit.get('os_index'))
+						if index not in self.desired_perm:
+							self.desired_perm.append(index)
+							break
+
+	def mutate(self, params, data):
+		for param in params:
+			if param.name == "$affinity":
+				legal = param.get_value(data)
+				new_perm = [x for x in self.desired_perm if x in legal] + [x for x in legal if x not in self.desired_perm]
+				param._set(data, new_perm)
+		return data
+
 # The default bandit, plus our custom techniques.
 from opentuner.search import bandittechniques, differentialevolution, evolutionarytechniques, simplextechniques
 technique.register(bandittechniques.AUCBanditMetaTechnique([
@@ -66,5 +104,6 @@ technique.register(bandittechniques.AUCBanditMetaTechnique([
 		ForceRemove(),
 		ForceFuse(),
 		ForceUnbox(),
-		ForceEqualDivision()
+		ForceEqualDivision(),
+		CrossSocketBeforeHyperthreadingAffinity(),
 	], name = "StreamJITBandit"))
