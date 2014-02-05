@@ -137,15 +137,14 @@ public abstract class AbstractDrainer {
 	 * Initiate the draining of the blobgraph. Three type of draining could be
 	 * carried out.
 	 * <ol>
-	 * <li>type 0 - Intermediate draining: In this case, no data from input
-	 * buffer will be consumed and StreamJit app will not be stopped. Rather,
-	 * StreamJit app will be just paused for reconfiguration purpose. This
-	 * draining may be triggered by {@link OnlineTuner}.</li>
-	 * <li>type 1 - Semi final draining: In this case, no data from input buffer
-	 * will be consumed but StreamJit app will be stopped. i.e, StreamJit app
-	 * will be stopped safely without consuming any new input. This draining may
-	 * be triggered by {@link OnlineTuner} after opentuner finish tuning and
-	 * send it's final configuration.</li>
+	 * <li>type 0 - Intermediate draining: In this case, no new data from
+	 * {@link Input} will be consumed and StreamJit app will not be stopped.
+	 * Rather, StreamJit app will be just paused for reconfiguration purpose.
+	 * This draining may be triggered by {@link OnlineTuner}.</li>
+	 * <li>type 1 - Semi final draining: In this case, StreamJit app will be
+	 * stopped safely without consuming any new data from {@link Input}. This
+	 * draining may be triggered by {@link OnlineTuner} after opentuner finish
+	 * tuning and send it's final configuration.</li>
 	 * <li>type 2 - Final draining: At the end of input data. After this
 	 * draining StreamJit app will stop. This draining may be triggered by a
 	 * {@link Input} when it run out of input data.</li>
