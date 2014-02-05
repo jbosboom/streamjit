@@ -298,10 +298,14 @@ public class BlobsManagerImpl implements BlobsManager {
 			drainState = 1;
 
 			for (BoundaryInputChannel bc : inputChannels.values()) {
-				if (!this.reqDrainData)
-					bc.stop(1);
-				else if (GlobalConstants.useDrainData)
-					bc.stop(2);
+				// TODO: [2014-02-05] rearranged this order to call stop(3)
+				// whenever GlobalConstants.useDrainData is false irrespective
+				// of reqDrainData.
+				if (GlobalConstants.useDrainData)
+					if (!this.reqDrainData)
+						bc.stop(1);
+					else
+						bc.stop(2);
 				else
 					bc.stop(3);
 			}
