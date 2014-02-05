@@ -46,21 +46,16 @@ class ForceUnbox(ForceTrue):
 	def __init__(self, *pargs, **kwargs):
 		super(ForceUnbox, self).__init__("unbox", *pargs, **kwargs)
 
-class ForceEqualDivision(technique.SearchTechnique):
+class ForceEqualDivision(BestBasedTechnique):
 	def __init__(self):
 		super(ForceEqualDivision, self).__init__()
 
-	def desired_configuration(self):
-		for cfg in self.driver.results_query(objective_ordered = True):
-			new_data = self.manipulator.copy(cfg.configuration.data)
-			for param in self.manipulator.parameters(new_data):
-				if isinstance(param, sjCompositionParameter):
-					param.equal_division(new_data)
-			new_cfg = self.driver.get_configuration(new_data)
-			if self.driver.has_results(new_cfg):
-				continue
-			return new_cfg
-		return None
+	def mutate(self, params, data):
+		for param in params:
+			if isinstance(param, sjCompositionParameter):
+				param.equal_division(data)
+		return data
+
 # The default bandit, plus our custom techniques.
 from opentuner.search import bandittechniques, differentialevolution, evolutionarytechniques, simplextechniques
 technique.register(bandittechniques.AUCBanditMetaTechnique([
