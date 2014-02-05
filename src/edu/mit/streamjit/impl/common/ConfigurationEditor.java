@@ -51,7 +51,7 @@ public class ConfigurationEditor {
 		Configuration cfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(source));
 
-		name = String.format("%s.cfg", stream.getClass().getSimpleName());
+		name = String.format("hand_%s.cfg", stream.getClass().getSimpleName());
 
 		try {
 			FileWriter writer = new FileWriter(name, false);
