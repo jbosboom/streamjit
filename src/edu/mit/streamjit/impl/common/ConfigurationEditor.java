@@ -16,8 +16,12 @@ import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
+import edu.mit.streamjit.impl.distributed.ConfigurationManager;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
+import edu.mit.streamjit.impl.distributed.HotSpotTuning;
+import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.test.apps.channelvocoder7.ChannelVocoder7;
+import edu.mit.streamjit.test.apps.filterbank6.FilterBank6;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
 import edu.mit.streamjit.test.sanity.nestedsplitjoinexample.NestedSplitJoin;
 import edu.mit.streamjit.util.json.Jsonifiers;
@@ -32,8 +36,8 @@ public class ConfigurationEditor {
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		generate(new ChannelVocoder7.ChannelVocoder7Kernel());
-		edit(name, noofwrks);
+		generate1(new FilterBank6.FilterBankPipeline());
+		edit1(name, noofwrks);
 		// print("4366NestedSplitJoinCore.cfg");
 		// convert();
 	}
@@ -61,7 +65,6 @@ public class ConfigurationEditor {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
 	}
 
 	private static void edit(String name, int maxWor)
@@ -90,6 +93,87 @@ public class ConfigurationEditor {
 			builder.removeParameter(s);
 			builder.addParameter(new SwitchParameter<Integer>(s, Integer.class,
 					val, p.getUniverse()));
+		}
+
+		cfg = builder.build();
+		FileWriter writer = new FileWriter(name);
+		writer.write(cfg.toJson());
+		writer.close();
+		System.out.println("Successfully updated");
+	}
+
+	private static void generate1(OneToOneElement<?, ?> stream) {
+		int noOfnodes = 4;
+
+		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
+		stream.visit(primitiveConnector);
+		Worker<?, ?> source = (Worker<?, ?>) primitiveConnector.getSource();
+		Worker<?, ?> sink = (Worker<?, ?>) primitiveConnector.getSink();
+		noofwrks = Workers.getIdentifier(sink) + 1;
+
+		StreamJitApp app = new StreamJitApp(stream, source, sink);
+		ConfigurationManager cfgManager = new HotSpotTuning(app);
+		BlobFactory bf = new DistributedBlobFactory(cfgManager, noOfnodes);
+
+		Configuration cfg = bf.getDefaultConfiguration(Workers
+				.getAllWorkersInGraph(source));
+
+		name = String.format("hand_%s.cfg", stream.getClass().getSimpleName());
+
+		try {
+			FileWriter writer = new FileWriter(name, false);
+			writer.write(cfg.toJson());
+			writer.flush();
+			writer.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void edit1(String name, int maxWor)
+			throws NumberFormatException, IOException {
+		Configuration cfg;
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(name));
+			String json = reader.readLine();
+			cfg = Configuration.fromJson(json);
+			reader.close();
+		} catch (Exception ex) {
+			System.err.println("File reader error");
+			return;
+		}
+
+		Configuration.Builder builder = Configuration.builder(cfg);
+		BufferedReader keyinreader = new BufferedReader(new InputStreamReader(
+				System.in));
+
+		for (int i = 0; i < maxWor; i++) {
+			String wrkrMachineName = String.format("worker%dtomachine", i);
+			String wrkrCutname = String.format("worker%dcut", i);
+
+			SwitchParameter<Integer> wrkrMachine = cfg.getParameter(
+					wrkrMachineName, SwitchParameter.class);
+			IntParameter wrkrCut = cfg.getParameter(wrkrCutname,
+					IntParameter.class);
+
+			if (wrkrMachine != null) {
+				System.out.println(wrkrMachine.getName() + " - "
+						+ wrkrMachine.getValue());
+				int val = Integer.parseInt(keyinreader.readLine());
+				builder.removeParameter(wrkrMachine.getName());
+				builder.addParameter(new SwitchParameter<Integer>(wrkrMachine
+						.getName(), Integer.class, val, wrkrMachine
+						.getUniverse()));
+			}
+
+			if (wrkrCut != null) {
+				System.out.println(wrkrCut.getName() + " - "
+						+ wrkrCut.getValue());
+				int val = Integer.parseInt(keyinreader.readLine());
+				builder.removeParameter(wrkrCut.getName());
+				builder.addParameter(new IntParameter(wrkrCut.getName(),
+						wrkrCut.getRange(), val));
+			}
 		}
 
 		cfg = builder.build();
