@@ -62,7 +62,8 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 		blob.installBuffers(bufferMap);
 
 		Configuration.PermutationParameter<Integer> affinityParam = config.getParameter("$affinity", Configuration.PermutationParameter.class, Integer.class);
-		ImmutableList<? extends Integer> affinityList = affinityParam.getUniverse();
+		ImmutableList<? extends Integer> affinityList;
+		affinityList = affinityParam != null ? affinityParam.getUniverse() : ImmutableList.copyOf(Affinity.getMaximalAffinity());
 		ImmutableList.Builder<PollingCoreThread> threadsBuilder = ImmutableList.builder();
 		for (int i = 0; i < blob.getCoreCount(); ++i) {
 			PollingCoreThread thread = new PollingCoreThread(affinityList.get(i % affinityList.size()), blob.getCoreCode(i), blob.toString()+"-"+i);
@@ -95,8 +96,7 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 	 */
 	protected Configuration getConfiguration(Set<Worker<?, ?>> workers) {
 		Configuration.Builder builder = Configuration.builder(blobFactory.getDefaultConfiguration(workers));
-		Configuration.PermutationParameter<Integer> affinity = new Configuration.PermutationParameter<>("$affinity", Integer.class, Affinity.getMaximalAffinity());
-		return builder.addParameter(affinity).build();
+		return builder.build();
 	}
 
 	protected int getMaxNumCores() {

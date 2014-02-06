@@ -6,6 +6,7 @@ import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.util.affinity.Affinity;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -42,6 +43,10 @@ public final class Compiler2BlobFactory implements BlobFactory {
 							Compiler2.INDEX_FUNCTION_TRANSFORMERS.asList().get(0),
 							Compiler2.INDEX_FUNCTION_TRANSFORMERS));
 			}
+		//TODO: this really belongs in BlobHostStreamCompiler, but we have to
+		//add it here or we won't pick it up in the default configuration.
+		Configuration.PermutationParameter<Integer> affinity = new Configuration.PermutationParameter<>("$affinity", Integer.class, Affinity.getMaximalAffinity());
+		builder.addParameter(affinity);
 		return builder.addParameter(new Configuration.IntParameter("multiplier", 1, Short.MAX_VALUE, 1))
 				.build();
 	}
