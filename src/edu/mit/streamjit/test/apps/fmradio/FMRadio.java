@@ -114,8 +114,8 @@ public class FMRadio {
 
 		@Override
 		public void work() {
-			// This is Java; we can depend on pop() ordering.
-			push(pop() - pop());
+			float a = pop(), b = pop();
+			push(b - a);
 		}
 	}
 
