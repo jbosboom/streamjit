@@ -47,7 +47,7 @@ class StreamJITMI(MeasurementInterface):
 			#because we only care about compile time.
 			(stdout, stderr) = call_java(jvm_args, "edu.mit.streamjit.tuner.RunApp2", ['@' + f.name])
 
-		if len(stderr) > 0:
+		if len(stderr) > 0 or len(stdout) == 0:
 			print stderr.strip(" \t\n\r")
 			if "TIMED OUT" in stderr:
 				return opentuner.resultsdb.models.Result(state='TIMEOUT', time=float('inf'))
@@ -56,6 +56,8 @@ class StreamJITMI(MeasurementInterface):
 					f.write(self.config.toJSON())
 					f.write("\n")
 					f.write(stderr)
+					if len(stdout) == 0:
+						f.write("[stdout was empty]")
 					f.flush()
 				return opentuner.resultsdb.models.Result(state='ERROR', time=float('inf'))
 		else:
