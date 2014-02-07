@@ -164,8 +164,7 @@ public class DCT2 {
 
 	/**
 	 * This filter represents anonymous filter that exists inside
-	 * iDCT_2D_reference_fine in the SteramIt's implementation. FIXME: Do we
-	 * need to push((pop() + 0.5).intValue())?
+	 * iDCT_2D_reference_fine in the SteramIt's implementation.
 	 */
 	private static class FloatToInt extends Filter<Float, Integer> {
 
@@ -175,7 +174,7 @@ public class DCT2 {
 
 		@Override
 		public void work() {
-			push(pop().intValue());
+			push((int)Math.floor(pop() + 0.5));
 		}
 	}
 
