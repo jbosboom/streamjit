@@ -129,11 +129,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		this.cfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(source));
 
-		if (GlobalConstants.tune) {
-
-		} else {
+		if (GlobalConstants.tune == 0)
 			this.cfg = readConfiguration(stream.getClass().getSimpleName());
-		}
 
 		if (cfg == null) {
 			System.err
@@ -200,7 +197,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		manager.reconfigure();
 		CompiledStream cs = new DistributedCompiledStream(drainer);
 
-		if (GlobalConstants.tune && this.cfg != null) {
+		if (GlobalConstants.tune > 0 && this.cfg != null) {
 			OnlineTuner tuner = new OnlineTuner(drainer, manager, app,
 					cfgManager, needTermination);
 			new Thread(tuner, "OnlineTuner").start();

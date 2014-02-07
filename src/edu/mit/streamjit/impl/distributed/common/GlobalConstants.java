@@ -90,8 +90,15 @@ public final class GlobalConstants {
 	 * to pass fixed number of input will be measured for 30 rounds and logged
 	 * into FixedOutPut.txt. See {@link TailChannel} for the file logging
 	 * details.
+	 * <ol>
+	 * 0 - No tuning, uses configuration file to run.
+	 * <ol>
+	 * 1 - Tuning.
+	 * <ol>
+	 * 2 - Evaluate configuration files. ( compares final cfg with hand tuned
+	 * cfg. Both file should be presented in the running directory.
 	 */
-	public static final boolean tune = false;
+	public static final int tune = 0;
 
 	/**
 	 * Save all configurations tired by open tuner in to
