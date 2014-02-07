@@ -49,6 +49,16 @@ public class OnlineTuner implements Runnable {
 
 	@Override
 	public void run() {
+		if (GlobalConstants.tune == 1)
+			tune();
+		else if (GlobalConstants.tune == 2)
+			evaluate();
+		else
+			System.err
+					.println("GlobalConstants.tune is neither in tune mode nor in evaluate mode.");
+	}
+
+	private void tune() {
 		int round = 0;
 		try {
 			tuner.startTuner(String.format(
@@ -101,6 +111,22 @@ public class OnlineTuner implements Runnable {
 			drainer.dumpDraindataStatistics();
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+	}
+
+	private void evaluate() {
+		Configuration finalCfg = readConfiguration(String.format(
+				"final_%s.cfg", app.name));
+		evaluateConfig(finalCfg, "Final configuration");
+
+		Configuration handCfg = readConfiguration(String.format("hand_%s.cfg",
+				app.name));
+		evaluateConfig(handCfg, "Handtuned configuration");
+
+		if (manager.isRunning()) {
+			drainer.startDraining(1);
+		} else {
+			manager.stop();
 		}
 	}
 
