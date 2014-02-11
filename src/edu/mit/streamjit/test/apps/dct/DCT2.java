@@ -208,9 +208,9 @@ public class DCT2 {
 	 * @output size x size values representing an array of values in the signal
 	 *         domain, ordered by row and then column.
 	 */
-	private static class iDCT8x8_2D_fast_fine extends
+	public static class iDCT8x8_2D_fast_fine extends
 			Pipeline<Integer, Integer> {
-		iDCT8x8_2D_fast_fine() {
+		public iDCT8x8_2D_fast_fine() {
 			add(new iDCT8x8_1D_X_fast_fine());
 			add(new iDCT8x8_1D_Y_fast_fine());
 		}
@@ -678,7 +678,7 @@ public class DCT2 {
 	 */
 	private static class iDCT8x8_1D_col_fast_fine extends
 			Filter<Integer, Integer> {
-		static int size = 8;
+		private static final int size = 8;
 		private final int W1 = 2841; /* 2048*sqrt(2)*cos(1*pi/16) */
 		private final int W2 = 2676; /* 2048*sqrt(2)*cos(2*pi/16) */
 		private final int W3 = 2408; /* 2048*sqrt(2)*cos(3*pi/16) */
@@ -687,7 +687,7 @@ public class DCT2 {
 		private final int W7 = 565; /* 2048*sqrt(2)*cos(7*pi/16) */
 
 		iDCT8x8_1D_col_fast_fine() {
-			super(size, size);
+			super(size, size, size);
 		}
 
 		public void work() {
