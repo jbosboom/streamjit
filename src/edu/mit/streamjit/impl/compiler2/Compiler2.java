@@ -397,10 +397,11 @@ public class Compiler2 {
 							inputs.set(j, survivor);
 							survivor.downstream().add(a);
 							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), t));
-							for (int idx = 0, q = a.translateInputIndex(j, idx); q < drainInfo.size(); ++idx, q = a.translateInputIndex(j, idx)) {
-								a.inputSlots(j).add(drainInfo.get(q));
-								drainInfo.set(q, drainInfo.get(q).duplify());
-							}
+							if (splitter.push(i) > 0)
+								for (int idx = 0, q = a.translateInputIndex(j, idx); q < drainInfo.size(); ++idx, q = a.translateInputIndex(j, idx)) {
+									a.inputSlots(j).add(drainInfo.get(q));
+									drainInfo.set(q, drainInfo.get(q).duplify());
+								}
 							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), Sin));
 						}
 				}

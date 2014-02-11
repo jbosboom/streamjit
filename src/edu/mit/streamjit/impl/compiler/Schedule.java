@@ -116,7 +116,7 @@ public final class Schedule<T> {
 				return this;
 			}
 			public ConstraintBuilder pop(int popRate) {
-				checkArgument(popRate > 0);
+				checkArgument(popRate >= 0);
 				this.popRate = popRate;
 				return this;
 			}
