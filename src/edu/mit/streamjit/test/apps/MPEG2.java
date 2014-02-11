@@ -2,6 +2,7 @@ package edu.mit.streamjit.test.apps;
 
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Input;
@@ -13,6 +14,7 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
 import edu.mit.streamjit.api.WeightedRoundrobinSplitter;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
+import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.Datasets;
@@ -38,6 +40,7 @@ public final class MPEG2 {
 		Benchmarker.runBenchmark(new MPEG2Benchmark(), sc).get(0).print(System.out);
 	}
 
+	@ServiceProvider(Benchmark.class)
 	public static final class MPEG2Benchmark extends SuppliedBenchmark {
 		private static final int COPIES = 1;
 		public MPEG2Benchmark() {
