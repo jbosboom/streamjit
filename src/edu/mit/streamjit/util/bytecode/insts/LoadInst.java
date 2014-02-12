@@ -20,6 +20,7 @@ public final class LoadInst extends Instruction {
 	}
 	public LoadInst(Field f, Value v) {
 		this(f);
+		checkArgument(!f.isStatic(), "loading from static field %s with instance %s", f, v);
 		setOperand(1, v);
 	}
 	public LoadInst(LocalVariable v) {

@@ -7,6 +7,7 @@ import edu.mit.streamjit.util.bytecode.LocalVariable;
 import edu.mit.streamjit.util.bytecode.Value;
 import edu.mit.streamjit.util.bytecode.types.FieldType;
 import edu.mit.streamjit.util.bytecode.types.InstanceFieldType;
+import edu.mit.streamjit.util.bytecode.types.ReferenceType;
 import edu.mit.streamjit.util.bytecode.types.RegularType;
 
 /**
@@ -25,6 +26,7 @@ public final class StoreInst extends Instruction {
 	}
 	public StoreInst(Field f, Value data, Value instance) {
 		this(f);
+		checkArgument(!f.isStatic(), "storing into static field %s with instance %s", f, instance);
 		setOperand(1, data);
 		setOperand(2, instance);
 	}
@@ -76,7 +78,8 @@ public final class StoreInst extends Instruction {
 			Field f = (Field)getLocation();
 			if (f != null) {
 				checkState(f.getType() instanceof InstanceFieldType);
-				checkArgument(v.getType().isSubtypeOf(((InstanceFieldType)f.getType()).getInstanceType()));
+				ReferenceType instanceType = ((InstanceFieldType)f.getType()).getInstanceType();
+				checkArgument(v.getType().isSubtypeOf(instanceType), "%s (%s) not an instance of field's instance type %s", v, v.getType(), instanceType);
 			}
 		}
 		super.checkOperand(i, v);
