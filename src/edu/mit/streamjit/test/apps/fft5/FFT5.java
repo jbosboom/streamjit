@@ -1,14 +1,20 @@
 package edu.mit.streamjit.test.apps.fft5;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.Filter;
+import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
+import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.test.Benchmarker;
+import java.nio.ByteOrder;
+import java.nio.file.Paths;
 
 /**
  * Rewritten StreamIt's asplos06 benchmarks. Refer
@@ -21,14 +27,17 @@ import edu.mit.streamjit.test.Benchmarker;
  */
 public class FFT5 {
 	public static void main(String[] args) throws InterruptedException {
-		StreamCompiler sc = new Compiler2StreamCompiler();
+		StreamCompiler sc = new DebugStreamCompiler();
 		Benchmarker.runBenchmark(new FFT5Benchmark(), sc).get(0).print(System.out);
 	}
 
 	@ServiceProvider(Benchmark.class)
 	public static final class FFT5Benchmark extends SuppliedBenchmark {
 		public FFT5Benchmark() {
-			super("FFT5", FFT5Kernel.class, Datasets.nCopies(100000, 10.0f));
+			super("FFT5", FFT5Kernel.class, new Dataset("FFT5.in",
+					(Input)Input.fromBinaryFile(Paths.get("data/FFT5.in"), Float.class, ByteOrder.LITTLE_ENDIAN)
+//					, (Supplier)Suppliers.ofInstance((Input)Input.fromBinaryFile(Paths.get("/home/jbosboom/streamit/streams/apps/benchmarks/asplos06/fft/streamit/FFT5.out"), Float.class, ByteOrder.LITTLE_ENDIAN))
+			));
 		}
 	}
 
