@@ -1,5 +1,7 @@
 package edu.mit.streamjit.util.bytecode;
 
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.UnmodifiableIterator;
 import edu.mit.streamjit.util.bytecode.types.Type;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -64,11 +66,11 @@ public abstract class User extends Value {
 		return uses.size();
 	}
 
-	public Iterable<Value> operands() {
-		return new Iterable<Value>() {
+	public FluentIterable<Value> operands() {
+		return new FluentIterable<Value>() {
 			@Override
 			public Iterator<Value> iterator() {
-				return new Iterator<Value>() {
+				return new UnmodifiableIterator<Value>() {
 					private final Iterator<Use> iter = uses.iterator();
 					@Override
 					public boolean hasNext() {
@@ -77,10 +79,6 @@ public abstract class User extends Value {
 					@Override
 					public Value next() {
 						return iter.next().getOperand();
-					}
-					@Override
-					public void remove() {
-						throw new UnsupportedOperationException();
 					}
 				};
 			}
