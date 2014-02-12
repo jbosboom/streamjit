@@ -53,7 +53,18 @@ public final class ReflectionUtils {
 	 * @return the object's first field with the given name
 	 */
 	public static Field getFieldByName(Object object, String name) {
-		for (Class<?> klass = object.getClass(); klass != null; klass = klass.getSuperclass()) {
+		return getFieldByName(object.getClass(), name);
+	}
+
+	/**
+	 * Returns klass's first (lowest in inheritance hierarchy) field with the
+	 * given name.
+	 * @param klass the class
+	 * @param name the field name
+	 * @return the class's first field with the given name
+	 */
+	public static Field getFieldByName(Class<?> klass, String name) {
+		for (; klass != null; klass = klass.getSuperclass()) {
 			for (Field f : klass.getDeclaredFields())
 				if (f.getName().equals(name))
 					return f;
