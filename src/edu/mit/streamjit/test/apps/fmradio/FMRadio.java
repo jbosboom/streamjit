@@ -1,7 +1,8 @@
 package edu.mit.streamjit.test.apps.fmradio;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableList;
-
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Splitjoin;
@@ -24,6 +25,7 @@ import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
+import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.Benchmarker;
@@ -42,7 +44,7 @@ import java.util.List;
  */
 public class FMRadio {
 	public static void main(String[] args) throws InterruptedException {
-		Benchmarker.runBenchmarks(new FMRadioBenchmarkProvider(), new CompilerStreamCompiler());
+		Benchmarker.runBenchmarks(new FMRadioBenchmarkProvider(), new DebugStreamCompiler()).get(0).print(System.out);
 	}
 
 	@ServiceProvider(BenchmarkProvider.class)
@@ -52,14 +54,17 @@ public class FMRadio {
 			Path path = Paths.get("data/fmradio.in");
 			Input<Float> input = Input.fromBinaryFile(path, Float.class, ByteOrder.LITTLE_ENDIAN);
 			input = Datasets.nCopies(1, input);
-			Dataset dataset = new Dataset(path.getFileName().toString(), input);
+			Dataset dataset = new Dataset(path.getFileName().toString(), (Input)input
+					//use (7, 128) for verification
+//					, (Supplier)Suppliers.ofInstance((Input)Input.fromBinaryFile(Paths.get("/home/jbosboom/streamit/streams/apps/benchmarks/asplos06/fm/streamit/FMRadio5.out"), Float.class, ByteOrder.LITTLE_ENDIAN))
+			);
 			int[][] bandsTaps = {
+				{7, 128},
 				{11, 64},
 				{5, 64},
 				{7, 64},
 				{9, 64},
 				{5, 128},
-				{7, 128},
 				{9, 128},
 			};
 			ImmutableList.Builder<Benchmark> builder = ImmutableList.builder();
