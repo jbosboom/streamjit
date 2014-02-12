@@ -1,5 +1,7 @@
 package edu.mit.streamjit.test.apps.filterbank6;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
@@ -8,8 +10,11 @@ import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.Splitjoin;
+import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.AbstractBenchmark;
 import edu.mit.streamjit.test.Benchmark;
+import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.Datasets;
 import java.nio.ByteOrder;
 import java.nio.file.Path;
@@ -25,16 +30,23 @@ import java.nio.file.Paths;
  * @since Mar 14, 2013
  */
 public class FilterBank6 {
+	public static void main(String[] args) {
+		StreamCompiler sc = new DebugStreamCompiler();
+		Benchmarker.runBenchmark(new FilterBankBenchmark(), sc).get(0).print(System.out);
+	}
+
 	@ServiceProvider(Benchmark.class)
 	public static class FilterBankBenchmark extends AbstractBenchmark {
 		public FilterBankBenchmark() {
 			super(dataset());
 		}
 		private static Dataset dataset() {
-			Path path = Paths.get("data/fmradio.in");
+			Path path = Paths.get("data/filterbank.in");
 			Input<Float> input = Input.fromBinaryFile(path, Float.class, ByteOrder.LITTLE_ENDIAN);
 			Input<Float> repeated = Datasets.nCopies(1, input);
-			Dataset dataset = new Dataset(path.getFileName().toString(), repeated);
+			Dataset dataset = new Dataset(path.getFileName().toString(), (Input)repeated
+//					, (Supplier)Suppliers.ofInstance((Input)Input.fromBinaryFile(Paths.get("/home/jbosboom/streamit/streams/apps/benchmarks/asplos06/filterbank/streamit/FilterBank6.out"), Float.class, ByteOrder.LITTLE_ENDIAN))
+			);
 			return dataset;
 		}
 		@Override
