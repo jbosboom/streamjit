@@ -23,7 +23,9 @@ public class StaticFieldUsedInWork implements Benchmark {
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public OneToOneElement<Object, Object> instantiate() {
-		return new Pipeline(new StaticFieldUser(0), new StaticFieldUser(1), new StaticFieldUser(2), new StaticFieldUser(3));
+		return new Pipeline(new StaticFieldUser(0), new StaticFieldUser(1), new StaticFieldUser(2), new StaticFieldUser(3)
+//			, new InheritedStaticFieldUser()
+		);
 	}
 	@Override
 	public List<Dataset> inputs() {
@@ -38,8 +40,8 @@ public class StaticFieldUsedInWork implements Benchmark {
 		Benchmarker.runBenchmark(new StaticFieldUsedInWork(), new Compiler2StreamCompiler()).get(0).print(System.out);
 	}
 
-	private static final class StaticFieldUser extends Filter<Integer, Integer> {
-		private static final int[] x = {0, 1, 2, 3};
+	private static class StaticFieldUser extends Filter<Integer, Integer> {
+		protected static final int[] x = {0, 1, 2, 3};
 		private final int i;
 		private StaticFieldUser(int i) {
 			super(1, 1);
@@ -48,6 +50,16 @@ public class StaticFieldUsedInWork implements Benchmark {
 		@Override
 		public void work() {
 			push(pop() + x[i]);
+		}
+	}
+
+	private static final class InheritedStaticFieldUser extends StaticFieldUser {
+		private InheritedStaticFieldUser() {
+			super(0);
+		}
+		@Override
+		public void work() {
+			push(pop() + x[x.length-1]);
 		}
 	}
 }
