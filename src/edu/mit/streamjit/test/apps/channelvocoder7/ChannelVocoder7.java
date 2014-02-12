@@ -1,5 +1,7 @@
 package edu.mit.streamjit.test.apps.channelvocoder7;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
@@ -40,15 +42,17 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 
 	@Override
 	public Iterator<Benchmark> iterator() {
-		Dataset dataset = new Dataset("vocoder.in", Input.fromBinaryFile(Paths.get("data/vocoder.in"), Float.class, ByteOrder.LITTLE_ENDIAN));
+		Dataset dataset = new Dataset("vocoder.in", (Input)Input.fromBinaryFile(Paths.get("data/vocoder.in"), Float.class, ByteOrder.LITTLE_ENDIAN)
+//				, (Supplier)Suppliers.ofInstance((Input)Input.fromBinaryFile(Paths.get("/home/jbosboom/streamit/streams/apps/benchmarks/asplos06/channelvocoder/streamit/ChannelVocoder7.out"), Float.class, ByteOrder.LITTLE_ENDIAN))
+				);
 		int[][] filtersTaps = {
+			{16, 64},
 			{4, 64},
 			{8, 64},
 			{12, 64},
 			{4, 128},
 			{8, 128},
 			{12, 128},
-			{16, 64},
 			{16, 128},
 			{20, 64},
 			{20, 128},
