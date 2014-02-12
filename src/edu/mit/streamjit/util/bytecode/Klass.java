@@ -209,7 +209,7 @@ public final class Klass implements Accessible, Parented<Module> {
 	/**
 	 * Returns an iterable of all superclasses of this class, in ascending
 	 * order; thus, the first class is the immediate superclass.
-	 * @returnan an iterable of all superclasses of this class
+	 * @return an an iterable of all superclasses of this class
 	 */
 	public Iterable<Klass> superclasses() {
 		return new Iterable<Klass>() {
