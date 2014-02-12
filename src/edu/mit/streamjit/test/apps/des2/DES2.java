@@ -1,9 +1,12 @@
 package edu.mit.streamjit.test.apps.des2;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.common.primitives.Ints;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
+import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Rate;
@@ -16,6 +19,8 @@ import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.AbstractBenchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.Datasets;
+import java.nio.ByteOrder;
+import java.nio.file.Paths;
 
 /**
  * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/des/streamit/DES2.str for original
@@ -154,7 +159,9 @@ public class DES2 {
 
 	public static final class DES2Benchmark extends AbstractBenchmark {
 		public DES2Benchmark() {
-			super("DES2", Datasets.allIntsInRange(0, 100000));
+			super("DES2", new Dataset("des.in", (Input)Input.fromBinaryFile(Paths.get("data/des.in"), Integer.class, ByteOrder.LITTLE_ENDIAN)
+//					, (Supplier)Suppliers.ofInstance((Input)Input.fromBinaryFile(Paths.get("/home/jbosboom/streamit/streams/apps/benchmarks/asplos06/des/streamit/des2.out"), Integer.class, ByteOrder.LITTLE_ENDIAN))
+			));
 		}
 		@Override
 		@SuppressWarnings("unchecked")
@@ -163,18 +170,10 @@ public class DES2 {
 		}
 	}
 
-	/**
-	 * FIXME: Original implementations is "void->void pipeline DES2". Need to implement file, void supports.
-	 */
 	private static class DES2Kernel extends Pipeline<Integer, Integer> {
 		int testvector = 7;
-
 		DES2Kernel() {
-			add(new PlainTextSource(testvector));
-			// add FileReader<int>("../input/input");
 			add(new DEScoder(testvector));
-			// add FileWriter<int>("des2.out");
-			// add HexPrinter(CIPHERTEXT, 64);
 		}
 	}
 
@@ -183,17 +182,10 @@ public class DES2 {
 			// initial permutation of 64 bit plain text
 			add(new doIP());
 
-			for (int i = 0; i < DES2.MAXROUNDS; i++) {
-
-				Splitjoin<Integer, Integer> sp1 = new Splitjoin<>(new DuplicateSplitter<Integer>(), new RoundrobinJoiner<Integer>(32));
-
-				// R[i+1] = f(R[i]) xor L[i]
-				sp1.add(new nextR(vector, i));
-				// L[i+1] = R[i]
-				sp1.add(new nextL());
-				add(sp1);
-
-			}
+			for (int i = 0; i < DES2.MAXROUNDS; i++)
+				add(new Splitjoin<>(new DuplicateSplitter<Integer>(), new RoundrobinJoiner<Integer>(32),
+						new nextR(vector, i),
+						new nextL()));
 			add(new CrissCross());
 
 			add(new doIPm1());
@@ -239,8 +231,10 @@ public class DES2 {
 	// output is f(R[i]) xor L[i]
 	private static class nextR extends Pipeline<Integer, Integer> {
 		nextR(int vector, int round) {
-			add(new Splitjoin<Integer, Integer>(new RoundrobinSplitter<Integer>(32), new RoundrobinJoiner<Integer>(), new f(vector,
-					round)), new Identity<>());
+			add(new Splitjoin<Integer, Integer>(new RoundrobinSplitter<Integer>(32), new RoundrobinJoiner<Integer>(),
+					new f(vector, round),
+					new Identity<Integer>())
+			);
 			add(new Xor(2));
 		}
 	}
@@ -321,9 +315,9 @@ public class DES2 {
 	 * This filter represents the first anonymous filter exists inside "int->int pipeline KeySchedule"
 	 */
 	private static class KeyScheduleFilter1 extends Filter<Integer, Integer> {
-		int[][] keys;
-		int vector;
-		int round;
+		final int[][] keys;
+		final int vector;
+		final int round;
 
 		KeyScheduleFilter1(int vector, int round) {
 			super(48, 96);
@@ -483,9 +477,9 @@ public class DES2 {
 
 	// left rotate input stream of length 28-bits by RT[round]
 	private static class LRotate extends Filter<Integer, Integer> {
-		int round;
-		static int n = 28;
-		int x;
+		private static final int n = 28;
+		private final int round;
+		private final int x;
 
 		LRotate(int round) {
 			super(n, n, n);
@@ -649,7 +643,7 @@ public class DES2 {
 	// take N streams and Xor them together
 	// the streams are assumed to be interleaved
 	private static class Xor extends Filter<Integer, Integer> {
-		int n;
+		private final int n;
 
 		public Xor(int n) {
 			super(n, 1);
@@ -709,7 +703,7 @@ public class DES2 {
 	// input: LSB first ... MSB last
 	// output: integer
 	private static class BitstoInts extends Filter<Integer, Integer> {
-		int n = 28;
+		private final int n;
 
 		BitstoInts(int n) {
 			super(n, 1, n);
