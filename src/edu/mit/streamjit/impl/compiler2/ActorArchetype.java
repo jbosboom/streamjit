@@ -2,12 +2,14 @@ package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
+import com.google.common.base.Predicates;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimaps;
+import com.google.common.collect.Sets;
 import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Joiner;
@@ -162,7 +164,9 @@ public class ActorArchetype {
 			Method rwork = makeRwork(archetypeKlass, stateHolderKlass);
 			for (BasicBlock b : rwork.basicBlocks())
 				for (Instruction i : ImmutableList.copyOf(b.instructions()))
-					if (Iterables.contains(i.operands(), rwork.arguments().get(0)))
+					if (i.operands().contains(rwork.arguments().get(0)) ||
+							//TODO: also check for superclass fields
+							i.operands().anyMatch(Predicates.<Value>in(workerKlass.fields())))
 						remapEliminatingReceiver(i, inputType, outputType, stateHolderKlass);
 
 			assert rwork.arguments().get(0).uses().isEmpty();
@@ -225,6 +229,7 @@ public class ActorArchetype {
 		RegularType workerType = types.getRegularType(workerKlass);
 		RegularType stateHolderType = types.getRegularType(stateHolder);
 		Method init = new Method("<init>", types.getMethodType(stateHolderType, workerType), EnumSet.of(Modifier.PUBLIC), stateHolder);
+		Argument holder = init.arguments().get(0);
 		Argument worker = init.arguments().get(1);
 		worker.setName("worker");
 		BasicBlock initBlock = new BasicBlock(module);
@@ -232,32 +237,59 @@ public class ActorArchetype {
 		Method superCtor = module.getKlass(StateHolder.class).getMethods("<init>").iterator().next();
 		initBlock.instructions().add(new CallInst(superCtor, worker));
 
+		Method clinit = new Method("<clinit>", types.getMethodType(void.class), EnumSet.of(Modifier.PUBLIC, Modifier.STATIC), stateHolder);
+		BasicBlock clinitBlock = new BasicBlock(module);
+		clinit.basicBlocks().add(clinitBlock);
+
+		for (Map.Entry<Field, Field> e : workerToHolder.entrySet()) {
+			Field wf = e.getKey(), hf = e.getValue();
+			(hf.isStatic() ? clinitBlock : initBlock).instructions().addAll(initStateHolderField(wf, hf, worker, holder));
+		}
+
+		initBlock.instructions().add(new ReturnInst(types.getVoidType()));
+		clinitBlock.instructions().add(new ReturnInst(types.getVoidType()));
+//		stateHolder.dump(System.out);
+		return stateHolder;
+	}
+
+	private ImmutableList<Instruction> initStateHolderField(Field workerField, Field holderField, Argument worker, Argument holder) {
+		assert !holderField.isStatic() || workerField.isStatic() : "can't initialize static holder field from instance worker field (no worker object available)";
+		Module module = workerKlass.getParent();
+		TypeFactory types = module.types();
 		//We need to generate field initializers, but some worker fields may be
 		//private (thus inaccessible).  Unfortunately this means we need to
 		//generate reflective code.  (MethodHandles might be easier to use (just
 		//call into LookupUtils), but we won't have the appropriate Lookup(s).)
-		Method getFieldByName = Iterables.getOnlyElement(module.getKlass(ReflectionUtils.class).getMethods("getFieldByName"));
-		Method setAccessible = module.getKlass(AccessibleObject.class).getMethod("setAccessible", types.getMethodType(void.class, AccessibleObject.class, boolean.class));
-		for (Map.Entry<Field, Field> e : workerToHolder.entrySet()) {
-			Field wf = e.getKey(), hf = e.getValue();
-			CallInst field = new CallInst(getFieldByName, worker, module.constants().getConstant(wf.getName()));
-			CallInst access = new CallInst(setAccessible, field, module.constants().getConstant(true));
-			String getSuffix = "";
-			if (wf.getType().getFieldType() instanceof PrimitiveType) {
-				String typeName = wf.getType().getFieldType().getKlass().getName();
-				//Uppercase first character.
-				getSuffix = Character.toUpperCase(typeName.charAt(0)) + typeName.substring(1);
-			}
-			Method getMethod = Iterables.getOnlyElement(module.getKlass(java.lang.reflect.Field.class).getMethods("get"+getSuffix));
-			CallInst get = new CallInst(getMethod, field, worker);
-			CastInst cast = new CastInst(hf.getType().getFieldType(), get);
-			StoreInst store = new StoreInst(hf, cast, init.arguments().get(0));
-			initBlock.instructions().addAll(ImmutableList.of(field, access, get, cast, store));
+		ImmutableList.Builder<Instruction> builder = ImmutableList.builder();
+		CallInst field;
+		if (holderField.isStatic()) {
+			//Class constants are subject to access checking, but
+			//Class.forName() is not.
+			Method forName = module.getKlass(Class.class).getMethod("forName", types.getMethodType(Class.class, String.class));
+			CallInst klass = new CallInst(forName, module.constants().getConstant(workerClass.getName()));
+			builder.add(klass);
+			Method getFieldByName = module.getKlass(ReflectionUtils.class)
+					.getMethod("getFieldByName", types.getMethodType(java.lang.reflect.Field.class, Class.class, String.class));
+			field = new CallInst(getFieldByName, klass, module.constants().getConstant(workerField.getName()));
+		} else {
+			Method getFieldByName = module.getKlass(ReflectionUtils.class)
+					.getMethod("getFieldByName", types.getMethodType(java.lang.reflect.Field.class, Object.class, String.class));
+			field = new CallInst(getFieldByName, worker, module.constants().getConstant(workerField.getName()));
 		}
 
-		initBlock.instructions().add(new ReturnInst(types.getVoidType()));
-//		stateHolder.dump(System.out);
-		return stateHolder;
+		Method setAccessible = module.getKlass(AccessibleObject.class).getMethod("setAccessible", types.getMethodType(void.class, AccessibleObject.class, boolean.class));
+		CallInst access = new CallInst(setAccessible, field, module.constants().getConstant(true));
+		String getSuffix = "";
+		if (workerField.getType().getFieldType() instanceof PrimitiveType) {
+			String typeName = workerField.getType().getFieldType().getKlass().getName();
+			//Uppercase first character.
+			getSuffix = Character.toUpperCase(typeName.charAt(0)) + typeName.substring(1);
+		}
+		Method getMethod = Iterables.getOnlyElement(module.getKlass(java.lang.reflect.Field.class).getMethods("get"+getSuffix));
+		CallInst get = new CallInst(getMethod, field, holderField.isStatic() ? module.constants().getNullConstant() : worker);
+		CastInst cast = new CastInst(holderField.getType().getFieldType(), get);
+		StoreInst store = holderField.isStatic() ? new StoreInst(holderField, cast) : new StoreInst(holderField, cast, holder);
+		return builder.add(field, access, get, cast, store).build();
 	}
 
 	private static String makeWorkMethodName(Class<?> inputType, Class<?> outputType) {
@@ -588,7 +620,7 @@ public class ActorArchetype {
 		Argument stateHolder = inst.getParent().getParent().getArgument("$stateHolder");
 		Field stateField = stateHolderKlass.getField(inst.getLocation().getName());
 		assert stateField != null : inst;
-		inst.replaceInstWithInst(new LoadInst(stateField, stateHolder));
+		inst.replaceInstWithInst(stateField.isStatic() ? new LoadInst(stateField) : new LoadInst(stateField, stateHolder));
 	}
 
 	private void remap(StoreInst inst, Klass stateHolderKlass) {
