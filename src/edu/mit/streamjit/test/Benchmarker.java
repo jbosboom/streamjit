@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+import com.google.common.math.DoubleMath;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Filter;
@@ -525,7 +526,7 @@ public final class Benchmarker {
 					excessOutput.add(t);
 				} else {
 					Object e = expected.read();
-					if (!Objects.equals(e, t)) {
+					if (!equals(e, t)) {
 						if (current == null) { //continue or begin
 							current = new Extent(index, new ArrayList<>(), new ArrayList<>());
 							extents.add(current);
@@ -544,6 +545,13 @@ public final class Benchmarker {
 			}
 			public boolean correct() {
 				return excessOutput.isEmpty() && missingOutput.isEmpty() && extents.isEmpty();
+			}
+			private boolean equals(Object e, Object t) {
+				if (e instanceof Float && t instanceof Float)
+					return DoubleMath.fuzzyEquals(((Float)e).doubleValue(), ((Float)t).doubleValue(), 0.0001);
+				else if (e instanceof Double && t instanceof Double)
+					return DoubleMath.fuzzyEquals(((Double)e).doubleValue(), ((Double)t).doubleValue(), 0.0000001);
+				return Objects.equals(e, t);
 			}
 		}
 	}
