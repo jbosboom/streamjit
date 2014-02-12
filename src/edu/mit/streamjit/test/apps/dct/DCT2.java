@@ -26,6 +26,8 @@
 
 package edu.mit.streamjit.test.apps.dct;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Input;
@@ -38,6 +40,7 @@ import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
+import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.Benchmarker;
 import java.nio.ByteOrder;
 import java.nio.file.Paths;
@@ -53,15 +56,17 @@ import java.nio.file.Paths;
  */
 public class DCT2 {
 	public static void main(String[] args) throws InterruptedException {
-		StreamCompiler sc = new Compiler2StreamCompiler().maxNumCores(8).multiplier(256);
+		StreamCompiler sc = new DebugStreamCompiler();
 		Benchmarker.runBenchmark(new DCT2Benchmark(), sc).get(0).print(System.out);
 	}
 
 	@ServiceProvider(Benchmark.class)
 	public static final class DCT2Benchmark extends SuppliedBenchmark {
-		private static final int COPIES = 300;
+		private static final int COPIES = 1;
 		public DCT2Benchmark() {
-			super("DCT2", DCT2Kernel.class, new Dataset("idct-input-small.bin", Datasets.nCopies(COPIES, Input.fromBinaryFile(Paths.get("data/idct-input-small.bin"), Integer.class, ByteOrder.LITTLE_ENDIAN))));
+			super("DCT2", DCT2Kernel.class, new Dataset("idct-input-small.bin", (Input)Datasets.nCopies(COPIES, (Input)Input.fromBinaryFile(Paths.get("data/idct-input-small.bin"), Integer.class, ByteOrder.LITTLE_ENDIAN))
+//					, (Supplier)Suppliers.ofInstance((Input)Input.fromBinaryFile(Paths.get("/home/jbosboom/streamit/streams/apps/benchmarks/asplos06/dct/streamit/idct-output2.bin"), Integer.class, ByteOrder.LITTLE_ENDIAN))
+			));
 		}
 	}
 
