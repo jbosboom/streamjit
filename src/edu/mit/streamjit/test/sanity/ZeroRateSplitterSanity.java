@@ -7,6 +7,7 @@ import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Range;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Input;
@@ -32,6 +33,7 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 2/10/2014
  */
+@ServiceProvider(BenchmarkProvider.class)
 public final class ZeroRateSplitterSanity implements BenchmarkProvider {
 	public ZeroRateSplitterSanity() {}
 
