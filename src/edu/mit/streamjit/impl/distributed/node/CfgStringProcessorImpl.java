@@ -22,11 +22,10 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecifier;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
-import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
+import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
@@ -132,21 +131,11 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 			BlobFactory bf;
 			Configuration blobConfigs = dyncfg
 					.getSubconfiguration("blobConfigs");
-			blobConfigs = null;
 			if (blobConfigs == null) {
 				blobConfigs = staticConfig;
 				bf = new Interpreter.InterpreterBlobFactory();
 			} else {
-				IntParameter mul = blobConfigs.getParameter(
-						String.format("multiplier%d", streamNode.getNodeID()),
-						IntParameter.class);
-				Configuration.Builder builder = Configuration
-						.builder(blobConfigs);
-				builder.removeParameter(mul.getName());
-				builder.addParameter(new IntParameter("multiplier", mul
-						.getRange(), mul.getValue()));
-				blobConfigs = builder.build();
-				bf = new CompilerBlobFactory();
+				bf = new Compiler2BlobFactory();
 			}
 
 			for (BlobSpecifier bs : blobList) {

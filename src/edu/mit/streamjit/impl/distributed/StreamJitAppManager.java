@@ -50,6 +50,8 @@ public class StreamJitAppManager {
 
 	private final StreamJitApp app;
 
+	private final ConfigurationManager cfgManager;
+
 	private boolean isRunning;
 
 	/**
@@ -76,22 +78,26 @@ public class StreamJitAppManager {
 
 	Map<Token, TCPConnectionInfo> conInfoMap;
 
-	public StreamJitAppManager(Controller controller, StreamJitApp app) {
+	public StreamJitAppManager(Controller controller, StreamJitApp app,
+			ConfigurationManager cfgManager) {
 		this.controller = controller;
 		this.app = app;
+		this.cfgManager = cfgManager;
 		this.status = AppStatus.NOT_STARTED;
 		this.exP = new SNExceptionProcessorImpl();
 		this.ep = new ErrorProcessorImpl();
 		this.apStsPro = new AppStatusProcessorImpl(controller.getAllNodeIDs()
 				.size());
 		controller.registerManager(this);
-		controller.newApp(app); // TODO: Find a good calling place.
+		controller.newApp(cfgManager.getStaticConfiguration()); // TODO: Find a
+																// good calling
+																// place.
 		isRunning = false;
 	}
 
 	public boolean reconfigure() {
 		reset();
-		Configuration.Builder builder = Configuration.builder(app
+		Configuration.Builder builder = Configuration.builder(cfgManager
 				.getDynamicConfiguration());
 
 		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = new HashMap<>();
@@ -131,6 +137,7 @@ public class StreamJitAppManager {
 
 		return isRunning;
 	}
+
 	/**
 	 * Setup the headchannel and tailchannel.
 	 * 
@@ -169,7 +176,7 @@ public class StreamJitAppManager {
 
 		tailChannel = new TailChannel(bufferMap.get(tailToken),
 				controller.getConProvider(), tailconInfo, "tailChannel - "
-						+ tailToken.toString(), 0, 100000);
+						+ tailToken.toString(), 0, 1000);
 	}
 
 	/**
@@ -223,7 +230,12 @@ public class StreamJitAppManager {
 	public void drainingFinished(boolean isFinal) {
 		System.out.println("App Manager : Draining Finished...");
 		if (tailChannel != null) {
-			tailChannel.stop(isFinal);
+			if (isFinal)
+				tailChannel.stop(1);
+			else if (GlobalConstants.useDrainData)
+				tailChannel.stop(2);
+			else
+				tailChannel.stop(3);
 			try {
 				tailThread.join();
 			} catch (InterruptedException e) {

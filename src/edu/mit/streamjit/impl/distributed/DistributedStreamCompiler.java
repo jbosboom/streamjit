@@ -123,15 +123,16 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Controller controller = new Controller();
 		controller.connect(conTypeCount);
 
-		StreamJitApp app = new StreamJitApp(stream.getClass().getSimpleName(),
-				stream.getClass().getName(), source, sink);
+		StreamJitApp app = new StreamJitApp(stream, source, sink);
+		ConfigurationManager cfgManager = new HotSpotTuning(app);
+		BlobFactory bf = new DistributedBlobFactory(cfgManager, noOfnodes);
+		this.cfg = bf.getDefaultConfiguration(Workers
+				.getAllWorkersInGraph(source));
 
-		if (GlobalConstants.useCfgFile)
+		if (GlobalConstants.tune) {
+
+		} else {
 			this.cfg = readConfiguration(stream.getClass().getSimpleName());
-		else {
-			BlobFactory bf = new DistributedBlobFactory(noOfnodes);
-			this.cfg = bf.getDefaultConfiguration(Workers
-					.getAllWorkersInGraph(source));
 		}
 
 		if (cfg == null) {
@@ -145,7 +146,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 					machineIds, stream, source, sink);
 			app.newPartitionMap(partitionsMachineMap);
 		} else
-			app.newConfiguration(cfg);
+			cfgManager.newConfiguration(cfg);
 
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
 		// context.
@@ -157,7 +158,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 
-		StreamJitAppManager manager = new StreamJitAppManager(controller, app);
+		StreamJitAppManager manager = new StreamJitAppManager(controller, app,
+				cfgManager);
 		final AbstractDrainer drainer = new DistributedDrainer(manager);
 		drainer.setBlobGraph(app.blobGraph);
 
@@ -198,9 +200,9 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		manager.reconfigure();
 		CompiledStream cs = new DistributedCompiledStream(drainer);
 
-		if (!GlobalConstants.useCfgFile && this.cfg != null) {
+		if (GlobalConstants.tune && this.cfg != null) {
 			OnlineTuner tuner = new OnlineTuner(drainer, manager, app,
-					needTermination);
+					cfgManager, needTermination);
 			new Thread(tuner, "OnlineTuner").start();
 		}
 		return cs;

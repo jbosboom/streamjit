@@ -84,12 +84,14 @@ public final class GlobalConstants {
 	public static final boolean needDrainDeadlockHandler = true;
 
 	/**
-	 * Just use the fixed configuration file to run the program. No tuning, no
-	 * intermediate draining. In this mode, time taken to pass fixed number of
-	 * input will be measured for 30 rounds and logged into FixedOutPut.txt. See
-	 * {@link TailChannel} for the file logging details.
+	 * Enables tuning. Tuner will be started iff this flag is set true.
+	 * Otherwise, just use the fixed configuration file to run the program. No
+	 * tuning, no intermediate draining. In this mode (tune = false), time taken
+	 * to pass fixed number of input will be measured for 30 rounds and logged
+	 * into FixedOutPut.txt. See {@link TailChannel} for the file logging
+	 * details.
 	 */
-	public static final boolean useCfgFile = false;
+	public static final boolean tune = false;
 
 	/**
 	 * Save all configurations tired by open tuner in to

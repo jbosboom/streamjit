@@ -20,7 +20,6 @@ import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.util.EmptyRunnable;
-import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -29,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -113,6 +113,9 @@ public class Interpreter implements Blob {
 			Workers.getInputChannels(info.downstream()).set(info.getDownstreamChannelIndex(), channel);
 			if (initialState != null) {
 				ImmutableList<Object> data = initialState.getData(info.token());
+//				System.out.println(String.format(
+//						"Internal edge: InitialData of %s is %d", info.token(),
+//						data.size()));
 				for (Object o : data != null ? data : ImmutableList.of())
 					channel.push(o);
 			}
@@ -146,6 +149,9 @@ public class Interpreter implements Blob {
 				//as input in the downstream blob.
 				if (initialState != null) {
 					ImmutableList<Object> data = initialState.getData(info.token());
+//					System.out.println(String.format(
+//							"External edge: InitialData of %s is %d",
+//							info.token(), data.size()));
 					for (Object o : data != null ? data : ImmutableList.of())
 						channel.push(o);
 				}
@@ -328,37 +334,31 @@ public class Interpreter implements Blob {
 		//Fire each sink once if possible, then repeat until we can't fire any
 		//sinks.
 		boolean fired, everFired = false;
+		Set<Worker<?, ?>> firableSinks;
 		do {
-			fired = false;
-			for (Worker<?, ?> sink : sinks)
-				everFired |= fired |= pull(sink);
+			// Because we're using unbounded Channels, if we keep getting input,
+			// we'll keep firing our workers. We need to flush output to buffers
+			// to prevent memory exhaustion and starvation of the next Blob.
+			firableSinks = pushOutputs();
 
-			//Because we're using unbounded Channels, if we keep getting input,
-			//we'll keep firing our workers.  We need to flush output to buffers
-			//to prevent memory exhaustion and starvation of the next Blob.
-			pushOutputs();
+			fired = false;
+			for (Worker<?, ?> sink : firableSinks) {
+				everFired |= fired |= pull(sink);
+			}
 		} while (fired);
 
 		return everFired;
 	}
 
-	private void pushOutputs() {
+	private Set<Worker<?, ?>> pushOutputs() {
 		//Flush in a round-robin manner to avoid deadlocks where our consumer is
 		//blocked on another one of our channels.
 		List<Channel<?>> check = new ArrayList<>(outputBuffers.keySet());
-		while (!check.isEmpty()) {
-			for (int i = check.size()-1; i >= 0; --i) {
-				Channel<?> channel = check.get(i);
-				if (channel.isEmpty()) {
-					check.remove(i);
-					continue;
-				}
-
-				Buffer buffer = outputBuffers.get(channel);
-				int room = Math.min(buffer.capacity() - buffer.size(), channel.size());
-				if (room == 0)
-					continue;
-
+		List<Channel<?>> nonEmptyChannels = new ArrayList<>();
+		for (Channel<?> channel : check) {
+			Buffer buffer = outputBuffers.get(channel);
+			int room = Math.min(buffer.capacity() - buffer.size(), channel.size());
+			if (room != 0) {
 				Object[] data = new Object[room];
 				for (int j = 0; j < data.length; ++j)
 					data[j] = channel.pop();
@@ -370,9 +370,51 @@ public class Interpreter implements Blob {
 				}
 				assert tries == 1 : "We checked we have space, but still needed "+tries+" tries";
 			}
+			if (!channel.isEmpty())
+				nonEmptyChannels.add(channel);
+		}
+		return firableWorkers(nonEmptyChannels);
+	}
+
+	private Set<Worker<?, ?>> firableWorkers(List<Channel<?>> nonEmptyChannels) {
+		Set<Worker<?, ?>> firableWorkers = new HashSet<>();
+		boolean firable = true;
+		for (Worker<?, ?> w : sinks) {
+			firable = true;
+			for (Channel<?> ch : Workers.getOutputChannels(w)) {
+				if (nonEmptyChannels.contains(ch)) {
+					firable = false;
+					break;
+				}
+			}
+
+			if (firable)
+				firableWorkers.add(w);
+		}
+		return firableWorkers;
+	}
+
+	private void printBufferSizes() {
+		System.out.println("Input buffers");
+		for (IOInfo io : ioinfo) {
+			if (io.isInput()) {
+				Channel<?> ch = io.channel();
+				Buffer b = inputBuffers.get(ch);
+				System.out.println("\t" + io.token() + " - " + b.size());
+			}
+		}
+
+		System.out.println("Output buffers");
+		for (IOInfo io : ioinfo) {
+			if (io.isOutput()) {
+				Channel<?> ch = io.channel();
+				Buffer b = outputBuffers.get(ch);
+				System.out.println("\t" + io.token() + " - " + b.size());
+			}
 		}
 	}
 
+	private int pullsSinceProgress = 0;
 	/**
 	 * Fires upstream filters just enough to allow worker to fire, or returns
 	 * false if this is impossible.
@@ -385,6 +427,7 @@ public class Interpreter implements Blob {
 	private boolean pull(Worker<?, ?> worker) {
 		//This stack holds all the unsatisfied workers we've encountered
 		//while trying to fire the argument.
+		pullsSinceProgress++;
 		Deque<Worker<?, ?>> stack = new ArrayDeque<>();
 		stack.push(worker);
 		recurse:
@@ -415,6 +458,7 @@ public class Interpreter implements Blob {
 							continue recurse; //try again
 						}
 					}
+//					print(current, channel);
 					return false; //Couldn't fire.
 				}
 
@@ -446,6 +490,7 @@ public class Interpreter implements Blob {
 
 			Workers.doWork(current);
 			afterFire(current);
+			pullsSinceProgress = 0;
 			stack.pop(); //return from the recursion
 		}
 
@@ -479,4 +524,34 @@ public class Interpreter implements Blob {
 	 * @param worker the worker that just fired
 	 */
 	protected void afterFire(Worker<?, ?> worker) {}
+
+	/**
+	 * Prints the deadlock situation.
+	 * @param worker
+	 * @param channel
+	 */
+	private void print(Worker<?, ?> worker, int channel) {
+		if (pullsSinceProgress > 10000000) {
+			if (pullsSinceProgress % 100 == 0) {
+				System.out.println("Pull:Worker - "
+						+ Workers.getIdentifier(worker) + ", Channel - "
+						+ channel);
+				printWorkerExecutions();
+				printBufferSizes();
+			}
+
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private void printWorkerExecutions() {
+		for (Worker<?, ?> w : workers) {
+			System.out.println("Worker-" + Workers.getIdentifier(w)
+					+ ", Execution count-" + Workers.getExecutions(w));
+		}
+	}
 }

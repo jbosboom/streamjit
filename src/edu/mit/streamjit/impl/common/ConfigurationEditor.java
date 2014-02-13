@@ -5,13 +5,14 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Map;
 
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.BlobFactory;
-import edu.mit.streamjit.impl.common.Configuration.IntParameter;
+import edu.mit.streamjit.impl.common.Configuration.Parameter;
+import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
-import edu.mit.streamjit.test.apps.fmradio.FMRadio.FMRadioCore;
 
 public class ConfigurationEditor {
 
@@ -22,8 +23,8 @@ public class ConfigurationEditor {
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		generate(new FMRadioCore());
 		edit(name, noofwrks);
+		// print("4366NestedSplitJoinCore.cfg");
 	}
 
 	private static void generate(OneToOneElement<?, ?> stream) {
@@ -71,18 +72,41 @@ public class ConfigurationEditor {
 
 		for (int i = 0; i < maxWor; i++) {
 			String s = String.format("worker%dtomachine", i);
-			IntParameter p = (IntParameter) cfg.getParameter(s);
+			SwitchParameter<Integer> p = (SwitchParameter<Integer>) cfg
+					.getParameter(s);
 			System.out.println(p.getName() + " - " + p.getValue());
 			int val = Integer.parseInt(keyinreader.readLine());
-
 			builder.removeParameter(s);
-			builder.addParameter(new IntParameter(s, p.getMin(), p.getMax(),
-					val));
+			builder.addParameter(new SwitchParameter<Integer>(s, Integer.class,
+					val, p.getUniverse()));
 		}
 
 		cfg = builder.build();
 		FileWriter writer = new FileWriter(name);
 		writer.write(cfg.toJson());
 		writer.close();
+		System.out.println("Successfully updated");
+	}
+
+	private static void print(String name) {
+		Configuration cfg;
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(name));
+			String json = reader.readLine();
+			cfg = Configuration.fromJson(json);
+			reader.close();
+		} catch (Exception ex) {
+			System.err.println("File reader error");
+			return;
+		}
+
+		for (Map.Entry<String, Parameter> en : cfg.getParametersMap()
+				.entrySet()) {
+			if (en.getValue() instanceof SwitchParameter<?>) {
+				SwitchParameter<Integer> sp = (SwitchParameter<Integer>) en
+						.getValue();
+				System.out.println(sp.getName() + " - " + sp.getValue());
+			}
+		}
 	}
 }

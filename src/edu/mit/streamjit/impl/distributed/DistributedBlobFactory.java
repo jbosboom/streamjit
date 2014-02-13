@@ -1,7 +1,5 @@
 package edu.mit.streamjit.impl.distributed;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 import edu.mit.streamjit.api.Worker;
@@ -9,11 +7,9 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
-import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.compiler.Compiler;
-import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
+import edu.mit.streamjit.impl.compiler2.Compiler2;
+import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.interp.Interpreter.InterpreterBlobFactory;
 
 /**
@@ -37,52 +33,42 @@ public class DistributedBlobFactory implements BlobFactory {
 
 	private int noOfMachines;
 
-	public DistributedBlobFactory(int noOfMachines) {
+	private final ConfigurationManager cfgManager;
+
+	public DistributedBlobFactory(ConfigurationManager cfgManager,
+			int noOfMachines) {
+		this.cfgManager = cfgManager;
 		this.noOfMachines = noOfMachines;
+	}
+
+	/**
+	 * If {@link ConfigurationManager} is not passed as a constructor argument
+	 * then {@link WorkerMachine} will be used as default one.
+	 * 
+	 * @param noOfMachines
+	 */
+	public DistributedBlobFactory(int noOfMachines) {
+		this(new WorkerMachine(null), noOfMachines);
 	}
 
 	@Override
 	public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config,
 			int maxNumCores, DrainData initialState) {
-		return new Compiler(workers, config, maxNumCores, initialState)
+		return new Compiler2(workers, config, maxNumCores, initialState)
 				.compile();
 	}
 
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
-		BlobFactory compilerBf = new CompilerBlobFactory();
+
+		Configuration distCfg = cfgManager.getDefaultConfiguration(workers,
+				noOfMachines);
+		Configuration.Builder builder = Configuration.builder(distCfg);
+
+		BlobFactory compilerBf = new Compiler2BlobFactory();
 		Configuration compilercfg = compilerBf.getDefaultConfiguration(workers);
-
-		Configuration.Builder builder = Configuration.builder(compilercfg);
-		Configuration.IntParameter multiplierParam = (Configuration.IntParameter) builder
-				.removeParameter("multiplier");
-
-		for (int i = 0; i < noOfMachines; i++) {
-			builder.addParameter(new Configuration.IntParameter(String.format(
-					"multiplier%d", (i + 1)), multiplierParam.getRange(),
-					multiplierParam.getValue()));
-		}
-
-		// Configuration.Builder builder = Configuration.builder();
-		List<Integer> machinelist = new ArrayList<>(noOfMachines);
-		for (int i = 1; i <= noOfMachines; i++)
-			machinelist.add(i);
-
-		for (Worker<?, ?> w : workers) {
-			Parameter p = new Configuration.SwitchParameter<Integer>(
-					String.format("worker%dtomachine", Workers.getIdentifier(w)),
-					Integer.class, 1, machinelist);
+		for (Parameter p : compilercfg.getParametersMap().values())
 			builder.addParameter(p);
-		}
-
-		// This parameter cannot be tuned. Its added here because we need this
-		// parameter to run the app.
-		// TODO: Consider using partition parameter and extradata to store this
-		// kind of not tunable data.
-		IntParameter noOfMachinesParam = new IntParameter("noOfMachines",
-				noOfMachines, noOfMachines, noOfMachines);
-
-		builder.addParameter(noOfMachinesParam);
 
 		return builder.build();
 	}

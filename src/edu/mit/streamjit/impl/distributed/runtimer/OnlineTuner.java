@@ -16,6 +16,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
+import edu.mit.streamjit.impl.distributed.ConfigurationManager;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
@@ -35,13 +36,16 @@ public class OnlineTuner implements Runnable {
 	private final StreamJitAppManager manager;
 	private final OpenTuner tuner;
 	private final StreamJitApp app;
+	private final ConfigurationManager cfgManager;
 	private final boolean needTermination;
 
 	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
-			StreamJitApp app, boolean needTermination) {
+			StreamJitApp app, ConfigurationManager cfgManager,
+			boolean needTermination) {
 		this.drainer = drainer;
 		this.manager = manager;
 		this.app = app;
+		this.cfgManager = cfgManager;
 		this.tuner = new TCPTuner();
 		this.needTermination = needTermination;
 	}
@@ -84,7 +88,7 @@ public class OnlineTuner implements Runnable {
 					saveConfg(config, tryCount);
 
 				try {
-					if (!app.newConfiguration(config)) {
+					if (!cfgManager.newConfiguration(config)) {
 						tuner.writeLine("-1");
 						continue;
 					}
@@ -178,7 +182,7 @@ public class OnlineTuner implements Runnable {
 		Configuration config = rebuildConfiguration(pythonDict,
 				app.blobConfiguration);
 		try {
-			if (!app.newConfiguration(config)) {
+			if (!cfgManager.newConfiguration(config)) {
 				System.err.println("Invalid final configuration.");
 				return;
 			}
