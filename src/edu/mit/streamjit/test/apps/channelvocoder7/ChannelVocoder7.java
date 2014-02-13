@@ -34,7 +34,7 @@ import java.util.Iterator;
  * @since Mar 12, 2013
  */
 @ServiceProvider(BenchmarkProvider.class)
-public class ChannelVocoder7 implements BenchmarkProvider {
+public final class ChannelVocoder7 implements BenchmarkProvider {
 	public static void main(String[] args) throws InterruptedException {
 		StreamCompiler sc = new Compiler2StreamCompiler().maxNumCores(8).multiplier(32);
 		Benchmarker.runBenchmark(Iterables.getLast(new ChannelVocoder7()), sc).get(0).print(System.out);
@@ -83,7 +83,7 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * filter bank and a single pitch detector value. This value is either the
 	 * pitch if the sound was voiced or 0 if the sound was unvoiced.
 	 **/
-	public static class ChannelVocoder7Kernel extends Pipeline<Float, Float> {
+	public static final class ChannelVocoder7Kernel extends Pipeline<Float, Float> {
 		public ChannelVocoder7Kernel(int numFilters, int numTaps) {
 			// low pass filter to filter out high freq noise
 			add(new LowPassFilter(1, (float) ((2 * Math.PI * 5000) / 8000), 64));
@@ -95,12 +95,12 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * This class is just a wrapper so that we don't have anonymous inner
 	 * classes.
 	 **/
-	private static class MainSplitjoin extends Splitjoin<Float, Float> {
-		private final int PITCH_WINDOW = 100; // the number of samples to base the pitch
+	private static final class MainSplitjoin extends Splitjoin<Float, Float> {
+		private static final int PITCH_WINDOW = 100; // the number of samples to base the pitch
 								// detection on
-		private final int DECIMATION = 50; // decimation factor
+		private static final int DECIMATION = 50; // decimation factor
 
-		MainSplitjoin(int numFilters, int numTaps) {
+		private MainSplitjoin(int numFilters, int numTaps) {
 			super(new DuplicateSplitter<Float>(),
 					new WeightedRoundrobinJoiner<Float>(1, numFilters));
 			add(new PitchDetector(PITCH_WINDOW, DECIMATION));
@@ -112,16 +112,16 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	/**
 	 * Pitch detector.
 	 **/
-	private static class PitchDetector extends Pipeline<Float, Float> {
-		PitchDetector(int winsize, int decimation) {
+	private static final class PitchDetector extends Pipeline<Float, Float> {
+		private PitchDetector(int winsize, int decimation) {
 			add(new CenterClip());
 			add(new CorrPeak(winsize, decimation));
 		}
 	}
 
 	/** The channel vocoder filterbank. **/
-	private static class VocoderFilterBank extends Splitjoin<Float, Float> {
-		VocoderFilterBank(int N, int decimation, int numTaps) {
+	private static final class VocoderFilterBank extends Splitjoin<Float, Float> {
+		private VocoderFilterBank(int N, int decimation, int numTaps) {
 			super(new DuplicateSplitter<Float>(), new RoundrobinJoiner<Float>());
 			for (int i = 0; i < N; i++) {
 				add(new FilterDecimate(i, decimation, numTaps));
@@ -133,8 +133,8 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * A channel of the vocoder filter bank -- has a band pass filter centered
 	 * at i*200 Hz followed by a decimator with decimation rate of decimation.
 	 **/
-	private static class FilterDecimate extends Pipeline<Float, Float> {
-		FilterDecimate(int i, int decimation, int numTaps) {
+	private static final class FilterDecimate extends Pipeline<Float, Float> {
+		private FilterDecimate(int i, int decimation, int numTaps) {
 			// add VocoderBandPassFilter(i, 64); // 64 tap filter
 			add(new BandPassFilter(2, 400 * i, 400 * (i + 1), numTaps));
 			add(new Compressor(decimation));
@@ -145,11 +145,11 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * This filter "center clips" the input value so that it is always within
 	 * the range of -.75 to .75
 	 **/
-	private static class CenterClip extends Filter<Float, Float> {
+	private static final class CenterClip extends Filter<Float, Float> {
 		private final float MIN = -0.75f;
 		private final float MAX = 0.75f;
 
-		public CenterClip() {
+		private CenterClip() {
 			super(1, 1);
 		}
 
@@ -171,12 +171,12 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * output a zero. If the max peak is above the threshold, we simply output
 	 * its value.
 	 **/
-	private static class CorrPeak extends Filter<Float, Float> {
+	private static final class CorrPeak extends Filter<Float, Float> {
+		private static final float THRESHOLD = 0.07f;
 		private final int winsize;
 		private final int decimation;
-		private final float THRESHOLD = 0.07f;
 
-		CorrPeak(int winsize, int decimation) {
+		private CorrPeak(int winsize, int decimation) {
 			super(decimation, 1, winsize);
 			this.winsize = winsize;
 			this.decimation = decimation;
@@ -221,10 +221,10 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	/**
 	 * A simple adder which takes in N items and pushes out the sum of them.
 	 **/
-	private static class Adder extends Filter<Float, Float> {
+	private static final class Adder extends Filter<Float, Float> {
 		private final int N;
 
-		Adder(int N) {
+		private Adder(int N) {
 			super(N, 1);
 			this.N = N;
 		}
@@ -245,8 +245,8 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * gain of passband and size of window for both filters. Note that the high
 	 * pass and low pass filters currently use a rectangular window.
 	 */
-	private static class BandPassFilter extends Pipeline<Float, Float> {
-		BandPassFilter(float gain, float ws, float wp, int numSamples) {
+	private static final class BandPassFilter extends Pipeline<Float, Float> {
+		private BandPassFilter(float gain, float ws, float wp, int numSamples) {
 			add(new LowPassFilter(1, wp, numSamples));
 			add(new HighPassFilter(gain, ws, numSamples));
 		}
@@ -262,8 +262,8 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * We take the signal, run both the low and high pass filter separately and
 	 * then add the results back together.
 	 */
-	private static class BandStopFilter extends Pipeline<Float, Float> {
-		BandStopFilter(float gain, float wp, float ws, int numSamples) {
+	private static final class BandStopFilter extends Pipeline<Float, Float> {
+		private BandStopFilter(float gain, float wp, float ws, int numSamples) {
 			Splitjoin<Float, Float> sp1 = new Splitjoin<>(
 					new DuplicateSplitter<Float>(),
 					new RoundrobinJoiner<Float>());
@@ -279,9 +279,9 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * This filter compresses the signal at its input by a factor M. Eg it
 	 * inputs M samples, and only outputs the first sample.
 	 **/
-	private static class Compressor extends Filter<Float, Float> {
+	private static final class Compressor extends Filter<Float, Float> {
 		private final int M;
-		Compressor(int M) {
+		private Compressor(int M) {
 			super(M, 1);
 			this.M = M;
 		}
@@ -298,7 +298,7 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * and outputs L samples. The first sample is the input and the rest of the
 	 * samples are zeros.
 	 **/
-	private static class Expander extends Filter<Float, Float> {
+	private static final class Expander extends Filter<Float, Float> {
 		private final int L;
 		Expander(int L) {
 			super(1, L);
@@ -333,13 +333,13 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * (-1)^(n-N/2) * sin(cutoffFreq*pi*(n-N/2))/(pi*(n-N/2)). where cutoffFreq
 	 * is pi-ws and the field h holds h[-n].
 	 */
-	private static class HighPassFilter extends Filter<Float, Float> {
+	private static final class HighPassFilter extends Filter<Float, Float> {
 		private final float g;
 		private final float ws;
 		private final int N;
 		private final float[] h;
 
-		HighPassFilter(float g, float ws, int N) {
+		private HighPassFilter(float g, float ws, int N) {
 			super(1, 1, N);
 			this.h = new float[N];
 			this.g = g;
@@ -406,13 +406,13 @@ public class ChannelVocoder7 implements BenchmarkProvider {
 	 * Specifically, h[n] has N samples from n=0 to (N-1) such that h[n] =
 	 * sin(cutoffFreq*pi*(n-N/2))/(pi*(n-N/2)). and the field h holds h[-n].
 	 */
-	private static class LowPassFilter extends Filter<Float, Float> {
+	private static final class LowPassFilter extends Filter<Float, Float> {
 		private final float[] h;
 		private final float g;
 		private final float cutoffFreq;
 		private final int N;
 
-		LowPassFilter(float g, float cutoffFreq, int N) {
+		private LowPassFilter(float g, float cutoffFreq, int N) {
 			super(1, 1, N);
 			this.h = new float[N];
 			this.g = g;

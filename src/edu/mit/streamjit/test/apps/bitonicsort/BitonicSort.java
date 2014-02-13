@@ -56,7 +56,7 @@ import java.util.List;
  * .de/lang/algorithmen/sortieren/bitonic/bitonicen.htm
  */
 @ServiceProvider(BenchmarkProvider.class)
-public class BitonicSort implements BenchmarkProvider {
+public final class BitonicSort implements BenchmarkProvider {
 	public static void main(String[] args) throws InterruptedException {
 		StreamCompiler sc = new Compiler2StreamCompiler().maxNumCores(8).multiplier(64);
 		Benchmarker.runBenchmark(Iterables.getLast(new BitonicSort()), sc).get(0).print(System.out);
@@ -110,10 +110,10 @@ public class BitonicSort implements BenchmarkProvider {
 	 * sortdir determines if the sort is nondecreasing (UP) or nonincreasing
 	 * (DOWN). 'true' indicates UP sort and 'false' indicates DOWN sort.
 	 */
-	private static class CompareExchange extends Filter<Integer, Integer> {
+	private static final class CompareExchange extends Filter<Integer, Integer> {
 		private final boolean sortdir;
 
-		public CompareExchange(boolean sortdir) {
+		private CompareExchange(boolean sortdir) {
 			super(2, 2);
 			this.sortdir = sortdir;
 		}
@@ -158,10 +158,10 @@ public class BitonicSort implements BenchmarkProvider {
 	 * clustered together in the sort network at a particular step (of some
 	 * merge stage).
 	 */
-	private static class PartitionBitonicSequence extends
+	private static final class PartitionBitonicSequence extends
 			Splitjoin<Integer, Integer> {
 		/* Each CompareExchange examines keys that are L/2 elements apart */
-		PartitionBitonicSequence(int L, boolean sortdir) {
+		private PartitionBitonicSequence(int L, boolean sortdir) {
 			super(new RoundrobinSplitter<Integer>(),
 					new RoundrobinJoiner<Integer>());
 			for (int i = 0; i < (L / 2); i++) {
@@ -177,12 +177,12 @@ public class BitonicSort implements BenchmarkProvider {
 	 * dircnt determines which step we are in the current merge stage (which in
 	 * turn is determined by <L, numseqp>)
 	 */
-	private static class StepOfMerge extends Splitjoin<Integer, Integer> {
+	private static final class StepOfMerge extends Splitjoin<Integer, Integer> {
 		private final int L;
 		private final int numseqp;
 		private final int dircnt;
 
-		StepOfMerge(int L, int numseqp, int dircnt) {
+		private StepOfMerge(int L, int numseqp, int dircnt) {
 			super(new RoundrobinSplitter<Integer>(L),
 					new RoundrobinJoiner<Integer>(L));
 			this.L = L;
@@ -227,12 +227,12 @@ public class BitonicSort implements BenchmarkProvider {
 	 * Main difference form StepOfMerge is the direction of sort. It is always
 	 * in the same direction - sortdir.
 	 */
-	private static class StepOfLastMerge extends Splitjoin<Integer, Integer> {
+	private static final class StepOfLastMerge extends Splitjoin<Integer, Integer> {
 		private final int L;
 		private final int numseqp;
 		private final boolean sortdir;
 
-		StepOfLastMerge(int L, int numseqp, boolean sortdir) {
+		private StepOfLastMerge(int L, int numseqp, boolean sortdir) {
 			super(new RoundrobinSplitter<Integer>(L),
 					new RoundrobinJoiner<Integer>(L));
 			this.L = L;
@@ -268,10 +268,10 @@ public class BitonicSort implements BenchmarkProvider {
 	 *
 	 * But, this MergeStage is implemented *iteratively* as logP STEPS.
 	 */
-	private static class MergeStage extends Pipeline<Integer, Integer> {
+	private static final class MergeStage extends Pipeline<Integer, Integer> {
 		private final int P;
 		private final int N;
-		MergeStage(int P, int N) {
+		private MergeStage(int P, int N) {
 			this.P = P;
 			this.N = N;
 			addFilters();
@@ -308,10 +308,10 @@ public class BitonicSort implements BenchmarkProvider {
 	 *
 	 * This is implemented iteratively as logN steps
 	 */
-	private static class LastMergeStage extends Pipeline<Integer, Integer> {
+	private static final class LastMergeStage extends Pipeline<Integer, Integer> {
 		private final int N;
 		private final boolean sortdir;
-		LastMergeStage(int N, boolean sortdir) {
+		private LastMergeStage(int N, boolean sortdir) {
 			this.N = N;
 			this.sortdir = sortdir;
 			addFilter();
@@ -345,7 +345,7 @@ public class BitonicSort implements BenchmarkProvider {
 	 * the resultant bitonic sequence to produce the final sorted sequence
 	 * (sortdir determines if it is UP or DOWN).
 	 */
-	public static class BitonicSortKernel extends Pipeline<Integer, Integer> {
+	public static final class BitonicSortKernel extends Pipeline<Integer, Integer> {
 		private final int N;
 		private final boolean sortdir;
 		public BitonicSortKernel(int N, boolean sortdir) {

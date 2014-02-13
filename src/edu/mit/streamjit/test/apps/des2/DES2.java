@@ -29,24 +29,26 @@ import java.nio.file.Paths;
  * @author Sumanan sumanan@mit.edu
  * @since Mar 13, 2013
  */
-public class DES2 {
+public final class DES2 {
+	private DES2() {}
+
 	public static void main(String[] args) throws InterruptedException {
 		StreamCompiler sc = new DebugStreamCompiler();
 		Benchmarker.runBenchmark(new DES2Benchmark(), sc).get(0).print(System.out);
 	}
 
 	// used for printing descriptor in output
-	public static boolean PRINTINFO = false;
-	public static int PLAINTEXT = 0;
-	public static int USERKEY = 1;
-	public static int CIPHERTEXT = 2;
+	private static final boolean PRINTINFO = false;
+	private static final int PLAINTEXT = 0;
+	private static final int USERKEY = 1;
+	private static final int CIPHERTEXT = 2;
 
 	// algorithm has 16 total rounds
-	public static int MAXROUNDS = 4;
+	private static final int MAXROUNDS = 4;
 
 	// sample user keys
 	// int[34][2] USERKEYS
-	public static int[][] USERKEYS = { { 0x00000000, 0x00000000 }, // 0x0000000000000000
+	private static final int[][] USERKEYS = { { 0x00000000, 0x00000000 }, // 0x0000000000000000
 			{ 0xFFFFFFFF, 0xFFFFFFFF }, // 0xFFFFFFFFFFFFFFFF
 			{ 0x30000000, 0x00000000 }, // 0x3000000000000000
 			{ 0x11111111, 0x11111111 }, // 0x1111111111111111
@@ -83,77 +85,77 @@ public class DES2 {
 
 	// PC1 permutation for key schedule
 	// int[56] PC1
-	public static int[] PC1 = { 57, 49, 41, 33, 25, 17, 9, 1, 58, 50, 42, 34, 26, 18, 10, 2, 59, 51, 43, 35, 27, 19, 11, 3, 60, 52,
+	private static final int[] PC1 = { 57, 49, 41, 33, 25, 17, 9, 1, 58, 50, 42, 34, 26, 18, 10, 2, 59, 51, 43, 35, 27, 19, 11, 3, 60, 52,
 			44, 36, 63, 55, 47, 39, 31, 23, 15, 7, 62, 54, 46, 38, 30, 22, 14, 6, 61, 53, 45, 37, 29, 21, 13, 5, 28, 20, 12, 4 };
 
 	// PC2 permutation for key schedule
 	// int[48] PC2
-	public static int[] PC2 = { 14, 17, 11, 24, 1, 5, 3, 28, 15, 6, 21, 10, 23, 19, 12, 4, 26, 8, 16, 7, 27, 20, 13, 2, 41, 52, 31,
+	private static final int[] PC2 = { 14, 17, 11, 24, 1, 5, 3, 28, 15, 6, 21, 10, 23, 19, 12, 4, 26, 8, 16, 7, 27, 20, 13, 2, 41, 52, 31,
 			37, 47, 55, 30, 40, 51, 45, 33, 48, 44, 49, 39, 56, 34, 53, 46, 42, 50, 36, 29, 32 };
 
 	// key rotation table for key schedule
 	// int[16] RT
-	public static int[] RT = { 1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1 };
+	private static final int[] RT = { 1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1 };
 
 	// initial permuation
 	// int[64] IP
-	public static int[] IP = { 58, 50, 42, 34, 26, 18, 10, 2, 60, 52, 44, 36, 28, 20, 12, 4, 62, 54, 46, 38, 30, 22, 14, 6, 64, 56,
+	private static final int[] IP = { 58, 50, 42, 34, 26, 18, 10, 2, 60, 52, 44, 36, 28, 20, 12, 4, 62, 54, 46, 38, 30, 22, 14, 6, 64, 56,
 			48, 40, 32, 24, 16, 8, 57, 49, 41, 33, 25, 17, 9, 1, 59, 51, 43, 35, 27, 19, 11, 3, 61, 53, 45, 37, 29, 21, 13, 5, 63, 55,
 			47, 39, 31, 23, 15, 7 };
 
 	// expansion permutation (bit selection)
 	// int[48] E
-	public static int[] E = { 32, 1, 2, 3, 4, 5, 4, 5, 6, 7, 8, 9, 8, 9, 10, 11, 12, 13, 12, 13, 14, 15, 16, 17, 16, 17, 18, 19, 20,
+	private static final int[] E = { 32, 1, 2, 3, 4, 5, 4, 5, 6, 7, 8, 9, 8, 9, 10, 11, 12, 13, 12, 13, 14, 15, 16, 17, 16, 17, 18, 19, 20,
 			21, 20, 21, 22, 23, 24, 25, 24, 25, 26, 27, 28, 29, 28, 29, 30, 31, 32, 1 };
 
 	// P permutation of sbox output
 	// int[32] P
-	public static int[] P = { 16, 7, 20, 21, 29, 12, 28, 17, 1, 15, 23, 26, 5, 18, 31, 10, 2, 8, 24, 14, 32, 27, 3, 9, 19, 13, 30, 6,
+	private static final int[] P = { 16, 7, 20, 21, 29, 12, 28, 17, 1, 15, 23, 26, 5, 18, 31, 10, 2, 8, 24, 14, 32, 27, 3, 9, 19, 13, 30, 6,
 			22, 11, 4, 25 };
 
 	// inverse intial permuation
 	// int[64] IPm1
-	public static int[] IPm1 = { 40, 8, 48, 16, 56, 24, 64, 32, 39, 7, 47, 15, 55, 23, 63, 31, 38, 6, 46, 14, 54, 22, 62, 30, 37, 5,
+	private static final int[] IPm1 = { 40, 8, 48, 16, 56, 24, 64, 32, 39, 7, 47, 15, 55, 23, 63, 31, 38, 6, 46, 14, 54, 22, 62, 30, 37, 5,
 			45, 13, 53, 21, 61, 29, 36, 4, 44, 12, 52, 20, 60, 28, 35, 3, 43, 11, 51, 19, 59, 27, 34, 2, 42, 10, 50, 18, 58, 26, 33,
 			1, 41, 9, 49, 17, 57, 25 };
 
 	// provides sbox permutations for DES encryption
 	// int[4][16] S1
-	public static int[][] S1 = { { 14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7 },
+	private static final int[][] S1 = { { 14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7 },
 			{ 0, 15, 7, 4, 14, 2, 13, 1, 10, 6, 12, 11, 9, 5, 3, 8 }, { 4, 1, 14, 8, 13, 6, 2, 11, 15, 12, 9, 7, 3, 10, 5, 0 },
 			{ 15, 12, 8, 2, 4, 9, 1, 7, 5, 11, 3, 14, 10, 0, 6, 13 } };
 
 	// int[4][16] S2
-	public static int[][] S2 = { { 15, 1, 8, 14, 6, 11, 3, 4, 9, 7, 2, 13, 12, 0, 5, 10 },
+	private static final int[][] S2 = { { 15, 1, 8, 14, 6, 11, 3, 4, 9, 7, 2, 13, 12, 0, 5, 10 },
 			{ 3, 13, 4, 7, 15, 2, 8, 14, 12, 0, 1, 10, 6, 9, 11, 5 }, { 0, 14, 7, 11, 10, 4, 13, 1, 5, 8, 12, 6, 9, 3, 2, 15 },
 			{ 13, 8, 10, 1, 3, 15, 4, 2, 11, 6, 7, 12, 0, 5, 14, 9 } };
 
 	// int[4][16] S3
-	public static int[][] S3 = { { 10, 0, 9, 14, 6, 3, 15, 5, 1, 13, 12, 7, 11, 4, 2, 8 },
+	private static final int[][] S3 = { { 10, 0, 9, 14, 6, 3, 15, 5, 1, 13, 12, 7, 11, 4, 2, 8 },
 			{ 13, 7, 0, 9, 3, 4, 6, 10, 2, 8, 5, 14, 12, 11, 15, 1 }, { 13, 6, 4, 9, 8, 15, 3, 0, 11, 1, 2, 12, 5, 10, 14, 7 },
 			{ 1, 10, 13, 0, 6, 9, 8, 7, 4, 15, 14, 3, 11, 5, 2, 12 } };
 
 	// int[4][16] S4
-	public static int[][] S4 = { { 7, 13, 14, 3, 0, 6, 9, 10, 1, 2, 8, 5, 11, 12, 4, 15 },
+	private static final int[][] S4 = { { 7, 13, 14, 3, 0, 6, 9, 10, 1, 2, 8, 5, 11, 12, 4, 15 },
 			{ 13, 8, 11, 5, 6, 15, 0, 3, 4, 7, 2, 12, 1, 10, 14, 9 }, { 10, 6, 9, 0, 12, 11, 7, 13, 15, 1, 3, 14, 5, 2, 8, 4 },
 			{ 3, 15, 0, 6, 10, 1, 13, 8, 9, 4, 5, 11, 12, 7, 2, 14 } };
 
 	// int[4][16] S5
-	public static int[][] S5 = { { 2, 12, 4, 1, 7, 10, 11, 6, 8, 5, 3, 15, 13, 0, 14, 9 },
+	private static final int[][] S5 = { { 2, 12, 4, 1, 7, 10, 11, 6, 8, 5, 3, 15, 13, 0, 14, 9 },
 			{ 14, 11, 2, 12, 4, 7, 13, 1, 5, 0, 15, 10, 3, 9, 8, 6 }, { 4, 2, 1, 11, 10, 13, 7, 8, 15, 9, 12, 5, 6, 3, 0, 14 },
 			{ 11, 8, 12, 7, 1, 14, 2, 13, 6, 15, 0, 9, 10, 4, 5, 3 } };
 
 	// int[4][16] S6
-	public static int[][] S6 = { { 12, 1, 10, 15, 9, 2, 6, 8, 0, 13, 3, 4, 14, 7, 5, 11 },
+	private static final int[][] S6 = { { 12, 1, 10, 15, 9, 2, 6, 8, 0, 13, 3, 4, 14, 7, 5, 11 },
 			{ 10, 15, 4, 2, 7, 12, 9, 5, 6, 1, 13, 14, 0, 11, 3, 8 }, { 9, 14, 15, 5, 2, 8, 12, 3, 7, 0, 4, 10, 1, 13, 11, 6 },
 			{ 4, 3, 2, 12, 9, 5, 15, 10, 11, 14, 1, 7, 6, 0, 8, 13 } };
 	// int[4][16] S7
-	public static int[][] S7 = { { 4, 11, 2, 14, 15, 0, 8, 13, 3, 12, 9, 7, 5, 10, 6, 1 },
+	private static final int[][] S7 = { { 4, 11, 2, 14, 15, 0, 8, 13, 3, 12, 9, 7, 5, 10, 6, 1 },
 			{ 13, 0, 11, 7, 4, 9, 1, 10, 14, 3, 5, 12, 2, 15, 8, 6 }, { 1, 4, 11, 13, 12, 3, 7, 14, 10, 15, 6, 8, 0, 5, 9, 2 },
 			{ 6, 11, 13, 8, 1, 4, 10, 7, 9, 5, 0, 15, 14, 2, 3, 12 } };
 
 	// int[4][16] S8
-	public static int[][] S8 = { { 13, 2, 8, 4, 6, 15, 11, 1, 10, 9, 3, 14, 5, 0, 12, 7 },
+	private static final int[][] S8 = { { 13, 2, 8, 4, 6, 15, 11, 1, 10, 9, 3, 14, 5, 0, 12, 7 },
 			{ 1, 15, 13, 8, 10, 3, 7, 4, 12, 5, 6, 11, 0, 14, 9, 2 }, { 7, 11, 4, 1, 9, 12, 14, 2, 0, 6, 10, 13, 15, 3, 5, 8 },
 			{ 2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11 } };
 
@@ -170,15 +172,15 @@ public class DES2 {
 		}
 	}
 
-	private static class DES2Kernel extends Pipeline<Integer, Integer> {
-		int testvector = 7;
-		DES2Kernel() {
+	private static final class DES2Kernel extends Pipeline<Integer, Integer> {
+		private static final int testvector = 7;
+		private DES2Kernel() {
 			add(new DEScoder(testvector));
 		}
 	}
 
-	private static class DEScoder extends Pipeline<Integer, Integer> {
-		DEScoder(int vector) {
+	private static final class DEScoder extends Pipeline<Integer, Integer> {
+		private DEScoder(int vector) {
 			// initial permutation of 64 bit plain text
 			add(new doIP());
 
@@ -192,8 +194,8 @@ public class DES2 {
 		}
 	}
 
-	private static class doIP extends Filter<Integer, Integer> {
-		doIP() {
+	private static final class doIP extends Filter<Integer, Integer> {
+		private doIP() {
 			super(64, 64, 64); // TODO: Verify the peek value
 		}
 
@@ -209,8 +211,8 @@ public class DES2 {
 
 	// L[i+1] is lower 32 bits of current 64 bit input
 	// input is LR[i]
-	private static class nextL extends Filter<Integer, Integer> {
-		nextL() {
+	private static final class nextL extends Filter<Integer, Integer> {
+		private nextL() {
 			super(64, 32);
 		}
 
@@ -229,8 +231,8 @@ public class DES2 {
 	// L[i] is upper 32 bits of input stream
 	// input is LR[i]
 	// output is f(R[i]) xor L[i]
-	private static class nextR extends Pipeline<Integer, Integer> {
-		nextR(int vector, int round) {
+	private static final class nextR extends Pipeline<Integer, Integer> {
+		private nextR(int vector, int round) {
 			add(new Splitjoin<Integer, Integer>(new RoundrobinSplitter<Integer>(32), new RoundrobinJoiner<Integer>(),
 					new f(vector, round),
 					new Identity<Integer>())
@@ -239,8 +241,8 @@ public class DES2 {
 		}
 	}
 
-	private static class f extends Pipeline<Integer, Integer> {
-		f(int vector, int round) {
+	private static final class f extends Pipeline<Integer, Integer> {
+		private f(int vector, int round) {
 			// expand R from 32 to 48 bits and xor with key
 			// add splitjoin {
 			// split roundrobin(32, 0);
@@ -258,8 +260,8 @@ public class DES2 {
 		}
 	}
 
-	private static class doE extends Filter<Integer, Integer> {
-		doE() {
+	private static final class doE extends Filter<Integer, Integer> {
+		private doE() {
 			super(Rate.create(32), Rate.create(48), Rate.create(Ints.min(E), Ints.max(E)));
 		}
 
@@ -273,8 +275,8 @@ public class DES2 {
 		}
 	}
 
-	private static class doP extends Filter<Integer, Integer> {
-		doP() {
+	private static final class doP extends Filter<Integer, Integer> {
+		private doP() {
 			super(32, 32, 32); // TODO: Verify the peek value
 		}
 
@@ -296,8 +298,8 @@ public class DES2 {
 		}
 	}
 
-	private static class doIPm1 extends Filter<Integer, Integer> {
-		doIPm1() {
+	private static final class doIPm1 extends Filter<Integer, Integer> {
+		private doIPm1() {
 			super(64, 64, 64); // TODO: Verify the peek value
 		}
 
@@ -314,12 +316,12 @@ public class DES2 {
 	/**
 	 * This filter represents the first anonymous filter exists inside "int->int pipeline KeySchedule"
 	 */
-	private static class KeyScheduleFilter1 extends Filter<Integer, Integer> {
-		final int[][] keys;
-		final int vector;
-		final int round;
+	private static final class KeyScheduleFilter1 extends Filter<Integer, Integer> {
+		private final int[][] keys;
+		private final int vector;
+		private final int round;
 
-		KeyScheduleFilter1(int vector, int round) {
+		private KeyScheduleFilter1(int vector, int round) {
 			super(48, 96);
 			this.vector = vector;
 			this.round = round;
@@ -389,12 +391,12 @@ public class DES2 {
 	/**
 	 * This filter represents the second anonymous filter exists inside "int->int pipeline KeySchedule"
 	 */
-	private static class KeyScheduleFilter2 extends Filter<Integer, Integer> {
-		int vector;
-		int pushRate;
-		int popRate;
+	private static final class KeyScheduleFilter2 extends Filter<Integer, Integer> {
+		private final int vector;
+		private final int pushRate;
+		private final int popRate;
 
-		KeyScheduleFilter2(int popRate, int pushRate, int vector) {
+		private KeyScheduleFilter2(int popRate, int pushRate, int vector) {
 			super(popRate, pushRate);
 			this.vector = vector;
 			this.pushRate = pushRate;
@@ -413,16 +415,16 @@ public class DES2 {
 	/**
 	 * This filter represents the first anonymous pipeline exists inside "int->int pipeline KeySchedule"
 	 */
-	private static class KeySchedulePipeline1 extends Pipeline<Integer, Integer> {
-		KeySchedulePipeline1(int popRate, int pushRate, int vector) {
+	private static final class KeySchedulePipeline1 extends Pipeline<Integer, Integer> {
+		private KeySchedulePipeline1(int popRate, int pushRate, int vector) {
 			add(new KeyScheduleFilter2(popRate, pushRate, vector));
 			add(new IntoBits());
 			add(new HexPrinter(USERKEY, 64));
 		}
 	}
 
-	private static class KeySchedule extends Pipeline<Integer, Integer> {
-		KeySchedule(int vector, int round) {
+	private static final class KeySchedule extends Pipeline<Integer, Integer> {
+		private KeySchedule(int vector, int round) {
 			add(new KeyScheduleFilter1(vector, round));
 
 			if (PRINTINFO && (round == 0)) {
@@ -436,10 +438,10 @@ public class DES2 {
 	/**
 	 * This filter represents the first anonymous filter exists inside "void->int pipeline slowKeySchedule"
 	 */
-	private static class slowKeyScheduleFilter1 extends Filter<Void, Integer> {
-		int vector;
+	private static final class slowKeyScheduleFilter1 extends Filter<Void, Integer> {
+		private final int vector;
 
-		public slowKeyScheduleFilter1(int vector) {
+		private slowKeyScheduleFilter1(int vector) {
 			super(0, 2);
 			this.vector = vector;
 		}
@@ -453,9 +455,9 @@ public class DES2 {
 
 	// inefficient but straightforward implementation of key schedule; it
 	// recalculates all keys for all previous rounds 1...i-1
-	private static class slowKeySchedule extends Pipeline<Void, Integer> {
+	private static final class slowKeySchedule extends Pipeline<Void, Integer> {
 
-		slowKeySchedule(int vector, int round) {
+		private slowKeySchedule(int vector, int round) {
 			add(new slowKeyScheduleFilter1(vector));
 			add(new IntoBits());
 			add(new doPC1());
@@ -476,12 +478,12 @@ public class DES2 {
 	}
 
 	// left rotate input stream of length 28-bits by RT[round]
-	private static class LRotate extends Filter<Integer, Integer> {
+	private static final class LRotate extends Filter<Integer, Integer> {
 		private static final int n = 28;
 		private final int round;
 		private final int x;
 
-		LRotate(int round) {
+		private LRotate(int round) {
 			super(n, n, n);
 			this.round = round;
 			x = RT[round];
@@ -497,8 +499,8 @@ public class DES2 {
 		}
 	}
 
-	private static class doPC1 extends Filter<Integer, Integer> {
-		public doPC1() {
+	private static final class doPC1 extends Filter<Integer, Integer> {
+		private doPC1() {
 			super(64, 56, 64); // TODO: Verify the peek value
 		}
 
@@ -518,8 +520,8 @@ public class DES2 {
 		}
 	}
 
-	private static class doPC2 extends Filter<Integer, Integer> {
-		public doPC2() {
+	private static final class doPC2 extends Filter<Integer, Integer> {
+		private doPC2() {
 			super(56, 48, 48); // TODO: Verify the peek value
 		}
 
@@ -538,8 +540,8 @@ public class DES2 {
 		}
 	}
 
-	private static class Sboxes extends Filter<Integer, Integer> {
-		public Sboxes() {
+	private static final class Sboxes extends Filter<Integer, Integer> {
+		private Sboxes() {
 			super(6 * 8, 4 * 8);
 		}
 
@@ -578,10 +580,10 @@ public class DES2 {
 		}
 	}
 
-	private static class PlainTextSourceFilter1 extends Filter<Void, Integer> {
-		int vector;
+	private static final class PlainTextSourceFilter1 extends Filter<Void, Integer> {
+		private final int vector;
 		// int[34][2] TEXT
-		int[][] TEXT = { { 0x00000000, 0x00000000 }, // 0x0000000000000000
+		private static final int[][] TEXT = { { 0x00000000, 0x00000000 }, // 0x0000000000000000
 				{ 0xFFFFFFFF, 0xFFFFFFFF }, // 0xFFFFFFFFFFFFFFFF
 				{ 0x10000000, 0x00000001 }, // 0x1000000000000001
 				{ 0x11111111, 0x11111111 }, // 0x1111111111111111
@@ -616,7 +618,7 @@ public class DES2 {
 				{ 0x00000000, 0x00000000 }, // 0x0000000000000000
 				{ 0xFFFFFFFF, 0xFFFFFFFF } }; // 0xFFFFFFFFFFFFFFFF
 
-		public PlainTextSourceFilter1(int vector) {
+		private PlainTextSourceFilter1(int vector) {
 			super(0, 2);
 			this.vector = vector;
 		}
@@ -627,8 +629,8 @@ public class DES2 {
 		}
 	}
 
-	private static class PlainTextSource extends Pipeline<Void, Integer> {
-		PlainTextSource(int vector) {
+	private static final class PlainTextSource extends Pipeline<Void, Integer> {
+		private PlainTextSource(int vector) {
 			add(new PlainTextSourceFilter1(vector));
 			add(new IntoBits());
 			if (PRINTINFO) {
@@ -642,10 +644,10 @@ public class DES2 {
 
 	// take N streams and Xor them together
 	// the streams are assumed to be interleaved
-	private static class Xor extends Filter<Integer, Integer> {
+	private static final class Xor extends Filter<Integer, Integer> {
 		private final int n;
 
-		public Xor(int n) {
+		private Xor(int n) {
 			super(n, 1);
 			this.n = n;
 		}
@@ -661,8 +663,8 @@ public class DES2 {
 	}
 
 	// swap two input streams each of 32 bits
-	private static class CrissCross extends Filter<Integer, Integer> {
-		public CrissCross() {
+	private static final class CrissCross extends Filter<Integer, Integer> {
+		private CrissCross() {
 			super(64, 64, 64);
 		}
 
@@ -681,8 +683,8 @@ public class DES2 {
 
 	// input: integer
 	// output: LSB first ... MSB last
-	private static class IntoBits extends Filter<Integer, Integer> {
-		public IntoBits() {
+	private static final class IntoBits extends Filter<Integer, Integer> {
+		private IntoBits() {
 			super(1, 32);
 		}
 
@@ -702,10 +704,10 @@ public class DES2 {
 
 	// input: LSB first ... MSB last
 	// output: integer
-	private static class BitstoInts extends Filter<Integer, Integer> {
+	private static final class BitstoInts extends Filter<Integer, Integer> {
 		private final int n;
 
-		BitstoInts(int n) {
+		private BitstoInts(int n) {
 			super(n, 1, n);
 			this.n = n;
 		}
@@ -721,11 +723,11 @@ public class DES2 {
 
 	// input: w words x b bits/word
 	// output: bit i from all w words, followed by i+1 for all b bits
-	private static class BitSlice extends Splitjoin<Integer, Integer> {
-		int w;
-		int b;
+	private static final class BitSlice extends Splitjoin<Integer, Integer> {
+		private final int w;
+		private final int b;
 
-		BitSlice(int w, int b) {
+		private BitSlice(int w, int b) {
 			super(new RoundrobinSplitter<Integer>(), new RoundrobinJoiner<Integer>(w));
 			this.w = w;
 			this.b = b;
@@ -735,11 +737,11 @@ public class DES2 {
 		}
 	}
 
-	private static class HexPrinterFilter1 extends Filter<Integer, Void> {
-		int descriptor;
-		int bytes;
+	private static final class HexPrinterFilter1 extends Filter<Integer, Void> {
+		private final int descriptor;
+		private final int bytes;
 
-		HexPrinterFilter1(int descriptor, int bytes) {
+		private HexPrinterFilter1(int descriptor, int bytes) {
 			super(bytes, 0, bytes);
 			this.bytes = bytes;
 			this.descriptor = descriptor;
@@ -787,8 +789,8 @@ public class DES2 {
 	// input: LSB first ... MSB last
 	// output: none
 	// prints: MSW first ... LSW last
-	private static class HexPrinter extends Pipeline<Integer, Void> {
-		HexPrinter(int descriptor, int n) {
+	private static final class HexPrinter extends Pipeline<Integer, Void> {
+		private HexPrinter(int descriptor, int n) {
 			int bits = n;
 			int bytes = bits / 4;
 			add(new BitstoInts(4));
@@ -799,10 +801,10 @@ public class DES2 {
 	/**
 	 * This represents the anonymous fiter that exixtes inside "int->int splitjoin ShowIntermediate(int n)".
 	 */
-	private static class ShowIntermediateFilter1 extends Filter<Integer, Void> {
-		int bytes;
+	private static final class ShowIntermediateFilter1 extends Filter<Integer, Void> {
+		private final int bytes;
 
-		public ShowIntermediateFilter1(int bytes) {
+		private ShowIntermediateFilter1(int bytes) {
 			super(bytes, 0, bytes);
 			this.bytes = bytes;
 		}
@@ -836,8 +838,8 @@ public class DES2 {
 		}
 	}
 
-	private static class ShowIntermediatePipeline1 extends Pipeline<Integer, Void> {
-		ShowIntermediatePipeline1(int bytes) {
+	private static final class ShowIntermediatePipeline1 extends Pipeline<Integer, Void> {
+		private ShowIntermediatePipeline1(int bytes) {
 			add(new BitstoInts(4));
 			add(new ShowIntermediateFilter1(bytes));
 		}
@@ -846,9 +848,9 @@ public class DES2 {
 	// input: LSB first ... MSB last
 	// output: LSB first ... MSB last (Identity)
 	// prints: MSW first ... LSW last (HEX format)
-	private static class ShowIntermediate extends Splitjoin<Integer, Integer> {
+	private static final class ShowIntermediate extends Splitjoin<Integer, Integer> {
 
-		ShowIntermediate(int n) {
+		private ShowIntermediate(int n) {
 			// FIXME join roundrobin(1, 0);
 			super(new DuplicateSplitter<Integer>(), new RoundrobinJoiner<Integer>());
 			add(new Identity<>());
@@ -862,11 +864,11 @@ public class DES2 {
 	// input: LSB first ... MSB last
 	// output: LSB first ... MSB last (Identity)
 	// prints: MSB first ... LSB last (BINARY format)
-	private static class ShowBitStream extends Filter<Integer, Integer> {
-		int n;
-		int w;
+	private static final class ShowBitStream extends Filter<Integer, Integer> {
+		private final int n;
+		private final int w;
 
-		ShowBitStream(int n, int w) {
+		private ShowBitStream(int n, int w) {
 			super(n, n, n);
 			this.n = n;
 			this.w = w;

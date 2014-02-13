@@ -4,27 +4,17 @@ import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.api.Input;
-import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.RoundrobinJoiner;
-import edu.mit.streamjit.api.CompiledStream;
-import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Datasets;
-import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.blob.Buffers;
-import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
-import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
-import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
-import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
-import edu.mit.streamjit.impl.compiler.CompilerStreamCompiler;
 import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.BenchmarkProvider;
@@ -33,7 +23,6 @@ import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -42,13 +31,15 @@ import java.util.List;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 11/8/2012
  */
-public class FMRadio {
+public final class FMRadio {
+	private FMRadio() {}
+
 	public static void main(String[] args) throws InterruptedException {
 		Benchmarker.runBenchmarks(new FMRadioBenchmarkProvider(), new DebugStreamCompiler()).get(0).print(System.out);
 	}
 
 	@ServiceProvider(BenchmarkProvider.class)
-	public static class FMRadioBenchmarkProvider implements BenchmarkProvider {
+	public static final class FMRadioBenchmarkProvider implements BenchmarkProvider {
 		@Override
 		public Iterator<Benchmark> iterator() {
 			Path path = Paths.get("data/fmradio.in");
@@ -76,12 +67,12 @@ public class FMRadio {
 		}
 	}
 
-	private static class LowPassFilter extends Filter<Float, Float> {
+	private static final class LowPassFilter extends Filter<Float, Float> {
 		private final float rate, cutoff;
 		private final int taps, decimation;
 		private final float[] coeff;
 
-		LowPassFilter(float rate, float cutoff, int taps, int decimation) {
+		private LowPassFilter(float rate, float cutoff, int taps, int decimation) {
 			super(1 + decimation, 1, taps);
 			this.rate = rate;
 			this.cutoff = cutoff;
@@ -112,8 +103,8 @@ public class FMRadio {
 		}
 	}
 
-	private static class Subtractor extends Filter<Float, Float> {
-		Subtractor() {
+	private static final class Subtractor extends Filter<Float, Float> {
+		private Subtractor() {
 			super(2, 1, 0);
 		}
 
@@ -134,8 +125,8 @@ public class FMRadio {
 	// }
 	// }
 
-	private static class BandPassFilter extends Pipeline<Float, Float> {
-		BandPassFilter(float rate, float low, float high, int taps) {
+	private static final class BandPassFilter extends Pipeline<Float, Float> {
+		private BandPassFilter(float rate, float low, float high, int taps) {
 			// The splitjoin is BPFCore in the StreamIt source.
 			super(new Splitjoin<>(new DuplicateSplitter<Float>(),
 					new RoundrobinJoiner<Float>(), new LowPassFilter(rate, low,
@@ -144,10 +135,10 @@ public class FMRadio {
 		}
 	}
 
-	private static class Amplifier extends Filter<Float, Float> {
+	private static final class Amplifier extends Filter<Float, Float> {
 		private final float k;
 
-		Amplifier(float k) {
+		private Amplifier(float k) {
 			super(1, 1, 0);
 			this.k = k;
 		}
@@ -158,13 +149,13 @@ public class FMRadio {
 		}
 	}
 
-	private static class Equalizer extends Pipeline<Float, Float> {
+	private static final class Equalizer extends Pipeline<Float, Float> {
 		private final float rate;
 		private final int bands;
 		private final float[] cutoffs, gains;
 		private final int taps;
 
-		Equalizer(float rate, final int bands, float[] cutoffs, float[] gains,
+		private Equalizer(float rate, final int bands, float[] cutoffs, float[] gains,
 				int taps) {
 			this.rate = rate;
 			this.bands = bands;
@@ -196,14 +187,14 @@ public class FMRadio {
 		}
 	}
 
-	private static class FMDemodulator extends Filter<Float, Float> {
+	private static final class FMDemodulator extends Filter<Float, Float> {
 		private final float gain;
 
-		FMDemodulator(float sampRate, float max, float bandwidth) {
+		private FMDemodulator(float sampRate, float max, float bandwidth) {
 			this((float) (max * (sampRate / (bandwidth * Math.PI))));
 		}
 
-		FMDemodulator(float gain) {
+		private FMDemodulator(float gain) {
 			super(1, 1, 2);
 			this.gain = gain;
 		}
@@ -217,7 +208,7 @@ public class FMRadio {
 		}
 	}
 
-	public static class FMRadioCore extends Pipeline<Float, Float> {
+	public static final class FMRadioCore extends Pipeline<Float, Float> {
 		private static final float samplingRate = 250000000; // 250 MHz sampling
 																// rate is
 																// sensible

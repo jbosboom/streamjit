@@ -54,7 +54,9 @@ import java.nio.file.Paths;
  * @author Sumanan sumanan@mit.edu
  * @since Mar 13, 2013
  */
-public class DCT2 {
+public final class DCT2 {
+	private DCT2() {}
+
 	public static void main(String[] args) throws InterruptedException {
 		StreamCompiler sc = new DebugStreamCompiler();
 		Benchmarker.runBenchmark(new DCT2Benchmark(), sc).get(0).print(System.out);
@@ -70,7 +72,7 @@ public class DCT2 {
 		}
 	}
 
-	public static class DCT2Kernel extends Pipeline<Integer, Integer> {
+	public static final class DCT2Kernel extends Pipeline<Integer, Integer> {
 		public DCT2Kernel() {
 			add(new iDCT8x8_ieee(16));
 		}
@@ -93,8 +95,8 @@ public class DCT2 {
 	 *            implementation. mode == 2: fast, coarse implementation. mode
 	 *            == 3: fast, fine (parallel) implementation.
 	 */
-	private static class iDCT8x8_ieee extends Pipeline<Integer, Integer> {
-		iDCT8x8_ieee(int x) {
+	private static final class iDCT8x8_ieee extends Pipeline<Integer, Integer> {
+		private iDCT8x8_ieee(int x) {
 			add(new iDCT_2D_reference_fine(x));
 		}
 	}
@@ -115,8 +117,8 @@ public class DCT2 {
 	 *            implementation, mode == 1: reference, fine (parallel)
 	 *            implementation.
 	 */
-	private static class DCT8x8_ieee extends Pipeline<Integer, Integer> {
-		DCT8x8_ieee(int mode) {
+	private static final class DCT8x8_ieee extends Pipeline<Integer, Integer> {
+		private DCT8x8_ieee(int mode) {
 			// modes:
 			// 0: reference, coarse
 			// 1: reference, fine (parallel)
@@ -140,10 +142,9 @@ public class DCT2 {
 	 * @output size x size values representing an array of values in the signal
 	 *         domain, ordered by row and then column.
 	 */
-	private static class iDCT_2D_reference_fine extends
+	private static final class iDCT_2D_reference_fine extends
 			Pipeline<Integer, Integer> {
-		iDCT_2D_reference_fine(int size) {
-
+		private iDCT_2D_reference_fine(int size) {
 			add(new IntToFloat());
 			add(new iDCT_1D_Y_reference_fine(size));
 			add(new iDCT_1D_X_reference_fine(size));
@@ -155,9 +156,9 @@ public class DCT2 {
 	 * This filter represents anonymous filter that exists inside
 	 * iDCT_2D_reference_fine in the SteramIt's implementation.
 	 */
-	private static class IntToFloat extends Filter<Integer, Float> {
+	private static final class IntToFloat extends Filter<Integer, Float> {
 
-		public IntToFloat() {
+		private IntToFloat() {
 			super(1, 1);
 		}
 
@@ -171,9 +172,9 @@ public class DCT2 {
 	 * This filter represents anonymous filter that exists inside
 	 * iDCT_2D_reference_fine in the SteramIt's implementation.
 	 */
-	private static class FloatToInt extends Filter<Float, Integer> {
+	private static final class FloatToInt extends Filter<Float, Integer> {
 
-		public FloatToInt() {
+		private FloatToInt() {
 			super(1, 1);
 		}
 
@@ -194,9 +195,9 @@ public class DCT2 {
 	 * @output size x size values representing an array of values in the signal
 	 *         domain, ordered by row and then column.
 	 */
-	private static class iDCT8x8_2D_fast_coarse extends
+	private static final class iDCT8x8_2D_fast_coarse extends
 			Pipeline<Integer, Integer> {
-		iDCT8x8_2D_fast_coarse() {
+		private iDCT8x8_2D_fast_coarse() {
 			add(new iDCT8x8_1D_row_fast());
 			add(new iDCT8x8_1D_col_fast());
 		}
@@ -213,7 +214,7 @@ public class DCT2 {
 	 * @output size x size values representing an array of values in the signal
 	 *         domain, ordered by row and then column.
 	 */
-	public static class iDCT8x8_2D_fast_fine extends
+	public static final class iDCT8x8_2D_fast_fine extends
 			Pipeline<Integer, Integer> {
 		public iDCT8x8_2D_fast_fine() {
 			add(new iDCT8x8_1D_X_fast_fine());
@@ -234,9 +235,9 @@ public class DCT2 {
 	 *         frequency increases along each row and horizontal frequency along
 	 *         each column.
 	 */
-	private static class DCT_2D_reference_fine extends
+	private static final class DCT_2D_reference_fine extends
 			Pipeline<Integer, Integer> {
-		DCT_2D_reference_fine(int size) {
+		private DCT_2D_reference_fine(int size) {
 			add(new IntToFloat());
 			add(new DCT_1D_X_reference_fine(size));
 			add(new DCT_1D_Y_reference_fine(size));
@@ -247,9 +248,9 @@ public class DCT2 {
 	/**
 	 * @internal
 	 */
-	private static class iDCT_1D_X_reference_fine extends
+	private static final class iDCT_1D_X_reference_fine extends
 			Splitjoin<Float, Float> {
-		iDCT_1D_X_reference_fine(int size) {
+		private iDCT_1D_X_reference_fine(int size) {
 			super(new RoundrobinSplitter<Float>(size),
 					new RoundrobinJoiner<Float>(size));
 			for (int i = 0; i < size; i++) {
@@ -261,9 +262,9 @@ public class DCT2 {
 	/**
 	 * @internal
 	 */
-	private static class iDCT_1D_Y_reference_fine extends
+	private static final class iDCT_1D_Y_reference_fine extends
 			Splitjoin<Float, Float> {
-		iDCT_1D_Y_reference_fine(int size) {
+		private iDCT_1D_Y_reference_fine(int size) {
 			super(new RoundrobinSplitter<Float>(1),
 					new RoundrobinJoiner<Float>(1));
 			for (int i = 0; i < size; i++) {
@@ -275,9 +276,9 @@ public class DCT2 {
 	/**
 	 * @internal
 	 */
-	private static class iDCT8x8_1D_X_fast_fine extends
+	private static final class iDCT8x8_1D_X_fast_fine extends
 			Splitjoin<Integer, Integer> {
-		iDCT8x8_1D_X_fast_fine() {
+		private iDCT8x8_1D_X_fast_fine() {
 			super(new RoundrobinSplitter<Integer>(8),
 					new RoundrobinJoiner<Integer>(8));
 			for (int i = 0; i < 8; i++) {
@@ -289,9 +290,9 @@ public class DCT2 {
 	/**
 	 * @internal
 	 */
-	private static class iDCT8x8_1D_Y_fast_fine extends
+	private static final class iDCT8x8_1D_Y_fast_fine extends
 			Splitjoin<Integer, Integer> {
-		iDCT8x8_1D_Y_fast_fine() {
+		private iDCT8x8_1D_Y_fast_fine() {
 			super(new RoundrobinSplitter<Integer>(1),
 					new RoundrobinJoiner<Integer>(1));
 			for (int i = 0; i < 8; i++) {
@@ -303,9 +304,9 @@ public class DCT2 {
 	/**
 	 * @internal
 	 */
-	private static class DCT_1D_X_reference_fine extends
+	private static final class DCT_1D_X_reference_fine extends
 			Splitjoin<Float, Float> {
-		DCT_1D_X_reference_fine(int size) {
+		private DCT_1D_X_reference_fine(int size) {
 			super(new RoundrobinSplitter<Float>(size),
 					new RoundrobinJoiner<Float>(size));
 			for (int i = 0; i < size; i++) {
@@ -317,9 +318,9 @@ public class DCT2 {
 	/**
 	 * @internal
 	 */
-	private static class DCT_1D_Y_reference_fine extends
+	private static final class DCT_1D_Y_reference_fine extends
 			Splitjoin<Float, Float> {
-		DCT_1D_Y_reference_fine(int size) {
+		private DCT_1D_Y_reference_fine(int size) {
 			super(new RoundrobinSplitter<Float>(1),
 					new RoundrobinJoiner<Float>(1));
 			for (int i = 0; i < size; i++) {
@@ -332,12 +333,12 @@ public class DCT2 {
 	 * @internal Based on the implementation given in the C MPEG-2 reference
 	 *           implementation
 	 */
-	private static class iDCT_2D_reference_coarse extends
+	private static final class iDCT_2D_reference_coarse extends
 			Filter<Integer, Integer> {
 		private final int size;
 		private final float[][] coeff;
 
-		iDCT_2D_reference_coarse(int size) {
+		private iDCT_2D_reference_coarse(int size) {
 			super(size * size, size * size, size * size);
 			this.size = size;
 			this.coeff = new float[size][size];
@@ -396,12 +397,12 @@ public class DCT2 {
 	 *         increases along each row and horizontal frequency along each
 	 *         column.
 	 */
-	private static class DCT_2D_reference_coarse extends
+	private static final class DCT_2D_reference_coarse extends
 			Filter<Integer, Integer> {
 		private final float[][] coeff;
 		private final int size;
 
-		DCT_2D_reference_coarse(int size) {
+		private DCT_2D_reference_coarse(int size) {
 			super(size * size, size * size, size * size);
 			this.size = size;
 			this.coeff = new float[size][size];
@@ -454,11 +455,11 @@ public class DCT2 {
 	 * @output size values representing an array of values in the signal domain,
 	 *         ordered by row and then column.
 	 */
-	private static class iDCT_1D_reference_fine extends Filter<Float, Float> {
+	private static final class iDCT_1D_reference_fine extends Filter<Float, Float> {
 		private final float[][] coeff;
 		private final int size;
 
-		iDCT_1D_reference_fine(int size) {
+		private iDCT_1D_reference_fine(int size) {
 			super(size, size, size);
 			this.size = size;
 			this.coeff = new float[size][size];
@@ -498,7 +499,7 @@ public class DCT2 {
 	 * @output size values representing an array of values in the signal domain,
 	 *         ordered by row and then column.
 	 */
-	private static class iDCT8x8_1D_row_fast extends Filter<Integer, Integer> {
+	private static final class iDCT8x8_1D_row_fast extends Filter<Integer, Integer> {
 		private static final int size = 8;
 		private final int W1 = 2841; /* 2048*sqrt(2)*cos(1*pi/16) */
 		private final int W2 = 2676; /* 2048*sqrt(2)*cos(2*pi/16) */
@@ -507,7 +508,7 @@ public class DCT2 {
 		private final int W6 = 1108; /* 2048*sqrt(2)*cos(6*pi/16) */
 		private final int W7 = 565; /* 2048*sqrt(2)*cos(7*pi/16) */
 
-		iDCT8x8_1D_row_fast() {
+		private iDCT8x8_1D_row_fast() {
 			super(size, size, size);
 		}
 
@@ -586,7 +587,7 @@ public class DCT2 {
 	 * @output size values representing an array of values in the signal domain,
 	 *         ordered by row and then column.
 	 */
-	private static class iDCT8x8_1D_col_fast extends Filter<Integer, Integer> {
+	private static final class iDCT8x8_1D_col_fast extends Filter<Integer, Integer> {
 		private static final int size = 8;
 		private final int W1 = 2841; /* 2048*sqrt(2)*cos(1*pi/16) */
 		private final int W2 = 2676; /* 2048*sqrt(2)*cos(2*pi/16) */
@@ -595,7 +596,7 @@ public class DCT2 {
 		private final int W6 = 1108; /* 2048*sqrt(2)*cos(6*pi/16) */
 		private final int W7 = 565; /* 2048*sqrt(2)*cos(7*pi/16) */
 
-		iDCT8x8_1D_col_fast() {
+		private iDCT8x8_1D_col_fast() {
 			super(size * size, size * size, size * size);
 		}
 
@@ -681,7 +682,7 @@ public class DCT2 {
 	 * @output size values representing an array of values in the signal domain,
 	 *         ordered by row and then column.
 	 */
-	private static class iDCT8x8_1D_col_fast_fine extends
+	private static final class iDCT8x8_1D_col_fast_fine extends
 			Filter<Integer, Integer> {
 		private static final int size = 8;
 		private final int W1 = 2841; /* 2048*sqrt(2)*cos(1*pi/16) */
@@ -691,7 +692,7 @@ public class DCT2 {
 		private final int W6 = 1108; /* 2048*sqrt(2)*cos(6*pi/16) */
 		private final int W7 = 565; /* 2048*sqrt(2)*cos(7*pi/16) */
 
-		iDCT8x8_1D_col_fast_fine() {
+		private iDCT8x8_1D_col_fast_fine() {
 			super(size, size, size);
 		}
 
@@ -772,11 +773,11 @@ public class DCT2 {
 	 *         increases along each row and horizontal frequency along each
 	 *         column.
 	 */
-	private static class DCT_1D_reference_fine extends Filter<Float, Float> {
+	private static final class DCT_1D_reference_fine extends Filter<Float, Float> {
 		private final float[][] coeff;
 		private final int size;
 
-		DCT_1D_reference_fine(int size) {
+		private DCT_1D_reference_fine(int size) {
 			super(size, size, size);
 			this.size = size;
 			this.coeff = new float[size][size];

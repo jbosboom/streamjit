@@ -320,10 +320,10 @@ public final class BeamFormer1 {
 	}
 
 	private static class Detector extends Filter<Float, Float> {
-		private int _myBeam;
-		private int numSamples;
-		private int targetBeam;
-		private int targetSample;
+		private final int _myBeam;
+		private final int numSamples;
+		private final int targetBeam;
+		private final int targetSample;
 		private float cfarThreshold;
 
 		private int curSample;
