@@ -109,7 +109,12 @@ def make_jvm_options():
 	maxInlineSize = jvmIntegerParameter("maxInlineSize", 20, 1000, 35, "-XX:MaxInlineSize=%d")
 	maxInlineLevel = jvmIntegerParameter("maxInlineLevel", 5, 20, 9, "-XX:MaxInlineLevel=%d")
 
-	enabledJvmOptions = [aggressiveOpts, compileThreshold, clipInlining, freqInlineSize, maxInlineSize, maxInlineLevel]
+	eliminateArrays = jvmIntegerParameter("eliminateAllocationArraySizeLimit", 64, 2048, 64, "-XX:EliminateAllocationArraySizeLimit=%d")
+	useNuma = jvmFlag("useNuma", "-XX:+UseNUMA")
+	bindGCTaskThreadsToCPUs = jvmFlag("bindGCTaskThreadsToCPUs", "-XX:+BindGCTaskThreadsToCPUs")
+
+	enabledJvmOptions = [aggressiveOpts, compileThreshold, clipInlining, freqInlineSize,
+		maxInlineSize, maxInlineLevel, eliminateArrays, useNuma, bindGCTaskThreadsToCPUs]
 	return {x.name:x for x in enabledJvmOptions}
 
 if __name__ == '__main__':
