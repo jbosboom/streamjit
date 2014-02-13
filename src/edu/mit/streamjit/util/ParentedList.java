@@ -7,6 +7,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.util.Collections;
 
 /**
  * A ParentedList is an intrusive list of objects with parents that must be kept
@@ -71,10 +72,11 @@ public class ParentedList<P, C extends Parented<P>> extends IntrusiveList<C> {
 	@Override
 	public boolean contains(Object o) {
 		//Assuming we're maintaining parents correctly, we own an object if it
-		//has our parent, letting us skip the traversal.
-		boolean parentCheck = o instanceof Parented<?> && ((Parented<?>)o).getParent() == parent;
+		//has our parentand is of our type, letting us skip the traversal.
+		boolean parentCheck = o instanceof Parented<?> && ((Parented<?>)o).getParent() == parent
+				&& mhSetParent.type().parameterType(0).isInstance(o);
 		//Make sure we agree with the list walk.
-		assert parentCheck == super.contains(o);
+		assert parentCheck == super.contains(o) : String.format("%s %s %s", o, parentCheck, super.contains(o));
 		return parentCheck;
 	}
 
