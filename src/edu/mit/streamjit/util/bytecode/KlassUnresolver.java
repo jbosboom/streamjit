@@ -53,10 +53,10 @@ public final class KlassUnresolver {
 
 		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 		ClassVisitor cv = cw;
-		boolean assertionsEnabled = false;
-		assert assertionsEnabled = true; //intentional side effect
-		if (assertionsEnabled)
-			cv = new CheckClassAdapter(cv, true);
+//		boolean assertionsEnabled = false;
+//		assert assertionsEnabled = true; //intentional side effect
+//		if (assertionsEnabled)
+//			cv = new CheckClassAdapter(cv, true);
 		classNode.accept(cv);
 		return cw.toByteArray();
 	}
