@@ -40,12 +40,12 @@ public final class PhiInst extends Instruction {
 		return oldVal;
 	}
 
-	public Iterable<BasicBlock> predecessors() {
-		return FluentIterable.from(operands()).filter(BasicBlock.class);
+	public FluentIterable<BasicBlock> predecessors() {
+		return operands().filter(BasicBlock.class);
 	}
 
-	public Iterable<Value> incomingValues() {
-		return FluentIterable.from(operands()).filter(Predicates.not(Predicates.instanceOf(BasicBlock.class)));
+	public FluentIterable<Value> incomingValues() {
+		return operands().filter(Predicates.not(Predicates.instanceOf(BasicBlock.class)));
 	}
 
 	@Override

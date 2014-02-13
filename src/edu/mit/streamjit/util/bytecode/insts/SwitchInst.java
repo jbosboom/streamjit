@@ -56,8 +56,8 @@ public final class SwitchInst extends TerminatorInst {
 	}
 
 	@SuppressWarnings("unchecked")
-	public Iterable<Constant<Integer>> cases() {
-		return (Iterable<Constant<Integer>>)(Iterable)FluentIterable.from(operands()).filter(Constant.class);
+	public FluentIterable<Constant<Integer>> cases() {
+		return (FluentIterable<Constant<Integer>>)(FluentIterable)operands().filter(Constant.class);
 	}
 
 	@Override

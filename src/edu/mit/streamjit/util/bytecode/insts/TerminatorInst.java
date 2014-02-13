@@ -45,7 +45,7 @@ public abstract class TerminatorInst extends Instruction {
 	 * a TerminatorInst may have no successors (if it's a ThrowInst).
 	 * @return this TerminatorInst's successors
 	 */
-	public Iterable<BasicBlock> successors() {
-		return FluentIterable.from(operands()).filter(BasicBlock.class);
+	public FluentIterable<BasicBlock> successors() {
+		return operands().filter(BasicBlock.class);
 	}
 }
