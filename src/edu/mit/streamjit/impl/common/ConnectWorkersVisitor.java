@@ -72,7 +72,7 @@ public final class ConnectWorkersVisitor extends StreamVisitor {
 	 */
 	private static class SplitjoinContext {
 		private Splitter<?, ?> splitter;
-		private List<Worker<?, ?>> branchEnds = new ArrayList<>();
+		private final List<Worker<?, ?>> branchEnds = new ArrayList<>();
 	}
 
 	/**

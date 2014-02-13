@@ -23,7 +23,7 @@ import java.util.Set;
  */
 public class DrainData implements Serializable {
 	private static final long serialVersionUID = 1L;
-	private ImmutableMap<Token, ImmutableList<Object>> data;
+	private final ImmutableMap<Token, ImmutableList<Object>> data;
 	private transient ImmutableTable<Integer, String, Object> state;
 	//TODO: in-flight messages
 

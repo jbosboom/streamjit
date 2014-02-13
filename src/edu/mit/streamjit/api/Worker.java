@@ -52,10 +52,10 @@ public abstract class Worker<I, O> implements StreamElement<I, O> {
 	 */
 	public abstract List<Rate> getPushRates();
 
-	private List<Worker<?, ? extends I>> predecessors = new ArrayList<>(1);
-	private List<Worker<? super O, ?>> successors = new ArrayList<>(1);
-	private List<Channel<? extends I>> inputChannels = new ArrayList<>(1);
-	private List<Channel<? super O>> outputChannels = new ArrayList<>(1);
+	private final List<Worker<?, ? extends I>> predecessors = new ArrayList<>(1);
+	private final List<Worker<? super O, ?>> successors = new ArrayList<>(1);
+	private final List<Channel<? extends I>> inputChannels = new ArrayList<>(1);
+	private final List<Channel<? super O>> outputChannels = new ArrayList<>(1);
 	private final List<Message> messages = new ArrayList<>();
 	private long executions;
 	/**

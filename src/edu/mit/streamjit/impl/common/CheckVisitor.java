@@ -190,13 +190,13 @@ public final class CheckVisitor extends SerialCompositeStreamVisitor {
 
 	private static final class SplitjoinBranchRateBalanceVisitor extends StackVisitor {
 		private Range<Fraction> currentRate;
-		private Deque<SplitjoinContext> splitjoins = new ArrayDeque<>();
+		private final Deque<SplitjoinContext> splitjoins = new ArrayDeque<>();
 		private static final class SplitjoinContext {
 			private Range<Fraction> rateAtEntry;
 			private Splitter<?, ?> splitter;
 			//Has the splitter's rate factored in; gets the joiner's rate once
 			//we reach the joiner.
-			private List<Range<Fraction>> branchRates = new ArrayList<>();
+			private final List<Range<Fraction>> branchRates = new ArrayList<>();
 		}
 		@Override
 		public void beginVisit() {
@@ -290,7 +290,7 @@ public final class CheckVisitor extends SerialCompositeStreamVisitor {
 	 * end.
 	 */
 	private static final class SourceSinkVisitor extends StackVisitor {
-		private ImmutableList.Builder<Pair<Worker<?, ?>, ImmutableList<GraphTraceElement>>> traces = ImmutableList.builder();
+		private final ImmutableList.Builder<Pair<Worker<?, ?>, ImmutableList<GraphTraceElement>>> traces = ImmutableList.builder();
 		private SourceSinkVisitor() {
 		}
 		@Override

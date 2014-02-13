@@ -557,7 +557,7 @@ public final class Benchmarker {
 	}
 
 	private static final class CountingOutputBufferFactory extends OutputBufferFactory implements OutputCounter {
-		private CountingBuffer b = new CountingBuffer();
+		private final CountingBuffer b = new CountingBuffer();
 		@Override
 		public long getCount() {
 			return b.count;

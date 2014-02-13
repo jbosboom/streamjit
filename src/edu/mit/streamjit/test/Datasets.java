@@ -93,7 +93,7 @@ public final class Datasets {
 			@Override
 			public Buffer createReadableBuffer(final int readerMinSize) {
 				return new AbstractReadOnlyBuffer() {
-					private Buffer buffer = InputBufferFactory.unwrap(input).createReadableBuffer(readerMinSize);
+					private final Buffer buffer = InputBufferFactory.unwrap(input).createReadableBuffer(readerMinSize);
 					private int size = Math.min(buffer.size(), n);
 					@Override
 					public Object read() {
