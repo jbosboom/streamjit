@@ -15,6 +15,9 @@ public final class Affinity {
 	static {
 		if (Platform.isWindows())
 			STRATEGY = new WindowsAffinityStrategy();
+		else if (Platform.isMacOSX())
+			//OSX doesn't support thread affinity at all.
+			STRATEGY = new NullAffinityStrategy();
 		else if (Platform.isUnix())
 			STRATEGY = new LinuxAffinityStrategy();
 		else
