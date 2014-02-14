@@ -309,7 +309,7 @@ public abstract class Actor implements Comparable<Actor> {
 		try {
 			return (int)idxFxn.invokeExact(logicalIndex);
 		} catch (Throwable ex) {
-			throw new AssertionError(String.format("index functions should not throw; translateOutputtIndex(%d, %d)", output, logicalIndex), ex);
+			throw new AssertionError(String.format("index functions should not throw; translateOutputIndex(%d, %d)", output, logicalIndex), ex);
 		}
 	}
 
