@@ -49,12 +49,12 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 		stream.visit(cwv);
 		ImmutableSet<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(cwv.getSource());
 		Configuration config = getConfiguration(workers);
-		Blob blob = blobFactory.makeBlob(workers, config, getMaxNumCores(), null);
+		Blob blob = makeBlob(workers, config, input, output);
 
 		Token inputToken = Iterables.getOnlyElement(blob.getInputs());
 		Token outputToken = Iterables.getOnlyElement(blob.getOutputs());
-		Buffer inputBuffer = InputBufferFactory.unwrap(input).createReadableBuffer(blob.getMinimumBufferCapacity(inputToken));
-		Buffer outputBuffer = OutputBufferFactory.unwrap(output).createWritableBuffer(blob.getMinimumBufferCapacity(outputToken));
+		Buffer inputBuffer = makeInputBuffer(input, blob.getMinimumBufferCapacity(inputToken));
+		Buffer outputBuffer = makeOutputBuffer(output, blob.getMinimumBufferCapacity(outputToken));
 		ImmutableMap<Token, Buffer> bufferMap = ImmutableMap.<Token, Buffer>builder()
 				.put(inputToken, inputBuffer)
 				.put(outputToken, outputBuffer)
@@ -85,6 +85,36 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 		for (Thread t : threads)
 			t.start();
 		return cs;
+	}
+
+	protected Blob makeBlob(ImmutableSet<Worker<?, ?>> workers, Configuration configuration, Input<?> input, Output<?> output) {
+		return blobFactory.makeBlob(workers, configuration, getMaxNumCores(), null);
+	}
+
+	/**
+	 * Creates a Buffer for the overall input, which will be included in the map
+	 * passed to {@link Blob#installBuffers()}. If null is returned, no overall
+	 * input buffer will be installed.
+	 * @param input the input
+	 * @param minCapacity the minimum capacity returned by
+	 * {@link Blob#getMinimumBufferCapacity(Blob.Token)}.
+	 * @return a Buffer, or null
+	 */
+	protected Buffer makeInputBuffer(Input<?> input, int minCapacity) {
+		return InputBufferFactory.unwrap(input).createReadableBuffer(minCapacity);
+	}
+
+	/**
+	 * Creates a Buffer for the overall output, which will be included in the
+	 * map passed to {@link Blob#installBuffers()}. If null is returned, no
+	 * overall output buffer will be installed.
+	 * @param output the output
+	 * @param minCapacity the minimum capacity returned by
+	 * {@link Blob#getMinimumBufferCapacity(Blob.Token)}.
+	 * @return a Buffer, or null
+	 */
+	protected Buffer makeOutputBuffer(Output<?> output, int minCapacity) {
+		return OutputBufferFactory.unwrap(output).createWritableBuffer(minCapacity);
 	}
 
 	/**
