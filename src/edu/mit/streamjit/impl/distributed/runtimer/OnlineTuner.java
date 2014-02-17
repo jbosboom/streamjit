@@ -233,15 +233,18 @@ public class OnlineTuner implements Runnable {
 		System.out.println("Evaluating " + cfgName);
 		FileWriter writer;
 		double total = 0;
-		int count = 3;
+		int count = 8;
 		try {
 			writer = new FileWriter(String.format("Eval_%s.txt", app.name),
 					true);
 			writer.write("\n----------------------------------------\n");
 			writer.write(String.format("Configuration name = %s\n", cfgName));
 			if (cfg != null) {
+				Pair<Boolean, Long> ret = reconfigure(cfg); // often the first
+															// run shows huge
+															// noise.
 				for (int i = 0; i < count; i++) {
-					Pair<Boolean, Long> ret = reconfigure(cfg);
+					ret = reconfigure(cfg);
 					writer.write(ret.second.toString());
 					writer.write('\n');
 					total += ret.second;
