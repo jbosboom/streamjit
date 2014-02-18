@@ -8,7 +8,6 @@ import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
-import edu.mit.streamjit.impl.compiler2.Compiler2;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.interp.Interpreter.InterpreterBlobFactory;
 
@@ -25,7 +24,7 @@ import edu.mit.streamjit.impl.interp.Interpreter.InterpreterBlobFactory;
  * <p>
  * TODO: For the moment this factory just deal with compiler blob. Need to make
  * interpreter blob as well based on the dynamic edges.
- * 
+ *
  * @author Sumanan sumanan@mit.edu
  * @since Sep 24, 2013
  */
@@ -44,7 +43,7 @@ public class DistributedBlobFactory implements BlobFactory {
 	/**
 	 * If {@link ConfigurationManager} is not passed as a constructor argument
 	 * then {@link WorkerMachine} will be used as default one.
-	 * 
+	 *
 	 * @param noOfMachines
 	 */
 	public DistributedBlobFactory(int noOfMachines) {
@@ -54,8 +53,7 @@ public class DistributedBlobFactory implements BlobFactory {
 	@Override
 	public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config,
 			int maxNumCores, DrainData initialState) {
-		return new Compiler2(workers, config, maxNumCores, initialState)
-				.compile();
+		return new Compiler2BlobFactory().makeBlob(workers, config, maxNumCores, initialState);
 	}
 
 	@Override
