@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.common;
 import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.PeekableBuffer;
 import edu.mit.streamjit.util.Template;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -46,7 +47,7 @@ public final class NIOBuffers {
 			);
 
 	private static final String BUFFER_TEMPLATE =
-			"	private static final class ${buffer}Buffer extends AbstractReadOnlyBuffer {\n"+
+			"	private static final class ${buffer}Buffer extends AbstractReadOnlyBuffer implements PeekableBuffer{\n"+
 			"		private final ${buffer} buffer;\n"+
 			"		private ${buffer}Buffer(${buffer} buffer) {\n"+
 			"			this.buffer = buffer;\n"+
@@ -62,6 +63,14 @@ public final class NIOBuffers {
 			"		@Override\n"+
 			"		public int size() {\n"+
 			"			return buffer.remaining();\n"+
+			"		}\n"+
+			"		@Override\n"+
+			"		public Object peek(int index) {\n"+
+			"			return buffer.get(buffer.position() + index);\n"+
+			"		}\n"+
+			"		@Override\n"+
+			"		public void consume(int items) {\n"+
+			"			buffer.position(buffer.position() + items);\n"+
 			"		}\n"+
 			"	}\n";
 	private static final String WRAP_HEADER =
@@ -98,7 +107,7 @@ public final class NIOBuffers {
 		if (type == Double.class) return new DoubleBufferBuffer(buffer.asDoubleBuffer());
 		throw new AssertionError("not a wrapper type: "+type);
 	}
-	private static final class ByteBufferBuffer extends AbstractReadOnlyBuffer {
+	private static final class ByteBufferBuffer extends AbstractReadOnlyBuffer implements PeekableBuffer{
 		private final ByteBuffer buffer;
 		private ByteBufferBuffer(ByteBuffer buffer) {
 			this.buffer = buffer;
@@ -115,8 +124,16 @@ public final class NIOBuffers {
 		public int size() {
 			return buffer.remaining();
 		}
+		@Override
+		public Object peek(int index) {
+			return buffer.get(buffer.position() + index);
+		}
+		@Override
+		public void consume(int items) {
+			buffer.position(buffer.position() + items);
+		}
 	}
-	private static final class ShortBufferBuffer extends AbstractReadOnlyBuffer {
+	private static final class ShortBufferBuffer extends AbstractReadOnlyBuffer implements PeekableBuffer{
 		private final ShortBuffer buffer;
 		private ShortBufferBuffer(ShortBuffer buffer) {
 			this.buffer = buffer;
@@ -133,8 +150,16 @@ public final class NIOBuffers {
 		public int size() {
 			return buffer.remaining();
 		}
+		@Override
+		public Object peek(int index) {
+			return buffer.get(buffer.position() + index);
+		}
+		@Override
+		public void consume(int items) {
+			buffer.position(buffer.position() + items);
+		}
 	}
-	private static final class CharBufferBuffer extends AbstractReadOnlyBuffer {
+	private static final class CharBufferBuffer extends AbstractReadOnlyBuffer implements PeekableBuffer{
 		private final CharBuffer buffer;
 		private CharBufferBuffer(CharBuffer buffer) {
 			this.buffer = buffer;
@@ -151,8 +176,16 @@ public final class NIOBuffers {
 		public int size() {
 			return buffer.remaining();
 		}
+		@Override
+		public Object peek(int index) {
+			return buffer.get(buffer.position() + index);
+		}
+		@Override
+		public void consume(int items) {
+			buffer.position(buffer.position() + items);
+		}
 	}
-	private static final class IntBufferBuffer extends AbstractReadOnlyBuffer {
+	private static final class IntBufferBuffer extends AbstractReadOnlyBuffer implements PeekableBuffer{
 		private final IntBuffer buffer;
 		private IntBufferBuffer(IntBuffer buffer) {
 			this.buffer = buffer;
@@ -169,8 +202,16 @@ public final class NIOBuffers {
 		public int size() {
 			return buffer.remaining();
 		}
+		@Override
+		public Object peek(int index) {
+			return buffer.get(buffer.position() + index);
+		}
+		@Override
+		public void consume(int items) {
+			buffer.position(buffer.position() + items);
+		}
 	}
-	private static final class LongBufferBuffer extends AbstractReadOnlyBuffer {
+	private static final class LongBufferBuffer extends AbstractReadOnlyBuffer implements PeekableBuffer{
 		private final LongBuffer buffer;
 		private LongBufferBuffer(LongBuffer buffer) {
 			this.buffer = buffer;
@@ -187,8 +228,16 @@ public final class NIOBuffers {
 		public int size() {
 			return buffer.remaining();
 		}
+		@Override
+		public Object peek(int index) {
+			return buffer.get(buffer.position() + index);
+		}
+		@Override
+		public void consume(int items) {
+			buffer.position(buffer.position() + items);
+		}
 	}
-	private static final class FloatBufferBuffer extends AbstractReadOnlyBuffer {
+	private static final class FloatBufferBuffer extends AbstractReadOnlyBuffer implements PeekableBuffer{
 		private final FloatBuffer buffer;
 		private FloatBufferBuffer(FloatBuffer buffer) {
 			this.buffer = buffer;
@@ -205,8 +254,16 @@ public final class NIOBuffers {
 		public int size() {
 			return buffer.remaining();
 		}
+		@Override
+		public Object peek(int index) {
+			return buffer.get(buffer.position() + index);
+		}
+		@Override
+		public void consume(int items) {
+			buffer.position(buffer.position() + items);
+		}
 	}
-	private static final class DoubleBufferBuffer extends AbstractReadOnlyBuffer {
+	private static final class DoubleBufferBuffer extends AbstractReadOnlyBuffer implements PeekableBuffer{
 		private final DoubleBuffer buffer;
 		private DoubleBufferBuffer(DoubleBuffer buffer) {
 			this.buffer = buffer;
@@ -222,6 +279,14 @@ public final class NIOBuffers {
 		@Override
 		public int size() {
 			return buffer.remaining();
+		}
+		@Override
+		public Object peek(int index) {
+			return buffer.get(buffer.position() + index);
+		}
+		@Override
+		public void consume(int items) {
+			buffer.position(buffer.position() + items);
 		}
 	}
 	//</editor-fold>
