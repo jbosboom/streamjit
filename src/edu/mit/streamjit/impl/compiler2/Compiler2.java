@@ -1172,7 +1172,9 @@ public class Compiler2 {
 		private PeekReadInstruction(TokenActor a, int count) {
 			assert a.isInput() : a;
 			this.token = a.token();
-			this.count = count;
+			//If we "read" count new items, the maximum available index is given
+			//by the output index function.
+			this.count = a.translateOutputIndex(0, count);
 		}
 		@Override
 		public void init(Map<Token, Buffer> buffers) {
