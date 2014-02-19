@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Function;
+import static com.google.common.base.Preconditions.checkState;
 import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashBasedTable;
@@ -20,7 +21,9 @@ import com.google.common.reflect.TypeResolver;
 import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
+import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.Joiner;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.RoundrobinSplitter;
 import edu.mit.streamjit.api.Splitter;
@@ -33,9 +36,12 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
+import edu.mit.streamjit.impl.blob.PeekableBuffer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
+import edu.mit.streamjit.impl.common.InputBufferFactory;
+import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.compiler.Schedule;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.DrainInstruction;
@@ -96,6 +102,16 @@ public class Compiler2 {
 	private final Configuration config;
 	private final int maxNumCores;
 	private final DrainData initialState;
+	/**
+	 * If the blob is the entire graph, this is the overall input; else null.
+	 */
+	private final Input<?> overallInput;
+	/**
+	 * If the blob is the entire graph, this is the overall output; else null.
+	 */
+	private final Output<?> overallOutput;
+	private Buffer overallInputBuffer, overallOutputBuffer;
+	private ImmutableMap<Token, Buffer> precreatedBuffers;
 	private final ImmutableMap<Token, ImmutableList<Object>> initialStateDataMap;
 	private final Set<Storage> storage;
 	private ImmutableMap<ActorGroup, Integer> externalSchedule;
@@ -137,7 +153,7 @@ public class Compiler2 {
 	private final List<ReadInstruction> readInstructions = new ArrayList<>();
 	private final List<WriteInstruction> writeInstructions = new ArrayList<>();
 	private final List<DrainInstruction> drainInstructions = new ArrayList<>();
-	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
+	public Compiler2(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState, Input<?> input, Output<?> output) {
 		this.workers = ImmutableSet.copyOf(workers);
 		Map<Class<?>, ActorArchetype> archetypesBuilder = new HashMap<>();
 		Map<Worker<?, ?>, WorkerActor> workerActors = new HashMap<>();
@@ -183,6 +199,8 @@ public class Compiler2 {
 			}
 		}
 		this.initialStateDataMap = initialStateDataMapBuilder.build();
+		this.overallInput = input;
+		this.overallOutput = output;
 	}
 
 	public Blob compile() {
@@ -198,6 +216,7 @@ public class Compiler2 {
 		unbox();
 
 		generateArchetypalCode();
+		createBuffers();
 		createInitCode();
 		createSteadyStateCode();
 		return instantiateBlob();
@@ -745,6 +764,48 @@ public class Compiler2 {
 		}
 	}
 
+	/**
+	 * If we're compiling an entire graph, create the overall input and output
+	 * buffers now so we can take advantage of
+	 * PeekableBuffers/PokeableBuffers.  Otherwise we must pre-init()
+	 * our read/write instructions to refer to these buffers, since they won't
+	 * be passed to the blob's installBuffers().
+	 */
+	private void createBuffers() {
+		assert (overallInput == null) == (overallOutput == null);
+		if (overallInput == null) {
+			this.precreatedBuffers = ImmutableMap.of();
+			return;
+		}
+
+		ActorGroup inputGroup = null, outputGroup = null;
+		Token inputToken = null, outputToken = null;
+		for (ActorGroup g : groups)
+			if (g.isTokenGroup()) {
+				assert g.actors().size() == 1;
+				TokenActor ta = (TokenActor)g.actors().iterator().next();
+				assert g.schedule().get(ta) == 1;
+				if (ta.isInput()) {
+					assert inputGroup == null;
+					inputGroup = g;
+					inputToken = ta.token();
+				}
+				if (ta.isOutput()) {
+					assert outputGroup == null;
+					outputGroup = g;
+					outputToken = ta.token();
+				}
+			}
+		this.overallInputBuffer = InputBufferFactory.unwrap(overallInput).createReadableBuffer(
+				Math.max(initSchedule.get(inputGroup), externalSchedule.get(inputGroup)));
+		this.overallOutputBuffer = OutputBufferFactory.unwrap(overallOutput).createWritableBuffer(
+				Math.max(initSchedule.get(outputGroup), externalSchedule.get(outputGroup)));
+		this.precreatedBuffers = ImmutableMap.<Token, Buffer>builder()
+				.put(inputToken, overallInputBuffer)
+				.put(outputToken, overallOutputBuffer)
+				.build();
+	}
+
 	private void createInitCode() {
 		ImmutableMap<Actor, ImmutableList<MethodHandle>> indexFxnBackup = adjustOutputIndexFunctions(new Function<Storage, Set<Integer>>() {
 			@Override
@@ -753,7 +814,7 @@ public class Compiler2 {
 			}
 		});
 
-		this.initStorage = createExternalStorage(MapConcreteStorage.initFactory());
+		this.initStorage = createExternalStorage(new PeekPokeStorageFactory(MapConcreteStorage.initFactory()));
 		initReadInstructions.add(new InitDataReadInstruction(initStorage, initialStateDataMap));
 
 		IndexFunctionTransformer ift = new IdentityIndexFunctionTransformer();
@@ -812,7 +873,7 @@ public class Compiler2 {
 
 		for (Storage s : storage)
 			s.computeSteadyStateRequirements(externalSchedule);
-		this.steadyStateStorage = createExternalStorage(CircularArrayConcreteStorage.factory());
+		this.steadyStateStorage = createExternalStorage(new PeekPokeStorageFactory(CircularArrayConcreteStorage.factory()));
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
 		for (int i = 0; i < maxNumCores; ++i) {
@@ -853,14 +914,7 @@ public class Compiler2 {
 				steadyStateCodeBuilder.add(c.code());
 		this.steadyStateCode = steadyStateCodeBuilder.build();
 
-		/**
-		 * Create migration instructions: Runnables that move live items from
-		 * initialization to steady-state storage.
-		 */
-		for (Storage s : initStorage.keySet())
-			migrationInstructions.add(new MigrationInstruction(
-					s, initStorage.get(s), steadyStateStorage.get(s)));
-
+		createMigrationInstructions();
 		createDrainInstructions();
 	}
 
@@ -871,6 +925,8 @@ public class Compiler2 {
 		ReadInstruction retval;
 		if (count == 0)
 			retval = new NopReadInstruction(a.token());
+		else if (cs instanceof PeekableBufferConcreteStorage)
+			retval = new PeekReadInstruction(a, count);
 		else if (!s.type().isPrimitive() &&
 				cs instanceof BulkWritableConcreteStorage &&
 				contiguouslyIncreasing(idxFxn, 0, count)) {
@@ -878,6 +934,7 @@ public class Compiler2 {
 		} else
 			retval = new TokenReadInstruction(a, cs, count);
 //		System.out.println("Made a "+retval+" for "+a.token());
+		retval.init(precreatedBuffers);
 		return retval;
 	}
 
@@ -895,6 +952,7 @@ public class Compiler2 {
 		} else
 			retval = new TokenWriteInstruction(a, cs, count);
 //		System.out.println("Made a "+retval+" for "+a.token());
+		retval.init(precreatedBuffers);
 		return retval;
 	}
 
@@ -910,6 +968,21 @@ public class Compiler2 {
 			return true;
 		} catch (Throwable ex) {
 			throw new AssertionError("index functions should not throw", ex);
+		}
+	}
+
+	/**
+	 * Create migration instructions: Runnables that move live items from
+	 * initialization to steady-state storage.
+	 */
+	private void createMigrationInstructions() {
+		for (Storage s : initStorage.keySet()) {
+			ConcreteStorage init = initStorage.get(s), steady = steadyStateStorage.get(s);
+			if (steady instanceof PeekableBufferConcreteStorage)
+				migrationInstructions.add(new PeekMigrationInstruction(
+						s, (PeekableBufferConcreteStorage)steady));
+			else
+				migrationInstructions.add(new MigrationInstruction(s, init, steady));
 		}
 	}
 
@@ -938,6 +1011,9 @@ public class Compiler2 {
 
 		for (Map.Entry<Token, List<Pair<ConcreteStorage, Integer>>> e : drainReads.entrySet()) {
 			assert !e.getValue().contains(null) : "lost an element from "+e.getKey()+": "+e.getValue();
+			for (Iterator<Pair<ConcreteStorage, Integer>> i = e.getValue().iterator(); i.hasNext();)
+				if (i.next().first instanceof PeekableBufferConcreteStorage)
+					i.remove();
 			drainInstructions.add(new XDrainInstruction(e.getKey(), e.getValue()));
 		}
 
@@ -1001,6 +1077,24 @@ public class Compiler2 {
 		return builder.build();
 	}
 
+	/**
+	 * Creates special ConcreteStorage implementations for PeekableBuffer and
+	 * PokeableBuffer, or falls back to the given factory.
+	 */
+	private final class PeekPokeStorageFactory implements StorageFactory {
+		private final StorageFactory fallback;
+		private PeekPokeStorageFactory(StorageFactory fallback) {
+			this.fallback = fallback;
+		}
+		@Override
+		public ConcreteStorage make(Storage storage) {
+			if (storage.id().isOverallInput() && overallInputBuffer instanceof PeekableBuffer)
+				return PeekableBufferConcreteStorage.factory(ImmutableMap.of(storage.id(), (PeekableBuffer)overallInputBuffer)).make(storage);
+			//TODO: PokeableBuffer
+			return fallback.make(storage);
+		}
+	}
+
 	private static final class MigrationInstruction implements Runnable {
 		private final ConcreteStorage init, steady;
 		private final int[] indicesToMigrate;
@@ -1022,6 +1116,19 @@ public class Compiler2 {
 			for (int i : indicesToMigrate)
 				steady.write(i, init.read(i));
 			steady.sync();
+		}
+	}
+
+	private static final class PeekMigrationInstruction implements Runnable {
+		private final PeekableBuffer buffer;
+		private final int itemsConsumedDuringInit;
+		private PeekMigrationInstruction(Storage storage, PeekableBufferConcreteStorage steady) {
+			this.buffer = steady.buffer();
+			this.itemsConsumedDuringInit = steady.minReadIndex();
+		}
+		@Override
+		public void run() {
+			buffer.consume(itemsConsumedDuringInit);
 		}
 	}
 
@@ -1055,6 +1162,43 @@ public class Compiler2 {
 		}
 	}
 
+	/**
+	 * PeekReadInstruction implements special handling for PeekableBuffer.
+	 */
+	private static final class PeekReadInstruction implements ReadInstruction {
+		private final Token token;
+		private final int count;
+		private PeekableBuffer buffer;
+		private PeekReadInstruction(TokenActor a, int count) {
+			assert a.isInput() : a;
+			this.token = a.token();
+			this.count = count;
+		}
+		@Override
+		public void init(Map<Token, Buffer> buffers) {
+			if (!buffers.containsKey(token)) return;
+			if (buffer != null)
+				checkState(buffers.get(token) == buffer, "reassigning %s from %s to %s", token, buffer, buffers.get(token));
+			this.buffer = (PeekableBuffer)buffers.get(token);
+		}
+		@Override
+		public Map<Token, Integer> getMinimumBufferCapacity() {
+			//This shouldn't matter because we've already created the buffers.
+			return ImmutableMap.of(token, count);
+		}
+		@Override
+		public boolean load() {
+			//Ensure data is present for reading.
+			return buffer.size() >= count;
+		}
+		@Override
+		public Map<Token, Object[]> unload() {
+			//Data is not consumed from the underlying buffer until it's
+			//adjusted, so no work is necessary here.
+			return ImmutableMap.of();
+		}
+	}
+
 	private static final class BulkReadInstruction implements ReadInstruction {
 		private final Token token;
 		private final BulkWritableConcreteStorage storage;
@@ -1069,9 +1213,10 @@ public class Compiler2 {
 		}
 		@Override
 		public void init(Map<Token, Buffer> buffers) {
+			if (!buffers.containsKey(token)) return;
+			if (buffer != null)
+				checkState(buffers.get(token) == buffer, "reassigning %s from %s to %s", token, buffer, buffers.get(token));
 			this.buffer = buffers.get(token);
-			if (buffer == null)
-				throw new IllegalArgumentException("no buffer for "+token);
 		}
 		@Override
 		public Map<Token, Integer> getMinimumBufferCapacity() {
@@ -1113,9 +1258,10 @@ public class Compiler2 {
 		}
 		@Override
 		public void init(Map<Token, Buffer> buffers) {
+			if (!buffers.containsKey(token)) return;
+			if (buffer != null)
+				checkState(buffers.get(token) == buffer, "reassigning %s from %s to %s", token, buffer, buffers.get(token));
 			this.buffer = buffers.get(token);
-			if (buffer == null)
-				throw new IllegalArgumentException("no buffer for "+token);
 		}
 		@Override
 		public Map<Token, Integer> getMinimumBufferCapacity() {
@@ -1193,9 +1339,10 @@ public class Compiler2 {
 		}
 		@Override
 		public void init(Map<Token, Buffer> buffers) {
+			if (!buffers.containsKey(token)) return;
+			if (buffer != null)
+				checkState(buffers.get(token) == buffer, "reassigning %s from %s to %s", token, buffer, buffers.get(token));
 			this.buffer = buffers.get(token);
-			if (buffer == null)
-				throw new IllegalArgumentException("no buffer for "+token);
 		}
 		@Override
 		public Map<Token, Integer> getMinimumBufferCapacity() {
@@ -1225,9 +1372,10 @@ public class Compiler2 {
 		}
 		@Override
 		public void init(Map<Token, Buffer> buffers) {
+			if (!buffers.containsKey(token)) return;
+			if (buffer != null)
+				checkState(buffers.get(token) == buffer, "reassigning %s from %s to %s", token, buffer, buffers.get(token));
 			this.buffer = buffers.get(token);
-			if (buffer == null)
-				throw new IllegalArgumentException("no buffer for "+token);
 		}
 		@Override
 		public Map<Token, Integer> getMinimumBufferCapacity() {
@@ -1347,7 +1495,8 @@ public class Compiler2 {
 				initCode, steadyStateCode,
 				storageAdjusts.build(),
 				initReadInstructions, initWriteInstructions, migrationInstructions,
-				readInstructions, writeInstructions, drainInstructions);
+				readInstructions, writeInstructions, drainInstructions,
+				precreatedBuffers);
 	}
 
 	public static void main(String[] args) {

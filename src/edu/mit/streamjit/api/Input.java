@@ -7,6 +7,7 @@ import com.google.common.primitives.Primitives;
 import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
+import edu.mit.streamjit.impl.blob.PeekableBuffer;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.impl.common.NIOBuffers;
 import java.io.IOException;
@@ -17,6 +18,8 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
+import java.util.List;
+import java.util.RandomAccess;
 import java.util.concurrent.ArrayBlockingQueue;
 
 /**
@@ -149,6 +152,8 @@ public class Input<I> {
 	 * @return an Input containing the elements in the given iterable
 	 */
 	public static <I> Input<I> fromIterable(final Iterable<? extends I> iterable) {
+		if (iterable instanceof List && iterable instanceof RandomAccess)
+			return new Input<>(new RandomAccessListInput((List<?>)iterable));
 		return new Input<>(new InputBufferFactory() {
 			private final int size = Iterables.size(iterable);
 			@Override
@@ -156,6 +161,45 @@ public class Input<I> {
 				return Input.fromIterator(iterable.iterator(), size).input.createReadableBuffer(readerMinSize);
 			}
 		});
+	}
+
+	private static final class RandomAccessListInput extends InputBufferFactory {
+		private final List<?> list;
+		private RandomAccessListInput(List<?> list) {
+			assert list instanceof RandomAccess;
+			this.list = list;
+		}
+		@Override
+		public PeekableBuffer createReadableBuffer(int readerMinSize) {
+			class RandomAccessListBuffer extends AbstractReadOnlyBuffer implements PeekableBuffer {
+				private final List<?> list;
+				private int base = 0;
+				private RandomAccessListBuffer(List<?> list) {
+					this.list = list;
+				}
+				@Override
+				public Object read() {
+					if (size() <= 0) return null;
+					return list.get(base++);
+				}
+				@Override
+				public int size() {
+					return list.size() - base;
+				}
+				@Override
+				public Object peek(int index) {
+					return list.get(base + index);
+				}
+				@Override
+				public void consume(int items) {
+					int size = size();
+					if (items > size)
+						throw new IndexOutOfBoundsException("consuming "+items+" items when only "+size+" remain");
+					base += items;
+				}
+			}
+			return new RandomAccessListBuffer(list);
+		}
 	}
 
 	/**

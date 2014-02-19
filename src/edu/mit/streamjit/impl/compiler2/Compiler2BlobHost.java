@@ -88,6 +88,7 @@ public class Compiler2BlobHost implements Blob {
 	 * indices, which are covered by the read instructions' unload()).
 	 */
 	public final ImmutableList<DrainInstruction> drainInstructions;
+	private final ImmutableMap<Token, Buffer> precreatedBuffers;
 	/* provided by the host */
 	private final boolean collectTimings;
 	private final ImmutableMap<Token, Integer> minimumBufferCapacity;
@@ -110,7 +111,8 @@ public class Compiler2BlobHost implements Blob {
 			List<Runnable> migrationInstructions,
 			List<ReadInstruction> readInstructions,
 			List<WriteInstruction> writeInstructions,
-			List<DrainInstruction> drainInstructions) {
+			List<DrainInstruction> drainInstructions,
+			ImmutableMap<Token, Buffer> precreatedBuffers) {
 		this.workers = workers;
 		this.config = configuration;
 		this.inputTokens = inputTokens;
@@ -124,6 +126,7 @@ public class Compiler2BlobHost implements Blob {
 		this.readInstructions = ImmutableList.copyOf(readInstructions);
 		this.writeInstructions = ImmutableList.copyOf(writeInstructions);
 		this.drainInstructions = ImmutableList.copyOf(drainInstructions);
+		this.precreatedBuffers = precreatedBuffers;
 
 		this.collectTimings = config.getExtraData("timings") != null ? (Boolean)config.getExtraData("timings") : false;
 
@@ -187,6 +190,7 @@ public class Compiler2BlobHost implements Blob {
 	public void installBuffers(Map<Token, Buffer> buffers) {
 		if (this.buffers != null)
 			throw new IllegalStateException("installBuffers called more than once");
+		buffers = CollectionUtils.union(buffers, precreatedBuffers);
 		ImmutableMap.Builder<Token, Buffer> builder = ImmutableMap.builder();
 		for (Token t : Sets.union(inputTokens, outputTokens)) {
 			Buffer b = buffers.get(t);

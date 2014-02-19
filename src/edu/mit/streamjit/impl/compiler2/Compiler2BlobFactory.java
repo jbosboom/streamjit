@@ -21,7 +21,7 @@ public final class Compiler2BlobFactory implements BlobFactory {
 
 	@Override
 	public Blob makeBlob(Set<Worker<?, ?>> workers, Configuration config, int maxNumCores, DrainData initialState) {
-		return new Compiler2(workers, config, maxNumCores, initialState).compile();
+		return new Compiler2(workers, config, maxNumCores, initialState, null, null).compile();
 	}
 
 	@Override

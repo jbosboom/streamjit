@@ -1,7 +1,12 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.checkState;
+import com.google.common.collect.ImmutableSet;
+import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.impl.blob.Blob;
+import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
 import java.nio.file.Path;
@@ -77,6 +82,21 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 			builder.putExtraData("dumpFile", dumpFile);
 		builder.putExtraData("timings", timings);
 		return builder.build();
+	}
+
+	@Override
+	protected Blob makeBlob(ImmutableSet<Worker<?, ?>> workers, Configuration configuration, Input<?> input, Output<?> output) {
+		return new Compiler2(workers, configuration, getMaxNumCores(), null, input, output).compile();
+	}
+
+	@Override
+	protected Buffer makeInputBuffer(Input<?> input, int minCapacity) {
+		return null; //handled by Compiler2
+	}
+
+	@Override
+	protected Buffer makeOutputBuffer(Output<?> output, int minCapacity) {
+		return null; //handled by Compiler2
 	}
 
 	@Override

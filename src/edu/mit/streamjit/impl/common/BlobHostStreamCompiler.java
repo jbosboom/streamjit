@@ -55,11 +55,12 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 		Token outputToken = Iterables.getOnlyElement(blob.getOutputs());
 		Buffer inputBuffer = makeInputBuffer(input, blob.getMinimumBufferCapacity(inputToken));
 		Buffer outputBuffer = makeOutputBuffer(output, blob.getMinimumBufferCapacity(outputToken));
-		ImmutableMap<Token, Buffer> bufferMap = ImmutableMap.<Token, Buffer>builder()
-				.put(inputToken, inputBuffer)
-				.put(outputToken, outputBuffer)
-				.build();
-		blob.installBuffers(bufferMap);
+		ImmutableMap.Builder<Token, Buffer> bufferMap = ImmutableMap.<Token, Buffer>builder();
+		if (inputBuffer != null)
+			bufferMap.put(inputToken, inputBuffer);
+		if (outputBuffer != null)
+			bufferMap.put(outputToken, outputBuffer);
+		blob.installBuffers(bufferMap.build());
 
 		Configuration.PermutationParameter<Integer> affinityParam = config.getParameter("$affinity", Configuration.PermutationParameter.class, Integer.class);
 		ImmutableList<? extends Integer> affinityList;
