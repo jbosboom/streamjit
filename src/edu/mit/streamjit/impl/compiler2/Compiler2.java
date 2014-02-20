@@ -1511,7 +1511,7 @@ public class Compiler2 {
 			sc = new Compiler2StreamCompiler().maxNumCores(cores).multiplier(multiplier);
 			bm = Benchmarker.getBenchmarkByName(benchmarkName);
 		} else {
-			sc = new Compiler2StreamCompiler().multiplier(64).maxNumCores(4);
+			sc = new Compiler2StreamCompiler().multiplier(384).maxNumCores(4);
 			bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
 		}
 		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);
