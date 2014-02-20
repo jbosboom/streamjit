@@ -41,23 +41,23 @@ public class Core {
 	}
 
 	public MethodHandle code() {
-		ImmutableMap.Builder<Storage, ConcreteStorage> localStorage = ImmutableMap.builder();
+		//TODO: ActorGroup ordering parameters: accumulate a
+		//List<Pair<ActorGroup, MethodHandle>>, then sort before semicolon(code).
+		List<MethodHandle> code = new ArrayList<>(allocations.size());
 		for (Pair<ActorGroup, Range<Integer>> p : allocations) {
+			ImmutableMap.Builder<Storage, ConcreteStorage> localStorage = ImmutableMap.builder();
 			ActorGroup g = p.first;
 			Range<Integer> iterations = p.second;
 			for (Storage s : g.internalEdges()) {
 				ImmutableSortedSet<Integer> reads = g.reads(s, iterations);
 				assert reads.equals(g.writes(s, iterations));
 				//StorageFactory doesn't let us specify a capacity or offset.
-				localStorage.put(s, new InternalArrayConcreteStorage(s, reads.last() - reads.first() + 1, reads.first()));
+				localStorage.put(s, reads.isEmpty() ? new EmptyConcreteStorage(s) :
+						new InternalArrayConcreteStorage(s, reads.last() - reads.first() + 1, reads.first()));
 			}
-		}
-
-		Map<Storage, ConcreteStorage> allStorage = CollectionUtils.union(globalStorage, localStorage.build());
-		//TODO: here's where to plug in ActorGroup ordering parameters
-		List<MethodHandle> code = new ArrayList<>(allocations.size());
-		for (Pair<ActorGroup, Range<Integer>> p : allocations)
+			Map<Storage, ConcreteStorage> allStorage = CollectionUtils.union(globalStorage, localStorage.build());
 			code.add(p.first.specialize(p.second, allStorage, inputTransformers, outputTransformers, bytecodifier));
+		}
 		return Combinators.semicolon(code);
 	}
 
