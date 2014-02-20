@@ -16,6 +16,7 @@ import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.PeekableBuffer;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import java.io.FileInputStream;
@@ -55,6 +56,47 @@ public final class Datasets {
 		return fromIterable(range.toString(), ContiguousSet.create(range, DiscreteDomain.integers()));
 	}
 
+	private static final class LoopedBufferBuffer extends AbstractReadOnlyBuffer implements PeekableBuffer {
+		private final PeekableBuffer buffer;
+		private final int bufferSize;
+		private int index, cycles;
+		private LoopedBufferBuffer(int n, PeekableBuffer buffer) {
+			this.buffer = buffer;
+			this.bufferSize = buffer.size();
+			this.cycles = n-1;
+		}
+		@Override
+		public Object read() {
+			Object ret = (size() > 0 ? peek(0) : null);
+			increment(1);
+			return ret;
+		}
+		@Override
+		public int size() {
+			if (cycles < 0) return 0;
+			try {
+				return IntMath.checkedAdd(IntMath.checkedMultiply(cycles, bufferSize), (bufferSize - index));
+			} catch (ArithmeticException overflow) {
+				return Integer.MAX_VALUE;
+			}
+		}
+		@Override
+		public Object peek(int index) {
+			return buffer.peek((this.index + index) % bufferSize);
+		}
+		@Override
+		public void consume(int items) {
+			increment(items);
+		}
+		private void increment(int items) {
+			index += items;
+			while (index >= buffer.size()) {
+				index -= buffer.size();
+				--cycles;
+			}
+		}
+	}
+
 	public static <I> Input<I> nCopies(final int n, final Input<I> input) {
 		//0 would be valid (an empty input), but would usually be a bug.
 		checkArgument(n > 0, "%s must be nonnegative", n);
@@ -62,8 +104,11 @@ public final class Datasets {
 		return InputBufferFactory.wrap(new InputBufferFactory() {
 			@Override
 			public Buffer createReadableBuffer(final int readerMinSize) {
+				final Buffer firstBuffer = InputBufferFactory.unwrap(input).createReadableBuffer(readerMinSize);
+				if (firstBuffer instanceof PeekableBuffer)
+					return new LoopedBufferBuffer(n, (PeekableBuffer)firstBuffer);
 				return new AbstractReadOnlyBuffer() {
-					private Buffer currentBuffer = InputBufferFactory.unwrap(input).createReadableBuffer(readerMinSize);
+					private Buffer currentBuffer = firstBuffer;
 					private final int bufferSize = currentBuffer.size();
 					private int copiesRemaining = n - 1;
 					@Override
