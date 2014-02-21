@@ -129,7 +129,7 @@ public class BlobsManagerImpl implements BlobsManager {
 				minOutputBufCapaciy.keySet(), localTokens);
 
 		for (Token t : localTokens) {
-			int bufSize = lcm(minInputBufCapaciy.get(t),
+			int bufSize = (int) lcm(minInputBufCapaciy.get(t),
 					minOutputBufCapaciy.get(t));
 			addBuffer(t, bufSize, bufferMapBuilder);
 		}
@@ -160,7 +160,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		bufferMapBuilder.put(t, new ConcurrentArrayBuffer(bufSize));
 	}
 
-	private int gcd(int a, int b) {
+	private long gcd(long a, long b) {
 		while (true) {
 			if (a == 0)
 				return b;
@@ -171,9 +171,10 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 	}
 
-	private int lcm(int a, int b) {
-		int val = gcd(a, b);
-		return val != 0 ? ((a * b) / val) : 0;
+	private long lcm(long a, long b) {
+		long val = gcd(a, b);
+		long quotient = a / val;
+		return val != 0 ? b * quotient : 0;
 	}
 
 	private Set<Token> getLocalTokens(Set<Blob> blobSet) {
