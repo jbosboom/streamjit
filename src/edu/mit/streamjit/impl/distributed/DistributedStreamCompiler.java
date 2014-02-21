@@ -129,8 +129,18 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		this.cfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(source));
 
-		if (GlobalConstants.tune == 0)
-			this.cfg = readConfiguration(stream.getClass().getSimpleName());
+		if (GlobalConstants.tune == 0) {
+			Configuration cfg1 = readConfiguration(stream.getClass()
+					.getSimpleName());
+			if (!this.cfg.getParametersMap().keySet()
+					.equals(cfg1.getParametersMap().keySet())) {
+				System.err
+						.println("Reading the configuration from configuration file");
+				System.err
+						.println("No matching between parameters in the read configuration and parameters in the default configuration");
+				return null;
+			}
+		}
 
 		if (cfg == null) {
 			System.err
