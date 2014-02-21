@@ -63,32 +63,32 @@ public class Compiler2BlobHost implements Blob {
 	 * unload all items, as the init schedule only runs if all reads can
 	 * be satisfied.
 	 */
-	public ImmutableList<ReadInstruction> initReadInstructions;
+	private ImmutableList<ReadInstruction> initReadInstructions;
 	/**
 	 * Instructions to write output from the init schedule.
 	 */
-	public ImmutableList<WriteInstruction> initWriteInstructions;
+	private ImmutableList<WriteInstruction> initWriteInstructions;
 	/**
 	 * Instructions to move items from init storage to steady-state storage.
 	 */
-	public ImmutableList<Runnable> migrationInstructions;
+	private ImmutableList<Runnable> migrationInstructions;
 	/**
 	 * Instructions to load items for the steady-state schedule.  unload()
 	 * will only unload items loaded by load(); the drain instructions will
 	 * retrieve any unconsumed items in the storage.
 	 */
-	public final ImmutableList<ReadInstruction> readInstructions;
+	private final ImmutableList<ReadInstruction> readInstructions;
 	/**
 	 * Instructions to write output from the steady-state schedule.
 	 */
-	public final ImmutableList<WriteInstruction> writeInstructions;
+	private final ImmutableList<WriteInstruction> writeInstructions;
 	/**
 	 * Instructions to extract items from steady-state storage for transfer
 	 * to a DrainData object.  For input storage, this only extracts
 	 * unconsumed items (items at live indices except the last throughput
 	 * indices, which are covered by the read instructions' unload()).
 	 */
-	public final ImmutableList<DrainInstruction> drainInstructions;
+	private final ImmutableList<DrainInstruction> drainInstructions;
 	private final ImmutableMap<Token, Buffer> precreatedBuffers;
 	/* provided by the host */
 	private final boolean collectTimings;
