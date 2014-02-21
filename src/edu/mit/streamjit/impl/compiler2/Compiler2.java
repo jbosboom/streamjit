@@ -826,6 +826,9 @@ public class Compiler2 {
 			for (int i = 0; i < a.outputs().size(); ++i)
 				outputTransformers.put(a, i, ift);
 		}
+		ImmutableMap.Builder<ActorGroup, Integer> unrollFactors = ImmutableMap.builder();
+		for (ActorGroup g : groups)
+			unrollFactors.put(g, 1);
 
 		/**
 		 * During init, all (nontoken) groups are assigned to the same Core in
@@ -833,7 +836,7 @@ public class Compiler2 {
 		 * time we build the token init schedule information required by the
 		 * blob host.
 		 */
-		Core initCore = new Core(storage, initStorage, MapConcreteStorage.initFactory(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".init"));
+		Core initCore = new Core(storage, initStorage, MapConcreteStorage.initFactory(), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".init"));
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
@@ -891,7 +894,15 @@ public class Compiler2 {
 					outputTransformers.put(a, j, param.getValue());
 				}
 			}
-			ssCores.add(new Core(storage, steadyStateStorage, InternalArrayConcreteStorage.factory(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".steadystate.")));
+
+			ImmutableMap.Builder<ActorGroup, Integer> unrollFactors = ImmutableMap.builder();
+			for (ActorGroup g : groups) {
+				if (g.isTokenGroup()) continue;
+				IntParameter param = config.getParameter(String.format("UnrollCore%dGroup%d", i, g.id()), IntParameter.class);
+				unrollFactors.put(g, param.getValue());
+			}
+
+			ssCores.add(new Core(storage, steadyStateStorage, InternalArrayConcreteStorage.factory(), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".steadystate.")));
 		}
 
 		for (ActorGroup g : groups)

@@ -21,16 +21,19 @@ import java.util.Set;
 public class Core {
 	private final ImmutableMap<Storage, ConcreteStorage> globalStorage;
 	private final StorageFactory localStorageFactory;
+	private final ImmutableMap<ActorGroup, Integer> unrollFactors;
 	private final ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers, outputTransformers;
 	private final Bytecodifier.Function bytecodifier;
 	private final List<Pair<ActorGroup, Range<Integer>>> allocations = new ArrayList<>();
 	public Core(Set<Storage> storage, ImmutableMap<Storage, ConcreteStorage> globalStorage,
 			StorageFactory localStorageFactory,
+			ImmutableMap<ActorGroup, Integer> unrollFactors,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers,
 			Bytecodifier.Function bytecodifier) {
 		this.globalStorage = globalStorage;
 		this.localStorageFactory = localStorageFactory;
+		this.unrollFactors = unrollFactors;
 		this.inputTransformers = inputTransformers;
 		this.outputTransformers = outputTransformers;
 		this.bytecodifier = bytecodifier;
@@ -56,7 +59,7 @@ public class Core {
 						new InternalArrayConcreteStorage(s, reads.last() - reads.first() + 1, reads.first()));
 			}
 			Map<Storage, ConcreteStorage> allStorage = CollectionUtils.union(globalStorage, localStorage.build());
-			code.add(p.first.specialize(p.second, allStorage, inputTransformers, outputTransformers, bytecodifier));
+			code.add(p.first.specialize(p.second, allStorage, unrollFactors.get(p.first), inputTransformers, outputTransformers, bytecodifier));
 		}
 		return Combinators.semicolon(code);
 	}

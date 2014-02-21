@@ -250,16 +250,32 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * @return a void->void method handle
 	 */
 	public MethodHandle specialize(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage,
+			int unrollFactor,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers,
 			Bytecodifier.Function bytecodifier) {
 		//TokenActors are special.
 		assert !isTokenGroup() : actors();
 
-		/**
-		 * Compute the read and write method handles for each Actor. These don't
-		 * depend on the iteration, so we can bind and reuse them.
-		 */
+		Map<Actor, MethodHandle> withRWHandlesBound =
+				bindActorsToStorage(iterations, storage, inputTransformers, outputTransformers);
+
+		int totalIterations = iterations.upperEndpoint() - iterations.lowerEndpoint();
+		unrollFactor = Math.min(unrollFactor, totalIterations);
+		int unrolls = (totalIterations/unrollFactor);
+		int unrollEndpoint = iterations.lowerEndpoint() + unrolls*unrollFactor;
+		MethodHandle overall = Combinators.semicolon(
+				makeGroupLoop(Range.closedOpen(iterations.lowerEndpoint(), unrollEndpoint), unrollFactor, withRWHandlesBound, bytecodifier),
+				makeGroupLoop(Range.closedOpen(unrollEndpoint, iterations.upperEndpoint()), 1, withRWHandlesBound, bytecodifier)
+		);
+		return bytecodifier.bytecodify(overall, "Group"+id()+"Iter"+iterations.lowerEndpoint()+"To"+iterations.upperEndpoint());
+	}
+
+	/**
+	 * Compute the read and write method handles for each Actor. These don't
+	 * depend on the iteration, so we can bind and reuse them.
+	 */
+	private Map<Actor, MethodHandle> bindActorsToStorage(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage, ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers, ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers) {
 		Map<Actor, MethodHandle> withRWHandlesBound = new HashMap<>();
 		for (Actor a : actors()) {
 			WorkerActor wa = (WorkerActor)a;
@@ -292,47 +308,12 @@ public class ActorGroup implements Comparable<ActorGroup> {
 				write = Combinators.tableswitch(table);
 			} else
 				write = MethodHandles.filterArguments(storage.get(a.outputs().get(0)).writeHandle(), 0,
-					outputTransformers.get(a, 0).transform(a.outputIndexFunctions().get(0), new PushesSupplier(a, 0, iterations)))
-					.asType(writeHandleType);
+						outputTransformers.get(a, 0).transform(a.outputIndexFunctions().get(0), new PushesSupplier(a, 0, iterations)))
+						.asType(writeHandleType);
 
 			withRWHandlesBound.put(wa, specialized.bindTo(read).bindTo(write));
 		}
-
-		/**
-		 * Make loop handles for each Actor that execute the iteration given as
-		 * an argument, then bind them together in an outer loop body that
-		 * executes all the iterations.  Before the outer loop we must also
-		 * reinitialize the splitter/joiner index arrays to their initial
-		 * values.
-		 *
-		 * TODO: this is a very fine-grained execution.  We could trade code
-		 * cache for data cache by unrolling, executing each actor for N
-		 * iterations worth before proceeding to the next actor.
-		 */
-		String groupLoopName = String.format("Group%dIter%dTo%d", id(), iterations.lowerEndpoint(), iterations.upperEndpoint());
-		List<MethodHandle> loopHandles = new ArrayList<>(actors().size());
-		Map<int[], int[]> requiredCopies = new LinkedHashMap<>();
-		for (Actor a : actors()) {
-			MethodHandle workerLoop = makeWorkerLoop((WorkerActor)a, withRWHandlesBound.get(a), iterations.lowerEndpoint(), requiredCopies);
-			String workerLoopName = String.format("%sWorker%d", groupLoopName, a.id());
-			loopHandles.add(bytecodifier.bytecodify(workerLoop, workerLoopName));
-		}
-		MethodHandle groupLoop = MethodHandles.insertArguments(OVERALL_GROUP_LOOP, 0,
-				Combinators.semicolon(loopHandles), iterations.lowerEndpoint(), iterations.upperEndpoint());
-		if (!requiredCopies.isEmpty()) {
-			int[][] copies = new int[requiredCopies.size()*2][];
-			int i = 0;
-			for (Map.Entry<int[], int[]> e : requiredCopies.entrySet()) {
-				copies[i++] = e.getKey();
-				copies[i++] = e.getValue();
-			}
-			groupLoop = Combinators.semicolon(
-					MethodHandles.insertArguments(REINITIALIZE_ARRAYS, 0, (Object)copies),
-					groupLoop);
-		}
-
-		groupLoop = bytecodifier.bytecodify(groupLoop, "Group"+id()+"Iter"+iterations.lowerEndpoint()+"To"+iterations.upperEndpoint());
-		return groupLoop;
+		return withRWHandlesBound;
 	}
 
 	//TODO: replace these with Java 8 lambdas!
@@ -367,17 +348,52 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	}
 
 	/**
-	 * Makes the loop for the given actor, which implements one group execution.
+	 * Make loop handles for each Actor that execute the iteration given as
+	 * an argument, then bind them together in an outer loop body that
+	 * executes all the iterations.  Before the outer loop we must also
+	 * reinitialize the splitter/joiner index arrays to their initial
+	 * values.
+	 */
+	private MethodHandle makeGroupLoop(Range<Integer> iterations, int unrollFactor, Map<Actor, MethodHandle> withRWHandlesBound, Bytecodifier.Function bytecodifier) {
+		if (iterations.isEmpty()) return Combinators.nop();
+		String groupLoopName = String.format("Group%dIter%dTo%dBy%d", id(), iterations.lowerEndpoint(), iterations.upperEndpoint(), unrollFactor);
+		List<MethodHandle> loopHandles = new ArrayList<>(actors().size());
+		Map<int[], int[]> requiredCopies = new LinkedHashMap<>();
+		for (Actor a : actors()) {
+			MethodHandle workerLoop = makeWorkerLoop((WorkerActor)a, withRWHandlesBound.get(a), unrollFactor, iterations.lowerEndpoint(), requiredCopies);
+			String workerLoopName = String.format("%sWorker%d", groupLoopName, a.id());
+			loopHandles.add(bytecodifier.bytecodify(workerLoop, workerLoopName));
+		}
+		MethodHandle groupLoop = MethodHandles.insertArguments(OVERALL_GROUP_LOOP, 0,
+				Combinators.semicolon(loopHandles), iterations.lowerEndpoint(), iterations.upperEndpoint(), unrollFactor);
+		if (!requiredCopies.isEmpty()) {
+			int[][] copies = new int[requiredCopies.size()*2][];
+			int i = 0;
+			for (Map.Entry<int[], int[]> e : requiredCopies.entrySet()) {
+				copies[i++] = e.getKey();
+				copies[i++] = e.getValue();
+			}
+			groupLoop = Combinators.semicolon(
+					MethodHandles.insertArguments(REINITIALIZE_ARRAYS, 0, (Object)copies),
+					groupLoop);
+		}
+		return groupLoop;
+	}
+
+	/**
+	 * Makes the loop for the given actor, which implements group executions
+	 * based on the unroll factor.
 	 * @param a the actor
 	 * @param base the specialized work method with read/write handles bound;
 	 * takes two int or int[] parameters
+	 * @param unrollFactor the number of group iterations to execute
 	 * @param firstIteration the first iteration to execute, for computing the
 	 * initial contents of index arrays
 	 * @param requiredCopies accumulates the copies required to reinitialize the
 	 * index arrays
 	 * @return a MethodHandle taking one int parameter
 	 */
-	private MethodHandle makeWorkerLoop(WorkerActor a, MethodHandle base, int firstIteration, Map<int[], int[]> requiredCopies) {
+	private MethodHandle makeWorkerLoop(WorkerActor a, MethodHandle base, int unrollFactor, int firstIteration, Map<int[], int[]> requiredCopies) {
 		int subiterations = schedule.get(a);
 		Object pop, push;
 		if (base.type().parameterType(0).equals(int.class)) {
@@ -409,33 +425,33 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			loopHandle = JOINER_LOOP;
 		else
 			throw new AssertionError(a);
-		return MethodHandles.insertArguments(loopHandle, 0, base, subiterations, pop, push);
+		return MethodHandles.insertArguments(loopHandle, 0, base, unrollFactor, subiterations, pop, push);
 	}
 
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle FILTER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_filterLoop", void.class, MethodHandle.class, int.class, int.class, int.class, int.class);
-	private static final MethodHandle SPLITTER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_splitterLoop", void.class, MethodHandle.class, int.class, int.class, int[].class, int.class);
-	private static final MethodHandle JOINER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_joinerLoop", void.class, MethodHandle.class, int.class, int[].class, int.class, int.class);
+	private static final MethodHandle FILTER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_filterLoop", void.class, MethodHandle.class, int.class, int.class, int.class, int.class, int.class);
+	private static final MethodHandle SPLITTER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_splitterLoop", void.class, MethodHandle.class, int.class, int.class, int.class, int[].class, int.class);
+	private static final MethodHandle JOINER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_joinerLoop", void.class, MethodHandle.class, int.class, int.class, int[].class, int.class, int.class);
 	private static final MethodHandle REINITIALIZE_ARRAYS = findStatic(LOOKUP, ActorGroup.class, "_reinitializeArrays", void.class, int[][].class);
-	private static final MethodHandle OVERALL_GROUP_LOOP = findStatic(LOOKUP, ActorGroup.class, "_overallGroupLoop", void.class, MethodHandle.class, int.class, int.class);
-	private static void _filterLoop(MethodHandle work, int subiterations, int pop, int push, int iteration) throws Throwable {
-		for (int i = iteration*subiterations; i < (iteration+1)*subiterations; ++i)
+	private static final MethodHandle OVERALL_GROUP_LOOP = findStatic(LOOKUP, ActorGroup.class, "_overallGroupLoop", void.class, MethodHandle.class, int.class, int.class, int.class);
+	private static void _filterLoop(MethodHandle work, int iterations, int subiterations, int pop, int push, int firstIteration) throws Throwable {
+		for (int i = firstIteration*subiterations; i < (firstIteration+iterations)*subiterations; ++i)
 			work.invokeExact(i * pop, i * push);
 	}
-	private static void _splitterLoop(MethodHandle work, int subiterations, int pop, int[] writeIndices, int iteration) throws Throwable {
-		for (int i = iteration*subiterations; i < (iteration+1)*subiterations; ++i)
+	private static void _splitterLoop(MethodHandle work, int iterations, int subiterations, int pop, int[] writeIndices, int firstIteration) throws Throwable {
+		for (int i = firstIteration*subiterations; i < (firstIteration+iterations)*subiterations; ++i)
 			work.invokeExact(i * pop, writeIndices);
 	}
-	private static void _joinerLoop(MethodHandle work, int subiterations, int[] readIndices, int push, int iteration) throws Throwable {
-		for (int i = iteration*subiterations; i < (iteration+1)*subiterations; ++i)
+	private static void _joinerLoop(MethodHandle work, int iterations, int subiterations, int[] readIndices, int push, int firstIteration) throws Throwable {
+		for (int i = firstIteration*subiterations; i < (firstIteration+iterations)*subiterations; ++i)
 			work.invokeExact(readIndices, i * push);
 	}
 	private static void _reinitializeArrays(int[][] indexArrays) {
 		for (int i = 0; i < indexArrays.length; i += 2)
 			System.arraycopy(indexArrays[i], 0, indexArrays[i+1], 0, indexArrays[i].length);
 	}
-	private static void _overallGroupLoop(MethodHandle loopBody, int begin, int end) throws Throwable {
-		for (int i = begin; i < end; ++i)
+	private static void _overallGroupLoop(MethodHandle loopBody, int begin, int end, int increment) throws Throwable {
+		for (int i = begin; i < end; i += increment)
 			loopBody.invokeExact(i);
 	}
 
