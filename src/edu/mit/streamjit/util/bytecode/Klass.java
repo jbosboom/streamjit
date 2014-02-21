@@ -72,7 +72,7 @@ public final class Klass implements Accessible, Parented<Module> {
 	public Klass(String name, Klass superclass, List<Klass> interfaces, Module module) {
 		checkNotNull(name);
 		checkNotNull(module);
-		checkState(module.getKlass(name) == null, "klass named %s already in module");
+		checkState(module.getKlass(name) == null, "klass named %s already in module", name);
 		this.name = name;
 		this.modifiers = EnumSet.noneOf(Modifier.class);
 		this.superclass = superclass;
