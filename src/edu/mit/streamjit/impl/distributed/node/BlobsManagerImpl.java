@@ -129,7 +129,7 @@ public class BlobsManagerImpl implements BlobsManager {
 				minOutputBufCapaciy.keySet(), localTokens);
 
 		for (Token t : localTokens) {
-			int bufSize = (int) lcm(minInputBufCapaciy.get(t),
+			int bufSize = Math.max(minInputBufCapaciy.get(t),
 					minOutputBufCapaciy.get(t));
 			addBuffer(t, bufSize, bufferMapBuilder);
 		}
