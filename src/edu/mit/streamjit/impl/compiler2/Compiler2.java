@@ -1318,7 +1318,7 @@ public class Compiler2 {
 	 */
 	private static final class NopReadInstruction implements ReadInstruction {
 		private final Token token;
-		public NopReadInstruction(Token token) {
+		private NopReadInstruction(Token token) {
 			this.token = token;
 		}
 		@Override
@@ -1425,7 +1425,7 @@ public class Compiler2 {
 	 */
 	private static final class NopWriteInstruction implements WriteInstruction {
 		private final Token token;
-		public NopWriteInstruction(Token token) {
+		private NopWriteInstruction(Token token) {
 			this.token = token;
 		}
 		@Override
