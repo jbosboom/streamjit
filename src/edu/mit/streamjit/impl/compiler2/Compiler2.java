@@ -1343,6 +1343,7 @@ public class Compiler2 {
 		private final BulkReadableConcreteStorage storage;
 		private final int index, count;
 		private Buffer buffer;
+		private int written;
 		private BulkWriteInstruction(TokenActor a, BulkReadableConcreteStorage storage, int count) {
 			assert a.isOutput(): a;
 			this.token = a.token();
@@ -1362,8 +1363,12 @@ public class Compiler2 {
 			return ImmutableMap.of(token, count);
 		}
 		@Override
-		public void run() {
-			storage.bulkRead(buffer, index, count);
+		public Boolean call() {
+			written += storage.bulkRead(buffer, index + written, count);
+			if (written < count)
+				return false;
+			written = 0;
+			return true;
 		}
 	}
 
@@ -1376,6 +1381,7 @@ public class Compiler2 {
 		private final ConcreteStorage storage;
 		private final int count;
 		private Buffer buffer;
+		private int written;
 		private TokenWriteInstruction(TokenActor a, ConcreteStorage storage, int count) {
 			assert a.isOutput() : a;
 			this.token = a.token();
@@ -1395,7 +1401,7 @@ public class Compiler2 {
 			return ImmutableMap.of(token, count);
 		}
 		@Override
-		public void run() {
+		public Boolean call() {
 			Object[] data = new Object[count];
 			for (int i = 0; i < count; ++i) {
 				int idx;
@@ -1406,9 +1412,11 @@ public class Compiler2 {
 				}
 				data[i] = storage.read(idx);
 			}
-			for (int written = 0; written != data.length;) {
-				written += buffer.write(data, written, data.length-written);
-			}
+			written += buffer.write(data, written, data.length-written);
+			if (written < count)
+				return false;
+			written = 0;
+			return true;
 		}
 	}
 
@@ -1428,7 +1436,8 @@ public class Compiler2 {
 			return ImmutableMap.of(token, 0);
 		}
 		@Override
-		public void run() {
+		public Boolean call() {
+			return true;
 		}
 	}
 

@@ -90,15 +90,17 @@ public class CircularArrayConcreteStorage implements ConcreteStorage, BulkReadab
 	}
 
 	@Override
-	public void bulkRead(Buffer dest, int index, int count) {
+	public int bulkRead(Buffer dest, int index, int count) {
 		assert type().equals(Object.class);
 		index = index(capacity, head, index);
 		int countBeforeEnd = Math.min(count, capacity - index);
-		for (int written = 0; written < countBeforeEnd;)
-			written += dest.write((Object[])array, index + written, countBeforeEnd - written);
+		int written = dest.write((Object[])array, index, countBeforeEnd);
+		if (written != countBeforeEnd) //short write
+			return written;
+
 		int remaining = count - countBeforeEnd;
-		for (int written = 0; written < remaining;)
-			written += dest.write((Object[])array, written, remaining - written);
+		written += dest.write((Object[])array, 0, remaining);
+		return written; //short write or not, we're done
 	}
 
 	@Override

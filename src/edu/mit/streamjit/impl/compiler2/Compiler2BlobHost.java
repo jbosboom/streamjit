@@ -27,6 +27,7 @@ import java.lang.invoke.SwitchPoint;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -261,8 +262,7 @@ public class Compiler2BlobHost implements Blob {
 			throw ex;
 		}
 
-		for (WriteInstruction inst : initWriteInstructions)
-			inst.run();
+		doWrites(initWriteInstructions);
 
 		for (Runnable r : migrationInstructions)
 			r.run();
@@ -288,9 +288,7 @@ public class Compiler2BlobHost implements Blob {
 			++adjustCount;
 		}
 
-		for (WriteInstruction inst : writeInstructions) {
-			inst.run();
-		}
+		doWrites(writeInstructions);
 
 		for (MethodHandle h : storageAdjusts)
 			h.invokeExact();
@@ -299,6 +297,21 @@ public class Compiler2BlobHost implements Blob {
 
 		if (collectTimings)
 			adjustTime.stop();
+	}
+
+	/**
+	 * Handle short writes round-robin so other Blobs can make progress (thus
+	 * freeing up buffer space).
+	 * @param writes the write instructions to execute
+	 */
+	private static void doWrites(List<WriteInstruction> writeInstructions) {
+		List<WriteInstruction> writes = new ArrayList<>(writeInstructions);
+		while (!writes.isEmpty())
+			for (Iterator<WriteInstruction> it = writes.iterator(); it.hasNext();) {
+				WriteInstruction write = it.next();
+				if (write.call())
+					it.remove();
+			}
 	}
 
 	private void readOrDrain() {
@@ -400,9 +413,16 @@ public class Compiler2BlobHost implements Blob {
 		public Map<Token, Object[]> unload();
 	}
 
-	public static interface WriteInstruction extends Runnable {
+	public static interface WriteInstruction extends Callable<Boolean> {
 		public void init(Map<Token, Buffer> buffers);
 		public Map<Token, Integer> getMinimumBufferCapacity();
+		/**
+		 * Writes data items to the output Buffer.  Returns true if all data
+		 * items were written, or false if more writing is necessary.
+		 * @return true iff all data was written
+		 */
+		@Override
+		public Boolean call();
 	}
 
 	public static interface DrainInstruction extends Callable<Map<Token, Object[]>> {
