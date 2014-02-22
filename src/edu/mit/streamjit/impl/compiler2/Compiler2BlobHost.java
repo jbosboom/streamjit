@@ -21,6 +21,7 @@ import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.LookupUtils.findConstructor;
 import static edu.mit.streamjit.util.LookupUtils.findVirtual;
+import edu.mit.streamjit.util.NothrowCallable;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.SwitchPoint;
@@ -304,11 +305,11 @@ public class Compiler2BlobHost implements Blob {
 	 * freeing up buffer space).
 	 * @param writes the write instructions to execute
 	 */
-	private static void doWrites(List<WriteInstruction> writeInstructions) {
-		List<WriteInstruction> writes = new ArrayList<>(writeInstructions);
+	private static void doWrites(List<? extends NothrowCallable<Boolean>> writeInstructions) {
+		ArrayList<NothrowCallable<Boolean>> writes = new ArrayList<>(writeInstructions);
 		while (!writes.isEmpty())
-			for (Iterator<WriteInstruction> it = writes.iterator(); it.hasNext();) {
-				WriteInstruction write = it.next();
+			for (Iterator<NothrowCallable<Boolean>> it = writes.iterator(); it.hasNext();) {
+				NothrowCallable<Boolean> write = it.next();
 				if (write.call())
 					it.remove();
 			}
@@ -354,12 +355,20 @@ public class Compiler2BlobHost implements Blob {
 		}, data);
 		//We have to write our output; the interpreter won't do it for us.
 		Predicate<Token> isOutput = Predicates.in(getOutputs());
+		List<NothrowCallable<Boolean>> drainOps = new ArrayList<>();
 		for (Map.Entry<Token, List<Object>> e : Maps.filterKeys(mergedData, isOutput).entrySet()) {
-			Buffer b = buffers.get(e.getKey());
-			Object[] d = e.getValue().toArray();
-			for (int written = 0; written < d.length;)
-				written += b.write(d, written, d.length-written);
+			final Buffer b = buffers.get(e.getKey());
+			final Object[] d = e.getValue().toArray();
+			drainOps.add(new NothrowCallable<Boolean>() {
+				private int written = 0;
+				@Override
+				public Boolean call() {
+					written += b.write(d, written, d.length-written);
+					return written == d.length;
+				}
+			});
 		}
+		doWrites(drainOps);
 		DrainData forInterp = new DrainData(Maps.filterKeys(mergedData, Predicates.not(isOutput)),
 				ImmutableTable.<Integer, String, Object>of());
 
@@ -413,7 +422,7 @@ public class Compiler2BlobHost implements Blob {
 		public Map<Token, Object[]> unload();
 	}
 
-	public static interface WriteInstruction extends Callable<Boolean> {
+	public static interface WriteInstruction extends NothrowCallable<Boolean> {
 		public void init(Map<Token, Buffer> buffers);
 		public Map<Token, Integer> getMinimumBufferCapacity();
 		/**
@@ -425,7 +434,7 @@ public class Compiler2BlobHost implements Blob {
 		public Boolean call();
 	}
 
-	public static interface DrainInstruction extends Callable<Map<Token, Object[]>> {
+	public static interface DrainInstruction extends NothrowCallable<Map<Token, Object[]>> {
 		@Override
 		public Map<Token, Object[]> call();
 	}
