@@ -17,7 +17,7 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 	private static final MethodHandle ADJUST = findVirtual(LOOKUP, InternalArrayConcreteStorage.class, "adjust", void.class);;
 	private final Object array;
 	private final MethodHandle readHandle, writeHandle;
-	public InternalArrayConcreteStorage(Storage s, int capacity, int offset) {
+	public InternalArrayConcreteStorage(Storage s, int capacity) {
 		this.array = Array.newInstance(s.type(), capacity);
 		this.readHandle = MethodHandles.arrayElementGetter(array.getClass()).bindTo(array);
 		this.writeHandle = MethodHandles.arrayElementSetter(array.getClass()).bindTo(array);
@@ -74,7 +74,7 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {
-				return new InternalArrayConcreteStorage(storage, storage.steadyStateCapacity(), 0);
+				return new InternalArrayConcreteStorage(storage, storage.steadyStateCapacity());
 			}
 		};
 	}
