@@ -1,10 +1,13 @@
 package edu.mit.streamjit.impl.compiler;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import edu.mit.streamjit.util.ilpsolve.ILPSolver;
 import edu.mit.streamjit.util.ilpsolve.SolverException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -24,7 +27,7 @@ public final class Schedule<T> {
 		this.constraints = constraints;
 		this.schedule = schedule;
 	}
-	private static <T> Schedule<T> schedule(ImmutableSet<T> things, ImmutableSet<Constraint<T>> constraints, int multiplier) {
+	private static <T> Schedule<T> schedule(ImmutableSet<T> things, ImmutableSet<Constraint<T>> constraints, int multiplier, int fireCost, int excessBufferCost) {
 		ILPSolver solver = new ILPSolver();
 		//There's one variable for each thing, which represents the number of
 		//times it fires.  This uses the default bounds.  (TODO: perhaps a bound
@@ -35,9 +38,14 @@ public final class Schedule<T> {
 			variablesBuilder.put(thing, solver.newVariable(thing.toString()));
 		ImmutableMap<T, ILPSolver.Variable> variables = variablesBuilder.build();
 
+		HashMap<ILPSolver.Variable, Integer> sumOfConstraints = new HashMap<>();
+		for (ILPSolver.Variable v : variables.values())
+			sumOfConstraints.put(v, 0);
 		for (Constraint<T> constraint : constraints) {
-			ILPSolver.LinearExpr expr = variables.get(constraint.upstream).asLinearExpr(constraint.pushRate)
-					.minus(constraint.popRate, variables.get(constraint.downstream));
+			ILPSolver.Variable upstreamVar = variables.get(constraint.upstream),
+					downstreamVar = variables.get(constraint.downstream);
+			ILPSolver.LinearExpr expr = upstreamVar.asLinearExpr(constraint.pushRate)
+					.minus(constraint.popRate, downstreamVar);
 			switch (constraint.condition) {
 				case LESS_THAN_EQUAL:
 					solver.constrainAtMost(expr, constraint.bufferDelta);
@@ -51,6 +59,9 @@ public final class Schedule<T> {
 				default:
 					throw new AssertionError(constraint.condition);
 			}
+
+			sumOfConstraints.put(upstreamVar, sumOfConstraints.get(upstreamVar) + constraint.pushRate);
+			sumOfConstraints.put(downstreamVar, sumOfConstraints.get(downstreamVar) - constraint.popRate);
 		}
 
 		//Add a special constraint to ensure at least one filter fires.
@@ -61,10 +72,10 @@ public final class Schedule<T> {
 			totalFirings = totalFirings.plus(1, variablesIter.next());
 		solver.constrainAtLeast(totalFirings, 1);
 
-		//For now, just minimize the total filter firings.
-		//TODO: I think we'll want to minimize buffer sizes, or make some
-		//configurable (autotunable) tradeoff.
-		ILPSolver.ObjectiveFunction objFn = solver.minimize(totalFirings);
+		for (ILPSolver.Variable v : variables.values())
+			sumOfConstraints.put(v, sumOfConstraints.get(v) * excessBufferCost + fireCost);
+		ILPSolver.ObjectiveFunction objFn = solver.minimize(solver.newLinearExpr(
+			Maps.filterValues(sumOfConstraints, Predicates.not(Predicates.equalTo(0)))));
 
 		try {
 			solver.solve();
@@ -85,7 +96,7 @@ public final class Schedule<T> {
 	public static final class Builder<T> {
 		private final Set<T> things = new HashSet<>();
 		private final Set<Constraint<T>> constraints = new HashSet<>();
-		private int multiplier = 1;
+		private int multiplier = 1, fireCost = 1, excessBufferCost = 0;
 		private Builder() {}
 
 		public Builder<T> add(T thing) {
@@ -168,8 +179,16 @@ public final class Schedule<T> {
 			return this;
 		}
 
+		public Builder<T> costs(int fireCost, int excessBufferCost) {
+			checkArgument(fireCost >= 0, fireCost);
+			checkArgument(excessBufferCost >= 0, excessBufferCost);
+			this.fireCost = fireCost;
+			this.excessBufferCost = excessBufferCost;
+			return this;
+		}
+
 		public Schedule<T> build() {
-			return schedule(ImmutableSet.copyOf(things), ImmutableSet.copyOf(constraints), multiplier);
+			return schedule(ImmutableSet.copyOf(things), ImmutableSet.copyOf(constraints), multiplier, fireCost, excessBufferCost);
 		}
 
 		@Override

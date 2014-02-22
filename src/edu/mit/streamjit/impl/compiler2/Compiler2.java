@@ -356,6 +356,9 @@ public class Compiler2 {
 					.bufferAtLeast(throughput + excessPeeks - initialDataSize);
 		}
 
+		IntParameter initBufferingCostParam = config.getParameter("InitBufferingCost", IntParameter.class);
+		int initBufferCost = initBufferingCostParam.getValue(), fireCost = initBufferingCostParam.getMax() - initBufferCost;
+		scheduleBuilder.costs(fireCost, initBufferCost);
 		try {
 			Schedule<ActorGroup> schedule = scheduleBuilder.build();
 			this.initSchedule = schedule.getSchedule();

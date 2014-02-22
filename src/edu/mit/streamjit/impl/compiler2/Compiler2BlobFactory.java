@@ -48,6 +48,10 @@ public final class Compiler2BlobFactory implements BlobFactory {
 						1, 1024, 1));
 			}
 		builder.addParameter(Configuration.SwitchParameter.create("UseDoubleBuffers", false));
+		//Init scheduling trades off between firings during the init schedule
+		//and resulting extra buffering.  My ILP solver interface only supports
+		//int coefficients so this is discretized in units of 100.
+		builder.addParameter(new Configuration.IntParameter("InitBufferingCost", 0, 100, 100));
 		//TODO: this really belongs in BlobHostStreamCompiler, but we have to
 		//add it here or we won't pick it up in the default configuration.
 		Configuration.PermutationParameter<Integer> affinity = new Configuration.PermutationParameter<>("$affinity", Integer.class, Affinity.getMaximalAffinity());
