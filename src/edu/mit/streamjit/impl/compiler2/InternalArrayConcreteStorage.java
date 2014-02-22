@@ -1,10 +1,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
-import edu.mit.streamjit.util.Combinators;
-import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Array;
 
 /**
@@ -13,8 +10,6 @@ import java.lang.reflect.Array;
  * @since 10/10/2013
  */
 public class InternalArrayConcreteStorage implements ConcreteStorage {
-	private static final Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle ADJUST = findVirtual(LOOKUP, InternalArrayConcreteStorage.class, "adjust", void.class);;
 	private final Object array;
 	private final MethodHandle readHandle, writeHandle;
 	private InternalArrayConcreteStorage(Storage s, int capacity) {
