@@ -1504,14 +1504,8 @@ public class Compiler2 {
 	public Blob instantiateBlob() {
 		ImmutableSortedSet.Builder<Token> inputTokens = ImmutableSortedSet.naturalOrder(),
 				outputTokens = ImmutableSortedSet.naturalOrder();
-		ImmutableMap.Builder<Token, ConcreteStorage> tokenInitStorage = ImmutableMap.builder(),
-				tokenSteadyStateStorage = ImmutableMap.builder();
-		for (TokenActor ta : Iterables.filter(actors, TokenActor.class)) {
+		for (TokenActor ta : Iterables.filter(actors, TokenActor.class))
 			(ta.isInput() ? inputTokens : outputTokens).add(ta.token());
-			Storage s = ta.isInput() ? Iterables.getOnlyElement(ta.outputs()) : Iterables.getOnlyElement(ta.inputs());
-			tokenInitStorage.put(ta.token(), initStorage.get(s));
-			tokenSteadyStateStorage.put(ta.token(), steadyStateStorage.get(s));
-		}
 		ImmutableList.Builder<MethodHandle> storageAdjusts = ImmutableList.builder();
 		for (ConcreteStorage s : steadyStateStorage.values())
 			storageAdjusts.add(s.adjustHandle());
