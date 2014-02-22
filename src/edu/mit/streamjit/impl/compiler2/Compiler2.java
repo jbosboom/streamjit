@@ -815,10 +815,10 @@ public class Compiler2 {
 			}
 		});
 
-		this.initStorage = createStorage(false, new PeekPokeStorageFactory(MapConcreteStorage.initFactory()));
+		this.initStorage = createStorage(false, new PeekPokeStorageFactory(InternalArrayConcreteStorage.initFactory(initSchedule)));
 		initReadInstructions.add(new InitDataReadInstruction(initStorage, initialStateDataMap));
 
-		ImmutableMap<Storage, ConcreteStorage> internalStorage = createStorage(true, MapConcreteStorage.initFactory());
+		ImmutableMap<Storage, ConcreteStorage> internalStorage = createStorage(true, InternalArrayConcreteStorage.initFactory(initSchedule));
 		IndexFunctionTransformer ift = new IdentityIndexFunctionTransformer();
 		ImmutableTable.Builder<Actor, Integer, IndexFunctionTransformer> inputTransformers = ImmutableTable.builder(),
 				outputTransformers = ImmutableTable.builder();

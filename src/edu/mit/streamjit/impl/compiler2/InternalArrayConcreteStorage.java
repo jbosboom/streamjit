@@ -1,8 +1,10 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.collect.ImmutableSortedSet;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Array;
+import java.util.Map;
 
 /**
  * A ConcreteStorage backed by an array.  For internal storage only.
@@ -70,6 +72,17 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 			@Override
 			public ConcreteStorage make(Storage storage) {
 				return new InternalArrayConcreteStorage(storage, storage.steadyStateCapacity());
+			}
+		};
+	}
+
+	public static StorageFactory initFactory(final Map<ActorGroup, Integer> initSchedule) {
+		return new StorageFactory() {
+			@Override
+			public ConcreteStorage make(Storage storage) {
+				ImmutableSortedSet<Integer> writeIndices = storage.writeIndices(initSchedule);
+				return new InternalArrayConcreteStorage(storage, writeIndices.isEmpty() ? 0 :
+						writeIndices.last() - writeIndices.first() + 1);
 			}
 		};
 	}
