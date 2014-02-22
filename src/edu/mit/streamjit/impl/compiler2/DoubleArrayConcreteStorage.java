@@ -6,7 +6,6 @@ import com.google.common.collect.Maps;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.LookupUtils.findGetter;
-import static edu.mit.streamjit.util.LookupUtils.findStatic;
 import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -20,7 +19,7 @@ import java.util.Map;
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 10/10/2013
  */
-public class DoubleArrayConcreteStorage implements ConcreteStorage {//, BulkReadableConcreteStorage, BulkWritableConcreteStorage {
+public class DoubleArrayConcreteStorage implements ConcreteStorage, BulkReadableConcreteStorage, BulkWritableConcreteStorage {
 	private static final Lookup LOOKUP = MethodHandles.lookup();
 	private static final MethodHandle ADJUST = findVirtual(LOOKUP, DoubleArrayConcreteStorage.class, "adjust", void.class);;
 	private static final MethodHandle READ_ARRAY_GETTER = findGetter(LOOKUP, DoubleArrayConcreteStorage.class, "readArray", Object.class);
@@ -73,7 +72,6 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage {//, BulkRead
 
 	@Override
 	public void write(int index, Object data) {
-//		System.out.println(String.format("write(%d, %s)", index, data));
 		try {
 			//Pretend the read and write arrays are contiguous.
 			index -= readOffset;
@@ -112,32 +110,32 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage {//, BulkRead
 		return adjustHandle;
 	}
 
-//	@Override
-//	public int bulkRead(Buffer dest, int index, int count) {
-//		assert type().equals(Object.class);
-//		index = index(capacity, head, index);
-//		int countBeforeEnd = Math.min(count, capacity - index);
-//		int written = dest.write((Object[])array, index, countBeforeEnd);
-//		if (written != countBeforeEnd) //short write
-//			return written;
-//
-//		int remaining = count - countBeforeEnd;
-//		written += dest.write((Object[])array, 0, remaining);
-//		return written; //short write or not, we're done
-//	}
-//
-//	@Override
-//	public void bulkWrite(Buffer source, int index, int count) {
-//		assert type().equals(Object.class);
-//		index = index(capacity, head, index);
-//		int countBeforeEnd = Math.min(count, capacity - index);
-//		int itemsRead = source.read((Object[])array, index, countBeforeEnd);
-//		assert itemsRead == countBeforeEnd;
-//		int remaining = count - itemsRead;
-//		int secondItemsRead = source.read((Object[])array, 0, remaining);
-//		assert secondItemsRead == remaining;
-//		assert itemsRead + secondItemsRead == count;
-//	}
+	@Override
+	public int bulkRead(Buffer dest, int index, int count) {
+		assert type().equals(Object.class);
+		index -= readOffset;
+		int countBeforeEnd = Math.min(count, throughput - index);
+		int written = dest.write((Object[])readArray, index, countBeforeEnd);
+		if (written != countBeforeEnd) //short write
+			return written;
+
+		int remaining = count - countBeforeEnd;
+		written += dest.write((Object[])readArray, 0, remaining);
+		return written; //short write or not, we're done
+	}
+
+	@Override
+	public void bulkWrite(Buffer source, int index, int count) {
+		assert type().equals(Object.class);
+		index -= readOffset + throughput;
+		int countBeforeEnd = Math.min(count, throughput - index);
+		int itemsRead = source.read((Object[])writeArray, index, countBeforeEnd);
+		assert itemsRead == countBeforeEnd;
+		int remaining = count - itemsRead;
+		int secondItemsRead = source.read((Object[])writeArray, 0, remaining);
+		assert secondItemsRead == remaining;
+		assert itemsRead + secondItemsRead == count;
+	}
 
 	public static StorageFactory factory() {
 		return new StorageFactory() {
