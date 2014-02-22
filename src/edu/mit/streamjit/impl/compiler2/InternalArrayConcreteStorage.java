@@ -19,13 +19,8 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 	private final MethodHandle readHandle, writeHandle;
 	public InternalArrayConcreteStorage(Storage s, int capacity, int offset) {
 		this.array = Array.newInstance(s.type(), capacity);
-		MethodHandle subOffset = Combinators.sub(MethodHandles.identity(int.class), offset);
-		this.readHandle = MethodHandles.filterArguments(
-				MethodHandles.arrayElementGetter(array.getClass()).bindTo(array),
-				0, subOffset);
-		this.writeHandle = MethodHandles.filterArguments(
-				MethodHandles.arrayElementSetter(array.getClass()).bindTo(array),
-				0, subOffset);
+		this.readHandle = MethodHandles.arrayElementGetter(array.getClass()).bindTo(array);
+		this.writeHandle = MethodHandles.arrayElementSetter(array.getClass()).bindTo(array);
 	}
 
 	@Override

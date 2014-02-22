@@ -51,6 +51,7 @@ import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
+import edu.mit.streamjit.util.CollectionUtils;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.LookupUtils.findStatic;
 import edu.mit.streamjit.util.Pair;
@@ -814,9 +815,10 @@ public class Compiler2 {
 			}
 		});
 
-		this.initStorage = createExternalStorage(new PeekPokeStorageFactory(MapConcreteStorage.initFactory()));
+		this.initStorage = createStorage(false, new PeekPokeStorageFactory(MapConcreteStorage.initFactory()));
 		initReadInstructions.add(new InitDataReadInstruction(initStorage, initialStateDataMap));
 
+		ImmutableMap<Storage, ConcreteStorage> internalStorage = createStorage(true, MapConcreteStorage.initFactory());
 		IndexFunctionTransformer ift = new IdentityIndexFunctionTransformer();
 		ImmutableTable.Builder<Actor, Integer, IndexFunctionTransformer> inputTransformers = ImmutableTable.builder(),
 				outputTransformers = ImmutableTable.builder();
@@ -836,7 +838,7 @@ public class Compiler2 {
 		 * time we build the token init schedule information required by the
 		 * blob host.
 		 */
-		Core initCore = new Core(storage, initStorage, MapConcreteStorage.initFactory(), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".init"));
+		Core initCore = new Core(CollectionUtils.union(initStorage, internalStorage), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".init"));
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
@@ -876,7 +878,8 @@ public class Compiler2 {
 
 		for (Storage s : storage)
 			s.computeSteadyStateRequirements(externalSchedule);
-		this.steadyStateStorage = createExternalStorage(new PeekPokeStorageFactory(CircularArrayConcreteStorage.factory()));
+		this.steadyStateStorage = createStorage(false, new PeekPokeStorageFactory(CircularArrayConcreteStorage.factory()));
+		ImmutableMap<Storage, ConcreteStorage> internalStorage = createStorage(true, InternalArrayConcreteStorage.factory());
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
 		for (int i = 0; i < maxNumCores; ++i) {
@@ -902,7 +905,7 @@ public class Compiler2 {
 				unrollFactors.put(g, param.getValue());
 			}
 
-			ssCores.add(new Core(storage, steadyStateStorage, InternalArrayConcreteStorage.factory(), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".steadystate.")));
+			ssCores.add(new Core(CollectionUtils.union(steadyStateStorage, internalStorage), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".steadystate.")));
 		}
 
 		for (ActorGroup g : groups)
@@ -1080,10 +1083,10 @@ public class Compiler2 {
 	}
 	//</editor-fold>
 
-	private ImmutableMap<Storage, ConcreteStorage> createExternalStorage(StorageFactory factory) {
+	private ImmutableMap<Storage, ConcreteStorage> createStorage(boolean internal, StorageFactory factory) {
 		ImmutableMap.Builder<Storage, ConcreteStorage> builder = ImmutableMap.builder();
 		for (Storage s : storage)
-			if (!s.isInternal())
+			if (s.isInternal() == internal)
 				builder.put(s, factory.make(s));
 		return builder.build();
 	}
