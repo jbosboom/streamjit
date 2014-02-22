@@ -878,7 +878,14 @@ public class Compiler2 {
 
 		for (Storage s : storage)
 			s.computeSteadyStateRequirements(externalSchedule);
-		this.steadyStateStorage = createStorage(false, new PeekPokeStorageFactory(CircularArrayConcreteStorage.factory()));
+		this.steadyStateStorage = createStorage(false, new PeekPokeStorageFactory(new StorageFactory() {
+			@Override
+			public ConcreteStorage make(Storage storage) {
+				if (storage.steadyStateCapacity() == 2*storage.throughput())
+					return DoubleArrayConcreteStorage.factory().make(storage);
+				return CircularArrayConcreteStorage.factory().make(storage);
+			}
+		}));
 		ImmutableMap<Storage, ConcreteStorage> internalStorage = createStorage(true, InternalArrayConcreteStorage.factory());
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
