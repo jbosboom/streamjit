@@ -47,6 +47,7 @@ public final class Compiler2BlobFactory implements BlobFactory {
 				builder.addParameter(new Configuration.IntParameter(String.format("UnrollCore%dGroup%d", i, id),
 						1, 1024, 1));
 			}
+		builder.addParameter(Configuration.SwitchParameter.create("UseDoubleBuffers", false));
 		//TODO: this really belongs in BlobHostStreamCompiler, but we have to
 		//add it here or we won't pick it up in the default configuration.
 		Configuration.PermutationParameter<Integer> affinity = new Configuration.PermutationParameter<>("$affinity", Integer.class, Affinity.getMaximalAffinity());

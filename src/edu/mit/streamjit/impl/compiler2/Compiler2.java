@@ -878,10 +878,12 @@ public class Compiler2 {
 
 		for (Storage s : storage)
 			s.computeSteadyStateRequirements(externalSchedule);
+		final SwitchParameter<Boolean> useDoubleBuffersParam = config.getParameter("UseDoubleBuffers", SwitchParameter.class, Boolean.class);
 		this.steadyStateStorage = createStorage(false, new PeekPokeStorageFactory(new StorageFactory() {
+			private final boolean useDoubleBuffers = useDoubleBuffersParam.getValue();
 			@Override
 			public ConcreteStorage make(Storage storage) {
-				if (storage.steadyStateCapacity() == 2*storage.throughput())
+				if (useDoubleBuffers && storage.steadyStateCapacity() == 2*storage.throughput())
 					return DoubleArrayConcreteStorage.factory().make(storage);
 				return CircularArrayConcreteStorage.factory().make(storage);
 			}
