@@ -157,6 +157,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder) {
 		// TODO: Just to increase the performance. Change it later
 		int bufSize = Math.max(1000, minSize);
+		System.out.println("Buffer size of " + t.toString() + " is " + bufSize);
 		bufferMapBuilder.put(t, new ConcurrentArrayBuffer(bufSize));
 	}
 
@@ -274,6 +275,8 @@ public class BlobsManagerImpl implements BlobsManager {
 
 			for (Thread t : blobThreads)
 				t.start();
+
+			System.out.println(blobID + " started");
 		}
 
 		private void stop() {
