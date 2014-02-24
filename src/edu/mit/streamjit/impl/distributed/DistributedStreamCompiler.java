@@ -140,6 +140,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 						.println("No matching between parameters in the read configuration and parameters in the default configuration");
 				return null;
 			}
+			this.cfg = cfg1;
 		}
 
 		if (cfg == null) {
