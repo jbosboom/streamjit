@@ -145,6 +145,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 					return null;
 				}
 			}
+			System.out.println("All blobs have been created");
 			return blobSet.build();
 		} else
 			return null;
