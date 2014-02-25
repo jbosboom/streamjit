@@ -131,6 +131,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * the given iterations
 	 */
 	public ImmutableSortedSet<Integer> peeks(int input, Set<Integer> iterations) {
+		if (iterations.isEmpty()) return ImmutableSortedSet.of();
 		if (iterations instanceof ContiguousSet)
 			return peeks(input, (ContiguousSet<Integer>)iterations);
 		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
@@ -187,6 +188,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * iterations
 	 */
 	public ImmutableSortedSet<Integer> pops(int input, Set<Integer> iterations) {
+		if (iterations.isEmpty()) return ImmutableSortedSet.of();
 		if (iterations instanceof ContiguousSet)
 			return pops(input, (ContiguousSet<Integer>)iterations);
 		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
@@ -204,6 +206,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * iterations
 	 */
 	public ContiguousSet<Integer> pops(int input, ContiguousSet<Integer> iterations) {
+		if (iterations.isEmpty()) return ContiguousSet.create(Range.closed(0, 0), DiscreteDomain.integers());
 		return ContiguousSet.create(Range.closedOpen(iterations.first() * pop(input), (iterations.last() + 1) * pop(input)), DiscreteDomain.integers());
 	}
 
@@ -240,6 +243,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * iterations
 	 */
 	public ImmutableSortedSet<Integer> pushes(int output, Set<Integer> iterations) {
+		if (iterations.isEmpty()) return ImmutableSortedSet.of();
 		if (iterations instanceof ContiguousSet)
 			return pushes(output, (ContiguousSet<Integer>)iterations);
 		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
@@ -257,6 +261,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * iterations
 	 */
 	public ContiguousSet<Integer> pushes(int output, ContiguousSet<Integer> iterations) {
+		if (iterations.isEmpty()) return ContiguousSet.create(Range.closed(0, 0), DiscreteDomain.integers());
 		return ContiguousSet.create(Range.closedOpen(iterations.first() * push(output), (iterations.last() + 1) * push(output)), DiscreteDomain.integers());
 	}
 
