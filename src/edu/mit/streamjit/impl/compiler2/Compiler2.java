@@ -811,12 +811,12 @@ public class Compiler2 {
 	}
 
 	private void createInitCode() {
-		ImmutableMap<Actor, ImmutableList<MethodHandle>> indexFxnBackup = adjustOutputIndexFunctions(new Function<Storage, Set<Integer>>() {
-			@Override
-			public Set<Integer> apply(Storage input) {
-				return input.indicesLiveBeforeInit();
-			}
-		});
+//		ImmutableMap<Actor, ImmutableList<MethodHandle>> indexFxnBackup = adjustOutputIndexFunctions(new Function<Storage, Set<Integer>>() {
+//			@Override
+//			public Set<Integer> apply(Storage input) {
+//				return input.indicesLiveBeforeInit();
+//			}
+//		});
 
 		this.initStorage = createStorage(false, new PeekPokeStorageFactory(InternalArrayConcreteStorage.initFactory(initSchedule)));
 		initReadInstructions.add(new InitDataReadInstruction(initStorage, initialStateDataMap));
@@ -858,7 +858,7 @@ public class Compiler2 {
 			}
 		this.initCode = initCore.code();
 
-		restoreOutputIndexFunctions(indexFxnBackup);
+//		restoreOutputIndexFunctions(indexFxnBackup);
 	}
 
 	private void createSteadyStateCode() {
