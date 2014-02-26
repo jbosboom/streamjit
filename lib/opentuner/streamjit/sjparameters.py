@@ -142,6 +142,7 @@ class sjCompositionParameter(ArrayParameter):
 	def remove_core(self, config):
 		"""Zero a core, equally distributing its value among other nonzero cores."""
 		nonzeroes = self.nonzeroes(config)
+		assert len(nonzeroes) >= 2
 		victim = random.choice(nonzeroes)
 		v = victim.get_value(config)
 		victim.set_value(config, 0.0)
