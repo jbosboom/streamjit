@@ -30,7 +30,7 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 		try {
 			return readHandle.invoke(index);
 		} catch (Throwable ex) {
-			throw new AssertionError(ex);
+			throw new AssertionError(String.format("%s.read(%d, %s)", this, index), ex);
 		}
 	}
 
@@ -39,13 +39,13 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 		try {
 			writeHandle.invoke(index, data);
 		} catch (Throwable ex) {
-			throw new AssertionError(ex);
+			throw new AssertionError(String.format("%s.write(%d, %s)", this, index, data), ex);
 		}
 	}
 
 	@Override
 	public void adjust() {
-		throw new AssertionError("don't adjust "+getClass().getSimpleName());
+		throw new AssertionError(String.format("unadjustable! %s.adjust()", this));
 	}
 
 	@Override

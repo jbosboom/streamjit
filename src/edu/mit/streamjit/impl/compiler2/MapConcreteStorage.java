@@ -60,7 +60,7 @@ public final class MapConcreteStorage implements ConcreteStorage {
 		try {
 			return readHandle().invoke(index);
 		} catch (Throwable ex) {
-			throw new AssertionError(ex);
+			throw new AssertionError(String.format("%s.read(%d, %s)", this, index), ex);
 		}
 	}
 
@@ -69,7 +69,7 @@ public final class MapConcreteStorage implements ConcreteStorage {
 		try {
 			writeHandle().invoke(index, data);
 		} catch (Throwable ex) {
-			throw new AssertionError(ex);
+			throw new AssertionError(String.format("%s.write(%d, %s)", this, index, data), ex);
 		}
 	}
 

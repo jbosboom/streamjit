@@ -43,13 +43,13 @@ public final class PeekableBufferConcreteStorage implements ConcreteStorage {
 		try {
 			return readHandle.invoke(index);
 		} catch (Throwable ex) {
-			throw new AssertionError(ex);
+			throw new AssertionError(String.format("%s.read(%d, %s)", this, index), ex);
 		}
 	}
 
 	@Override
 	public void write(int index, Object data) {
-		throw new UnsupportedOperationException("read-only");
+		throw new AssertionError(String.format("read-only! %s.write(%d, %s)", this, index, data));
 	}
 
 	@Override
@@ -57,7 +57,7 @@ public final class PeekableBufferConcreteStorage implements ConcreteStorage {
 		try {
 			adjustHandle.invokeExact();
 		} catch (Throwable ex) {
-			throw new AssertionError(ex);
+			throw new AssertionError(String.format("%s.adjust()", this), ex);
 		}
 	}
 

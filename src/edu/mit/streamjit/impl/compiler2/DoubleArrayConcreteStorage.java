@@ -66,7 +66,7 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage, BulkReadable
 		try {
 			return readHandle.invoke(index);
 		} catch (Throwable ex) {
-			throw new AssertionError(ex);
+			throw new AssertionError(String.format("%s.read(%d, %s)", this, index), ex);
 		}
 	}
 
@@ -80,7 +80,7 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage, BulkReadable
 			else
 				Array.set(writeArray, index-throughput, data);
 		} catch (Throwable ex) {
-			throw new AssertionError(String.format("write(%d, %s)", index, data), ex);
+			throw new AssertionError(String.format("%s.write(%d, %s)", this, index, data), ex);
 		}
 	}
 
