@@ -19,8 +19,8 @@ import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 public class HeadChannel extends TCPOutputChannel {
 
 	public HeadChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName, int debugPrint) {
-		super(buffer, conProvider, conInfo, bufferTokenName, debugPrint);
+			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
+		super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
 	}
 
 	protected void fillUnprocessedData() {

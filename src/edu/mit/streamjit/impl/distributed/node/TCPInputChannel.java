@@ -36,7 +36,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private final FileWriter writer;
 
-	private final int debugPrint;
+	private final int debugLevel;
 
 	private final Buffer buffer;
 
@@ -61,12 +61,12 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	private ImmutableList<Object> unProcessedData;
 
 	public TCPInputChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName, int debugPrint) {
+			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this.buffer = buffer;
 		this.conProvider = conProvider;
 		this.conInfo = conInfo;
 		this.name = "TCPInputChannel - " + bufferTokenName;
-		this.debugPrint = debugPrint;
+		this.debugLevel = debugLevel;
 		this.softClosed = false;
 		this.extraBuffer = null;
 		this.unProcessedData = null;
@@ -75,7 +75,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		count = 0;
 
 		FileWriter w = null;
-		if (this.debugPrint == 5) {
+		if (this.debugLevel == 5) {
 			try {
 				w = new FileWriter(name, true);
 				w.write("---------------------------------\n");
@@ -147,7 +147,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			Object obj = tcpConnection.readObject();
 			count++;
 
-			if (debugPrint == 3) {
+			if (debugLevel == 3) {
 				System.out.println(Thread.currentThread().getName() + " - "
 						+ obj.toString());
 			}
@@ -158,7 +158,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			}
 
 			while (!this.buffer.write(obj)) {
-				if (debugPrint == 3) {
+				if (debugLevel == 3) {
 					System.out.println(Thread.currentThread().getName()
 							+ " Buffer FULL - " + obj.toString());
 				}
@@ -186,7 +186,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				}
 			}
 
-			if (count % 1000 == 0 && debugPrint == 2) {
+			if (count % 1000 == 0 && debugLevel == 2) {
 				System.out.println(Thread.currentThread().getName() + " - "
 						+ count + " no of items have been received");
 			}
@@ -230,7 +230,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				Object obj = tcpConnection.readObject();
 				count++;
 
-				if (debugPrint == 2) {
+				if (debugLevel == 2) {
 					System.out.println(Thread.currentThread().getName()
 							+ " finalReceive - " + obj.toString());
 				}
@@ -243,7 +243,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				hasData = true;
 
 				while (!buffer.write(obj)) {
-					if (debugPrint == 3) {
+					if (debugLevel == 3) {
 						System.out.println(Thread.currentThread().getName()
 								+ " finalReceive:Buffer FULL - "
 								+ obj.toString());
@@ -276,7 +276,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 					}
 				}
 
-				if (count % 1000 == 0 && debugPrint == 2) {
+				if (count % 1000 == 0 && debugLevel == 2) {
 					System.out.println(Thread.currentThread().getName() + " - "
 							+ count + " no of items have been received");
 				}
