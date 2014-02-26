@@ -94,16 +94,20 @@ class CrossSocketBeforeHyperthreadingAffinity(BestBasedTechnique):
 				param._set(data, new_perm)
 		return data
 
-# The default bandit, plus our custom techniques.
-from opentuner.search import bandittechniques, differentialevolution, evolutionarytechniques, simplextechniques
-technique.register(bandittechniques.AUCBanditMetaTechnique([
-		differentialevolution.DifferentialEvolutionAlt(),
-		evolutionarytechniques.UniformGreedyMutation(),
-		evolutionarytechniques.NormalGreedyMutation(mutation_rate=0.3),
-		simplextechniques.RandomNelderMead(),
-		ForceRemove(),
-		ForceFuse(),
-		ForceUnbox(),
-		ForceEqualDivision(),
-		CrossSocketBeforeHyperthreadingAffinity(),
-	], name = "StreamJITBandit"))
+# returns a list of fixed configurations in sequence
+class FixedTechnique(technique.SearchTechnique):
+	def __init__(self, config_data_list, *pargs, **kwargs):
+		super(FixedTechnique, self).__init__(*pargs, **kwargs)
+		self.config_data_list = config_data_list
+		self.index = 0
+
+	def desired_configuration(self):
+		# OpenTuner should do this for us?!
+		if not self.is_ready():
+			return None
+		cfg = self.driver.get_configuration(self.config_data_list[self.index])
+		self.index = self.index + 1
+		return cfg
+
+	def is_ready(self):
+		return self.index < len(self.config_data_list)

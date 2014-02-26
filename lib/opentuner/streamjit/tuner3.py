@@ -133,6 +133,36 @@ if __name__ == '__main__':
 	for p in cfg.getAllParameters().values() + jvm_options.values():
 		manipulator.add_parameter(p)
 
+	# create seed configurations
+	seed_multipliers = [128, 256, 512, 1024]
+	seed_configs = []
+	for m in seed_multipliers:
+		seed_config = manipulator.seed_config()
+		for p in cfg.getAllParameters().values() + jvm_options.values():
+			if isinstance(p, sjparameters.sjCompositionParameter):
+				p.equal_division(seed_config)
+			elif isinstance(p, sjparameters.sjPermutationParameter):
+				pass #p.set_value(config, p.seed_value())
+			else:
+				seed_config[p.name] = p.value
+		seed_config['multiplier'] = m
+		seed_configs.append(seed_config)
+
+	# The default bandit, plus our custom techniques.
+	from opentuner.search import technique, bandittechniques, differentialevolution, evolutionarytechniques, simplextechniques
+	technique.register(bandittechniques.AUCBanditMetaTechnique([
+			sjtechniques.FixedTechnique(seed_configs),
+			differentialevolution.DifferentialEvolutionAlt(),
+			evolutionarytechniques.UniformGreedyMutation(),
+			evolutionarytechniques.NormalGreedyMutation(mutation_rate=0.3),
+			simplextechniques.RandomNelderMead(),
+			sjtechniques.ForceRemove(),
+			sjtechniques.ForceFuse(),
+			sjtechniques.ForceUnbox(),
+			sjtechniques.ForceEqualDivision(),
+			sjtechniques.CrossSocketBeforeHyperthreadingAffinity(),
+		], name = "StreamJITBandit"))
+
 	mi = StreamJITMI(args, cfg, jvm_options, manipulator, FixedInputManager(), MinimizeTime())
 	m = TuningRunMain(mi, args)
 	m.main()
