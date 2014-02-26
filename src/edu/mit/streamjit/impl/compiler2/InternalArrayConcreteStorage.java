@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.collect.ImmutableSortedSet;
+import edu.mit.streamjit.util.LookupUtils;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Array;
@@ -12,12 +13,31 @@ import java.util.Map;
  * @since 10/10/2013
  */
 public class InternalArrayConcreteStorage implements ConcreteStorage {
+	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+	private static final MethodHandle READ_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, InternalArrayConcreteStorage.class, "readExceptionHandler", void.class, String.class, IndexOutOfBoundsException.class, int.class);
+	private static final MethodHandle WRITE_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, InternalArrayConcreteStorage.class, "writeExceptionHandler", void.class, String.class, IndexOutOfBoundsException.class, int.class, Object.class);
 	private final Object array;
 	private final MethodHandle readHandle, writeHandle;
 	private InternalArrayConcreteStorage(Storage s, int capacity) {
 		this.array = Array.newInstance(s.type(), capacity);
-		this.readHandle = MethodHandles.arrayElementGetter(array.getClass()).bindTo(array);
-		this.writeHandle = MethodHandles.arrayElementSetter(array.getClass()).bindTo(array);
+		int ssc, throughput;
+		try {
+			ssc = s.steadyStateCapacity();
+			throughput = s.throughput();
+		} catch (IllegalStateException ex) {
+			ssc = throughput = -1;
+		}
+		String storageInfo = String.format("%s, capacity %d, throughput %d, arraylength %d%nupstream: %s%ndownstream: %s",
+				s.id(), ssc, throughput, Array.getLength(this.array),
+				s.upstreamGroups(),
+				s.downstreamGroups());
+
+		MethodHandle arrayGetter = MethodHandles.arrayElementGetter(array.getClass()).bindTo(array);
+		this.readHandle = MethodHandles.catchException(arrayGetter, IndexOutOfBoundsException.class,
+				READ_EXCEPTION_HANDLER.bindTo(storageInfo).asType(arrayGetter.type().insertParameterTypes(0, IndexOutOfBoundsException.class)));
+		MethodHandle arraySetter = MethodHandles.arrayElementSetter(array.getClass()).bindTo(array);
+		this.writeHandle = MethodHandles.catchException(arraySetter, IndexOutOfBoundsException.class,
+				WRITE_EXCEPTION_HANDLER.bindTo(storageInfo).asType(arraySetter.type().insertParameterTypes(0, IndexOutOfBoundsException.class)));
 	}
 
 	@Override
@@ -65,6 +85,14 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 	@Override
 	public MethodHandle adjustHandle() {
 		throw new AssertionError("don't adjust "+getClass().getSimpleName());
+	}
+
+	private static void readExceptionHandler(String storageInfo, IndexOutOfBoundsException ex, int index) {
+		throw new AssertionError("reading "+index+": "+storageInfo, ex);
+	}
+
+	private static void writeExceptionHandler(String storageInfo, IndexOutOfBoundsException ex, int index, Object data) {
+		throw new AssertionError("writing "+data+" at "+index+": "+storageInfo, ex);
 	}
 
 	public static StorageFactory factory() {
