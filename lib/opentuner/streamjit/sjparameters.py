@@ -133,6 +133,7 @@ class sjCompositionParameter(ArrayParameter):
 
 	def add_core(self, config):
 		"""Take a fraction of each non-zero core and move it to a zero core."""
+		self.normalize(config)
 		nonzeroes = self.nonzeroes(config)
 		fraction = 1.0/(len(nonzeroes) + 1)
 		random.choice(self.zeroes(config)).set_value(config, fraction)
@@ -141,8 +142,8 @@ class sjCompositionParameter(ArrayParameter):
 
 	def remove_core(self, config):
 		"""Zero a core, equally distributing its value among other nonzero cores."""
+		self.normalize(config)
 		nonzeroes = self.nonzeroes(config)
-		assert len(nonzeroes) >= 2
 		victim = random.choice(nonzeroes)
 		v = victim.get_value(config)
 		victim.set_value(config, 0.0)
