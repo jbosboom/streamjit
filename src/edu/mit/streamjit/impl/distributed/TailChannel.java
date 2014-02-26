@@ -25,9 +25,9 @@ public class TailChannel extends TCPInputChannel {
 	private performanceLogger pLogger = null;
 
 	public TailChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName, int debugPrint,
+			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel,
 			int limit) {
-		super(buffer, conProvider, conInfo, bufferTokenName, debugPrint);
+		super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
 		this.limit = limit;
 		count = 0;
 		latch = new CountDownLatch(1);

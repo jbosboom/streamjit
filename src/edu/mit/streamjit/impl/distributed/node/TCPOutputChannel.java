@@ -29,7 +29,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	FileWriter writer;
 
-	private final int debugPrint;
+	private final int debugLevel;
 
 	private final Buffer buffer;
 
@@ -50,19 +50,19 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 	protected ImmutableList<Object> unProcessedData;
 
 	public TCPOutputChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName, int debugPrint) {
+			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this.buffer = buffer;
 		this.conProvider = conProvider;
 		this.conInfo = conInfo;
 		this.stopFlag = new AtomicBoolean(false);
 		this.isFinal = false;
 		this.name = "TCPOutputChannel - " + bufferTokenName;
-		this.debugPrint = debugPrint;
+		this.debugLevel = debugLevel;
 		this.unProcessedData = null;
 		count = 0;
 
 		FileWriter w = null;
-		if (this.debugPrint == 5) {
+		if (this.debugLevel == 5) {
 			try {
 				w = new FileWriter(name, true);
 				w.write("---------------------------------\n");
@@ -120,7 +120,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 					}
 				}
 
-				if (debugPrint > 0) {
+				if (debugLevel > 0) {
 					System.err.println(Thread.currentThread().getName()
 							+ " - Exiting...");
 					System.out.println("isFinal " + isFinal);
@@ -137,7 +137,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 				tcpConnection.writeObject(obj);
 				count++;
 
-				if (debugPrint == 3) {
+				if (debugLevel == 3) {
 					System.out.println(Thread.currentThread().getName() + " - "
 							+ obj.toString());
 				}
@@ -151,7 +151,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 						.println("TCP Output Channel. WriteObject exception.");
 				reConnect();
 			}
-			if (count % 1000 == 0 && debugPrint == 2) {
+			if (count % 1000 == 0 && debugLevel == 2) {
 				System.out.println(Thread.currentThread().getName() + " - "
 						+ count + " items have been sent");
 			}
@@ -165,7 +165,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	@Override
 	public final void stop(boolean isFinal) {
-		if (debugPrint > 0)
+		if (debugLevel > 0)
 			System.out.println(Thread.currentThread().getName()
 					+ " - stop request");
 		this.isFinal = isFinal;
@@ -183,7 +183,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 				tcpConnection.writeObject(o);
 				count++;
 
-				if (debugPrint == 3) {
+				if (debugLevel == 3) {
 					System.out.println(Thread.currentThread().getName()
 							+ " FinalSend - " + o.toString());
 				}
@@ -196,7 +196,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 			} catch (IOException e) {
 				System.err.println("TCP Output Channel. finalSend exception.");
 			}
-			if (count % 1000 == 0 && debugPrint == 2) {
+			if (count % 1000 == 0 && debugLevel == 2) {
 				System.out.println(Thread.currentThread().getName()
 						+ " FinalSend - " + count
 						+ " no of items have been sent");
