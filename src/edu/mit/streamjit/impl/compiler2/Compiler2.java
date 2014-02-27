@@ -886,7 +886,10 @@ public class Compiler2 {
 			private final boolean useDoubleBuffers = useDoubleBuffersParam.getValue();
 			@Override
 			public ConcreteStorage make(Storage storage) {
-				if (useDoubleBuffers && storage.steadyStateCapacity() == 2*storage.throughput())
+				if (useDoubleBuffers
+						&& storage.steadyStateCapacity() == 2*storage.throughput() //no leftover data
+						&& storage.isFullyExternal() //no reads of writes before adjust
+						)
 					return DoubleArrayConcreteStorage.factory().make(storage);
 				return CircularArrayConcreteStorage.factory().make(storage);
 			}

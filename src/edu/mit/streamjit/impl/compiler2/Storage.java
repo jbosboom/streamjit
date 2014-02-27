@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
+import com.google.common.collect.Sets;
 import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.util.Pair;
@@ -124,6 +125,26 @@ public final class Storage implements Comparable<Storage> {
 			if (a.group() != g)
 				return false;
 		return true;
+	}
+
+	/**
+	 * Returns true if this Storage is external; that is, more than one
+	 * ActorGroup reads or writes it.  (Note that an ActorGroup may still both
+	 * read and write an external storage if there is another group that reads
+	 * or writes it.)
+	 * @return true iff this Storage is external
+	 */
+	public boolean isExternal() {
+		return !isInternal();
+	}
+
+	/**
+	 * Returns true if this Storage is fully external; that is, all connected
+	 * ActorGroups either read xor write.
+	 * @return true iff this Storage is fully external
+	 */
+	public boolean isFullyExternal() {
+		return Sets.intersection(upstreamGroups(), downstreamGroups()).isEmpty();
 	}
 
 	public List<Pair<ImmutableList<Object>, MethodHandle>> initialData() {
