@@ -428,7 +428,9 @@ public class Compiler2 {
 							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), Sin));
 						}
 				}
-				//TODO: victim initial data
+
+				for (Pair<ImmutableList<Object>, MethodHandle> item : victim.initialData())
+					survivor.initialData().add(new Pair<>(item.first, MethodHandles.filterReturnValue(item.second, t)));
 				storage.remove(victim);
 			}
 
