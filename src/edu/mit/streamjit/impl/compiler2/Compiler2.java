@@ -1065,6 +1065,7 @@ public class Compiler2 {
 		for (Actor a : actors) {
 			backup.put(a, ImmutableList.copyOf(a.outputIndexFunctions()));
 			for (int i = 0; i < a.outputs().size(); ++i) {
+				if (a.push(i) == 0) continue; //No writes -- nothing to adjust.
 				Storage s = a.outputs().get(i);
 				if (s.isInternal())
 					continue;
