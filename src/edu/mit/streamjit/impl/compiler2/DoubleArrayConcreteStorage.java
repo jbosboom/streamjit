@@ -3,37 +3,37 @@ package edu.mit.streamjit.impl.compiler2;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
-import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.util.Combinators;
 import static edu.mit.streamjit.util.LookupUtils.findGetter;
 import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
-import java.lang.invoke.MethodType;
-import java.lang.reflect.Array;
 import java.util.Map;
 
 /**
- * A ConcreteStorage backed by double-buffered arrays.
+ * A ConcreteStorage backed by double-buffered storage.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 10/10/2013
  */
-public class DoubleArrayConcreteStorage implements ConcreteStorage, BulkReadableConcreteStorage, BulkWritableConcreteStorage {
+public class DoubleArrayConcreteStorage implements ConcreteStorage {
 	private static final Lookup LOOKUP = MethodHandles.lookup();
 	private static final MethodHandle ADJUST = findVirtual(LOOKUP, DoubleArrayConcreteStorage.class, "adjust", void.class);;
-	private static final MethodHandle READ_ARRAY_GETTER = findGetter(LOOKUP, DoubleArrayConcreteStorage.class, "readArray", Object.class);
-	private static final MethodHandle WRITE_ARRAY_GETTER = findGetter(LOOKUP, DoubleArrayConcreteStorage.class, "writeArray", Object.class);
-	private Object readArray, writeArray;
+	private static final MethodHandle STATE_GETTER = findGetter(LOOKUP, DoubleArrayConcreteStorage.class, "state", boolean.class);
+	private final Arrayish readArray, writeArray;
+	/**
+	 * If true, read from readArray, else writeArray, and resp. for writes.
+	 */
+	private boolean state = true;
 	private final int capacity, throughput, readOffset;
 	private final MethodHandle readHandle, writeHandle, adjustHandle;
-	public DoubleArrayConcreteStorage(Storage s) {
+	public DoubleArrayConcreteStorage(Arrayish.Factory arrayFactory, Storage s) {
 		this.capacity = s.steadyStateCapacity();
 		assert capacity > 0 : s + " has capacity "+capacity;
 		this.throughput = s.throughput();
 		assert capacity == 2*throughput : "can't double buffer "+s;
-		this.readArray = Array.newInstance(s.type(), throughput);
-		this.writeArray = Array.newInstance(s.type(), throughput);
+		this.readArray = arrayFactory.make(s.type(), throughput);
+		this.writeArray = arrayFactory.make(s.type(), throughput);
 
 		ImmutableSet<ActorGroup> relevantGroups = ImmutableSet.<ActorGroup>builder().addAll(s.upstreamGroups()).addAll(s.downstreamGroups()).build();
 		Map<ActorGroup, Integer> oneMap = Maps.asMap(relevantGroups, new Function<ActorGroup, Integer>() {
@@ -45,20 +45,17 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage, BulkReadable
 		this.readOffset = s.readIndices(oneMap).first();
 		int writeOffset = s.writeIndices(oneMap).first();
 
-		MethodHandle arrayGetter = MethodHandles.arrayElementGetter(readArray.getClass());
-		MethodHandle arraySetter = MethodHandles.arrayElementSetter(writeArray.getClass());
-		MethodHandle readArrayGetter = READ_ARRAY_GETTER.bindTo(this).asType(MethodType.methodType(readArray.getClass()));
-		MethodHandle writeArrayGetter = WRITE_ARRAY_GETTER.bindTo(this).asType(MethodType.methodType(writeArray.getClass()));
-		this.readHandle = MethodHandles.filterArguments(MethodHandles.foldArguments(arrayGetter, readArrayGetter),
+		MethodHandle stateGetter = STATE_GETTER.bindTo(this);
+		this.readHandle = MethodHandles.filterArguments(MethodHandles.guardWithTest(stateGetter, readArray.get(), writeArray.get()),
 				0, Combinators.sub(MethodHandles.identity(int.class), readOffset));
-		this.writeHandle = MethodHandles.filterArguments(MethodHandles.foldArguments(arraySetter, writeArrayGetter),
+		this.writeHandle = MethodHandles.filterArguments(MethodHandles.guardWithTest(stateGetter, writeArray.set(), readArray.set()),
 				0, Combinators.sub(MethodHandles.identity(int.class), writeOffset));
 		this.adjustHandle = ADJUST.bindTo(this);
 	}
 
 	@Override
 	public Class<?> type() {
-		return readArray.getClass().getComponentType();
+		return readArray.type();
 	}
 
 	@Override
@@ -76,9 +73,9 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage, BulkReadable
 			//Pretend the read and write arrays are contiguous.
 			index -= readOffset;
 			if (index < throughput)
-				Array.set(readArray, index, data);
+				(state ? readArray : writeArray).set().invoke(index, data);
 			else
-				Array.set(writeArray, index-throughput, data);
+				(state ? writeArray : readArray).set().invoke(index-throughput, data);
 		} catch (Throwable ex) {
 			throw new AssertionError(String.format("%s.write(%d, %s)", this, index, data), ex);
 		}
@@ -86,9 +83,8 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage, BulkReadable
 
 	@Override
 	public void adjust() {
-		Object t = readArray;
-		readArray = writeArray;
-		writeArray = t;
+		//state != state doesn't work, heh.
+		state = !state;
 	}
 
 	@Override
@@ -110,40 +106,13 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage, BulkReadable
 		return adjustHandle;
 	}
 
-	@Override
-	public int bulkRead(Buffer dest, int index, int count) {
-		assert type().equals(Object.class);
-		index -= readOffset;
-		int countBeforeEnd = Math.min(count, throughput - index);
-		int written = dest.write((Object[])readArray, index, countBeforeEnd);
-		if (written != countBeforeEnd) //short write
-			return written;
-
-		int remaining = count - countBeforeEnd;
-		written += dest.write((Object[])readArray, 0, remaining);
-		return written; //short write or not, we're done
-	}
-
-	@Override
-	public void bulkWrite(Buffer source, int index, int count) {
-		assert type().equals(Object.class);
-		index -= readOffset + throughput;
-		int countBeforeEnd = Math.min(count, throughput - index);
-		int itemsRead = source.read((Object[])writeArray, index, countBeforeEnd);
-		assert itemsRead == countBeforeEnd;
-		int remaining = count - itemsRead;
-		int secondItemsRead = source.read((Object[])writeArray, 0, remaining);
-		assert secondItemsRead == remaining;
-		assert itemsRead + secondItemsRead == count;
-	}
-
 	public static StorageFactory factory() {
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {
 				if (storage.steadyStateCapacity() == 0)
 					return new EmptyConcreteStorage(storage);
-				return new DoubleArrayConcreteStorage(storage);
+				return new DoubleArrayConcreteStorage(Arrayish.ArrayArrayish.factory(), storage);
 			}
 		};
 	}
