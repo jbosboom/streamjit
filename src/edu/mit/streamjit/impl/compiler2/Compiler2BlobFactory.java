@@ -49,7 +49,6 @@ public final class Compiler2BlobFactory implements BlobFactory {
 				builder.addParameter(new Configuration.IntParameter(String.format("UnrollCore%dGroup%d", i, id),
 						1, 1024, 1));
 			}
-		builder.addParameter(Configuration.SwitchParameter.create("UseDoubleBuffers", false));
 		//Init scheduling trades off between firings during the init schedule
 		//and resulting extra buffering.  My ILP solver interface only supports
 		//int coefficients so this is discretized in units of 100.
