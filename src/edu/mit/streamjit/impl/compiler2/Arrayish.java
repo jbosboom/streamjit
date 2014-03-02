@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static edu.mit.streamjit.util.LookupUtils.findGetter;
 import static edu.mit.streamjit.util.LookupUtils.findStatic;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -151,11 +152,7 @@ public interface Arrayish {
 	}
 
 	/**
-	 * An Arrayish of primitives backed by native memory.  The returned handles
-	 * do not keep a strong reference to this object, so something else must do
-	 * so to prevent the native memory from being freed while it's still used.
-	 * (In Compiler2, Read/Write/DrainInstructions that reference
-	 * ConcreteStorage serve this function.)
+	 * An Arrayish of primitives backed by native memory.
 	 */
 	public static final class UnsafeArrayish implements Arrayish {
 		private static final sun.misc.Unsafe UNSAFE;
@@ -168,6 +165,7 @@ public interface Arrayish {
 				throw new AssertionError(ex);
 			}
 		}
+		private static final MethodHandle MEMORY_GETTER = findGetter(MethodHandles.lookup(), UnsafeArrayish.class, "memory", long.class);
 		private static final MethodHandle INDEX = findStatic(MethodHandles.lookup(), UnsafeArrayish.class, "index", long.class, long.class, int.class, int.class);
 		private final long memory;
 		private final int size;
@@ -182,7 +180,8 @@ public interface Arrayish {
 			Class<?> dataType = type.equals(boolean.class) ? byte.class : type;
 			String dataTypeNameCap = dataType.getSimpleName().substring(0, 1).toUpperCase(Locale.ROOT)
 					+ dataType.getSimpleName().substring(1);
-			MethodHandle index = MethodHandles.insertArguments(INDEX, 0, memory, PrimitiveUtils.sizeof(dataType));
+			MethodHandle index = MethodHandles.foldArguments(INDEX, MEMORY_GETTER.bindTo(this));
+			index = MethodHandles.insertArguments(index, 0, PrimitiveUtils.sizeof(dataType));
 			//explicitCastArguments converts byte to boolean and back; otherwise
 			//the types exactly match and the target is returned immediately.
 			this.get = MethodHandles.explicitCastArguments(
