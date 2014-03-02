@@ -19,6 +19,8 @@ public final class StandardInternalStorageStrategy implements StorageStrategy {
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {
+				if (storage.steadyStateCapacity() == 0)
+					return new EmptyConcreteStorage(storage);
 				Arrayish array = new Arrayish.ArrayArrayish(storage.type(), storage.steadyStateCapacity());
 				return new InternalArrayConcreteStorage(array, storage);
 			}
