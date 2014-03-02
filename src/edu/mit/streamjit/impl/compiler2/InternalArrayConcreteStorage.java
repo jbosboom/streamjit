@@ -19,7 +19,7 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 	private static final MethodHandle WRITE_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, InternalArrayConcreteStorage.class, "writeExceptionHandler", void.class, String.class, IndexOutOfBoundsException.class, int.class, Object.class);
 	private final Arrayish array;
 	private final MethodHandle readHandle, writeHandle;
-	private InternalArrayConcreteStorage(Arrayish array, Storage s) {
+	public InternalArrayConcreteStorage(Arrayish array, Storage s) {
 		this.array = array;
 		int ssc, throughput;
 		try {

@@ -93,6 +93,8 @@ public class Compiler2 {
 	public static final FusionStrategy FUSION_STRATEGY = new BitsetFusionStrategy();
 	public static final UnboxingStrategy UNBOXING_STRATEGY = new BitsetUnboxingStrategy();
 	public static final AllocationStrategy ALLOCATION_STRATEGY = new CompositionAllocationStrategy(8);
+	public static final StorageStrategy INTERNAL_STORAGE_STRATEGY = new StandardInternalStorageStrategy();
+	public static final StorageStrategy EXTERNAL_STORAGE_STRATEGY = new StandardExternalStorageStrategy();
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
@@ -885,20 +887,8 @@ public class Compiler2 {
 
 		for (Storage s : storage)
 			s.computeSteadyStateRequirements(externalSchedule);
-		final SwitchParameter<Boolean> useDoubleBuffersParam = config.getParameter("UseDoubleBuffers", SwitchParameter.class, Boolean.class);
-		this.steadyStateStorage = createStorage(false, new PeekPokeStorageFactory(new StorageFactory() {
-			private final boolean useDoubleBuffers = useDoubleBuffersParam.getValue();
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				if (useDoubleBuffers
-						&& storage.steadyStateCapacity() == 2*storage.throughput() //no leftover data
-						&& storage.isFullyExternal() //no reads of writes before adjust
-						)
-					return DoubleArrayConcreteStorage.factory().make(storage);
-				return CircularArrayConcreteStorage.factory().make(storage);
-			}
-		}));
-		ImmutableMap<Storage, ConcreteStorage> internalStorage = createStorage(true, InternalArrayConcreteStorage.factory());
+		this.steadyStateStorage = createStorage(false, new PeekPokeStorageFactory(EXTERNAL_STORAGE_STRATEGY.asFactory(config)));
+		ImmutableMap<Storage, ConcreteStorage> internalStorage = createStorage(true, INTERNAL_STORAGE_STRATEGY.asFactory(config));
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
 		for (int i = 0; i < maxNumCores; ++i) {

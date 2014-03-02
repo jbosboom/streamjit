@@ -31,6 +31,8 @@ public final class Compiler2BlobFactory implements BlobFactory {
 		Compiler2.FUSION_STRATEGY.makeParameters(workers, builder);
 		Compiler2.UNBOXING_STRATEGY.makeParameters(workers, builder);
 		Compiler2.ALLOCATION_STRATEGY.makeParameters(workers, builder);
+		Compiler2.INTERNAL_STORAGE_STRATEGY.makeParameters(workers, builder);
+		Compiler2.EXTERNAL_STORAGE_STRATEGY.makeParameters(workers, builder);
 		for (Worker<?, ?> w : workers)
 			for (int i = 0; i < Compiler2.ALLOCATION_STRATEGY.maxNumCores(); ++i) {
 				List<String> names = new ArrayList<>();
