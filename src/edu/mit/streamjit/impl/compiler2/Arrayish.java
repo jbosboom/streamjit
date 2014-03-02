@@ -77,6 +77,14 @@ public interface Arrayish {
 				public Arrayish make(Class<?> type, int size) {
 					return new ArrayArrayish(type, size);
 				}
+				@Override
+				public boolean equals(Object obj) {
+					return getClass().equals(obj.getClass());
+				}
+				@Override
+				public int hashCode() {
+					return 0;
+				}
 			};
 		}
 	}
@@ -129,6 +137,14 @@ public interface Arrayish {
 				@Override
 				public Arrayish make(Class<?> type, int size) {
 					return new NIOArrayish(type, size);
+				}
+				@Override
+				public boolean equals(Object obj) {
+					return getClass().equals(obj.getClass());
+				}
+				@Override
+				public int hashCode() {
+					return 0;
 				}
 			};
 		}
@@ -212,6 +228,14 @@ public interface Arrayish {
 				@Override
 				public Arrayish make(Class<?> type, int size) {
 					return new UnsafeArrayish(type, size);
+				}
+				@Override
+				public boolean equals(Object obj) {
+					return getClass().equals(obj.getClass());
+				}
+				@Override
+				public int hashCode() {
+					return 0;
 				}
 			};
 		}
