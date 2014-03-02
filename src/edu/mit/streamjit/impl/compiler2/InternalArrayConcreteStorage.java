@@ -4,11 +4,12 @@ import com.google.common.collect.ImmutableSortedSet;
 import edu.mit.streamjit.util.LookupUtils;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Array;
 import java.util.Map;
 
 /**
- * A ConcreteStorage backed by an array.  For internal storage only.
+ * A ConcreteStorage implementation directly addressing its underlying storage
+ * and that cannot be adjusted.  As its name suggests, this is most useful for
+ * internal storage, where adjusts are not necessary.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 10/10/2013
  */
@@ -16,10 +17,10 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final MethodHandle READ_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, InternalArrayConcreteStorage.class, "readExceptionHandler", void.class, String.class, IndexOutOfBoundsException.class, int.class);
 	private static final MethodHandle WRITE_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, InternalArrayConcreteStorage.class, "writeExceptionHandler", void.class, String.class, IndexOutOfBoundsException.class, int.class, Object.class);
-	private final Object array;
+	private final Arrayish array;
 	private final MethodHandle readHandle, writeHandle;
-	private InternalArrayConcreteStorage(Storage s, int capacity) {
-		this.array = Array.newInstance(s.type(), capacity);
+	private InternalArrayConcreteStorage(Arrayish array, Storage s) {
+		this.array = array;
 		int ssc, throughput;
 		try {
 			ssc = s.steadyStateCapacity();
@@ -28,21 +29,19 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 			ssc = throughput = -1;
 		}
 		String storageInfo = String.format("%s, capacity %d, throughput %d, arraylength %d%nupstream: %s%ndownstream: %s",
-				s.id(), ssc, throughput, Array.getLength(this.array),
+				s.id(), ssc, throughput, this.array.size(),
 				s.upstreamGroups(),
 				s.downstreamGroups());
 
-		MethodHandle arrayGetter = MethodHandles.arrayElementGetter(array.getClass()).bindTo(array);
-		this.readHandle = MethodHandles.catchException(arrayGetter, IndexOutOfBoundsException.class,
-				READ_EXCEPTION_HANDLER.bindTo(storageInfo).asType(arrayGetter.type().insertParameterTypes(0, IndexOutOfBoundsException.class)));
-		MethodHandle arraySetter = MethodHandles.arrayElementSetter(array.getClass()).bindTo(array);
-		this.writeHandle = MethodHandles.catchException(arraySetter, IndexOutOfBoundsException.class,
-				WRITE_EXCEPTION_HANDLER.bindTo(storageInfo).asType(arraySetter.type().insertParameterTypes(0, IndexOutOfBoundsException.class)));
+		this.readHandle = MethodHandles.catchException(array.get(), IndexOutOfBoundsException.class,
+				READ_EXCEPTION_HANDLER.bindTo(storageInfo).asType(array.get().type().insertParameterTypes(0, IndexOutOfBoundsException.class)));
+		this.writeHandle = MethodHandles.catchException(array.set(), IndexOutOfBoundsException.class,
+				WRITE_EXCEPTION_HANDLER.bindTo(storageInfo).asType(array.set().type().insertParameterTypes(0, IndexOutOfBoundsException.class)));
 	}
 
 	@Override
 	public Class<?> type() {
-		return array.getClass().getComponentType();
+		return array.type();
 	}
 
 	@Override
@@ -99,7 +98,8 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {
-				return new InternalArrayConcreteStorage(storage, storage.steadyStateCapacity());
+				Arrayish array = new Arrayish.ArrayArrayish(storage.type(), storage.steadyStateCapacity());
+				return new InternalArrayConcreteStorage(array, storage);
 			}
 		};
 	}
@@ -109,8 +109,10 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 			@Override
 			public ConcreteStorage make(Storage storage) {
 				ImmutableSortedSet<Integer> writeIndices = storage.writeIndices(initSchedule);
-				return new InternalArrayConcreteStorage(storage, writeIndices.isEmpty() ? 0 :
-						writeIndices.last() - writeIndices.first() + 1);
+				int capacity = writeIndices.isEmpty() ? 0 :
+						writeIndices.last() - writeIndices.first() + 1;
+				Arrayish array = new Arrayish.ArrayArrayish(storage.type(), capacity);
+				return new InternalArrayConcreteStorage(array, storage);
 			}
 		};
 	}
