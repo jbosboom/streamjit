@@ -21,8 +21,6 @@ import java.util.Locale;
  * @since 2/28/2014
  */
 public interface Arrayish {
-	public static final MethodHandle GET = findVirtual(MethodHandles.publicLookup(), Arrayish.class, "get", Object.class, int.class);
-	public static final MethodHandle SET = findVirtual(MethodHandles.publicLookup(), Arrayish.class, "set", void.class, int.class, Object.class);
 	public Class<?> type();
 	public int size();
 	/**
