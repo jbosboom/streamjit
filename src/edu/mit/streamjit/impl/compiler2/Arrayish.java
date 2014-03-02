@@ -12,7 +12,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.util.Locale;
-import sun.misc.Unsafe;
 
 /**
  * An array-ish object; that is, storage for items of a given type (and its
@@ -122,7 +121,7 @@ public interface Arrayish {
 			try {
 				Field f = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
 				f.setAccessible(true);
-				UNSAFE = (Unsafe)f.get(null);
+				UNSAFE = (sun.misc.Unsafe)f.get(null);
 			} catch (NoSuchFieldException | IllegalAccessException ex) {
 				throw new AssertionError(ex);
 			}
@@ -146,13 +145,13 @@ public interface Arrayish {
 			//the types exactly match and the target is returned immediately.
 			this.get = MethodHandles.explicitCastArguments(
 					MethodHandles.filterArguments(
-							findVirtual(MethodHandles.publicLookup(), sun.misc.Unsafe.class, "get" + dataTypeNameCap, dataType, long.class)
+							findVirtual(MethodHandles.publicLookup(), UNSAFE.getClass(), "get" + dataTypeNameCap, dataType, long.class)
 									.bindTo(UNSAFE),
 							0, index),
 					MethodType.methodType(type, int.class));
 			this.set = MethodHandles.explicitCastArguments(
 					MethodHandles.filterArguments(
-							findVirtual(MethodHandles.publicLookup(), sun.misc.Unsafe.class, "put" + dataTypeNameCap, void.class, long.class, dataType)
+							findVirtual(MethodHandles.publicLookup(), UNSAFE.getClass(), "put" + dataTypeNameCap, void.class, long.class, dataType)
 									.bindTo(UNSAFE),
 							0, index),
 					MethodType.methodType(void.class, int.class, type));
