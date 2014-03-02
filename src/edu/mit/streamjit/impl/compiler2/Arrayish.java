@@ -74,7 +74,7 @@ public interface Arrayish {
 		private final int size;
 		private final MethodHandle get, set;
 		public NIOArrayish(Class<?> type, int size) {
-			checkArgument(type.isPrimitive() && !type.equals(void.class), "%s can't be stored in an NIO buffer");
+			checkArgument(type.isPrimitive() && !type.equals(void.class), "%s can't be stored in an NIO buffer", type);
 			Class<?> dataType = type.equals(boolean.class) ? byte.class : type;
 			Class<? extends Buffer> bufferType = NIOBufferUtils.bufferForPrimitive(dataType);
 			this.buffer = NIOBufferUtils.allocateDirect(bufferType, size);
@@ -133,7 +133,7 @@ public interface Arrayish {
 		private final MethodHandle get, set;
 		public UnsafeArrayish(Class<?> type, int size) {
 			//We can't store object references for lack of GC roots.
-			checkArgument(type.isPrimitive() && !type.equals(void.class), "%s can't be stored in native memory");
+			checkArgument(type.isPrimitive() && !type.equals(void.class), "%s can't be stored in native memory", type);
 			checkArgument(size >= 0, "bad size: %s", size);
 			this.memory = UNSAFE.allocateMemory(size * PrimitiveUtils.sizeof(type));
 			this.size = size;
