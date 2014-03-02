@@ -1107,12 +1107,15 @@ public class Compiler2 {
 	 */
 	private final class PeekPokeStorageFactory implements StorageFactory {
 		private final StorageFactory fallback;
+		private final boolean usePeekableBuffer;
 		private PeekPokeStorageFactory(StorageFactory fallback) {
 			this.fallback = fallback;
+			SwitchParameter<Boolean> usePeekableBufferParam = config.getParameter("UsePeekableBuffer", SwitchParameter.class, Boolean.class);
+			this.usePeekableBuffer = usePeekableBufferParam.getValue();
 		}
 		@Override
 		public ConcreteStorage make(Storage storage) {
-			if (storage.id().isOverallInput() && overallInputBuffer instanceof PeekableBuffer)
+			if (storage.id().isOverallInput() && overallInputBuffer instanceof PeekableBuffer && usePeekableBuffer)
 				return PeekableBufferConcreteStorage.factory(ImmutableMap.of(storage.id(), (PeekableBuffer)overallInputBuffer)).make(storage);
 			//TODO: PokeableBuffer
 			return fallback.make(storage);
