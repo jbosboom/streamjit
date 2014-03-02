@@ -7,6 +7,7 @@ import java.lang.invoke.MethodHandles;
 import static edu.mit.streamjit.util.LookupUtils.findVirtual;
 import edu.mit.streamjit.util.NIOBufferUtils;
 import edu.mit.streamjit.util.PrimitiveUtils;
+import java.io.Serializable;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -36,6 +37,15 @@ public interface Arrayish {
 	public MethodHandle set();
 
 	/**
+	 * A Factory for Arrayish objects.
+	 *
+	 * TODO: Java 8: can probably be replaced with constructor references.
+	 */
+	public interface Factory extends Serializable {
+		public Arrayish make(Class<?> type, int size);
+	}
+
+	/**
 	 * An Arrayish backed by an actual Java array.
 	 */
 	public static final class ArrayArrayish implements Arrayish {
@@ -61,6 +71,15 @@ public interface Arrayish {
 		@Override
 		public MethodHandle set() {
 			return set;
+		}
+		public static Factory factory() {
+			return new Factory() {
+				private static final long serialVersionUID = 1L;
+				@Override
+				public Arrayish make(Class<?> type, int size) {
+					return new ArrayArrayish(type, size);
+				}
+			};
 		}
 	}
 
@@ -105,6 +124,15 @@ public interface Arrayish {
 		@Override
 		public MethodHandle set() {
 			return set;
+		}
+		public static Factory factory() {
+			return new Factory() {
+				private static final long serialVersionUID = 1L;
+				@Override
+				public Arrayish make(Class<?> type, int size) {
+					return new NIOArrayish(type, size);
+				}
+			};
 		}
 	}
 
@@ -179,6 +207,15 @@ public interface Arrayish {
 		protected void finalize() throws Throwable {
 			super.finalize();
 			UNSAFE.freeMemory(memory);
+		}
+		public static Factory factory() {
+			return new Factory() {
+				private static final long serialVersionUID = 1L;
+				@Override
+				public Arrayish make(Class<?> type, int size) {
+					return new UnsafeArrayish(type, size);
+				}
+			};
 		}
 	}
 }
