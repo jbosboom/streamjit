@@ -935,6 +935,10 @@ public class Compiler2 {
 		for (Core c : ssCores)
 			if (!c.isEmpty())
 				steadyStateCodeBuilder.add(c.code());
+		//Provide at least one core of code, even if it doesn't do anything; the
+		//blob host will still copy inputs to outputs.
+		if (steadyStateCodeBuilder.build().isEmpty())
+			steadyStateCodeBuilder.add(Combinators.nop());
 		this.steadyStateCode = steadyStateCodeBuilder.build();
 
 		createMigrationInstructions();
