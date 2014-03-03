@@ -133,6 +133,62 @@ public final class Datasets {
 		});
 	}
 
+	private static final class InfiniteBufferBuffer extends AbstractReadOnlyBuffer implements PeekableBuffer {
+		private final PeekableBuffer buffer;
+		private final int bufferSize;
+		private int index;
+		private InfiniteBufferBuffer(PeekableBuffer buffer) {
+			this.buffer = buffer;
+			this.bufferSize = buffer.size();
+		}
+		@Override
+		public Object read() {
+			Object ret = peek(0);
+			increment(1);
+			return ret;
+		}
+		@Override
+		public int size() {
+			return Integer.MAX_VALUE;
+		}
+		@Override
+		public Object peek(int index) {
+			return buffer.peek((this.index + index) % bufferSize);
+		}
+		@Override
+		public void consume(int items) {
+			increment(items);
+		}
+		private void increment(int items) {
+			index = (index + items) % bufferSize;
+		}
+	}
+
+	public static <I> Input<I> cycle(final Input<I> input) {
+		return InputBufferFactory.wrap(new InputBufferFactory() {
+			@Override
+			public Buffer createReadableBuffer(final int readerMinSize) {
+				final Buffer firstBuffer = InputBufferFactory.unwrap(input).createReadableBuffer(readerMinSize);
+				if (firstBuffer instanceof PeekableBuffer)
+					return new InfiniteBufferBuffer((PeekableBuffer)firstBuffer);
+				return new AbstractReadOnlyBuffer() {
+					private Buffer currentBuffer = firstBuffer;
+					@Override
+					public Object read() {
+						if (currentBuffer.size() == 0)
+							currentBuffer = InputBufferFactory.unwrap(input).createReadableBuffer(readerMinSize);
+						return currentBuffer.read();
+					}
+
+					@Override
+					public int size() {
+						return Integer.MAX_VALUE;
+					}
+				};
+			}
+		});
+	}
+
 	public static <I> Input<I> limit(final int n, final Input<I> input) {
 		return InputBufferFactory.wrap(new InputBufferFactory() {
 			@Override
