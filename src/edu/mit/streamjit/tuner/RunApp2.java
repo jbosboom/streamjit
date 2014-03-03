@@ -32,7 +32,7 @@ public final class RunApp2 {
 			cfg = Configuration.fromJson(args[0]);
 		Benchmark bm = Benchmarker.getBenchmarkByName((String)cfg.getExtraData("benchmark"));
 		//TODO: we should be passing the StreamCompiler somewhere (also extra data?)
-		StreamCompiler sc = new Compiler2StreamCompiler().configuration(cfg);
+		StreamCompiler sc = new Compiler2StreamCompiler().configuration(cfg).reportThroughput();
 
 		long time = -1;
 		try {

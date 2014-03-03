@@ -25,6 +25,7 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 	private int multiplier = 1;
 	private Path dumpFile;
 	private boolean timings = false;
+	private boolean throughput = false;
 	public Compiler2StreamCompiler() {
 		super(new Compiler2BlobFactory());
 	}
@@ -61,6 +62,11 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 		return this;
 	}
 
+	public Compiler2StreamCompiler reportThroughput() {
+		this.throughput = true;
+		return this;
+	}
+
 	@Override
 	protected final int getMaxNumCores() {
 		return maxNumCores;
@@ -68,8 +74,12 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 
 	@Override
 	protected final Configuration getConfiguration(Set<Worker<?, ?>> workers) {
-		if (config != null)
-			return config;
+		if (config != null) {
+			Configuration.Builder builder = Configuration.builder(config);
+			builder.putExtraData("reportThroughput", throughput);
+			return builder.build();
+		}
+
 		Configuration defaultConfiguration = super.getConfiguration(workers);
 		if (randomSeed != -1)
 			return Configuration.randomize(defaultConfiguration, new Random(randomSeed));
@@ -81,6 +91,7 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 		if (dumpFile != null)
 			builder.putExtraData("dumpFile", dumpFile);
 		builder.putExtraData("timings", timings);
+		builder.putExtraData("reportThroughput", throughput);
 		return builder.build();
 	}
 

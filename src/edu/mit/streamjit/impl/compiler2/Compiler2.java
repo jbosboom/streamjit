@@ -73,6 +73,7 @@ import java.util.NavigableSet;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -917,6 +918,7 @@ public class Compiler2 {
 			ssCores.add(new Core(CollectionUtils.union(steadyStateStorage, internalStorage), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".steadystate.")));
 		}
 
+		int throughputPerSteadyState = 0;
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				ALLOCATION_STRATEGY.allocateGroup(g, Range.closedOpen(0, externalSchedule.get(g)), ssCores, config);
@@ -928,8 +930,10 @@ public class Compiler2 {
 				int executions = externalSchedule.get(g);
 				if (ta.isInput())
 					readInstructions.add(makeReadInstruction(ta, storage, executions));
-				else
+				else {
 					writeInstructions.add(makeWriteInstruction(ta, storage, executions));
+					throughputPerSteadyState += executions;
+				}
 			}
 		ImmutableList.Builder<MethodHandle> steadyStateCodeBuilder = ImmutableList.builder();
 		for (Core c : ssCores)
@@ -943,6 +947,13 @@ public class Compiler2 {
 
 		createMigrationInstructions();
 		createDrainInstructions();
+
+		Boolean reportThroughput = (Boolean)config.getExtraData("reportThroughput");
+		if (reportThroughput != null && reportThroughput) {
+			ReportThroughputInstruction rti = new ReportThroughputInstruction(throughputPerSteadyState);
+			readInstructions.add(rti);
+			writeInstructions.add(rti);
+		}
 	}
 
 	private ReadInstruction makeReadInstruction(TokenActor a, ConcreteStorage cs, int count) {
@@ -1510,6 +1521,50 @@ public class Compiler2 {
 			for (Map.Entry<Token, ImmutableList<Object>> e : initialStateDataMap.entrySet())
 				r.put(e.getKey(), e.getValue().toArray());
 			return r;
+		}
+	}
+
+	private static final class ReportThroughputInstruction implements ReadInstruction, WriteInstruction {
+		private static final long WARMUP_NANOS = TimeUnit.NANOSECONDS.convert(10, TimeUnit.SECONDS);
+		private static final long TIMING_NANOS = TimeUnit.NANOSECONDS.convert(30, TimeUnit.SECONDS);
+		private final long throughputPerSteadyState;
+		private long itemsOutput = 0, firstNanoTime = Long.MIN_VALUE, afterWarmupNanoTime = Long.MIN_VALUE;
+		private ReportThroughputInstruction(long throughputPerSteadyState) {
+			this.throughputPerSteadyState = throughputPerSteadyState;
+		}
+		@Override
+		public void init(Map<Token, Buffer> buffers) {}
+		@Override
+		public Map<Token, Integer> getMinimumBufferCapacity() {
+			return ImmutableMap.of();
+		}
+		@Override
+		public Map<Token, Object[]> unload() {
+			return ImmutableMap.of();
+		}
+
+		@Override
+		public boolean load() {
+			long currentTime = System.nanoTime();
+			if (firstNanoTime == Long.MIN_VALUE)
+				firstNanoTime = currentTime;
+			else if (afterWarmupNanoTime == Long.MIN_VALUE && currentTime - firstNanoTime > WARMUP_NANOS)
+				afterWarmupNanoTime = currentTime;
+			return true;
+		}
+		@Override
+		public Boolean call() {
+			if (afterWarmupNanoTime != Long.MIN_VALUE) {
+				itemsOutput += throughputPerSteadyState;
+				long currentTime = System.nanoTime();
+				long elapsed = currentTime - afterWarmupNanoTime;
+				if (elapsed > TIMING_NANOS) {
+					System.out.format("%d/%d/%d#%n", itemsOutput, elapsed, elapsed/itemsOutput);
+					System.out.flush();
+					System.exit(0);
+				}
+			}
+			return true;
 		}
 	}
 

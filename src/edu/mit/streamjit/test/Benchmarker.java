@@ -278,7 +278,7 @@ public final class Benchmarker {
 
 	private static final long COMPILE_TIMEOUT_DURATION = 15;
 	private static final TimeUnit COMPILE_TIMEOUT_UNIT = TimeUnit.SECONDS;
-	private static final long RUN_TIMEOUT_DURATION = 1;
+	private static final long RUN_TIMEOUT_DURATION = 2;
 	private static final TimeUnit RUN_TIMEOUT_UNIT = TimeUnit.MINUTES;
 	private static Result run(Benchmark benchmark, Dataset input, StreamCompiler compiler) {
 		long compileMillis, runMillis;

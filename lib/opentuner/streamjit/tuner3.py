@@ -10,6 +10,7 @@ import sys
 import subprocess
 import tempfile
 import os
+import re
 
 import deps #fix sys.path
 import opentuner
@@ -51,9 +52,13 @@ class StreamJITMI(MeasurementInterface):
 		try:
 			if len(stderr) > 0 or len(stdout) == 0:
 				raise ValueError
-			time = float(stdout)
-			print stdout.strip(" \t\n\r")
-			return opentuner.resultsdb.models.Result(state='OK', time=float(stdout))
+			stdout = stdout.strip(" \t\n\r")
+			match = re.match(r"\d+/\d+/(\d+)#", stdout)
+			if not match:
+				raise ValueError
+			time = float(match.group(1))
+			print stdout
+			return opentuner.resultsdb.models.Result(state='OK', time=time)
 		except ValueError:
 			print stderr.strip(" \t\n\r")
 			if "TIMED OUT" in stderr:
