@@ -480,7 +480,7 @@ public abstract class AbstractDrainer {
 
 			ImmutableMap.Builder<Token, BlobNode> builder = new ImmutableMap.Builder<>();
 			for (DummyBlob b : blobSet) {
-				builder.put(b.id, new BlobNode(b.id));
+				builder.put(b.id, new BlobNode(b.id, b.inputs, b.outputs));
 			}
 
 			this.blobNodes = builder.build();
@@ -522,6 +522,32 @@ public abstract class AbstractDrainer {
 
 		public BlobNode getBlobNode(Token blobID) {
 			return blobNodes.get(blobID);
+		}
+
+		/**
+		 * TODO: We may need to make the class {@link BlobNode} public and move
+		 * these functions to {@link BlobNode}.
+		 * <p>
+		 * Returns output edges of a blob. This method is added on [2014-03-01].
+		 * 
+		 * @param blobID
+		 * @return
+		 */
+		public ImmutableSet<Token> getOutputs(Token blobID) {
+			return blobNodes.get(blobID).outputs;
+		}
+
+		/**
+		 * TODO: We may need to make the class {@link BlobNode} public and move
+		 * these functions to {@link BlobNode}.
+		 * <p>
+		 * Returns input edges of a blob. This method is added on [2014-03-01].
+		 * 
+		 * @param blobID
+		 * @return
+		 */
+		public ImmutableSet<Token> getInputs(Token blobID) {
+			return blobNodes.get(blobID).inputs;
 		}
 
 		/**
@@ -650,12 +676,29 @@ public abstract class AbstractDrainer {
 		// TODO: add comments
 		private AtomicInteger drainState;
 
-		private BlobNode(Token blob) {
+		/**
+		 * All input channels of this blob. We need this information to globally
+		 * determine buffer sizes to avoid deadlocks. This is added on
+		 * [2014-03-01], when implementing global buffer size adjustment.
+		 */
+		private final ImmutableSet<Token> inputs;
+
+		/**
+		 * All output channels of this blob. We need this information to
+		 * globally determine buffer sizes to avoid deadlocks. This is added on
+		 * [2014-03-01], when implementing global buffer size adjustment.
+		 */
+		private final ImmutableSet<Token> outputs;
+
+		private BlobNode(Token blob, ImmutableSet<Token> inputs,
+				ImmutableSet<Token> outputs) {
 			this.blobID = blob;
 			predecessors = new ArrayList<>();
 			successors = new ArrayList<>();
 			dependencyCount = new AtomicInteger(0);
 			drainState = new AtomicInteger(0);
+			this.inputs = inputs;
+			this.outputs = outputs;
 		}
 
 		/**
