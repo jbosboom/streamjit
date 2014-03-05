@@ -29,9 +29,11 @@ public final class TuneExternalStorageStrategy implements StorageStrategy {
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {
+				if (storage.steadyStateCapacity() == 0)
+					return new EmptyConcreteStorage(storage);
+
 				Configuration.SwitchParameter<Arrayish.Factory> factoryParam = config.getParameter("ExternalArrayish"+storage.id(), Configuration.SwitchParameter.class, Arrayish.Factory.class);
 				Arrayish.Factory factory = storage.type().isPrimitive() ? factoryParam.getValue() : Arrayish.ArrayArrayish.factory();
-
 				Configuration.SwitchParameter<Boolean> useDoubleBuffersParam = config.getParameter("UseDoubleBuffers"+storage.id(), Configuration.SwitchParameter.class, Boolean.class);
 				if (useDoubleBuffersParam.getValue()
 						&& storage.steadyStateCapacity() == 2*storage.throughput() //no leftover data
