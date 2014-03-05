@@ -33,7 +33,8 @@ public class Core {
 	}
 
 	public void allocate(ActorGroup group, Range<Integer> iterations) {
-		allocations.add(Pair.make(group, iterations));
+		if (!iterations.isEmpty())
+			allocations.add(Pair.make(group, iterations));
 	}
 
 	public MethodHandle code() {
