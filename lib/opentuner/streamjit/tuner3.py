@@ -53,7 +53,7 @@ class StreamJITMI(MeasurementInterface):
 			if len(stderr) > 0 or len(stdout) == 0:
 				raise ValueError
 			stdout = stdout.strip(" \t\n\r")
-			match = re.match(r"\d+/\d+/(\d+)#", stdout)
+			match = re.match(r"\d+/\d+/\d+/(\d+)#", stdout)
 			if not match:
 				raise ValueError
 			time = float(match.group(1))

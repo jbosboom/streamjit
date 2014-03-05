@@ -1528,7 +1528,8 @@ public class Compiler2 {
 		private static final long WARMUP_NANOS = TimeUnit.NANOSECONDS.convert(10, TimeUnit.SECONDS);
 		private static final long TIMING_NANOS = TimeUnit.NANOSECONDS.convert(5, TimeUnit.SECONDS);
 		private final long throughputPerSteadyState;
-		private long itemsOutput = 0, firstNanoTime = Long.MIN_VALUE, afterWarmupNanoTime = Long.MIN_VALUE;
+		private int steadyStates = 0;
+		private long firstNanoTime = Long.MIN_VALUE, afterWarmupNanoTime = Long.MIN_VALUE;
 		private ReportThroughputInstruction(long throughputPerSteadyState) {
 			this.throughputPerSteadyState = throughputPerSteadyState;
 		}
@@ -1545,7 +1546,7 @@ public class Compiler2 {
 
 		@Override
 		public boolean load() {
-			long currentTime = System.nanoTime();
+			long currentTime = time();
 			if (firstNanoTime == Long.MIN_VALUE)
 				firstNanoTime = currentTime;
 			else if (afterWarmupNanoTime == Long.MIN_VALUE && currentTime - firstNanoTime > WARMUP_NANOS)
@@ -1555,16 +1556,21 @@ public class Compiler2 {
 		@Override
 		public Boolean call() {
 			if (afterWarmupNanoTime != Long.MIN_VALUE) {
-				itemsOutput += throughputPerSteadyState;
-				long currentTime = System.nanoTime();
+				++steadyStates;
+				long currentTime = time();
 				long elapsed = currentTime - afterWarmupNanoTime;
 				if (elapsed > TIMING_NANOS) {
-					System.out.format("%d/%d/%d#%n", itemsOutput, elapsed, elapsed/itemsOutput);
+					long itemsOutput = steadyStates * throughputPerSteadyState;
+					System.out.format("%d/%d/%d/%d#%n", steadyStates, itemsOutput, elapsed, elapsed/itemsOutput);
 					System.out.flush();
 					System.exit(0);
 				}
 			}
 			return true;
+		}
+		private static long time() {
+//			return System.currentTimeMillis()*1000000;
+			return System.nanoTime();
 		}
 	}
 
