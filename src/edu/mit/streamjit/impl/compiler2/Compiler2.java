@@ -1526,7 +1526,7 @@ public class Compiler2 {
 
 	private static final class ReportThroughputInstruction implements ReadInstruction, WriteInstruction {
 		private static final long WARMUP_NANOS = TimeUnit.NANOSECONDS.convert(10, TimeUnit.SECONDS);
-		private static final long TIMING_NANOS = TimeUnit.NANOSECONDS.convert(30, TimeUnit.SECONDS);
+		private static final long TIMING_NANOS = TimeUnit.NANOSECONDS.convert(5, TimeUnit.SECONDS);
 		private final long throughputPerSteadyState;
 		private long itemsOutput = 0, firstNanoTime = Long.MIN_VALUE, afterWarmupNanoTime = Long.MIN_VALUE;
 		private ReportThroughputInstruction(long throughputPerSteadyState) {
