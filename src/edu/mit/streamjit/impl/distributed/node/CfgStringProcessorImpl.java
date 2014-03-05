@@ -82,6 +82,10 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 				Map<Token, TCPConnectionInfo> conInfoMap = (Map<Token, TCPConnectionInfo>) cfg
 						.getExtraData(GlobalConstants.CONINFOMAP);
 
+				BlobsManager bm = streamNode.getBlobsManager();
+				if (bm != null)
+					bm.stop();
+
 				streamNode.setBlobsManager(new BlobsManagerImpl(blobSet,
 						conInfoMap, streamNode, conProvider));
 			} else {
