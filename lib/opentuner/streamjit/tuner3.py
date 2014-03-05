@@ -143,7 +143,7 @@ if __name__ == '__main__':
 		manipulator.add_parameter(p)
 
 	# create seed configurations
-	seed_multipliers = [128, 256, 512, 1024]
+	seed_multipliers = [1024, 4096, 128]
 	seed_configs = []
 	for m in seed_multipliers:
 		seed_config = manipulator.seed_config()
