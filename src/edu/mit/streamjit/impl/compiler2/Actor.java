@@ -206,7 +206,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * iterations
 	 */
 	public ContiguousSet<Integer> pops(int input, ContiguousSet<Integer> iterations) {
-		if (iterations.isEmpty()) return ContiguousSet.create(Range.closed(0, 0), DiscreteDomain.integers());
+		if (iterations.isEmpty()) return ContiguousSet.create(Range.closedOpen(0, 0), DiscreteDomain.integers());
 		return ContiguousSet.create(Range.closedOpen(iterations.first() * pop(input), (iterations.last() + 1) * pop(input)), DiscreteDomain.integers());
 	}
 
@@ -261,7 +261,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * iterations
 	 */
 	public ContiguousSet<Integer> pushes(int output, ContiguousSet<Integer> iterations) {
-		if (iterations.isEmpty()) return ContiguousSet.create(Range.closed(0, 0), DiscreteDomain.integers());
+		if (iterations.isEmpty()) return ContiguousSet.create(Range.closedOpen(0, 0), DiscreteDomain.integers());
 		return ContiguousSet.create(Range.closedOpen(iterations.first() * push(output), (iterations.last() + 1) * push(output)), DiscreteDomain.integers());
 	}
 
