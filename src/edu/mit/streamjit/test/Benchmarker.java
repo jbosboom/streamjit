@@ -276,7 +276,7 @@ public final class Benchmarker {
 		throw new NoSuchElementException("no benchmark named "+name);
 	}
 
-	private static final long COMPILE_TIMEOUT_DURATION = 15;
+	private static final long COMPILE_TIMEOUT_DURATION = 60;
 	private static final TimeUnit COMPILE_TIMEOUT_UNIT = TimeUnit.SECONDS;
 	private static final long RUN_TIMEOUT_DURATION = 2;
 	private static final TimeUnit RUN_TIMEOUT_UNIT = TimeUnit.MINUTES;
