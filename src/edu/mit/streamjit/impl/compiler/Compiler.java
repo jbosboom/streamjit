@@ -345,7 +345,7 @@ public final class Compiler {
 		Schedule.Builder<Worker<?, ?>> builder = Schedule.builder();
 		builder.addAll(workers);
 		for (IOInfo info : IOInfo.internalEdges(workers)) {
-			Schedule.Builder<Worker<?, ?>>.ConstraintBuilder constraint =
+			Schedule.Builder<Worker<?, ?>>.BufferingConstraintBuilder constraint =
 					builder.connect(info.upstream(), info.downstream())
 					.push(info.upstream().getPushRates().get(info.getUpstreamChannelIndex()).max())
 					.pop(info.downstream().getPopRates().get(info.getDownstreamChannelIndex()).max())

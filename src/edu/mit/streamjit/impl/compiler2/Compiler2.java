@@ -319,6 +319,8 @@ public class Compiler2 {
 	private void internalSchedule(ActorGroup g) {
 		Schedule.Builder<Actor> scheduleBuilder = Schedule.builder();
 		scheduleBuilder.addAll(g.actors());
+		for (Actor a : g.actors())
+			scheduleBuilder.executeAtLeast(a, 1);
 		for (Storage s : g.internalEdges()) {
 			scheduleBuilder.connect(Iterables.getOnlyElement(s.upstream()), Iterables.getOnlyElement(s.downstream()))
 					.push(s.push())

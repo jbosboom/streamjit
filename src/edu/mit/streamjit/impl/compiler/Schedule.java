@@ -20,14 +20,17 @@ import java.util.Set;
  */
 public final class Schedule<T> {
 	private final ImmutableSet<T> things;
-	private final ImmutableSet<Constraint<T>> constraints;
+	private final ImmutableSet<BufferingConstraint<T>> constraints;
 	private final ImmutableMap<T, Integer> schedule;
-	private Schedule(ImmutableSet<T> things, ImmutableSet<Constraint<T>> constraints, ImmutableMap<T, Integer> schedule) {
+	private Schedule(ImmutableSet<T> things, ImmutableSet<BufferingConstraint<T>> constraints, ImmutableMap<T, Integer> schedule) {
 		this.things = things;
 		this.constraints = constraints;
 		this.schedule = schedule;
 	}
-	private static <T> Schedule<T> schedule(ImmutableSet<T> things, ImmutableSet<Constraint<T>> constraints, int multiplier, int fireCost, int excessBufferCost) {
+	private static <T> Schedule<T> schedule(ImmutableSet<T> things,
+			ImmutableSet<ExecutionConstraint<T>> executionConstraints,
+			ImmutableSet<BufferingConstraint<T>> bufferingConstraints,
+			int multiplier, int fireCost, int excessBufferCost) {
 		ILPSolver solver = new ILPSolver();
 		//There's one variable for each thing, which represents the number of
 		//times it fires.  This uses the default bounds.  (TODO: perhaps a bound
@@ -38,10 +41,13 @@ public final class Schedule<T> {
 			variablesBuilder.put(thing, solver.newVariable(thing.toString()));
 		ImmutableMap<T, ILPSolver.Variable> variables = variablesBuilder.build();
 
+		for (ExecutionConstraint<T> constraint : executionConstraints)
+			solver.constrainAtLeast(variables.get(constraint.thing).asLinearExpr(1), constraint.minExecutions);
+
 		HashMap<ILPSolver.Variable, Integer> sumOfConstraints = new HashMap<>();
 		for (ILPSolver.Variable v : variables.values())
 			sumOfConstraints.put(v, 0);
-		for (Constraint<T> constraint : constraints) {
+		for (BufferingConstraint<T> constraint : bufferingConstraints) {
 			ILPSolver.Variable upstreamVar = variables.get(constraint.upstream),
 					downstreamVar = variables.get(constraint.downstream);
 			ILPSolver.LinearExpr expr = upstreamVar.asLinearExpr(constraint.pushRate)
@@ -86,7 +92,7 @@ public final class Schedule<T> {
 		ImmutableMap.Builder<T, Integer> schedule = ImmutableMap.builder();
 		for (Map.Entry<T, ILPSolver.Variable> e : variables.entrySet())
 			schedule.put(e.getKey(), e.getValue().value() * multiplier);
-		return new Schedule<>(things, constraints, schedule.build());
+		return new Schedule<>(things, bufferingConstraints, schedule.build());
 	}
 
 	public static <T> Builder<T> builder() {
@@ -95,7 +101,8 @@ public final class Schedule<T> {
 
 	public static final class Builder<T> {
 		private final Set<T> things = new HashSet<>();
-		private final Set<Constraint<T>> constraints = new HashSet<>();
+		private final Set<ExecutionConstraint<T>> executionConstraints = new HashSet<>();
+		private final Set<BufferingConstraint<T>> bufferingConstraints = new HashSet<>();
 		private int multiplier = 1, fireCost = 1, excessBufferCost = 0;
 		private Builder() {}
 
@@ -109,48 +116,48 @@ public final class Schedule<T> {
 			return this;
 		}
 
-		public final class ConstraintBuilder {
+		public final class BufferingConstraintBuilder {
 			private final T upstream;
 			private final T downstream;
 			private int pushRate = -1;
 			private int popRate = -1;
 			private int peekRate = -1;
-			private Constraint.Condition condition = null;
+			private BufferingConstraint.Condition condition = null;
 			private int bufferDelta = -1;
-			private ConstraintBuilder(T upstream, T downstream) {
+			private BufferingConstraintBuilder(T upstream, T downstream) {
 				this.upstream = upstream;
 				this.downstream = downstream;
 			}
-			public ConstraintBuilder push(int pushRate) {
+			public BufferingConstraintBuilder push(int pushRate) {
 				checkArgument(pushRate >= 0);
 				this.pushRate = pushRate;
 				return this;
 			}
-			public ConstraintBuilder pop(int popRate) {
+			public BufferingConstraintBuilder pop(int popRate) {
 				checkArgument(popRate >= 0);
 				this.popRate = popRate;
 				return this;
 			}
-			public ConstraintBuilder peek(int peekRate) {
+			public BufferingConstraintBuilder peek(int peekRate) {
 				checkArgument(peekRate >= 0);
 				this.peekRate = peekRate;
 				return this;
 			}
 			public Builder<T> bufferExactly(int items) {
 				checkArgument(items >= 0);
-				this.condition = Constraint.Condition.EQUAL;
+				this.condition = BufferingConstraint.Condition.EQUAL;
 				this.bufferDelta = items;
 				return build();
 			}
 			public Builder<T> bufferAtLeast(int items) {
 				checkArgument(items >= 0);
-				this.condition = Constraint.Condition.GREATER_THAN_EQUAL;
+				this.condition = BufferingConstraint.Condition.GREATER_THAN_EQUAL;
 				this.bufferDelta = items;
 				return build();
 			}
 			public Builder<T> bufferAtMost(int items) {
 				checkArgument(items >= 0);
-				this.condition = Constraint.Condition.LESS_THAN_EQUAL;
+				this.condition = BufferingConstraint.Condition.LESS_THAN_EQUAL;
 				this.bufferDelta = items;
 				return build();
 			}
@@ -174,19 +181,24 @@ public final class Schedule<T> {
 					//Don't add a constraint -- the solver gets confused.
 					return Builder.this;
 				}
-				Builder.this.addConstraint(new Constraint<>(upstream, downstream, pushRate, popRate, peekRate, condition, bufferDelta));
+				Builder.this.addConstraint(new BufferingConstraint<>(upstream, downstream, pushRate, popRate, peekRate, condition, bufferDelta));
 				return Builder.this;
 			}
 		}
 
-		public ConstraintBuilder connect(T upstream, T downstream) {
+		public BufferingConstraintBuilder connect(T upstream, T downstream) {
 			checkArgument(things.contains(upstream), "upstream %s not in %s", upstream, this);
 			checkArgument(things.contains(downstream), "downstream %s not in %s", downstream, this);
-			return new ConstraintBuilder(upstream, downstream);
+			return new BufferingConstraintBuilder(upstream, downstream);
 		}
 
-		private void addConstraint(Constraint<T> constraint) {
-			constraints.add(constraint);
+		private void addConstraint(BufferingConstraint<T> constraint) {
+			bufferingConstraints.add(constraint);
+		}
+
+		public Builder<T> executeAtLeast(T thing, int minExecutions) {
+			executionConstraints.add(new ExecutionConstraint<>(thing, minExecutions));
+			return this;
 		}
 
 		public Builder<T> multiply(int multiplier) {
@@ -204,16 +216,16 @@ public final class Schedule<T> {
 		}
 
 		public Schedule<T> build() {
-			return schedule(ImmutableSet.copyOf(things), ImmutableSet.copyOf(constraints), multiplier, fireCost, excessBufferCost);
+			return schedule(ImmutableSet.copyOf(things), ImmutableSet.copyOf(executionConstraints), ImmutableSet.copyOf(bufferingConstraints), multiplier, fireCost, excessBufferCost);
 		}
 
 		@Override
 		public String toString() {
-			return "["+things+"; "+constraints+"; x"+multiplier+"]";
+			return "["+things+"; "+bufferingConstraints+"; x"+multiplier+"]";
 		}
 	}
 
-	private static class Constraint<T> {
+	private static class BufferingConstraint<T> {
 		private static enum Condition {
 			LESS_THAN, LESS_THAN_EQUAL, EQUAL, GREATER_THAN_EQUAL, GREATER_THAN;
 		};
@@ -221,7 +233,7 @@ public final class Schedule<T> {
 		private final int pushRate, popRate, excessPeeks;
 		private final Condition condition;
 		private final int bufferDelta;
-		private Constraint(T upstream, T downstream, int pushRate, int popRate, int peekRate, Condition condition, int bufferDelta) {
+		private BufferingConstraint(T upstream, T downstream, int pushRate, int popRate, int peekRate, Condition condition, int bufferDelta) {
 			this.upstream = upstream;
 			this.downstream = downstream;
 			this.pushRate = pushRate;
@@ -236,6 +248,19 @@ public final class Schedule<T> {
 					upstream, pushRate,
 					downstream, popRate + excessPeeks, popRate,
 					condition, bufferDelta);
+		}
+	}
+
+	private static class ExecutionConstraint<T> {
+		private final T thing;
+		private final int minExecutions; //we can use the Condition enum if we ever want exact/less
+		private ExecutionConstraint(T thing, int minExecutions) {
+			this.thing = thing;
+			this.minExecutions = minExecutions;
+		}
+		@Override
+		public String toString() {
+			return String.format("exec %s >= %d", thing, minExecutions);
 		}
 	}
 
