@@ -158,6 +158,22 @@ public final class Schedule<T> {
 				return bufferAtLeast(0);
 			}
 			private Builder<T> build() {
+				if (pushRate == 0 && popRate == 0) {
+					checkArgument(peekRate == 0, "can't peek %d on 0-rate edge", peekRate);
+					switch (condition) {
+						case EQUAL:
+							checkArgument(bufferDelta == 0, "can't be == %d on 0-rate edge", bufferDelta);
+							break;
+						case GREATER_THAN_EQUAL:
+							checkArgument(bufferDelta <= 0, "can't be >= %d on 0-rate edge", bufferDelta);
+							break;
+						case LESS_THAN_EQUAL:
+							checkArgument(bufferDelta >= 0, "can't be <= %d on 0-rate edge", bufferDelta);
+							break;
+					}
+					//Don't add a constraint -- the solver gets confused.
+					return Builder.this;
+				}
 				Builder.this.addConstraint(new Constraint<>(upstream, downstream, pushRate, popRate, peekRate, condition, bufferDelta));
 				return Builder.this;
 			}
