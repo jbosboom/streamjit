@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -620,28 +621,47 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		public void run() {
+			FileWriter writter = null;
+			try {
+				writter = new FileWriter(String.format("BufferStatus%d.txt",
+						streamNode.getNodeID()), false);
 
-			while (!stopFlag.get()) {
-				System.out.println("********Started*************** - " + id);
-				try {
-					Thread.sleep(sleepTime);
-				} catch (InterruptedException e) {
+				writter.write(String.format(
+						"********Started*************** - %d\n", id));
+				while (!stopFlag.get()) {
+					try {
+						Thread.sleep(sleepTime);
+					} catch (InterruptedException e) {
+					}
+					if (bufferMap == null) {
+						writter.write("Buffer map is null...\n");
+						continue;
+					}
+					if (stopFlag.get())
+						break;
+					writter.write("----------------------------------\n");
+					for (Map.Entry<Token, Buffer> en : bufferMap.entrySet()) {
+						writter.write(en.getKey() + " - "
+								+ en.getValue().size());
+						writter.write('\n');
+					}
+					writter.write("----------------------------------\n");
+					writter.flush();
 				}
-				if (bufferMap == null) {
-					System.out.println("Buffer map is null...");
-					continue;
-				}
-				if (stopFlag.get())
-					break;
-				System.out.println("----------------------------------");
-				for (Map.Entry<Token, Buffer> en : bufferMap.entrySet()) {
-					System.out.println(en.getKey() + " - "
-							+ en.getValue().size());
-				}
-				System.out.println("----------------------------------");
+
+				writter.write(String.format(
+						"********Stopped*************** - %d\n", id));
+			} catch (IOException e1) {
+				e1.printStackTrace();
+				return;
 			}
 
-			System.out.println("********Stopped*************** - " + id);
+			try {
+				if (writter != null)
+					writter.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 
 		public void stopMonitoring() {
