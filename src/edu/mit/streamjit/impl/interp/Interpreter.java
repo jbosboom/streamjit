@@ -144,17 +144,15 @@ public class Interpreter implements Blob {
 				int chanIdx = info.getDownstreamChannelIndex();
 				int rate = Math.max(w.getPeekRates().get(chanIdx).max(), w.getPopRates().get(chanIdx).max());
 				minimumBufferSize.put(info.token(), rate);
+			}
 
-				//Only fill input channels -- any existing output will be used
-				//as input in the downstream blob.
-				if (initialState != null) {
-					ImmutableList<Object> data = initialState.getData(info.token());
-//					System.out.println(String.format(
-//							"External edge: InitialData of %s is %d",
-//							info.token(), data.size()));
-					for (Object o : data != null ? data : ImmutableList.of())
-						channel.push(o);
-				}
+			if (initialState != null) {
+				ImmutableList<Object> data = initialState.getData(info.token());
+//				System.out.println(String.format(
+//						"External edge: InitialData of %s is %d",
+//						info.token(), data.size()));
+				for (Object o : data != null ? data : ImmutableList.of())
+					channel.push(o);
 			}
 		}
 

@@ -347,29 +347,29 @@ public class Compiler2BlobHost implements Blob {
 		ImmutableMap<Token, List<Object>> mergedData = CollectionUtils.union(new Maps.EntryTransformer<Token, List<Object[]>, List<Object>>() {
 			@Override
 			public List<Object> transformEntry(Token key, List<Object[]> value) {
-				ImmutableList.Builder<Object> builder = ImmutableList.builder();
+				int size = 0;
 				for (Object[] v : value)
-					builder.addAll(Arrays.asList(v));
-				return builder.build();
+					size += v.length;
+				List<Object> data = new ArrayList<>(size);
+				for (Object[] v : value)
+					data.addAll(Arrays.asList(v));
+				return data;
 			}
 		}, data);
-		//We have to write our output; the interpreter won't do it for us.
+		//Try once to write data on output edges, then let the interpreter handle it.
 		Predicate<Token> isOutput = Predicates.in(getOutputs());
-		List<NothrowCallable<Boolean>> drainOps = new ArrayList<>();
 		for (Map.Entry<Token, List<Object>> e : Maps.filterKeys(mergedData, isOutput).entrySet()) {
 			final Buffer b = buffers.get(e.getKey());
 			final Object[] d = e.getValue().toArray();
-			drainOps.add(new NothrowCallable<Boolean>() {
-				private int written = 0;
-				@Override
-				public Boolean call() {
-					written += b.write(d, written, d.length-written);
-					return written == d.length;
-				}
-			});
+			int written = b.write(d, 0, d.length);
+			//Remove the data we wrote.
+			e.getValue().subList(0, written).clear();
 		}
-		doWrites(drainOps);
-		DrainData forInterp = new DrainData(Maps.filterKeys(mergedData, Predicates.not(isOutput)),
+		DrainData forInterp = new DrainData(mergedData,
+				//We put state back in the workers via StateHolders, which are
+				//DrainInstructions, so no state in the DrainData.  (It will be
+				//in the DrainData produced by the interpreter blob, so
+				//distributed will still see it.)
 				ImmutableTable.<Integer, String, Object>of());
 
 		Interpreter.InterpreterBlobFactory interpFactory = new Interpreter.InterpreterBlobFactory();
