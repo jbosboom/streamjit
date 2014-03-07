@@ -86,9 +86,9 @@ public class OnlineTuner implements Runnable {
 					break;
 				}
 
-				System.out
-						.println("----------------------------------------------");
-				System.out.println(round++);
+				System.out.println(String.format(
+						"---------------------%d-------------------------",
+						++round));
 				Configuration config = Configuration.fromJson(cfgJson);
 
 				if (GlobalConstants.saveAllConfigurations)
