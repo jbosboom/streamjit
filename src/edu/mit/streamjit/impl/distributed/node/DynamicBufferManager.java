@@ -4,115 +4,257 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.util.ConstructorSupplier;
 import edu.mit.streamjit.util.ReflectionUtils;
 
 /**
- * Dynamically increases supplied buffer capacity in order to avoid dead locks.
- * Actually creates a new instance of the supplied buffer and copy the data from
- * old buffer to new buffer. A decorator pattern for {@link Buffer}.
- * 
- * <p>
- * Determining whether buffer is full due to deadlock situation or the current
- * blob is executing on a faster node than the down stream blob is little
- * tricky. Here we assume blobs are running on nearly equivalent
- * 
- * <p>
- * TODO: {@link ConstructorSupplier} can be reused here to instantiate the
- * buffer instances if we make {@link ConstructorSupplier}.arguments not final.
+ * <b> Use a {@link DynamicBufferManager} per blob ( i.e., one to one mapping
+ * between a blob and a DynamicBufferManager). Do not use same instance of
+ * {@link DynamicBufferManager} to create buffers for multiple blobs. </b>
  * 
  * @author sumanan
  * @since Mar 10, 2014
  * 
  */
-public class DynamicBuffer implements Buffer {
+public class DynamicBufferManager {
 
-	private Buffer buffer;
-	private final List<?> initialArguments;
-	private final int initialCapacity;
-	private final int capacityPos;
-	private final Class<? extends Buffer> bufferClass;
-	private final Constructor<? extends Buffer> cons;
+	/**
+	 * keep track of all buffers created for a particular blob.
+	 */
+	List<Buffer> buffers;
 
-	public DynamicBuffer(Class<? extends Buffer> bufferClass,
+	public DynamicBufferManager() {
+		buffers = new ArrayList<>();
+	}
+
+	/**
+	 * Make and return a dynamic buffer backed by an instance of bufferClass.
+	 * 
+	 * @param bufferClass
+	 *            : Any concrete implementation of {@link Buffer}.
+	 * @param initialArguments
+	 *            : Constructor arguments. : Initial capacity of the buffer.
+	 * @param capacityPos
+	 *            : the position of size parameter in the bufferClass.
+	 * @return : A dynamic buffer backed by an instance of bufferClass.
+	 */
+	public Buffer getBuffer(Class<? extends Buffer> bufferClass,
 			List<?> initialArguments, int initialCapacity, int capacityPos) {
-		this.bufferClass = bufferClass;
-		this.initialArguments = initialArguments;
-		this.initialCapacity = initialCapacity;
-		this.capacityPos = capacityPos;
-		Constructor<? extends Buffer> con = null;
-		try {
-			con = ReflectionUtils
-					.findConstructor(bufferClass, initialArguments);
-		} catch (NoSuchMethodException e1) {
-			e1.printStackTrace();
-		}
-		this.cons = con;
-		this.buffer = getNewBuffer(getArguments(initialCapacity));
+		Buffer buf = new DynamicBuffer(bufferClass, initialArguments,
+				initialCapacity, capacityPos);
+		buffers.add(buf);
+		return buf;
 	}
 
-	private List<?> getArguments(int newCapacity) {
-		List<Object> newArgs = new ArrayList<>(initialArguments.size());
-		for (int i = 0; i < initialArguments.size(); i++) {
-			if (i == capacityPos)
-				newArgs.add(newCapacity);
+	/**
+	 * Dynamically increases supplied buffer capacity in order to avoid dead
+	 * locks. Actually creates a new instance of the supplied buffer and copy
+	 * the data from old buffer to new buffer. A decorator pattern for
+	 * {@link Buffer}.
+	 * 
+	 * <p>
+	 * Determining whether buffer is full due to deadlock situation or the
+	 * current blob is executing on a faster node than the down stream blob is
+	 * little tricky. Here we assume blobs are running on nearly equivalent.
+	 * </p>
+	 * 
+	 * <p>
+	 * TODO: {@link ConstructorSupplier} can be reused here to instantiate the
+	 * buffer instances if we make {@link ConstructorSupplier}.arguments not
+	 * final.
+	 * </p>
+	 * 
+	 * <p>
+	 * TODO: Possible performance bug during read() due to volatile buffer
+	 * variable and the need for acquire readLock for every single reading. Any
+	 * way to improve this???
+	 * 
+	 * @author sumanan
+	 * @since Mar 10, 2014
+	 * 
+	 */
+	private class DynamicBuffer implements Buffer {
+
+		/**
+		 * Minimum time gap between the last successful write and the current
+		 * time in order to consider the option of doubling the buffer
+		 */
+		private final long gap;
+
+		/**
+		 * Every successful write operation should update this time.
+		 */
+		private long lastWrittenTime;
+
+		/**
+		 * When the algorithm detects there are some progress ( May be after
+		 * some expansions), this flag is set to stop any future expansions.
+		 * This is to prevent infinity buffer growth.
+		 */
+		private boolean expandable;
+
+		/**
+		 * Read lock should be acquired at every single read where as write lock
+		 * will be acquired only when switching the buffer from old to new.
+		 */
+		private ReadWriteLock rwlock;
+
+		private final Class<? extends Buffer> bufferClass;
+		private final List<?> initialArguments;
+		private final int initialCapacity;
+		private final int capacityPos;
+		private final Constructor<? extends Buffer> cons;
+
+		/**
+		 * TODO: Volatileness may severely affects the reading performance.
+		 */
+		private volatile Buffer buffer;
+
+		public DynamicBuffer(Class<? extends Buffer> bufferClass,
+				List<?> initialArguments, int initialCapacity, int capacityPos) {
+			this.bufferClass = bufferClass;
+			this.initialArguments = initialArguments;
+			this.initialCapacity = initialCapacity;
+			this.capacityPos = capacityPos;
+			Constructor<? extends Buffer> con = null;
+			try {
+				con = ReflectionUtils.findConstructor(bufferClass,
+						initialArguments);
+			} catch (NoSuchMethodException e1) {
+				e1.printStackTrace();
+			}
+			this.cons = con;
+			this.buffer = getNewBuffer(initialCapacity);
+			this.gap = 200000000; // 200ms
+			expandable = true;
+			rwlock = new ReentrantReadWriteLock();
+		}
+
+		private List<?> getArguments(int newCapacity) {
+			List<Object> newArgs = new ArrayList<>(initialArguments.size());
+			for (int i = 0; i < initialArguments.size(); i++) {
+				if (i == capacityPos)
+					newArgs.add(newCapacity);
+				else
+					newArgs.add(initialArguments.get(i));
+			}
+			return newArgs;
+		}
+
+		private Buffer getNewBuffer(int newCapacity) {
+			Buffer buffer;
+			try {
+				buffer = cons.newInstance(getArguments(newCapacity).toArray());
+				return buffer;
+			} catch (InstantiationException | IllegalAccessException
+					| IllegalArgumentException | InvocationTargetException e) {
+				e.printStackTrace();
+				return null;
+			}
+		}
+
+		@Override
+		public Object read() {
+			rwlock.readLock().lock();
+			Object o = buffer.read();
+			rwlock.readLock().unlock();
+			return o;
+		}
+
+		@Override
+		public int read(Object[] data, int offset, int length) {
+			rwlock.readLock().lock(); // TODO: getting lock for each single
+										// read. Severely affect performance.
+			int ret = buffer.read(data, offset, length);
+			rwlock.readLock().unlock();
+			return ret;
+		}
+
+		@Override
+		public boolean readAll(Object[] data) {
+			rwlock.readLock().lock();
+			boolean ret = buffer.readAll(data);
+			rwlock.readLock().unlock();
+			return ret;
+		}
+
+		@Override
+		public boolean readAll(Object[] data, int offset) {
+			rwlock.readLock().lock();
+			boolean ret = buffer.readAll(data, offset);
+			rwlock.readLock().unlock();
+			return ret;
+		}
+
+		@Override
+		public boolean write(Object t) {
+			boolean ret = buffer.write(t);
+			if (ret)
+				lastWrittenTime = System.nanoTime();
 			else
-				newArgs.add(initialArguments.get(i));
+				writeFailed();
+			return ret;
 		}
-		return newArgs;
-	}
 
-	private Buffer getNewBuffer(List<?> args) {
-		Buffer buffer;
-		try {
-			buffer = cons.newInstance(args.toArray());
-			return buffer;
-		} catch (InstantiationException | IllegalAccessException
-				| IllegalArgumentException | InvocationTargetException e) {
-			e.printStackTrace();
-			return null;
+		@Override
+		public int write(Object[] data, int offset, int length) {
+			int written = buffer.write(data, offset, length);
+			if (written == 0)
+				writeFailed();
+			else
+				lastWrittenTime = System.nanoTime();
+			return written;
 		}
-	}
 
-	@Override
-	public Object read() {
-		return buffer.read();
-	}
+		@Override
+		public int size() {
+			return buffer.size();
+		}
 
-	@Override
-	public int read(Object[] data, int offset, int length) {
-		return buffer.read(data, offset, length);
-	}
+		@Override
+		public int capacity() {
+			return buffer.capacity();
+		}
 
-	@Override
-	public boolean readAll(Object[] data) {
-		return buffer.readAll(data);
-	}
+		private void writeFailed() {
+			if (areAllFull() || !expandable)
+				return;
 
-	@Override
-	public boolean readAll(Object[] data, int offset) {
-		return buffer.readAll(data, offset);
-	}
+			if (System.nanoTime() - lastWrittenTime > gap && expandable) {
+				doubleBuffer();
+			}
+		}
 
-	@Override
-	public boolean write(Object t) {
-		return buffer.write(t);
-	}
+		private boolean areAllFull() {
+			for (Buffer b : buffers) {
+				if (b.size() != b.capacity())
+					return false;
+			}
+			return true;
+		}
 
-	@Override
-	public int write(Object[] data, int offset, int length) {
-		return buffer.write(data, offset, length);
-	}
+		private void doubleBuffer() {
+			int newCapacity = 2 * buffer.capacity();
+			if (newCapacity > 1024 * initialCapacity) {
+				expandable = false;
+				return;
+			}
 
-	@Override
-	public int size() {
-		return buffer.size();
-	}
-
-	@Override
-	public int capacity() {
-		return buffer.capacity();
+			Buffer newBuf = getNewBuffer(newCapacity);
+			rwlock.writeLock().lock();
+			// TODO: copying is done one by one. Any block level copying?
+			for (int i = 0; i < buffer.size(); i++) {
+				newBuf.write(buffer.read());
+			}
+			if (buffer.size() != 0)
+				throw new IllegalStateException(
+						"Buffter is not empty after copying all data");
+			this.buffer = newBuf;
+			rwlock.writeLock().unlock();
+		}
 	}
 }
