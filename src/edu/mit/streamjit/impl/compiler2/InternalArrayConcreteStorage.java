@@ -1,6 +1,9 @@
 package edu.mit.streamjit.impl.compiler2;
 
+import com.google.common.collect.ContiguousSet;
+import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.collect.Range;
 import edu.mit.streamjit.util.LookupUtils;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -108,9 +111,8 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {
-				ImmutableSortedSet<Integer> writeIndices = storage.writeIndices(initSchedule);
-				int capacity = writeIndices.isEmpty() ? 0 :
-						writeIndices.last() - writeIndices.first() + 1;
+				Range<Integer> writeIndices = storage.writeIndexSpan(initSchedule);
+				int capacity = ContiguousSet.create(writeIndices, DiscreteDomain.integers()).size();
 				Arrayish array = new Arrayish.ArrayArrayish(storage.type(), capacity);
 				return new InternalArrayConcreteStorage(array, storage);
 			}
