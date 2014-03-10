@@ -306,9 +306,13 @@ public final class Storage implements Comparable<Storage> {
 		Range<Integer> readIndices = readIndexSpan(externalSchedule);
 		Range<Integer> writeIndices = writeIndexSpan(externalSchedule);
 		assert readIndices.isEmpty() == writeIndices.isEmpty() : readIndices+" "+writeIndices;
-		ImmutableSortedSet<Integer> writeIndexSet = writeIndices(externalSchedule);
-		//Not replaceable with the span, unfortunately.
-		this.throughput = writeIndexSet.size();
+		//We need to know the count of indices, so we can't just use the span
+		//here.  There may be a lot of indices so writeIndices will use a lot of
+		//memory.  But we know (assume) there are no overwrites, so we'll count.
+		this.throughput = 0;
+		for (Actor a : upstream())
+			for (int iteration = 0, max = a.group().schedule().get(a) * externalSchedule.get(a.group()); iteration < max; ++iteration)
+				this.throughput += a.writes(this, iteration).size();
 		this.steadyStateCapacity = ContiguousSet.create(readIndices.span(writeIndices), DiscreteDomain.integers()).size();
 	}
 
