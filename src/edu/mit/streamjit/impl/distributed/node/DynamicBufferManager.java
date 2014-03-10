@@ -132,6 +132,7 @@ public final class DynamicBufferManager {
 			this.gap = 200000000; // 200ms
 			expandable = true;
 			rwlock = new ReentrantReadWriteLock();
+			lastWrittenTime = 0;
 		}
 
 		private List<?> getArguments(int newCapacity) {
@@ -193,10 +194,10 @@ public final class DynamicBufferManager {
 		@Override
 		public boolean write(Object t) {
 			boolean ret = buffer.write(t);
-			if (ret)
-				lastWrittenTime = System.nanoTime();
-			else
+			if (!ret)
 				writeFailed();
+			else if (lastWrittenTime != 0)
+				lastWrittenTime = 0;
 			return ret;
 		}
 
@@ -205,8 +206,8 @@ public final class DynamicBufferManager {
 			int written = buffer.write(data, offset, length);
 			if (written == 0)
 				writeFailed();
-			else
-				lastWrittenTime = System.nanoTime();
+			else if (lastWrittenTime != 0)
+				lastWrittenTime = 0;
 			return written;
 		}
 
@@ -223,6 +224,11 @@ public final class DynamicBufferManager {
 		private void writeFailed() {
 			if (areAllFull() || !expandable)
 				return;
+
+			if (lastWrittenTime == 0) {
+				lastWrittenTime = System.nanoTime();
+				return;
+			}
 
 			if (System.nanoTime() - lastWrittenTime > gap && expandable) {
 				doubleBuffer();
@@ -250,18 +256,19 @@ public final class DynamicBufferManager {
 			Buffer newBuf = getNewBuffer(newCapacity);
 			rwlock.writeLock().lock();
 			final int size = buffer.size();
-			System.out.println("Initial buffer size = " + size);
 			// TODO: copying is done one by one. Any block level copying?
 			for (int i = 0; i < size; i++) {
 				newBuf.write(buffer.read());
 			}
 
-			System.out.println("buffer size after copying = " + buffer.size());
+			// System.out.println("buffer size after copying = " +
+			// buffer.size());
 			if (buffer.size() != 0) {
 				throw new IllegalStateException(
 						"Buffter is not empty after copying all data");
 			}
 			this.buffer = newBuf;
+			lastWrittenTime = 0;
 			rwlock.writeLock().unlock();
 		}
 	}
