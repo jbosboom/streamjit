@@ -73,6 +73,42 @@ class StreamJITMI(MeasurementInterface):
 					f.flush()
 				return opentuner.resultsdb.models.Result(state='ERROR', time=float('inf'))
 
+class StreamJITConfigurationManipulator(ConfigurationManipulator):
+	def __init__(self, config):
+		super(StreamJITConfigurationManipulator, self).__init__()
+		self.config = config
+		self.allocationParams = dict()
+		for k in self.config.extra_data_keys():
+			match = re.match(r"AllocationParamNames(\d+)", k)
+			if match:
+				self.allocationParams[match.group(1)] = self.config.get_extra_data(k)
+
+	def normalize(self, cfg_data):
+		super(StreamJITConfigurationManipulator, self).normalize(cfg_data)
+		#if we didn't get info, don't normalize
+		if not self.allocationParams:
+			return
+
+		for k in self.config.params:
+			self.config.getParameter(k).update_value_for_json(cfg_data)
+		self.config.put_extra_data("reportFusion", True, "java.lang.Boolean")
+		with tempfile.NamedTemporaryFile() as f:
+			f.write(self.config.toJSON())
+			f.flush()
+			(stdout, stderr) = call_java([], "edu.mit.streamjit.tuner.RunApp2", ['@' + f.name])
+		# don't disrupt other users of the config object
+		self.config.put_extra_data("reportFusion", False, "java.lang.Boolean")
+
+		parameters = self.parameters_dict(cfg_data)
+		for group in stdout.splitlines():
+			constituents = group.split()
+			electeeParams = self.allocationParams[constituents[0]]
+			for loser in constituents[1:]:
+				for (epn, lpn) in zip(electeeParams, self.allocationParams[loser]):
+					ep = parameters[epn]
+					lp = parameters[lpn]
+					lp._set(cfg_data, ep._get(cfg_data))
+
 # Calls Java.  Returns a 2-tuple (stdout, stderr).
 def call_java(jvmArgs, mainClass, args):
 	#TODO: find a better place for these system-specific constants
@@ -138,7 +174,7 @@ if __name__ == '__main__':
 	cfg = configuration.getConfiguration(cfg_json)
 	jvm_options = make_jvm_options();
 
-	manipulator = ConfigurationManipulator()
+	manipulator = StreamJITConfigurationManipulator(cfg)
 	for p in cfg.getAllParameters().values() + jvm_options.values():
 		manipulator.add_parameter(p)
 

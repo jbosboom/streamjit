@@ -41,10 +41,18 @@ public class SubsetBiasAllocationStrategy implements AllocationStrategy {
 
 		for (Worker<?, ?> w : workers) {
 			int id = Workers.getIdentifier(w);
-			builder.addParameter(new Configuration.IntParameter("Group"+id+"CoreCount", 1, maxNumCores(), maxNumCores()));
-			builder.addParameter(new Configuration.PermutationParameter<>("Group"+id+"CoreOrder", Integer.class, universe));
-			builder.addParameter(new Configuration.IntParameter("Group"+id+"BiasCount", 0, maxNumCores(), 0));
-			builder.addParameter(new Configuration.FloatParameter("Group"+id+"Bias", 0, 1, 0));
+			List<Configuration.Parameter> parameters = new ArrayList<>(4);
+			parameters.add(new Configuration.IntParameter("Group"+id+"CoreCount", 1, maxNumCores(), maxNumCores()));
+			parameters.add(new Configuration.PermutationParameter<>("Group"+id+"CoreOrder", Integer.class, universe));
+			parameters.add(new Configuration.IntParameter("Group"+id+"BiasCount", 0, maxNumCores(), 0));
+			parameters.add(new Configuration.FloatParameter("Group"+id+"Bias", 0, 1, 0));
+
+			String[] extraData = new String[parameters.size()];
+			for (int i = 0; i < parameters.size(); ++i) {
+				builder.addParameter(parameters.get(i));
+				extraData[i] = parameters.get(i).getName();
+			}
+			builder.putExtraData("AllocationParamNames"+id, extraData);
 		}
 	}
 
