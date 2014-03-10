@@ -20,12 +20,12 @@ import edu.mit.streamjit.util.ReflectionUtils;
  * @since Mar 10, 2014
  * 
  */
-public class DynamicBufferManager {
+public final class DynamicBufferManager {
 
 	/**
 	 * keep track of all buffers created for a particular blob.
 	 */
-	List<Buffer> buffers;
+	private List<Buffer> buffers;
 
 	public DynamicBufferManager() {
 		buffers = new ArrayList<>();
@@ -243,16 +243,24 @@ public class DynamicBufferManager {
 				expandable = false;
 				return;
 			}
-
+			System.out
+					.println(String
+							.format("Doubling the buffer: newCapacity - %d, initialCapacity - %d",
+									newCapacity, initialCapacity));
 			Buffer newBuf = getNewBuffer(newCapacity);
 			rwlock.writeLock().lock();
+			final int size = buffer.size();
+			System.out.println("Initial buffer size = " + size);
 			// TODO: copying is done one by one. Any block level copying?
-			for (int i = 0; i < buffer.size(); i++) {
+			for (int i = 0; i < size; i++) {
 				newBuf.write(buffer.read());
 			}
-			if (buffer.size() != 0)
+
+			System.out.println("buffer size after copying = " + buffer.size());
+			if (buffer.size() != 0) {
 				throw new IllegalStateException(
 						"Buffter is not empty after copying all data");
+			}
 			this.buffer = newBuf;
 			rwlock.writeLock().unlock();
 		}
