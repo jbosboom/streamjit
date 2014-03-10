@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.util.ConstructorSupplier;
+import edu.mit.streamjit.util.ReflectionUtils;
 
 /**
  * Dynamically increases supplied buffer capacity in order to avoid dead locks.
@@ -17,13 +19,16 @@ import edu.mit.streamjit.impl.blob.Buffer;
  * blob is executing on a faster node than the down stream blob is little
  * tricky. Here we assume blobs are running on nearly equivalent
  * 
+ * <p>
+ * TODO: {@link ConstructorSupplier} can be reused here to instantiate the
+ * buffer instances if we make {@link ConstructorSupplier}.arguments not final.
+ * 
  * @author sumanan
  * @since Mar 10, 2014
  * 
  */
 public class DynamicBuffer implements Buffer {
-	
-	
+
 	private Buffer buffer;
 	private final List<?> initialArguments;
 	private final int initialCapacity;
@@ -32,14 +37,19 @@ public class DynamicBuffer implements Buffer {
 	private final Constructor<? extends Buffer> cons;
 
 	public DynamicBuffer(Class<? extends Buffer> bufferClass,
-			List<?> initialArguments, int initialCapacity, int capacityPos)
-			throws NoSuchMethodException, SecurityException {
+			List<?> initialArguments, int initialCapacity, int capacityPos) {
 		this.bufferClass = bufferClass;
 		this.initialArguments = initialArguments;
 		this.initialCapacity = initialCapacity;
 		this.capacityPos = capacityPos;
-		this.cons = bufferClass.getConstructor((Class<?>[]) initialArguments
-				.toArray());
+		Constructor<? extends Buffer> con = null;
+		try {
+			con = ReflectionUtils
+					.findConstructor(bufferClass, initialArguments);
+		} catch (NoSuchMethodException e1) {
+			e1.printStackTrace();
+		}
+		this.cons = con;
 		this.buffer = getNewBuffer(getArguments(initialCapacity));
 	}
 
@@ -57,7 +67,7 @@ public class DynamicBuffer implements Buffer {
 	private Buffer getNewBuffer(List<?> args) {
 		Buffer buffer;
 		try {
-			buffer = cons.newInstance(args);
+			buffer = cons.newInstance(args.toArray());
 			return buffer;
 		} catch (InstantiationException | IllegalAccessException
 				| IllegalArgumentException | InvocationTargetException e) {
@@ -65,7 +75,7 @@ public class DynamicBuffer implements Buffer {
 			return null;
 		}
 	}
-	
+
 	@Override
 	public Object read() {
 		return buffer.read();
