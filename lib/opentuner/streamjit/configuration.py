@@ -63,7 +63,7 @@ class Configuration:
 		return self.params
 
 	def get_extra_data(self, key):
-		return self.extraData[key][2]
+		return self.extraData[key][1]
 
 	def put_extra_data(self, key, data, javaClass):
 		self.extraData[key] = [javaClass, data]
