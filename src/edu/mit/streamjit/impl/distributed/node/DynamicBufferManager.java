@@ -12,8 +12,10 @@ import edu.mit.streamjit.util.ConstructorSupplier;
 import edu.mit.streamjit.util.ReflectionUtils;
 
 /**
- * <b> Use a {@link DynamicBufferManager} per blob ( i.e., one to one mapping
- * between a blob and a DynamicBufferManager). Do not use same instance of
+ * Provides dynamic buffer backed by a buffer implementation which is passes an
+ * argument to {@link #getBuffer(Class, List, int, int)} method. <b> Use a
+ * {@link DynamicBufferManager} per blob ( i.e., one to one mapping between a
+ * blob and a DynamicBufferManager). Do not use same instance of
  * {@link DynamicBufferManager} to create buffers for multiple blobs. </b>
  * 
  * @author sumanan
@@ -23,7 +25,9 @@ import edu.mit.streamjit.util.ReflectionUtils;
 public final class DynamicBufferManager {
 
 	/**
-	 * keep track of all buffers created for a particular blob.
+	 * keeps track of all buffers created for a particular blob. We need to
+	 * track this list to determine whether there is an actual deadlock or this
+	 * blob is faster than all down blobs.
 	 */
 	private List<Buffer> buffers;
 
@@ -32,8 +36,15 @@ public final class DynamicBufferManager {
 	}
 
 	/**
-	 * Make and return a dynamic buffer backed by an instance of bufferClass.
+	 * Makes and returns a dynamic buffer backed by an instance of bufferClass.
+	 * Passed bufferClass ( a concrete implementation of {@link Buffer}) must
+	 * have an constructor which takes the capacity of the new buffer as an
+	 * argument.
 	 * 
+	 * @param Name
+	 *            : Name for this buffer. Just for documentation purpose.
+	 *            Token.toString() may be passed where the token is a token of
+	 *            the input/output edge of a blob.
 	 * @param bufferClass
 	 *            : Any concrete implementation of {@link Buffer}.
 	 * @param initialArguments
@@ -42,9 +53,9 @@ public final class DynamicBufferManager {
 	 *            : the position of size parameter in the bufferClass.
 	 * @return : A dynamic buffer backed by an instance of bufferClass.
 	 */
-	public Buffer getBuffer(Class<? extends Buffer> bufferClass,
+	public Buffer getBuffer(String name, Class<? extends Buffer> bufferClass,
 			List<?> initialArguments, int initialCapacity, int capacityPos) {
-		Buffer buf = new DynamicBuffer(bufferClass, initialArguments,
+		Buffer buf = new DynamicBuffer(name, bufferClass, initialArguments,
 				initialCapacity, capacityPos);
 		buffers.add(buf);
 		return buf;
@@ -57,9 +68,9 @@ public final class DynamicBufferManager {
 	 * {@link Buffer}.
 	 * 
 	 * <p>
-	 * Determining whether buffer is full due to deadlock situation or the
+	 * Determining whether buffer fullness is due to deadlock situation or the
 	 * current blob is executing on a faster node than the down stream blob is
-	 * little tricky. Here we assume blobs are running on nearly equivalent.
+	 * little tricky.
 	 * </p>
 	 * 
 	 * <p>
@@ -71,13 +82,16 @@ public final class DynamicBufferManager {
 	 * <p>
 	 * TODO: Possible performance bug during read() due to volatile buffer
 	 * variable and the need for acquire readLock for every single reading. Any
-	 * way to improve this???
+	 * way to improve this???. splitjoin1 show 30-40% performance overhead when
+	 * uses {@link DynamicBuffer}.
 	 * 
 	 * @author sumanan
 	 * @since Mar 10, 2014
 	 * 
 	 */
 	private class DynamicBuffer implements Buffer {
+
+		private final String name;
 
 		/**
 		 * Minimum time gap between the last successful write and the current
@@ -99,11 +113,10 @@ public final class DynamicBufferManager {
 
 		/**
 		 * Read lock should be acquired at every single read where as write lock
-		 * will be acquired only when switching the buffer from old to new.
+		 * only when switching the buffer from old to new.
 		 */
 		private ReadWriteLock rwlock;
 
-		private final Class<? extends Buffer> bufferClass;
 		private final List<?> initialArguments;
 		private final int initialCapacity;
 		private final int capacityPos;
@@ -114,9 +127,9 @@ public final class DynamicBufferManager {
 		 */
 		private volatile Buffer buffer;
 
-		public DynamicBuffer(Class<? extends Buffer> bufferClass,
+		public DynamicBuffer(String name, Class<? extends Buffer> bufferClass,
 				List<?> initialArguments, int initialCapacity, int capacityPos) {
-			this.bufferClass = bufferClass;
+			this.name = name;
 			this.initialArguments = initialArguments;
 			this.initialCapacity = initialCapacity;
 			this.capacityPos = capacityPos;
@@ -168,8 +181,7 @@ public final class DynamicBufferManager {
 
 		@Override
 		public int read(Object[] data, int offset, int length) {
-			rwlock.readLock().lock(); // TODO: getting lock for each single
-										// read. Severely affect performance.
+			rwlock.readLock().lock();
 			int ret = buffer.read(data, offset, length);
 			rwlock.readLock().unlock();
 			return ret;
@@ -251,8 +263,8 @@ public final class DynamicBufferManager {
 			}
 			System.out
 					.println(String
-							.format("Doubling the buffer: newCapacity - %d, initialCapacity - %d",
-									newCapacity, initialCapacity));
+							.format("%s : Doubling the buffer: initialCapacity - %d, newCapacity - %d",
+									name, initialCapacity, newCapacity));
 			Buffer newBuf = getNewBuffer(newCapacity);
 			rwlock.writeLock().lock();
 			final int size = buffer.size();
@@ -261,8 +273,6 @@ public final class DynamicBufferManager {
 				newBuf.write(buffer.read());
 			}
 
-			// System.out.println("buffer size after copying = " +
-			// buffer.size());
 			if (buffer.size() != 0) {
 				throw new IllegalStateException(
 						"Buffter is not empty after copying all data");
