@@ -110,12 +110,17 @@ public final class GlobalConstants {
 	 * Output count for tuning. Tuner measures the running time for this number
 	 * of outputs.
 	 */
-	public static final int outputCount = 100000;
+	public static final int outputCount = 40000;
 
 	/**
 	 * if true uses Compiler2, interpreter otherwise.
 	 */
 	public static final boolean useCompilerBlob = true;
+
+	/**
+	 * Prints number of outputs generated.
+	 */
+	public static final boolean printOutputCount = false;
 
 	static {
 
