@@ -7,7 +7,11 @@ import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.math.DoubleMath;
 import com.google.common.math.IntMath;
+import java.io.IOException;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +81,7 @@ public final class ILPSolver {
 
 		Pointer<lprec> lp = null;
 		Pointer<Double> row = null, column = null;
+		Path logFile = null;
 		try {
 			//Row 0 is the objective function.  Col 0 is apparently the right-hand
 			//side but the API hides this.
@@ -86,8 +91,10 @@ public final class ILPSolver {
 			if (lp == null || row == null || column == null)
 				throw new OutOfMemoryError();
 
-			//Don't print to the console.
-			Pointer<Byte> emptyString = Pointer.pointerToCString("");
+			try {
+				logFile = Files.createTempFile("lp", null);
+			} catch (IOException ignored) {}
+			Pointer<Byte> emptyString = Pointer.pointerToCString(logFile != null ? logFile.toString() : "");
 			setOutputfile(lp, emptyString);
 			emptyString.release();
 
@@ -134,41 +141,52 @@ public final class ILPSolver {
 			setRhVec(lp, column);
 
 			int solret = Bindings.solve(lp);
-			switch (solret) {
-				case NOMEMORY:
-					throw new OutOfMemoryError("when solving");
-				case SUBOPTIMAL:
-					throw new AssertionError("suboptimal; shouldn't happen?");
-				case INFEASIBLE:
-					throw new InfeasibleSystemException();
-				case UNBOUNDED:
-					throw new SolverException("system is unbounded");
-				case DEGENERATE:
-					throw new SolverException("system is degenerate");
-				case NUMFAILURE:
-					throw new SolverException("numerical failure");
-				case USERABORT:
-					throw new AssertionError("can't happen; user abort not used");
-				case TIMEOUT:
-					throw new AssertionError("can't happen; timeout not used");
-				case PRESOLVED:
-					throw new AssertionError("can't happen; presolve not used");
-				case PROCFAIL:
-					throw new SolverException("B&B failure");
-				case PROCBREAK:
-					throw new AssertionError("can't happen; B&B early breaks not used");
-				case FEASFOUND:
-					throw new AssertionError("feasfound");
-				case NOFEASFOUND:
-					throw new AssertionError("nofeasfound");
-			}
+			if (solret == OPTIMAL) {
+				//For some reason get_variables is 0-based unlike the rest of the API.
+				getVariables(lp, row);
+				for (int i = 0; i < variables.size(); ++i)
+					variables.get(i).value = DoubleMath.roundToInt(row.getDoubleAtIndex(i), RoundingMode.UNNECESSARY);
+				solved = true;
+			} else {
+				printLp(lp);
+				String log = "";
+				try {
+					List<String> logLines = Files.readAllLines(logFile, StandardCharsets.UTF_8);
+					StringBuilder sb = new StringBuilder("\n");
+					for (String s : logLines)
+						sb.append(s).append("\n");
+					log = sb.toString();
+				} catch (IOException ignored) {}
 
-			//Otherwise we have an optimal solution.
-			//For some reason get_variables is 0-based unlike the rest of the API.
-			getVariables(lp, row);
-			for (int i = 0; i < variables.size(); ++i)
-				variables.get(i).value = DoubleMath.roundToInt(row.getDoubleAtIndex(i), RoundingMode.UNNECESSARY);
-			solved = true;
+				switch (solret) {
+					case NOMEMORY:
+						throw new OutOfMemoryError("when solving"+log);
+					case SUBOPTIMAL:
+						throw new AssertionError("suboptimal; shouldn't happen?"+log);
+					case INFEASIBLE:
+						throw new InfeasibleSystemException(log);
+					case UNBOUNDED:
+						throw new SolverException("system is unbounded"+log);
+					case DEGENERATE:
+						throw new SolverException("system is degenerate"+log);
+					case NUMFAILURE:
+						throw new SolverException("numerical failure"+log);
+					case USERABORT:
+						throw new AssertionError("can't happen; user abort not used"+log);
+					case TIMEOUT:
+						throw new AssertionError("can't happen; timeout not used"+log);
+					case PRESOLVED:
+						throw new AssertionError("can't happen; presolve not used"+log);
+					case PROCFAIL:
+						throw new SolverException("B&B failure"+log);
+					case PROCBREAK:
+						throw new AssertionError("can't happen; B&B early breaks not used"+log);
+					case FEASFOUND:
+						throw new AssertionError("feasfound"+log);
+					case NOFEASFOUND:
+						throw new AssertionError("nofeasfound"+log);
+				}
+			}
 		} finally {
 			if (column != null)
 				column.release();
@@ -176,6 +194,10 @@ public final class ILPSolver {
 				row.release();
 			if (lp != null)
 				deleteLp(lp);
+			if (logFile != null)
+				try {
+					Files.delete(logFile);
+				} catch (IOException ignored) {}
 		}
 	}
 

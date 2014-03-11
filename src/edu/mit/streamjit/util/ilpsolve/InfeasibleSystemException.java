@@ -11,4 +11,7 @@ public final class InfeasibleSystemException extends SolverException {
 	public InfeasibleSystemException() {
 		super();
 	}
+	public InfeasibleSystemException(String message) {
+		super(message);
+	}
 }
