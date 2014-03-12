@@ -74,7 +74,7 @@ public class TailChannel extends TCPInputChannel {
 		}
 	}
 
-	public long awaitForFixInput() throws InterruptedException {
+	public long getFixedOutputTime() throws InterruptedException {
 		skipLatch.await();
 		Stopwatch stopwatch = Stopwatch.createStarted();
 		steadyLatch.await();
@@ -110,7 +110,7 @@ public class TailChannel extends TCPInputChannel {
 			}
 			while (++i < 10 && !stopFlag.get()) {
 				try {
-					Long time = awaitForFixInput();
+					Long time = getFixedOutputTime();
 					System.out.println("Execution time is " + time
 							+ " milli seconds");
 

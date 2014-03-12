@@ -170,7 +170,7 @@ public class OnlineTuner implements Runnable {
 				// the time. Exceptions, final drain, etc may causes app
 				// to
 				// stop executing.
-				time = manager.awaitForFixInput();
+				time = manager.getFixedOutputTime();
 
 				System.out.println("Execution time is " + time
 						+ " milli seconds");

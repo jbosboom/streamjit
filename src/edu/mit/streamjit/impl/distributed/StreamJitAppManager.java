@@ -176,7 +176,8 @@ public class StreamJitAppManager {
 
 		tailChannel = new TailChannel(bufferMap.get(tailToken),
 				controller.getConProvider(), tailconInfo, "tailChannel - "
-						+ tailToken.toString(), 0, GlobalConstants.outputCount);
+						+ tailToken.toString(), 0, 0,
+				GlobalConstants.outputCount);
 	}
 
 	/**
@@ -250,8 +251,8 @@ public class StreamJitAppManager {
 		isRunning = false;
 	}
 
-	public long awaitForFixInput() throws InterruptedException {
-		return tailChannel.awaitForFixInput();
+	public long getFixedOutputTime() throws InterruptedException {
+		return tailChannel.getFixedOutputTime();
 	}
 
 	public void setDrainer(AbstractDrainer drainer) {
