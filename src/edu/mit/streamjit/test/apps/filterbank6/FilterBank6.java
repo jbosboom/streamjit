@@ -61,10 +61,14 @@ public final class FilterBank6 {
 	/**
 	 * Top-level filterbank structure.
 	 **/
-	private static final class FilterBankPipeline extends Pipeline<Float, Float> {
+	public static final class FilterBankPipeline extends Pipeline<Float, Float> {
 		private FilterBankPipeline(int M) {
 			add(new FilterBankSplitJoin(M));
 			add(new Adder(M));
+		}
+
+		public FilterBankPipeline() {
+			this(32);
 		}
 	}
 
