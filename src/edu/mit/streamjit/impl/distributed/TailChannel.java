@@ -16,21 +16,33 @@ import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
 
 public class TailChannel extends TCPInputChannel {
 
-	int limit;
+	private final int steadyCount;
 
-	int count;
+	private final int skipCount;
 
-	private volatile CountDownLatch latch;
+	private final int totalCount;
+
+	private int count;
+
+	private volatile CountDownLatch steadyLatch;
+
+	private volatile CountDownLatch skipLatch;
 
 	private performanceLogger pLogger = null;
 
+	private boolean skipLatchUp;
+
 	public TailChannel(Buffer buffer, TCPConnectionProvider conProvider,
 			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel,
-			int limit) {
+			int skipCount, int steadyCount) {
 		super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
-		this.limit = limit;
+		this.steadyCount = steadyCount;
+		this.skipCount = skipCount;
+		this.totalCount = steadyCount + skipCount;
 		count = 0;
-		latch = new CountDownLatch(1);
+		steadyLatch = new CountDownLatch(1);
+		skipLatch = new CountDownLatch(1);
+		this.skipLatchUp = true;
 		if (GlobalConstants.tune == 0) {
 			pLogger = new performanceLogger();
 			pLogger.start();
@@ -41,12 +53,18 @@ public class TailChannel extends TCPInputChannel {
 	public void receiveData() {
 		super.receiveData();
 		count++;
+
 		if (GlobalConstants.printOutputCount && count % 10000 == 0)
 			System.err.println(count);
-		if (count > limit)
-			latch.countDown();
-	}
 
+		if (skipLatchUp && count > skipCount) {
+			skipLatch.countDown();
+			skipLatchUp = false;
+		}
+
+		if (count > totalCount)
+			steadyLatch.countDown();
+	}
 	@Override
 	public void stop(int type) {
 		super.stop(type);
@@ -56,14 +74,21 @@ public class TailChannel extends TCPInputChannel {
 		}
 	}
 
-	public void awaitForFixInput() throws InterruptedException {
-		latch.await();
+	public long awaitForFixInput() throws InterruptedException {
+		skipLatch.await();
+		Stopwatch stopwatch = Stopwatch.createStarted();
+		steadyLatch.await();
+		stopwatch.stop();
+		return stopwatch.elapsed(TimeUnit.MILLISECONDS);
 	}
 
 	public void reset() {
-		latch.countDown();
-		latch = new CountDownLatch(1);
+		steadyLatch.countDown();
+		steadyLatch = new CountDownLatch(1);
+		skipLatch.countDown();
+		skipLatch = new CountDownLatch(1);
 		count = 0;
+		skipLatchUp = true;
 	}
 
 	private class performanceLogger extends Thread {
@@ -86,7 +111,7 @@ public class TailChannel extends TCPInputChannel {
 			while (++i < 10 && !stopFlag.get()) {
 				try {
 					Stopwatch stopwatch = Stopwatch.createStarted();
-					latch.await();
+					steadyLatch.await();
 					stopwatch.stop();
 					Long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
 
@@ -105,7 +130,6 @@ public class TailChannel extends TCPInputChannel {
 			try {
 				writer.close();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
