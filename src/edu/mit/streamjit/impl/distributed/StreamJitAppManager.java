@@ -250,8 +250,8 @@ public class StreamJitAppManager {
 		isRunning = false;
 	}
 
-	public void awaitForFixInput() throws InterruptedException {
-		tailChannel.awaitForFixInput();
+	public long awaitForFixInput() throws InterruptedException {
+		return tailChannel.awaitForFixInput();
 	}
 
 	public void setDrainer(AbstractDrainer drainer) {

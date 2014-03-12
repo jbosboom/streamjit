@@ -165,15 +165,12 @@ public class OnlineTuner implements Runnable {
 			drainer.setBlobGraph(app.blobGraph);
 			System.err.println("Reconfiguring...");
 			if (manager.reconfigure()) {
-				Stopwatch stopwatch = Stopwatch.createStarted();
-				manager.awaitForFixInput();
-				stopwatch.stop();
 				// TODO: need to check the manager's status before
 				// passing
 				// the time. Exceptions, final drain, etc may causes app
 				// to
 				// stop executing.
-				time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+				time = manager.awaitForFixInput();
 
 				System.out.println("Execution time is " + time
 						+ " milli seconds");

@@ -110,11 +110,7 @@ public class TailChannel extends TCPInputChannel {
 			}
 			while (++i < 10 && !stopFlag.get()) {
 				try {
-					Stopwatch stopwatch = Stopwatch.createStarted();
-					steadyLatch.await();
-					stopwatch.stop();
-					Long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
-
+					Long time = awaitForFixInput();
 					System.out.println("Execution time is " + time
 							+ " milli seconds");
 
