@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.common;
 
 import edu.mit.streamjit.impl.common.AbstractDrainer;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.distributed.TailChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.StreamNodeAgent;
@@ -98,7 +99,7 @@ public final class GlobalConstants {
 	 * 2 - Evaluate configuration files. ( compares final cfg with hand tuned
 	 * cfg. Both file should be presented in the running directory.
 	 */
-	public static final int tune = 0;
+	public static final int tune = 1;
 
 	/**
 	 * Save all configurations tired by open tuner in to
@@ -110,7 +111,7 @@ public final class GlobalConstants {
 	 * Output count for tuning. Tuner measures the running time for this number
 	 * of outputs.
 	 */
-	public static final int outputCount = 40000;
+	public static final int outputCount = 100000;
 
 	/**
 	 * if true uses Compiler2, interpreter otherwise.
@@ -120,7 +121,13 @@ public final class GlobalConstants {
 	/**
 	 * Prints number of outputs generated.
 	 */
-	public static final boolean printOutputCount = false;
+	public static final boolean printOutputCount = true;
+
+	/**
+	 * Enables {@link DistributedStreamCompiler} to run on a single node. When
+	 * this is enabled, noOfNodes passed as compiler argument has no effect.
+	 */
+	public static final boolean singleNodeOnline = true;
 
 	static {
 

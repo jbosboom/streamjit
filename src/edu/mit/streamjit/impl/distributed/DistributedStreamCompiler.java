@@ -68,12 +68,12 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	/**
 	 * Configuration from Opentuner.
 	 */
-	Configuration cfg;
+	private Configuration cfg;
 
 	/**
 	 * Total number of nodes including controller node.
 	 */
-	int noOfnodes;
+	private int noOfnodes;
 
 	/**
 	 * @param noOfnodes
@@ -118,8 +118,15 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		stream.visit(verifier);
 
 		Map<CommunicationType, Integer> conTypeCount = new HashMap<>();
-		// conTypeCount.put(CommunicationType.LOCAL, 1);
-		conTypeCount.put(CommunicationType.TCP, this.noOfnodes);
+
+		if (GlobalConstants.singleNodeOnline) {
+			System.out
+					.println("Flag GlobalConstants.singleNodeOnline is enabled."
+							+ " noOfNodes passed as compiler argument has no effect");
+			conTypeCount.put(CommunicationType.LOCAL, 1);
+			this.noOfnodes = 1;
+		}
+		conTypeCount.put(CommunicationType.TCP, this.noOfnodes - 1);
 		Controller controller = new Controller();
 		controller.connect(conTypeCount);
 
