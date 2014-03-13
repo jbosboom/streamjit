@@ -70,7 +70,7 @@ public final class GlobalConstants {
 	 * tuning on remote machines.
 	 * </ol>
 	 */
-	public static int tunerMode = 0;
+	public static final int tunerMode = 0;
 
 	/**
 	 * To turn on or turn off the drain data. If this is false, drain data will
@@ -121,7 +121,7 @@ public final class GlobalConstants {
 	/**
 	 * Prints number of outputs generated.
 	 */
-	public static final boolean printOutputCount = true;
+	public static final boolean printOutputCount = false;
 
 	/**
 	 * Enables {@link DistributedStreamCompiler} to run on a single node. When

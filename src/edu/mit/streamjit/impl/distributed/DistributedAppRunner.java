@@ -64,8 +64,6 @@ public class DistributedAppRunner {
 			}
 		}
 
-		GlobalConstants.tunerMode = 1;
-
 		Benchmark benchmark = bp.iterator().next();
 		// StreamCompiler compiler = new Compiler2StreamCompiler();
 		StreamCompiler compiler = new DistributedStreamCompiler(noOfNodes);
