@@ -16,8 +16,6 @@ import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
 
 public class TailChannel extends TCPInputChannel {
 
-	private final int steadyCount;
-
 	private final int skipCount;
 
 	private final int totalCount;
@@ -32,11 +30,26 @@ public class TailChannel extends TCPInputChannel {
 
 	private boolean skipLatchUp;
 
+	/**
+	 * @param buffer
+	 * @param conProvider
+	 * @param conInfo
+	 * @param bufferTokenName
+	 * @param debugLevel
+	 * @param skipCount
+	 *            : Skips this amount of output before evaluating the running
+	 *            time. This is added to avoid the noise from init schedule and
+	 *            the drain data. ( i.e., In order to get real steady state
+	 *            execution time)
+	 * @param steadyCount
+	 *            : {@link #getFixedOutputTime()} calculates the time taken to
+	 *            get this amount of outputs ( after skipping skipCount number
+	 *            of outputs at the beginning).
+	 */
 	public TailChannel(Buffer buffer, TCPConnectionProvider conProvider,
 			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel,
 			int skipCount, int steadyCount) {
 		super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
-		this.steadyCount = steadyCount;
 		this.skipCount = skipCount;
 		this.totalCount = steadyCount + skipCount;
 		count = 0;
@@ -65,6 +78,7 @@ public class TailChannel extends TCPInputChannel {
 		if (count > totalCount)
 			steadyLatch.countDown();
 	}
+
 	@Override
 	public void stop(int type) {
 		super.stop(type);
@@ -74,6 +88,15 @@ public class TailChannel extends TCPInputChannel {
 		}
 	}
 
+	/**
+	 * Skips skipCount amount of output at the beginning and then calculates the
+	 * time taken to get steadyCount amount of outputs. skipCount is added to
+	 * avoid the noise from init schedule and the drain data. ( i.e., In order
+	 * to get real steady state execution time).
+	 * 
+	 * @return time in MILLISECONDS.
+	 * @throws InterruptedException
+	 */
 	public long getFixedOutputTime() throws InterruptedException {
 		skipLatch.await();
 		Stopwatch stopwatch = Stopwatch.createStarted();

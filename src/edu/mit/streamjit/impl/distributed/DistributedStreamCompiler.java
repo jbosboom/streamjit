@@ -180,9 +180,9 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		// TODO: derive a algorithm to find good buffer size and use here.
 		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
-				1000);
+				10000);
 		Buffer tail = OutputBufferFactory.unwrap(output).createWritableBuffer(
-				1000);
+				10000);
 
 		boolean needTermination;
 
