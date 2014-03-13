@@ -216,7 +216,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		app.bufferMap = bufferMapBuilder.build();
 		app.constraints = constraints;
 
-		manager.reconfigure();
+		manager.reconfigure(1);
 		CompiledStream cs = new DistributedCompiledStream(drainer);
 
 		if (GlobalConstants.tune > 0 && this.cfg != null) {

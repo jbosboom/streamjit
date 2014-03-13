@@ -102,7 +102,10 @@ public class TailChannel extends TCPInputChannel {
 		Stopwatch stopwatch = Stopwatch.createStarted();
 		steadyLatch.await();
 		stopwatch.stop();
-		return stopwatch.elapsed(TimeUnit.MILLISECONDS);
+		long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+		long normalizedTime = (GlobalConstants.outputCount * time)
+				/ (totalCount - skipCount);
+		return normalizedTime;
 	}
 
 	public void reset() {

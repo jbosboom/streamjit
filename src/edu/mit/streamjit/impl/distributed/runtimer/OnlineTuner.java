@@ -12,6 +12,7 @@ import com.google.common.base.Stopwatch;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
@@ -162,9 +163,11 @@ public class OnlineTuner implements Runnable {
 				}
 			}
 
+			int multiplier = config.getParameter("multiplier",
+					IntParameter.class).getValue();
 			drainer.setBlobGraph(app.blobGraph);
-			System.err.println("Reconfiguring...");
-			if (manager.reconfigure()) {
+			System.err.println("Reconfiguring...multiplier = " + multiplier);
+			if (manager.reconfigure(multiplier)) {
 				// TODO: need to check the manager's status before
 				// passing
 				// the time. Exceptions, final drain, etc may causes app

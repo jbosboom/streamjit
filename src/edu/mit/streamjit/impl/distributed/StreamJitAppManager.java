@@ -102,7 +102,7 @@ public class StreamJitAppManager {
 		tailToken = Token.createOverallOutputToken(app.sink);
 	}
 
-	public boolean reconfigure() {
+	public boolean reconfigure(int multiplier) {
 		reset();
 		Configuration.Builder builder = Configuration.builder(cfgManager
 				.getDynamicConfiguration());
@@ -129,7 +129,7 @@ public class StreamJitAppManager {
 			controller.send(nodeID, json);
 		}
 
-		setupHeadTail(conInfoMap, app.bufferMap);
+		setupHeadTail(conInfoMap, app.bufferMap, multiplier);
 
 		boolean isCompiled = apStsPro.waitForCompilation();
 
@@ -150,7 +150,7 @@ public class StreamJitAppManager {
 	 * @param bufferMap
 	 */
 	private void setupHeadTail(Map<Token, TCPConnectionInfo> conInfoMap,
-			ImmutableMap<Token, Buffer> bufferMap) {
+			ImmutableMap<Token, Buffer> bufferMap, int multiplier) {
 
 		TCPConnectionInfo headconInfo = conInfoMap.get(headToken);
 		assert headconInfo != null : "No head connection info exists in conInfoMap";
@@ -176,12 +176,12 @@ public class StreamJitAppManager {
 			throw new IllegalArgumentException(
 					"No tail buffer in the passed bufferMap.");
 
+		int skipCount = Math.max(GlobalConstants.outputCount, multiplier * 5);
 		tailChannel = new TailChannel(bufferMap.get(tailToken),
 				controller.getConProvider(), tailconInfo, "tailChannel - "
-						+ tailToken.toString(), 0, GlobalConstants.outputCount,
+						+ tailToken.toString(), 0, skipCount,
 				GlobalConstants.outputCount);
 	}
-
 	/**
 	 * Start the execution of the StreamJit application.
 	 */
