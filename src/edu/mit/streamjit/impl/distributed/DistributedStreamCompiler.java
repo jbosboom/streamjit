@@ -123,10 +123,13 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			System.out
 					.println("Flag GlobalConstants.singleNodeOnline is enabled."
 							+ " noOfNodes passed as compiler argument has no effect");
-			conTypeCount.put(CommunicationType.LOCAL, 1);
 			this.noOfnodes = 1;
 		}
-		conTypeCount.put(CommunicationType.TCP, this.noOfnodes - 1);
+
+		if (this.noOfnodes == 1)
+			conTypeCount.put(CommunicationType.LOCAL, 1);
+		else
+			conTypeCount.put(CommunicationType.TCP, this.noOfnodes - 1);
 		Controller controller = new Controller();
 		controller.connect(conTypeCount);
 
