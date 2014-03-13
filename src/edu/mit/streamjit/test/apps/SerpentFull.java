@@ -6,7 +6,9 @@ import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Pipeline;
+import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
@@ -20,6 +22,8 @@ import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.test.SuppliedBenchmark;
 import java.nio.ByteOrder;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Ported from streamit/streams/apps/benchmarks/asplos06/serpent_full/streamit/Serpent_full.str
@@ -118,18 +122,18 @@ public final class SerpentFull {
 	private static final class R extends Pipeline<Integer, Integer> {
 		private R(int round) {
 			super();
-			add(new Splitjoin<>(new WeightedRoundrobinSplitter<Integer>(NBITS, 0), new RoundrobinJoiner<Integer>(),
+			add(new Splitjoin<>(new WeightedRoundrobinSplitter<Integer>(NBITS, 0), new XorJoiner(2),
 					new Identity<Integer>(),
 					new KeySchedule(round)));
-			add(new Xor(2));
+//			add(new Xor(2));
 			add(new Sbox(round % 8));
 			if (round < MAXROUNDS - 1)
 				add(new rawL());
 			else {
-				add(new Splitjoin<>(new WeightedRoundrobinSplitter<Integer>(NBITS, 0), new RoundrobinJoiner<Integer>(),
+				add(new Splitjoin<>(new WeightedRoundrobinSplitter<Integer>(NBITS, 0), new XorJoiner(2),
 					new Identity<Integer>(),
 					new KeySchedule(MAXROUNDS)));
-				add(new Xor(2));
+//				add(new Xor(2));
 			}
 		}
 	}
@@ -232,6 +236,36 @@ public final class SerpentFull {
 			for (int i = 1; i < n; i++)
 				x ^= pop();
 			push(x);
+		}
+	}
+
+	private static final class XorJoiner extends Joiner<Integer, Integer> {
+		private final int n;
+		private XorJoiner(int n) {
+			this.n = n;
+		}
+		@Override
+		public int supportedInputs() {
+			 return n;
+		}
+		@Override
+		public void work() {
+			int x = 0;
+			for (int i = 0; i < n; ++i)
+				x ^= pop(i);
+			push(x);
+		}
+		@Override
+		public List<Rate> getPeekRates() {
+			return Collections.nCopies(n, Rate.create(0));
+		}
+		@Override
+		public List<Rate> getPopRates() {
+			return Collections.nCopies(n, Rate.create(1));
+		}
+		@Override
+		public List<Rate> getPushRates() {
+			return Collections.singletonList(Rate.create(1));
 		}
 	}
 
