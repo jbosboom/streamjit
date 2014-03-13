@@ -7,6 +7,7 @@ import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Rate;
@@ -21,6 +22,8 @@ import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.Datasets;
 import java.nio.ByteOrder;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Rewritten StreamIt's asplos06 benchmarks. Refer STREAMIT_HOME/apps/benchmarks/asplos06/des/streamit/DES2.str for original
@@ -233,11 +236,11 @@ public final class DES2 {
 	// output is f(R[i]) xor L[i]
 	private static final class nextR extends Pipeline<Integer, Integer> {
 		private nextR(int vector, int round) {
-			add(new Splitjoin<Integer, Integer>(new RoundrobinSplitter<Integer>(32), new RoundrobinJoiner<Integer>(),
+			add(new Splitjoin<Integer, Integer>(new RoundrobinSplitter<Integer>(32), new XorJoiner(2),
 					new f(vector, round),
 					new Identity<Integer>())
 			);
-			add(new Xor(2));
+//			add(new Xor(2));
 		}
 	}
 
@@ -659,6 +662,36 @@ public final class DES2 {
 				x = x ^ y;
 			}
 			push(x);
+		}
+	}
+
+	private static final class XorJoiner extends Joiner<Integer, Integer> {
+		private final int n;
+		private XorJoiner(int n) {
+			this.n = n;
+		}
+		@Override
+		public int supportedInputs() {
+			 return n;
+		}
+		@Override
+		public void work() {
+			int x = 0;
+			for (int i = 0; i < n; ++i)
+				x ^= pop(i);
+			push(x);
+		}
+		@Override
+		public List<Rate> getPeekRates() {
+			return Collections.nCopies(n, Rate.create(0));
+		}
+		@Override
+		public List<Rate> getPopRates() {
+			return Collections.nCopies(n, Rate.create(1));
+		}
+		@Override
+		public List<Rate> getPushRates() {
+			return Collections.singletonList(Rate.create(1));
 		}
 	}
 
