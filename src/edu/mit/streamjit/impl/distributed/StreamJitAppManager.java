@@ -52,6 +52,10 @@ public class StreamJitAppManager {
 
 	private final ConfigurationManager cfgManager;
 
+	private final Token headToken;
+
+	private final Token tailToken;
+
 	private boolean isRunning;
 
 	/**
@@ -76,7 +80,7 @@ public class StreamJitAppManager {
 
 	private volatile AppStatus status;
 
-	Map<Token, TCPConnectionInfo> conInfoMap;
+	private Map<Token, TCPConnectionInfo> conInfoMap;
 
 	public StreamJitAppManager(Controller controller, StreamJitApp app,
 			ConfigurationManager cfgManager) {
@@ -93,6 +97,9 @@ public class StreamJitAppManager {
 																// good calling
 																// place.
 		isRunning = false;
+
+		headToken = Token.createOverallInputToken(app.source);
+		tailToken = Token.createOverallOutputToken(app.sink);
 	}
 
 	public boolean reconfigure() {
@@ -122,9 +129,7 @@ public class StreamJitAppManager {
 			controller.send(nodeID, json);
 		}
 
-		setupHeadTail(conInfoMap, app.bufferMap,
-				Token.createOverallInputToken(app.source),
-				Token.createOverallOutputToken(app.sink));
+		setupHeadTail(conInfoMap, app.bufferMap);
 
 		boolean isCompiled = apStsPro.waitForCompilation();
 
@@ -143,12 +148,9 @@ public class StreamJitAppManager {
 	 * 
 	 * @param cfg
 	 * @param bufferMap
-	 * @param headToken
-	 * @param tailToken
 	 */
 	private void setupHeadTail(Map<Token, TCPConnectionInfo> conInfoMap,
-			ImmutableMap<Token, Buffer> bufferMap, Token headToken,
-			Token tailToken) {
+			ImmutableMap<Token, Buffer> bufferMap) {
 
 		TCPConnectionInfo headconInfo = conInfoMap.get(headToken);
 		assert headconInfo != null : "No head connection info exists in conInfoMap";
