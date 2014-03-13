@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import os
 import re
+import time
 
 import deps #fix sys.path
 import opentuner
@@ -26,6 +27,7 @@ class StreamJITMI(MeasurementInterface):
 		args.technique = ['StreamJITBandit']
 		super(StreamJITMI, self).__init__(args = args, program_name = args.program, manipulator = manipulator, input_manager = inputmanager, objective = objective)
 		self.program = args.program
+		self.timestamp = args.timestamp
 		self.config = configuration
 		self.config.put_extra_data("benchmark", self.program, "java.lang.String")
 		self.jvm_options = jvm_options
@@ -34,12 +36,7 @@ class StreamJITMI(MeasurementInterface):
 		cfg_data = desired_result.configuration.data
 		for k in self.config.params:
 			self.config.getParameter(k).update_value_for_json(cfg_data)
-		jvm_args = []
-		for key in self.jvm_options.keys():
-			self.jvm_options.get(key).setValue(cfg_data[key])
-			cmd = self.jvm_options.get(key).getCommand()
-			if len(cmd) > 0:
-				jvm_args.append(cmd)
+		jvm_args = self.jvm_args_to_list(cfg_data)
 
 		with tempfile.NamedTemporaryFile() as f:
 			f.write(self.config.toJSON())
@@ -64,14 +61,35 @@ class StreamJITMI(MeasurementInterface):
 			if "TIMED OUT" in stderr:
 				return opentuner.resultsdb.models.Result(state='TIMEOUT', time=float('inf'))
 			else:
-				with tempfile.NamedTemporaryFile(dir=os.getcwd(), suffix=".cfg", delete=False) as f:
+				with tempfile.NamedTemporaryFile(dir=os.getcwd(), prefix="error-{0}-{1}-".format(self.timestamp, self.program),
+						suffix=".cfg", delete=False) as f:
 					f.write(self.config.toJSON())
+					f.write("\n")
+					f.writelines(jvm_args)
 					f.write("\n")
 					f.write(stderr)
 					if len(stdout) == 0:
 						f.write("[stdout was empty]")
 					f.flush()
 				return opentuner.resultsdb.models.Result(state='ERROR', time=float('inf'))
+
+	def save_final_config(self, config):
+		for k in self.config.params:
+			self.config.getParameter(k).update_value_for_json(config.data)
+		with open("{0}-{1}.cfg".format(self.program, self.timestamp), 'w+') as f:
+			f.write(self.config.toJSON())
+			f.write("\n")
+			f.write(" ".join(self.jvm_args_to_list(config.data)))
+			f.flush()
+
+	def jvm_args_to_list(self, cfg_data):
+		jvm_args = []
+		for key in self.jvm_options.keys():
+			self.jvm_options.get(key).setValue(cfg_data[key])
+			cmd = self.jvm_options.get(key).getCommand()
+			if len(cmd) > 0:
+				jvm_args.append(cmd)
+		return jvm_args
 
 class StreamJITConfigurationManipulator(ConfigurationManipulator):
 	def __init__(self, config):
@@ -166,6 +184,8 @@ if __name__ == '__main__':
 	logging.basicConfig(level=logging.INFO)
 	parser = argparse.ArgumentParser(parents=opentuner.argparsers())
 	parser.add_argument('--program', help='StreamJIT benchmark to tune (with first input)')
+	parser.add_argument('--timestamp', help='timestamp to use for final config/errors',
+		default=time.strftime('%Y%m%d-%H%M%S'))
 	args = parser.parse_args()
 	(cfg_json, error_str) = call_java([], "edu.mit.streamjit.tuner.ConfigGenerator2",
 		["edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory", args.program])
