@@ -158,17 +158,6 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 					System.out.println("Memory Use :" + usedMemory + "M/"
 							+ maxMemory + "M");
 					return null;
-				} catch (OutOfMemoryError er) {
-					MemoryMXBean memoryBean = ManagementFactory
-							.getMemoryMXBean();
-					System.out.println("******OutOfMemoryError******");
-					MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
-					int MEGABYTE = 1024 * 1024;
-					long maxMemory = heapUsage.getMax() / MEGABYTE;
-					long usedMemory = heapUsage.getUsed() / MEGABYTE;
-					System.out.println("Memory Use :" + usedMemory + "M/"
-							+ maxMemory + "M");
-					return null;
 				}
 				// DEBUG MSG
 				System.out.println(String.format(
