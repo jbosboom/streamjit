@@ -136,12 +136,17 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 			Configuration blobConfigs = dyncfg
 					.getSubconfiguration("blobConfigs");
 
+			int maxThreadCount = Math.max(Runtime.getRuntime()
+					.availableProcessors() / 2, 1);
+			System.out.println(String.format("Maximum thread count = %d",
+					maxThreadCount));
 			for (BlobSpecifier bs : blobList) {
 				Set<Integer> workIdentifiers = bs.getWorkerIdentifiers();
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
 				try {
 					BlobFactory bf = bs.getBlobFactory();
-					Blob b = bf.makeBlob(workerset, blobConfigs, 1, drainData);
+					Blob b = bf.makeBlob(workerset, blobConfigs,
+							maxThreadCount, drainData);
 					blobSet.add(b);
 				} catch (Exception ex) {
 					return null;
