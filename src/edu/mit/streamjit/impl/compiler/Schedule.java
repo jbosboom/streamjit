@@ -144,25 +144,22 @@ public final class Schedule<T> {
 				return this;
 			}
 			public Builder<T> bufferExactly(int items) {
-				checkArgument(items >= 0);
 				this.condition = BufferingConstraint.Condition.EQUAL;
 				this.bufferDelta = items;
 				return build();
 			}
 			public Builder<T> bufferAtLeast(int items) {
-				checkArgument(items >= 0);
 				this.condition = BufferingConstraint.Condition.GREATER_THAN_EQUAL;
 				this.bufferDelta = items;
 				return build();
 			}
 			public Builder<T> bufferAtMost(int items) {
-				checkArgument(items >= 0);
 				this.condition = BufferingConstraint.Condition.LESS_THAN_EQUAL;
 				this.bufferDelta = items;
 				return build();
 			}
 			public Builder<T> unconstrained() {
-				return bufferAtLeast(0);
+				return bufferAtLeast(Integer.MIN_VALUE);
 			}
 			private Builder<T> build() {
 				if (pushRate == 0 && popRate == 0) {
