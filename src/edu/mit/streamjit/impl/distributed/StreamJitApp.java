@@ -19,6 +19,7 @@ import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 
@@ -124,6 +125,30 @@ public class StreamJitApp {
 	 */
 	public void varifyConfiguration(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
+
+		if (!GlobalConstants.singleNodeOnline) {
+			printPartition(partitionsMachineMap);
+		}
+
+		List<Set<Worker<?, ?>>> partitionList = new ArrayList<>();
+		for (List<Set<Worker<?, ?>>> lst : partitionsMachineMap.values()) {
+			partitionList.addAll(lst);
+		}
+
+		BlobGraph bg = null;
+		try {
+			bg = new BlobGraph(partitionList);
+		} catch (StreamCompilationFailedException ex) {
+			System.err.println("Cycles found in the worker->blob assignment");
+			printPartition(partitionsMachineMap);
+			throw ex;
+		}
+		this.blobGraph = bg;
+		this.partitionsMachineMap = partitionsMachineMap;
+	}
+
+	private void printPartition(
+			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
 		for (int machine : partitionsMachineMap.keySet()) {
 			System.err.print("\nMachine - " + machine);
 			for (Set<Worker<?, ?>> blobworkers : partitionsMachineMap
@@ -134,31 +159,7 @@ public class StreamJitApp {
 				}
 			}
 		}
-		List<Set<Worker<?, ?>>> partitionList = new ArrayList<>();
-		for (List<Set<Worker<?, ?>>> lst : partitionsMachineMap.values()) {
-			partitionList.addAll(lst);
-		}
-
-		BlobGraph bg = null;
-		try {
-			bg = new BlobGraph(partitionList);
-		} catch (StreamCompilationFailedException ex) {
-			System.err.print("Cycles found in the worker->blob assignment");
-			// for (int machine : partitionsMachineMap.keySet()) {
-			// System.err.print("\nMachine - " + machine);
-			// for (Set<Worker<?, ?>> blobworkers : partitionsMachineMap
-			// .get(machine)) {
-			// System.err.print("\n\tBlob worker set : ");
-			// for (Worker<?, ?> w : blobworkers) {
-			// System.err.print(Workers.getIdentifier(w) + " ");
-			// }
-			// }
-			// }
-			System.err.println();
-			throw ex;
-		}
-		this.blobGraph = bg;
-		this.partitionsMachineMap = partitionsMachineMap;
+		System.err.println();
 	}
 
 	/**
