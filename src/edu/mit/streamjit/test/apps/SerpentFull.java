@@ -6,7 +6,9 @@ import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.Input;
+import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Pipeline;
+import edu.mit.streamjit.api.Rate;
 import edu.mit.streamjit.api.RoundrobinJoiner;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
@@ -20,6 +22,8 @@ import edu.mit.streamjit.test.Datasets;
 import edu.mit.streamjit.test.SuppliedBenchmark;
 import java.nio.ByteOrder;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Ported from streamit/streams/apps/benchmarks/asplos06/serpent_full/streamit/Serpent_full.str
@@ -118,18 +122,18 @@ public final class SerpentFull {
 	private static final class R extends Pipeline<Integer, Integer> {
 		private R(int round) {
 			super();
-			add(new Splitjoin<>(new WeightedRoundrobinSplitter<Integer>(NBITS, 0), new RoundrobinJoiner<Integer>(),
+			add(new Splitjoin<>(new WeightedRoundrobinSplitter<Integer>(NBITS, 0), new XorJoiner(2),
 					new Identity<Integer>(),
 					new KeySchedule(round)));
-			add(new Xor(2));
+//			add(new Xor(2));
 			add(new Sbox(round % 8));
 			if (round < MAXROUNDS - 1)
 				add(new rawL());
 			else {
-				add(new Splitjoin<>(new WeightedRoundrobinSplitter<Integer>(NBITS, 0), new RoundrobinJoiner<Integer>(),
+				add(new Splitjoin<>(new WeightedRoundrobinSplitter<Integer>(NBITS, 0), new XorJoiner(2),
 					new Identity<Integer>(),
 					new KeySchedule(MAXROUNDS)));
-				add(new Xor(2));
+//				add(new Xor(2));
 			}
 		}
 	}
@@ -235,6 +239,36 @@ public final class SerpentFull {
 		}
 	}
 
+	private static final class XorJoiner extends Joiner<Integer, Integer> {
+		private final int n;
+		private XorJoiner(int n) {
+			this.n = n;
+		}
+		@Override
+		public int supportedInputs() {
+			 return n;
+		}
+		@Override
+		public void work() {
+			int x = 0;
+			for (int i = 0; i < n; ++i)
+				x ^= pop(i);
+			push(x);
+		}
+		@Override
+		public List<Rate> getPeekRates() {
+			return Collections.nCopies(n, Rate.create(0));
+		}
+		@Override
+		public List<Rate> getPopRates() {
+			return Collections.nCopies(n, Rate.create(1));
+		}
+		@Override
+		public List<Rate> getPushRates() {
+			return Collections.singletonList(Rate.create(1));
+		}
+	}
+
 	private static final class Sbox extends Filter<Integer, Integer> {
 		private final int[] sbox;
 		private Sbox(int round) {
@@ -262,137 +296,142 @@ public final class SerpentFull {
 		}
 		@Override
 		public void work() {
-			push(peek(16)^peek(52)^peek(56)^peek(70)^peek(83)^peek(94)^peek(105));
-			push(peek(72)^peek(114)^peek(125));
-			push(peek(2)^peek(9)^peek(15)^peek(30)^peek(76)^peek(84)^peek(126) );
-			push(peek(36)^peek(90)^peek(103));
-			push(peek(20)^peek(56)^peek(60)^peek(74)^peek(87)^peek(98)^peek(109) );
-			push(peek(1)^peek(76)^peek(118) );
-			push(peek(2)^peek(6)^peek(13)^peek(19)^peek(34)^peek(80)^peek(88) );
-			push(peek(40)^peek(94)^peek(107));
-			push(peek(24)^peek(60)^peek(64)^peek(78)^peek(91)^peek(102)^peek(113) );
-			push(peek(5)^peek(80)^peek(122) );
-			push(peek(6)^peek(10)^peek(17)^peek(23)^peek(38)^peek(84)^peek(92) );
-			push(peek(44)^peek(98)^peek(111));
-			push(peek(28)^peek(64)^peek(68)^peek(82)^peek(95)^peek(106)^peek(117) );
-			push(peek(9)^peek(84)^peek(126) );
-			push(peek(10)^peek(14)^peek(21)^peek(27)^peek(42)^peek(88)^peek(96) );
-			push(peek(48)^peek(102)^peek(115));
-			push(peek(32)^peek(68)^peek(72)^peek(86)^peek(99)^peek(110)^peek(121) );
-			push(peek(2)^peek(13)^peek(88) );
-			push(peek(14)^peek(18)^peek(25)^peek(31)^peek(46)^peek(92)^peek(100) );
-			push(peek(52)^peek(106)^peek(119));
-			push(peek(36)^peek(72)^peek(76)^peek(90)^peek(103)^peek(114)^peek(125) );
-			push(peek(6)^peek(17)^peek(92) );
-			push(peek(18)^peek(22)^peek(29)^peek(35)^peek(50)^peek(96)^peek(104) );
-			push(peek(56)^peek(110)^peek(123));
-			push(peek(1)^peek(40)^peek(76)^peek(80)^peek(94)^peek(107)^peek(118) );
-			push(peek(10)^peek(21)^peek(96) );
-			push(peek(22)^peek(26)^peek(33)^peek(39)^peek(54)^peek(100)^peek(108) );
-			push(peek(60)^peek(114)^peek(127));
-			push(peek(5)^peek(44)^peek(80)^peek(84)^peek(98)^peek(111)^peek(122) );
-			push(peek(14)^peek(25)^peek(100) );
-			push(peek(26)^peek(30)^peek(37)^peek(43)^peek(58)^peek(104)^peek(112) );
-			push(peek(3)^peek(118));
-			push(peek(9)^peek(48)^peek(84)^peek(88)^peek(102)^peek(115)^peek(126) );
-			push(peek(18)^peek(29)^peek(104) );
-			push(peek(30)^peek(34)^peek(41)^peek(47)^peek(62)^peek(108)^peek(116) );
-			push(peek(7)^peek(122));
-			push(peek(2)^peek(13)^peek(52)^peek(88)^peek(92)^peek(106)^peek(119) );
-			push(peek(22)^peek(33)^peek(108) );
-			push(peek(34)^peek(38)^peek(45)^peek(51)^peek(66)^peek(112)^peek(120) );
-			push(peek(11)^peek(126));
-			push(peek(6)^peek(17)^peek(56)^peek(92)^peek(96)^peek(110)^peek(123));
-			push(peek(26)^peek(37)^peek(112));
-			push(peek(38)^peek(42)^peek(49)^peek(55)^peek(70)^peek(116)^peek(124));
-			push(peek(2)^peek(15)^peek(76));
-			push(peek(10)^peek(21)^peek(60)^peek(96)^peek(100)^peek(114)^peek(127));
-			push(peek(30)^peek(41)^peek(116));
-			push(peek(0)^peek(42)^peek(46)^peek(53)^peek(59)^peek(74)^peek(120));
-			push(peek(6)^peek(19)^peek(80));
-			push(peek(3)^peek(14)^peek(25)^peek(100)^peek(104)^peek(118));
-			push(peek(34)^peek(45)^peek(120));
-			push(peek(4)^peek(46)^peek(50)^peek(57)^peek(63)^peek(78)^peek(124));
-			push(peek(10)^peek(23)^peek(84));
-			push(peek(7)^peek(18)^peek(29)^peek(104)^peek(108)^peek(122));
-			push(peek(38)^peek(49)^peek(124));
-			push(peek(0)^peek(8)^peek(50)^peek(54)^peek(61)^peek(67)^peek(82));
-			push(peek(14)^peek(27)^peek(88));
-			push(peek(11)^peek(22)^peek(33)^peek(108)^peek(112)^peek(126));
-			push(peek(0)^peek(42)^peek(53));
-			push(peek(4)^peek(12)^peek(54)^peek(58)^peek(65)^peek(71)^peek(86));
-			push(peek(18)^peek(31)^peek(92));
-			push(peek(2)^peek(15)^peek(26)^peek(37)^peek(76)^peek(112)^peek(116));
-			push(peek(4)^peek(46)^peek(57));
-			push(peek(8)^peek(16)^peek(58)^peek(62)^peek(69)^peek(75)^peek(90));
-			push(peek(22)^peek(35)^peek(96));
-			push(peek(6)^peek(19)^peek(30)^peek(41)^peek(80)^peek(116)^peek(120));
-			push(peek(8)^peek(50)^peek(61));
-			push(peek(12)^peek(20)^peek(62)^peek(66)^peek(73)^peek(79)^peek(94));
-			push(peek(26)^peek(39)^peek(100));
-			push(peek(10)^peek(23)^peek(34)^peek(45)^peek(84)^peek(120)^peek(124));
-			push(peek(12)^peek(54)^peek(65));
-			push(peek(16)^peek(24)^peek(66)^peek(70)^peek(77)^peek(83)^peek(98));
-			push(peek(30)^peek(43)^peek(104));
-			push(peek(0)^peek(14)^peek(27)^peek(38)^peek(49)^peek(88)^peek(124));
-			push(peek(16)^peek(58)^peek(69));
-			push(peek(20)^peek(28)^peek(70)^peek(74)^peek(81)^peek(87)^peek(102));
-			push(peek(34)^peek(47)^peek(108));
-			push(peek(0)^peek(4)^peek(18)^peek(31)^peek(42)^peek(53)^peek(92));
-			push(peek(20)^peek(62)^peek(73));
-			push(peek(24)^peek(32)^peek(74)^peek(78)^peek(85)^peek(91)^peek(106));
-			push(peek(38)^peek(51)^peek(112));
-			push(peek(4)^peek(8)^peek(22)^peek(35)^peek(46)^peek(57)^peek(96));
-			push(peek(24)^peek(66)^peek(77));
-			push(peek(28)^peek(36)^peek(78)^peek(82)^peek(89)^peek(95)^peek(110));
-			push(peek(42)^peek(55)^peek(116));
-			push(peek(8)^peek(12)^peek(26)^peek(39)^peek(50)^peek(61)^peek(100));
-			push(peek(28)^peek(70)^peek(81));
-			push(peek(32)^peek(40)^peek(82)^peek(86)^peek(93)^peek(99)^peek(114));
-			push(peek(46)^peek(59)^peek(120));
-			push(peek(12)^peek(16)^peek(30)^peek(43)^peek(54)^peek(65)^peek(104));
-			push(peek(32)^peek(74)^peek(85));
-			push(peek(36)^peek(90)^peek(103)^peek(118));
-			push(peek(50)^peek(63)^peek(124));
-			push(peek(16)^peek(20)^peek(34)^peek(47)^peek(58)^peek(69)^peek(108));
-			push(peek(36)^peek(78)^peek(89));
-			push(peek(40)^peek(94)^peek(107)^peek(122));
-			push(peek(0)^peek(54)^peek(67));
-			push(peek(20)^peek(24)^peek(38)^peek(51)^peek(62)^peek(73)^peek(112));
-			push(peek(40)^peek(82)^peek(93));
-			push(peek(44)^peek(98)^peek(111)^peek(126));
-			push(peek(4)^peek(58)^peek(71));
-			push(peek(24)^peek(28)^peek(42)^peek(55)^peek(66)^peek(77)^peek(116));
-			push(peek(44)^peek(86)^peek(97));
-			push(peek(2)^peek(48)^peek(102)^peek(115));
-			push(peek(8)^peek(62)^peek(75));
-			push(peek(28)^peek(32)^peek(46)^peek(59)^peek(70)^peek(81)^peek(120));
-			push(peek(48)^peek(90)^peek(101));
-			push(peek(6)^peek(52)^peek(106)^peek(119));
-			push(peek(12)^peek(66)^peek(79));
-			push(peek(32)^peek(36)^peek(50)^peek(63)^peek(74)^peek(85)^peek(124));
-			push(peek(52)^peek(94)^peek(105));
-			push(peek(10)^peek(56)^peek(110)^peek(123));
-			push(peek(16)^peek(70)^peek(83));
-			push(peek(0)^peek(36)^peek(40)^peek(54)^peek(67)^peek(78)^peek(89));
-			push(peek(56)^peek(98)^peek(109));
-			push(peek(14)^peek(60)^peek(114)^peek(127));
-			push(peek(20)^peek(74)^peek(87));
-			push(peek(4)^peek(40)^peek(44)^peek(58)^peek(71)^peek(82)^peek(93));
-			push(peek(60)^peek(102)^peek(113));
-			push(peek(3)^peek(18)^peek(72)^peek(114)^peek(118)^peek(125));
-			push(peek(24)^peek(78)^peek(91));
-			push(peek(8)^peek(44)^peek(48)^peek(62)^peek(75)^peek(86)^peek(97));
-			push(peek(64)^peek(106)^peek(117));
-			push(peek(1)^peek(7)^peek(22)^peek(76)^peek(118)^peek(122));
-			push(peek(28)^peek(82)^peek(95));
-			push(peek(12)^peek(48)^peek(52)^peek(66)^peek(79)^peek(90)^peek(101));
-			push(peek(68)^peek(110)^peek(121));
-			push(peek(5)^peek(11)^peek(26)^peek(80)^peek(122)^peek(126));
-			push(peek(32)^peek(86)^peek(99));
-			for (int i = 0; i < 128; i++) {
-				pop();
+			//TODO: teach the compiler to lift peeks to arrays/local variables
+			//for the common case of all-peek-then-all-pop filters.  Hopefully
+			//we'd then understand to make one array per thread instead of one
+			//array per work() call, but maybe HotSpot will scalar-replace.
+			int[] array = new int[128];
+			for (int i = 0; i < array.length; i++) {
+				array[i] = pop();
 			}
+			push(array[16]^array[52]^array[56]^array[70]^array[83]^array[94]^array[105]);
+			push(array[72]^array[114]^array[125]);
+			push(array[2]^array[9]^array[15]^array[30]^array[76]^array[84]^array[126] );
+			push(array[36]^array[90]^array[103]);
+			push(array[20]^array[56]^array[60]^array[74]^array[87]^array[98]^array[109] );
+			push(array[1]^array[76]^array[118] );
+			push(array[2]^array[6]^array[13]^array[19]^array[34]^array[80]^array[88] );
+			push(array[40]^array[94]^array[107]);
+			push(array[24]^array[60]^array[64]^array[78]^array[91]^array[102]^array[113] );
+			push(array[5]^array[80]^array[122] );
+			push(array[6]^array[10]^array[17]^array[23]^array[38]^array[84]^array[92] );
+			push(array[44]^array[98]^array[111]);
+			push(array[28]^array[64]^array[68]^array[82]^array[95]^array[106]^array[117] );
+			push(array[9]^array[84]^array[126] );
+			push(array[10]^array[14]^array[21]^array[27]^array[42]^array[88]^array[96] );
+			push(array[48]^array[102]^array[115]);
+			push(array[32]^array[68]^array[72]^array[86]^array[99]^array[110]^array[121] );
+			push(array[2]^array[13]^array[88] );
+			push(array[14]^array[18]^array[25]^array[31]^array[46]^array[92]^array[100] );
+			push(array[52]^array[106]^array[119]);
+			push(array[36]^array[72]^array[76]^array[90]^array[103]^array[114]^array[125] );
+			push(array[6]^array[17]^array[92] );
+			push(array[18]^array[22]^array[29]^array[35]^array[50]^array[96]^array[104] );
+			push(array[56]^array[110]^array[123]);
+			push(array[1]^array[40]^array[76]^array[80]^array[94]^array[107]^array[118] );
+			push(array[10]^array[21]^array[96] );
+			push(array[22]^array[26]^array[33]^array[39]^array[54]^array[100]^array[108] );
+			push(array[60]^array[114]^array[127]);
+			push(array[5]^array[44]^array[80]^array[84]^array[98]^array[111]^array[122] );
+			push(array[14]^array[25]^array[100] );
+			push(array[26]^array[30]^array[37]^array[43]^array[58]^array[104]^array[112] );
+			push(array[3]^array[118]);
+			push(array[9]^array[48]^array[84]^array[88]^array[102]^array[115]^array[126] );
+			push(array[18]^array[29]^array[104] );
+			push(array[30]^array[34]^array[41]^array[47]^array[62]^array[108]^array[116] );
+			push(array[7]^array[122]);
+			push(array[2]^array[13]^array[52]^array[88]^array[92]^array[106]^array[119] );
+			push(array[22]^array[33]^array[108] );
+			push(array[34]^array[38]^array[45]^array[51]^array[66]^array[112]^array[120] );
+			push(array[11]^array[126]);
+			push(array[6]^array[17]^array[56]^array[92]^array[96]^array[110]^array[123]);
+			push(array[26]^array[37]^array[112]);
+			push(array[38]^array[42]^array[49]^array[55]^array[70]^array[116]^array[124]);
+			push(array[2]^array[15]^array[76]);
+			push(array[10]^array[21]^array[60]^array[96]^array[100]^array[114]^array[127]);
+			push(array[30]^array[41]^array[116]);
+			push(array[0]^array[42]^array[46]^array[53]^array[59]^array[74]^array[120]);
+			push(array[6]^array[19]^array[80]);
+			push(array[3]^array[14]^array[25]^array[100]^array[104]^array[118]);
+			push(array[34]^array[45]^array[120]);
+			push(array[4]^array[46]^array[50]^array[57]^array[63]^array[78]^array[124]);
+			push(array[10]^array[23]^array[84]);
+			push(array[7]^array[18]^array[29]^array[104]^array[108]^array[122]);
+			push(array[38]^array[49]^array[124]);
+			push(array[0]^array[8]^array[50]^array[54]^array[61]^array[67]^array[82]);
+			push(array[14]^array[27]^array[88]);
+			push(array[11]^array[22]^array[33]^array[108]^array[112]^array[126]);
+			push(array[0]^array[42]^array[53]);
+			push(array[4]^array[12]^array[54]^array[58]^array[65]^array[71]^array[86]);
+			push(array[18]^array[31]^array[92]);
+			push(array[2]^array[15]^array[26]^array[37]^array[76]^array[112]^array[116]);
+			push(array[4]^array[46]^array[57]);
+			push(array[8]^array[16]^array[58]^array[62]^array[69]^array[75]^array[90]);
+			push(array[22]^array[35]^array[96]);
+			push(array[6]^array[19]^array[30]^array[41]^array[80]^array[116]^array[120]);
+			push(array[8]^array[50]^array[61]);
+			push(array[12]^array[20]^array[62]^array[66]^array[73]^array[79]^array[94]);
+			push(array[26]^array[39]^array[100]);
+			push(array[10]^array[23]^array[34]^array[45]^array[84]^array[120]^array[124]);
+			push(array[12]^array[54]^array[65]);
+			push(array[16]^array[24]^array[66]^array[70]^array[77]^array[83]^array[98]);
+			push(array[30]^array[43]^array[104]);
+			push(array[0]^array[14]^array[27]^array[38]^array[49]^array[88]^array[124]);
+			push(array[16]^array[58]^array[69]);
+			push(array[20]^array[28]^array[70]^array[74]^array[81]^array[87]^array[102]);
+			push(array[34]^array[47]^array[108]);
+			push(array[0]^array[4]^array[18]^array[31]^array[42]^array[53]^array[92]);
+			push(array[20]^array[62]^array[73]);
+			push(array[24]^array[32]^array[74]^array[78]^array[85]^array[91]^array[106]);
+			push(array[38]^array[51]^array[112]);
+			push(array[4]^array[8]^array[22]^array[35]^array[46]^array[57]^array[96]);
+			push(array[24]^array[66]^array[77]);
+			push(array[28]^array[36]^array[78]^array[82]^array[89]^array[95]^array[110]);
+			push(array[42]^array[55]^array[116]);
+			push(array[8]^array[12]^array[26]^array[39]^array[50]^array[61]^array[100]);
+			push(array[28]^array[70]^array[81]);
+			push(array[32]^array[40]^array[82]^array[86]^array[93]^array[99]^array[114]);
+			push(array[46]^array[59]^array[120]);
+			push(array[12]^array[16]^array[30]^array[43]^array[54]^array[65]^array[104]);
+			push(array[32]^array[74]^array[85]);
+			push(array[36]^array[90]^array[103]^array[118]);
+			push(array[50]^array[63]^array[124]);
+			push(array[16]^array[20]^array[34]^array[47]^array[58]^array[69]^array[108]);
+			push(array[36]^array[78]^array[89]);
+			push(array[40]^array[94]^array[107]^array[122]);
+			push(array[0]^array[54]^array[67]);
+			push(array[20]^array[24]^array[38]^array[51]^array[62]^array[73]^array[112]);
+			push(array[40]^array[82]^array[93]);
+			push(array[44]^array[98]^array[111]^array[126]);
+			push(array[4]^array[58]^array[71]);
+			push(array[24]^array[28]^array[42]^array[55]^array[66]^array[77]^array[116]);
+			push(array[44]^array[86]^array[97]);
+			push(array[2]^array[48]^array[102]^array[115]);
+			push(array[8]^array[62]^array[75]);
+			push(array[28]^array[32]^array[46]^array[59]^array[70]^array[81]^array[120]);
+			push(array[48]^array[90]^array[101]);
+			push(array[6]^array[52]^array[106]^array[119]);
+			push(array[12]^array[66]^array[79]);
+			push(array[32]^array[36]^array[50]^array[63]^array[74]^array[85]^array[124]);
+			push(array[52]^array[94]^array[105]);
+			push(array[10]^array[56]^array[110]^array[123]);
+			push(array[16]^array[70]^array[83]);
+			push(array[0]^array[36]^array[40]^array[54]^array[67]^array[78]^array[89]);
+			push(array[56]^array[98]^array[109]);
+			push(array[14]^array[60]^array[114]^array[127]);
+			push(array[20]^array[74]^array[87]);
+			push(array[4]^array[40]^array[44]^array[58]^array[71]^array[82]^array[93]);
+			push(array[60]^array[102]^array[113]);
+			push(array[3]^array[18]^array[72]^array[114]^array[118]^array[125]);
+			push(array[24]^array[78]^array[91]);
+			push(array[8]^array[44]^array[48]^array[62]^array[75]^array[86]^array[97]);
+			push(array[64]^array[106]^array[117]);
+			push(array[1]^array[7]^array[22]^array[76]^array[118]^array[122]);
+			push(array[28]^array[82]^array[95]);
+			push(array[12]^array[48]^array[52]^array[66]^array[79]^array[90]^array[101]);
+			push(array[68]^array[110]^array[121]);
+			push(array[5]^array[11]^array[26]^array[80]^array[122]^array[126]);
+			push(array[32]^array[86]^array[99]);
 		}
 	}
 }

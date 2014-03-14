@@ -275,6 +275,19 @@ public class Compiler2 {
 		} while (true);
 
 		this.groups = ImmutableSortedSet.copyOf(actorGroups);
+
+		Boolean reportFusion = (Boolean)config.getExtraData("reportFusion");
+		if (reportFusion != null && reportFusion) {
+			for (ActorGroup g : groups) {
+				if (g.isTokenGroup()) continue;
+				List<Integer> list = new ArrayList<>();
+				for (Actor a : g.actors())
+					list.add(a.id());
+				System.out.println(com.google.common.base.Joiner.on(' ').join(list));
+			}
+			System.out.flush();
+			System.exit(0);
+		}
 	}
 
 	/**

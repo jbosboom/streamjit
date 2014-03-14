@@ -1,5 +1,6 @@
 package edu.mit.streamjit.test.sanity;
 
+import com.google.common.base.Supplier;
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.ImmutableList;
@@ -12,6 +13,7 @@ import edu.mit.streamjit.test.SuppliedBenchmark;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.BenchmarkProvider;
+import edu.mit.streamjit.test.Datasets;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -24,14 +26,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 /**
- * Tests Input.fromBinaryFile(). This class is a BenchmarkProvider even though
- * it only uses one benchmark to have a place to put the file creation.
- * <p/>
- * TODO: we'll create the files whether or not we run the benchmark, so we need
- * something else here. We could do the initialization-on-demand-holder idiom
- * but recovering from an IOException in a static initializer seems hard/messy.
- * The cleanest way is an in-memory filesystem, but unless there's one readily
- * available...
+ * Tests Input.fromBinaryFile().
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 8/23/2013
  */
@@ -40,39 +35,39 @@ public class FileInputSanity implements BenchmarkProvider {
 	private static final Set<Integer> INPUT = ContiguousSet.create(Range.closedOpen(0, 10000), DiscreteDomain.integers());
 	@Override
 	public Iterator<Benchmark> iterator() {
-		Path littleEndian, bigEndian;
-		try {
-			littleEndian = Files.createTempFile("littleEndian", ".bin");
-			bigEndian = Files.createTempFile("bigEndian", ".bin");
-			ByteBuffer buffer = ByteBuffer.allocate(INPUT.size() * Ints.BYTES);
-
-			buffer.order(ByteOrder.LITTLE_ENDIAN);
-			IntBuffer lib = buffer.asIntBuffer();
-			for (int i : INPUT)
-				lib.put(i);
-			try (FileChannel lc = FileChannel.open(littleEndian, StandardOpenOption.WRITE)) {
-				lc.write(buffer);
-				buffer.clear();
-			}
-
-			buffer.order(ByteOrder.BIG_ENDIAN);
-			IntBuffer bib = buffer.asIntBuffer();
-			for (int i : INPUT)
-				bib.put(i);
-			try (FileChannel bc = FileChannel.open(bigEndian, StandardOpenOption.WRITE)) {
-				bc.write(buffer);
-				buffer.clear();
-			}
-		} catch (IOException ex) {
-			throw new RuntimeException(ex);
-		}
-
 		//TODO: generics fixes here (will change Dataset and StreamCompiler)
 		Benchmark b = new SuppliedBenchmark("FileInputSanity", Identity.class,
-				new Dataset("little-endian ints", Input.fromBinaryFile(littleEndian, Integer.class, ByteOrder.LITTLE_ENDIAN))
+				new Dataset("little-endian ints", Datasets.lazyInput(new WriteFileForInput(ByteOrder.LITTLE_ENDIAN)))
 					.withOutput(Input.fromIterable(INPUT)),
-				new Dataset("big-endian ints", Input.fromBinaryFile(bigEndian, Integer.class, ByteOrder.BIG_ENDIAN))
-					.withOutput((Input)Input.fromIterable(INPUT)));
+				new Dataset("big-endian ints", Datasets.lazyInput(new WriteFileForInput(ByteOrder.BIG_ENDIAN)))
+					.withOutput(Input.fromIterable(INPUT)));
 		return ImmutableList.of(b).iterator();
+	}
+
+	private static final class WriteFileForInput implements Supplier<Input<Integer>> {
+		private final ByteOrder byteOrder;
+		private WriteFileForInput(ByteOrder byteOrder) {
+			this.byteOrder = byteOrder;
+		}
+		@Override
+		public Input<Integer> get() {
+			try {
+				Path path = Files.createTempFile(byteOrder.toString(), ".bin");
+				ByteBuffer buffer = ByteBuffer.allocate(INPUT.size() * Ints.BYTES);
+
+				buffer.order(byteOrder);
+				IntBuffer lib = buffer.asIntBuffer();
+				for (int i : INPUT)
+					lib.put(i);
+				try (FileChannel lc = FileChannel.open(path, StandardOpenOption.WRITE)) {
+					lc.write(buffer);
+					buffer.clear();
+				}
+				path.toFile().deleteOnExit();
+				return Input.fromBinaryFile(path, Integer.class, byteOrder);
+			} catch (IOException ex) {
+				throw new RuntimeException(ex);
+			}
+		}
 	}
 }

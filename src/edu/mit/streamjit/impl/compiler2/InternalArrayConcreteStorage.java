@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.collect.BoundType;
+import com.google.common.collect.Range;
 import edu.mit.streamjit.util.LookupUtils;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -108,9 +109,9 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {
-				ImmutableSortedSet<Integer> writeIndices = storage.writeIndices(initSchedule);
-				int capacity = writeIndices.isEmpty() ? 0 :
-						writeIndices.last() - writeIndices.first() + 1;
+				Range<Integer> writeIndices = storage.writeIndexSpan(initSchedule);
+				assert writeIndices.upperBoundType() == BoundType.OPEN;
+				int capacity = writeIndices.upperEndpoint();
 				Arrayish array = new Arrayish.ArrayArrayish(storage.type(), capacity);
 				return new InternalArrayConcreteStorage(array, storage);
 			}

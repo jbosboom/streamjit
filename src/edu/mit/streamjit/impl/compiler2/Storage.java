@@ -1,6 +1,8 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.collect.ContiguousSet;
+import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
@@ -155,6 +157,7 @@ public final class Storage implements Comparable<Storage> {
 	 * Returns a set containing the indices live before the initialization
 	 * schedule; that is, the indices holding initial data.  The set is
 	 * recomputed on each call, so should be kept in a local variable.
+	 * TODO: initialDataIndices/initialDataIndexSpan as with read/write indices
 	 * @return the indices holding initial data
 	 */
 	public ImmutableSortedSet<Integer> indicesLiveBeforeInit() {
@@ -201,6 +204,7 @@ public final class Storage implements Comparable<Storage> {
 	 * @param externalSchedule the schedule
 	 * @return the indices read during the given schedule under the current
 	 * index functions
+	 * @see #readIndexSpan(java.util.Map)
 	 */
 	public ImmutableSortedSet<Integer> readIndices(Map<ActorGroup, Integer> externalSchedule) {
 		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
@@ -210,18 +214,67 @@ public final class Storage implements Comparable<Storage> {
 	}
 
 	/**
+	 * Returns a range spanning the indices read from this storage during an
+	 * execution of the given schedule. (Note that, as a span, not every
+	 * contained index will be read.) The returned range will be
+	 * {@link Range#canonical(com.google.common.collect.DiscreteDomain) canonical}.
+	 * The range is not cached so as to be responsive to changes in input index
+	 * functions.
+	 * @param externalSchedule the schedule
+	 * @return a range spanning the indices read during the given schedule under
+	 * the current index functions
+	 * @see #readIndices(java.util.Map)
+	 */
+	public Range<Integer> readIndexSpan(Map<ActorGroup, Integer> externalSchedule) {
+		Range<Integer> range = null;
+		for (Actor a : downstream())
+			for (int iteration = 0, max = a.group().schedule().get(a) * externalSchedule.get(a.group()); iteration < max; ++iteration) {
+				ImmutableSortedSet<Integer> reads = a.reads(this, iteration);
+				Range<Integer> readRange = reads.isEmpty() ? range : Range.closed(reads.first(), reads.last());
+				range = range == null ? readRange : range.span(readRange);
+			}
+		range = (range != null ? range : Range.closed(0, 0));
+		return range.canonical(DiscreteDomain.integers());
+	}
+
+	/**
 	 * Returns the indices written in this storage during an execution of the
 	 * given schedule.  The returned list is not cached so as to be responsive
 	 * to changes in output index functions.
 	 * @param externalSchedule the schedule
 	 * @return the indices written during the given schedule under the current
 	 * index functions
+	 * @see #writeIndexSpan(java.util.Map)
 	 */
 	public ImmutableSortedSet<Integer> writeIndices(Map<ActorGroup, Integer> externalSchedule) {
 		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
 		for (Actor a : upstream())
 			builder.addAll(a.writes(this, Range.closedOpen(0, a.group().schedule().get(a) * externalSchedule.get(a.group()))));
 		return builder.build();
+	}
+
+	/**
+	 * Returns a range spanning the indices written in this storage during an
+	 * execution of the given schedule. (Note that, as a span, not every
+	 * contained index will be written.) The returned range will be
+	 * {@link Range#canonical(com.google.common.collect.DiscreteDomain) canonical}.
+	 * The range is not cached so as to be responsive to changes in output index
+	 * functions.
+	 * @param externalSchedule the schedule
+	 * @return a range spanning the indices written during the given schedule
+	 * under the current index functions
+	 * @see #writeIndices(java.util.Map)
+	 */
+	public Range<Integer> writeIndexSpan(Map<ActorGroup, Integer> externalSchedule) {
+		Range<Integer> range = null;
+		for (Actor a : upstream())
+			for (int iteration = 0, max = a.group().schedule().get(a) * externalSchedule.get(a.group()); iteration < max; ++iteration) {
+				ImmutableSortedSet<Integer> writes = a.writes(this, iteration);
+				Range<Integer> writeRange = writes.isEmpty() ? range : Range.closed(writes.first(), writes.last());
+				range = range == null ? writeRange : range.span(writeRange);
+			}
+		range = (range != null ? range : Range.closed(0, 0));
+		return range.canonical(DiscreteDomain.integers());
 	}
 
 	/**
@@ -251,17 +304,17 @@ public final class Storage implements Comparable<Storage> {
 	 * @param externalSchedule the external schedule
 	 */
 	public void computeSteadyStateRequirements(Map<ActorGroup, Integer> externalSchedule) {
-		ImmutableSortedSet<Integer> readIndices = readIndices(externalSchedule);
-		ImmutableSortedSet<Integer> writeIndices = writeIndices(externalSchedule);
+		Range<Integer> readIndices = readIndexSpan(externalSchedule);
+		Range<Integer> writeIndices = writeIndexSpan(externalSchedule);
 		assert readIndices.isEmpty() == writeIndices.isEmpty() : readIndices+" "+writeIndices;
-		this.throughput = writeIndices.size();
-		if (readIndices.isEmpty())
-			this.steadyStateCapacity = 0;
-		else {
-			int minIdx = Math.min(readIndices.first(), writeIndices.first());
-			int maxIdx = Math.max(readIndices.last(), writeIndices.last());
-			this.steadyStateCapacity = maxIdx - minIdx + 1;
-		}
+		//We need to know the count of indices, so we can't just use the span
+		//here.  There may be a lot of indices so writeIndices will use a lot of
+		//memory.  But we know (assume) there are no overwrites, so we'll count.
+		this.throughput = 0;
+		for (Actor a : upstream())
+			for (int iteration = 0, max = a.group().schedule().get(a) * externalSchedule.get(a.group()); iteration < max; ++iteration)
+				this.throughput += a.writes(this, iteration).size();
+		this.steadyStateCapacity = ContiguousSet.create(readIndices.span(writeIndices), DiscreteDomain.integers()).size();
 	}
 
 	@Override
