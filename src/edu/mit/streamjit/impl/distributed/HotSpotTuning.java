@@ -57,7 +57,7 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(config);
 		try {
-			app.varifyConfiguration(partitionsMachineMap);
+			app.verifyConfiguration(partitionsMachineMap);
 		} catch (StreamCompilationFailedException ex) {
 			return false;
 		}

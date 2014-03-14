@@ -88,7 +88,7 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
 				config, app.source);
 		try {
-			app.varifyConfiguration(partitionsMachineMap);
+			app.verifyConfiguration(partitionsMachineMap);
 		} catch (StreamCompilationFailedException ex) {
 			return false;
 		}

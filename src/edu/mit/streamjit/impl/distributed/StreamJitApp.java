@@ -103,7 +103,7 @@ public class StreamJitApp {
 	public boolean newPartitionMap(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
 		try {
-			varifyConfiguration(partitionsMachineMap);
+			verifyConfiguration(partitionsMachineMap);
 		} catch (StreamCompilationFailedException ex) {
 			return false;
 		}
@@ -123,7 +123,7 @@ public class StreamJitApp {
 	 * @throws StreamCompilationFailedException
 	 *             if any cycles found among blobs.
 	 */
-	public void varifyConfiguration(
+	public void verifyConfiguration(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
 
 		if (!GlobalConstants.singleNodeOnline) {
