@@ -138,12 +138,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 			for (BlobSpecifier bs : blobList) {
 				Set<Integer> workIdentifiers = bs.getWorkerIdentifiers();
-				// DEBUG MSG
-				System.out.println(String.format(
-						"A new blob with workers %s has been created.",
-						workIdentifiers.toString()));
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
-
 				try {
 					BlobFactory bf = bs.getBlobFactory();
 					Blob b = bf.makeBlob(workerset, blobConfigs, 1, drainData);
@@ -162,6 +157,10 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 							+ maxMemory + "M");
 					return null;
 				}
+				// DEBUG MSG
+				System.out.println(String.format(
+						"A new blob with workers %s has been created.",
+						workIdentifiers.toString()));
 			}
 			System.out.println("All blobs have been created");
 			return blobSet.build();
