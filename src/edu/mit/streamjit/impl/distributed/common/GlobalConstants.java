@@ -129,6 +129,16 @@ public final class GlobalConstants {
 	 */
 	public static final boolean singleNodeOnline = true;
 
+	/**
+	 * We can set this value at class loading time also as follows.
+	 * 
+	 * <code>maxThreadCount = Math.max(Runtime.getntime().availableProcessors() / 2,
+	 * 1);</code>
+	 * 
+	 * Lets hard code this for the moment.
+	 */
+	public static final int maxNumCores = 24;
+
 	static {
 
 	}
