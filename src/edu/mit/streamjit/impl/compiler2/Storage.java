@@ -199,7 +199,7 @@ public final class Storage implements Comparable<Storage> {
 
 	/**
 	 * Returns the indices read from this storage during an execution of the
-	 * given schedule.  The returned list is not cached so as to be responsive
+	 * given schedule.  The returned set is not cached so as to be responsive
 	 * to changes in input index functions.
 	 * @param externalSchedule the schedule
 	 * @return the indices read during the given schedule under the current
@@ -239,7 +239,7 @@ public final class Storage implements Comparable<Storage> {
 
 	/**
 	 * Returns the indices written in this storage during an execution of the
-	 * given schedule.  The returned list is not cached so as to be responsive
+	 * given schedule.  The returned set is not cached so as to be responsive
 	 * to changes in output index functions.
 	 * @param externalSchedule the schedule
 	 * @return the indices written during the given schedule under the current
