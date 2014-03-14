@@ -157,6 +157,7 @@ public final class Storage implements Comparable<Storage> {
 	 * Returns a set containing the indices live before the initialization
 	 * schedule; that is, the indices holding initial data.  The set is
 	 * recomputed on each call, so should be kept in a local variable.
+	 * TODO: initialDataIndices/initialDataIndexSpan as with read/write indices
 	 * @return the indices holding initial data
 	 */
 	public ImmutableSortedSet<Integer> indicesLiveBeforeInit() {
