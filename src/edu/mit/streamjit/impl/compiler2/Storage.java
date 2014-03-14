@@ -233,7 +233,7 @@ public final class Storage implements Comparable<Storage> {
 				Range<Integer> readRange = reads.isEmpty() ? range : Range.closed(reads.first(), reads.last());
 				range = range == null ? readRange : range.span(readRange);
 			}
-		range = (range != null ? range : Range.closed(0, 0));
+		range = (range != null ? range : Range.closedOpen(0, 0));
 		return range.canonical(DiscreteDomain.integers());
 	}
 
@@ -273,7 +273,7 @@ public final class Storage implements Comparable<Storage> {
 				Range<Integer> writeRange = writes.isEmpty() ? range : Range.closed(writes.first(), writes.last());
 				range = range == null ? writeRange : range.span(writeRange);
 			}
-		range = (range != null ? range : Range.closed(0, 0));
+		range = (range != null ? range : Range.closedOpen(0, 0));
 		return range.canonical(DiscreteDomain.integers());
 	}
 
