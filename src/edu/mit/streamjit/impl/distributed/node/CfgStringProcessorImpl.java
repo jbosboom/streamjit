@@ -4,6 +4,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryUsage;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -146,6 +149,17 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 					Blob b = bf.makeBlob(workerset, blobConfigs, 1, drainData);
 					blobSet.add(b);
 				} catch (Exception ex) {
+					return null;
+				} catch (OutOfMemoryError er) {
+					MemoryMXBean memoryBean = ManagementFactory
+							.getMemoryMXBean();
+					System.out.println("******OutOfMemoryError******");
+					MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
+					int MEGABYTE = 1024 * 1024;
+					long maxMemory = heapUsage.getMax() / MEGABYTE;
+					long usedMemory = heapUsage.getUsed() / MEGABYTE;
+					System.out.println("Memory Use :" + usedMemory + "M/"
+							+ maxMemory + "M");
 					return null;
 				}
 			}
