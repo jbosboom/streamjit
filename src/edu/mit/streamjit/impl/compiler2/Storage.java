@@ -155,12 +155,13 @@ public final class Storage implements Comparable<Storage> {
 
 	/**
 	 * Returns a set containing the indices live before the initialization
-	 * schedule; that is, the indices holding initial data.  The set is
-	 * recomputed on each call, so should be kept in a local variable.
-	 * TODO: initialDataIndices/initialDataIndexSpan as with read/write indices
+	 * schedule; that is, the indices holding initial data.  The returned set is
+	 * not cached so as to be responsive to changes in initial data index
+	 * functions.
 	 * @return the indices holding initial data
+	 * @see #initialDataIndexSpan()
 	 */
-	public ImmutableSortedSet<Integer> indicesLiveBeforeInit() {
+	public ImmutableSortedSet<Integer> initialDataIndices() {
 		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
 		for (Pair<ImmutableList<Object>, MethodHandle> p : initialData())
 			for (int i = 0; i < p.first.size(); ++i)
@@ -170,6 +171,32 @@ public final class Storage implements Comparable<Storage> {
 					throw new AssertionError("index functions should not throw", ex);
 				}
 		return builder.build();
+	}
+
+	/**
+	 * Returns a set containing the indices live before the initialization
+	 * schedule; that is, the indices holding initial data. (Note that, as a
+	 * span, not every contained index will be occupied.) The returned range
+	 * will be
+	 * {@link Range#canonical(com.google.common.collect.DiscreteDomain) canonical}.
+	 * The range is not cached so as to be responsive to changes in initial data
+	 * index functions.
+	 * @return a range spanning the indices holding initial data under the
+	 * current index functions
+	 * @see #initialDataIndices()
+	 */
+	public Range<Integer> initialDataIndexSpan() {
+		Range<Integer> range = null;
+		for (Pair<ImmutableList<Object>, MethodHandle> p : initialData())
+			for (int i = 0; i < p.first.size(); ++i)
+				try {
+					int x = (int)p.second.invokeExact(i);
+					range = (range == null) ? Range.singleton(x) : range.span(Range.singleton(x));
+				} catch (Throwable ex) {
+					throw new AssertionError("index functions should not throw", ex);
+				}
+		range = (range != null ? range : Range.closedOpen(0, 0));
+		return range.canonical(DiscreteDomain.integers());
 	}
 
 	public Class<?> type() {

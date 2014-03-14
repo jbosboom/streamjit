@@ -390,7 +390,7 @@ public class Compiler2 {
 			Actor upstream = Iterables.getOnlyElement(s.upstream()), downstream = Iterables.getOnlyElement(s.downstream());
 			int upstreamExecutions = upstream.group().schedule().get(upstream) * initSchedule.get(upstream.group());
 			int downstreamExecutions = downstream.group().schedule().get(downstream) * initSchedule.get(downstream.group());
-			int liveItems = s.push() * upstreamExecutions - s.pop() * downstreamExecutions + s.indicesLiveBeforeInit().size();
+			int liveItems = s.push() * upstreamExecutions - s.pop() * downstreamExecutions + s.initialDataIndices().size();
 			assert liveItems >= 0 : s;
 
 			int index = downstream.inputs().indexOf(s);
@@ -836,7 +836,7 @@ public class Compiler2 {
 		ImmutableMap<Actor, ImmutableList<MethodHandle>> indexFxnBackup = adjustOutputIndexFunctions(new Function<Storage, Set<Integer>>() {
 			@Override
 			public Set<Integer> apply(Storage input) {
-				return input.indicesLiveBeforeInit();
+				return input.initialDataIndices();
 			}
 		});
 
