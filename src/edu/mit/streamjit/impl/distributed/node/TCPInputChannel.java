@@ -145,6 +145,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		int bufFullCount = 0;
 		try {
 			Object obj = tcpConnection.readObject();
+			if(obj == null)	// [2014-03-15] Sometimes null is received.
+				return;
 			count++;
 
 			if (debugLevel == 3) {
