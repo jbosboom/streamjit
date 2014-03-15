@@ -50,7 +50,7 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 		try {
 			return readHandle.invoke(index);
 		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.read(%d, %s)", this, index), ex);
+			throw new AssertionError(String.format("%s.read(%d)", this, index), ex);
 		}
 	}
 
@@ -109,9 +109,9 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 		return new StorageFactory() {
 			@Override
 			public ConcreteStorage make(Storage storage) {
-				Range<Integer> writeIndices = storage.writeIndexSpan(initSchedule);
-				assert writeIndices.upperBoundType() == BoundType.OPEN;
-				int capacity = writeIndices.upperEndpoint();
+				Range<Integer> indices = storage.writeIndexSpan(initSchedule).span(storage.initialDataIndexSpan());
+				assert indices.upperBoundType() == BoundType.OPEN;
+				int capacity = indices.upperEndpoint();
 				Arrayish array = new Arrayish.ArrayArrayish(storage.type(), capacity);
 				return new InternalArrayConcreteStorage(array, storage);
 			}
