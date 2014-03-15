@@ -5,7 +5,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableMap;
 
 import edu.mit.streamjit.api.CompiledStream;
@@ -209,7 +212,13 @@ public class StreamJitAppManager {
 		return isRunning;
 	}
 
+	/**
+	 * [2014-03-15] Just to measure the draining time
+	 */
+	AtomicReference<Stopwatch> stopwatchRef = new AtomicReference<>();
+
 	public void drainingStarted(boolean isFinal) {
+		stopwatchRef.set(Stopwatch.createStarted());
 		if (headChannel != null) {
 			headChannel.stop(isFinal);
 			try {
@@ -251,6 +260,13 @@ public class StreamJitAppManager {
 			controller.closeAll();
 		}
 		isRunning = false;
+
+		Stopwatch sw = stopwatchRef.get();
+		if (sw != null) {
+			sw.stop();
+			long time = sw.elapsed(TimeUnit.MILLISECONDS);
+			System.out.println("Draining time is " + time + " milli seconds");
+		}
 	}
 
 	public long getFixedOutputTime() throws InterruptedException {
