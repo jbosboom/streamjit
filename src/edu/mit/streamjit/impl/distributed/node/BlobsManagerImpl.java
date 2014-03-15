@@ -825,7 +825,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			try {
 				Thread.sleep(60000);
 			} catch (InterruptedException e) {
-				e.printStackTrace();
+				return;
 			}
 
 			System.out
@@ -870,6 +870,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		public void stopit() {
 			this.run.set(false);
+			this.interrupt();
 		}
 	}
 }
