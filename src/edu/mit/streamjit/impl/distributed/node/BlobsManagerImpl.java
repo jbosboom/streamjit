@@ -124,7 +124,6 @@ public class BlobsManagerImpl implements BlobsManager {
 		if (drainDeadLockHandler != null)
 			drainDeadLockHandler.stopit();
 	}
-
 	// TODO: Buffer sizes, including head and tail buffers, must be optimized.
 	// consider adding some tuning factor
 	private ImmutableMap<Token, Buffer> createBufferMap(Set<Blob> blobSet) {
@@ -320,12 +319,28 @@ public class BlobsManagerImpl implements BlobsManager {
 				bc.stop(true);
 			}
 
-			for (Thread t : blobThreads)
+			for (Thread t : blobThreads) {
 				try {
 					t.join();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
+			}
+
+			for (Thread t : inputChannelThreads) {
+				try {
+					t.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			for (Thread t : outputChannelThreads) {
+				try {
+					t.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
 
 			if (monBufs != null)
 				monBufs.stopMonitoring();
