@@ -254,7 +254,10 @@ public class StreamJitAppManager {
 	}
 
 	public long getFixedOutputTime() throws InterruptedException {
-		return tailChannel.getFixedOutputTime();
+		long time = tailChannel.getFixedOutputTime();
+		if (apStsPro.error)
+			return -1l;
+		return time;
 	}
 
 	public void setDrainer(AbstractDrainer drainer) {
@@ -404,6 +407,8 @@ public class StreamJitAppManager {
 
 		private boolean compilationError;
 
+		private volatile boolean error;
+
 		private final int noOfnodes;
 
 		private AppStatusProcessorImpl(int noOfnodes) {
@@ -420,6 +425,8 @@ public class StreamJitAppManager {
 
 		@Override
 		public void processERROR() {
+			this.error = true;
+			tailChannel.reset();
 		}
 
 		@Override
@@ -445,6 +452,7 @@ public class StreamJitAppManager {
 		private void reset() {
 			compileLatch = new CountDownLatch(noOfnodes);
 			this.compilationError = false;
+			this.error = false;
 		}
 
 		private boolean waitForCompilation() {

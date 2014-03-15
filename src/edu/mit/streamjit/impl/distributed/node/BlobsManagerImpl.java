@@ -239,7 +239,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		private final Token blobID;
 
 		private final Blob blob;
-		private Set<BlobThread> blobThreads;
+		private Set<BlobThread2> blobThreads;
 
 		private final ImmutableMap<Token, BoundaryInputChannel> inputChannels;
 		private final ImmutableMap<Token, BoundaryOutputChannel> outputChannels;
@@ -267,7 +267,7 @@ public class BlobsManagerImpl implements BlobsManager {
 					sb.append(Workers.getIdentifier(w));
 					sb.append(",");
 				}
-				blobThreads.add(new BlobThread(blob.getCoreCode(i), sb
+				blobThreads.add(new BlobThread2(blob.getCoreCode(i), this, sb
 						.toString()));
 			}
 
@@ -346,8 +346,12 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		private void drained() {
-			drainState = 3;
-			for (BlobThread bt : blobThreads) {
+			if (drainState < 3)
+				drainState = 3;
+			else
+				return;
+
+			for (BlobThread2 bt : blobThreads) {
 				bt.requestStop();
 			}
 
@@ -362,6 +366,9 @@ public class BlobsManagerImpl implements BlobsManager {
 					e.printStackTrace();
 				}
 			}
+
+			if (drainState > 3)
+				return;
 
 			drainState = 4;
 			SNMessageElement drained = new SNDrainElement.Drained(blobID);
@@ -606,6 +613,46 @@ public class BlobsManagerImpl implements BlobsManager {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+		}
+	}
+
+	private final class BlobThread2 extends Thread {
+		private volatile boolean stopping = false;
+		private final Runnable coreCode;
+		private final BlobExecuter be;
+
+		private BlobThread2(Runnable coreCode, BlobExecuter be, String name) {
+			super(name);
+			this.coreCode = coreCode;
+			this.be = be;
+		}
+
+		private BlobThread2(Runnable coreCode, BlobExecuter be) {
+			this.coreCode = coreCode;
+			this.be = be;
+		}
+
+		@Override
+		public void run() {
+			try {
+				while (!stopping)
+					coreCode.run();
+			} catch (Error | Exception e) {
+				e.printStackTrace();
+				if (be.drainState == 1 || be.drainState == 2)
+					be.drained();
+				else if (be.drainState == 0) {
+					try {
+						streamNode.controllerConnection
+								.writeObject(AppStatus.ERROR);
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+				}
+			}
+		}
+		public void requestStop() {
+			stopping = true;
 		}
 	}
 
