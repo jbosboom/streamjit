@@ -828,6 +828,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		final AtomicBoolean run;
 
 		private DrainDeadLockHandler() {
+			super("DrainDeadLockHandler");
 			this.run = new AtomicBoolean(true);
 		}
 
