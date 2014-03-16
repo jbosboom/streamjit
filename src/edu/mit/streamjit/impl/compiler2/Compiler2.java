@@ -228,9 +228,19 @@ public class Compiler2 {
 
 	private void findRemovals() {
 		ImmutableSortedSet.Builder<WorkerActor> builder = ImmutableSortedSet.naturalOrder();
-		for (WorkerActor a : Iterables.filter(actors, WorkerActor.class))
-			if (REMOVABLE_WORKERS.contains(a.worker().getClass()) && REMOVAL_STRATEGY.remove(a, config))
-				builder.add(a);
+		next_worker: for (WorkerActor a : Iterables.filter(actors, WorkerActor.class)) {
+			if (!REMOVABLE_WORKERS.contains(a.worker().getClass())) continue;
+			if (a.worker() instanceof Splitter)
+				for (Storage s : a.outputs())
+					if (!s.initialData().isEmpty())
+						continue next_worker;
+			if (a.worker() instanceof Joiner)
+				for (Storage s : a.inputs())
+					if (!s.initialData().isEmpty())
+						continue next_worker;
+			if (!REMOVAL_STRATEGY.remove(a, config)) continue;
+			builder.add(a);
+		}
 		this.actorsToBeRemoved = builder.build();
 	}
 
