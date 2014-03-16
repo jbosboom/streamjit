@@ -2,8 +2,10 @@ package edu.mit.streamjit.impl.common;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -269,9 +271,17 @@ public abstract class AbstractDrainer {
 			drainDataStatistics.get(t).add(drainData.getData().get(t).size());
 		}
 
+		// dumps the drain data into a file.
+		// try {
+		// FileOutputStream fout = new FileOutputStream("DrainData");
+		// ObjectOutputStream oos = new ObjectOutputStream(fout);
+		// oos.writeObject(drainData);
+		// oos.close();
+		// } catch (Exception ex) {
+		// ex.printStackTrace();
+		// }
 		return drainData;
 	}
-
 	/**
 	 * logs the size of the drain data on each channel for every draining and
 	 * writes down the statistics into a file.
