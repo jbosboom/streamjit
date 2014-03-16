@@ -235,6 +235,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private class BlobExecuter {
 
+		private AtomicBoolean crashed;
 		private volatile int drainState;
 		private final Token blobID;
 
@@ -252,6 +253,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		private BlobExecuter(Blob blob,
 				ImmutableMap<Token, BoundaryInputChannel> inputChannels,
 				ImmutableMap<Token, BoundaryOutputChannel> outputChannels) {
+			this.crashed = new AtomicBoolean(false);
 			this.blob = blob;
 			this.blobThreads = new HashSet<>();
 			assert blob.getInputs().containsAll(inputChannels.keySet());
@@ -316,6 +318,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		private void doDrain(boolean reqDrainData) {
+			// System.out.println("Blob " + blobID + "is doDrain");
 			this.reqDrainData = reqDrainData;
 			drainState = 1;
 
@@ -339,13 +342,16 @@ public class BlobsManagerImpl implements BlobsManager {
 					e.printStackTrace();
 				}
 			}
-
+			// System.out.println("Blob " + blobID + "Input thread's joined");
 			DrainCallback dcb = new DrainCallback(this);
 			drainState = 2;
 			this.blob.drain(dcb);
+			// System.out.println("Blob " + blobID +
+			// "this.blob.drain(dcb); passed");
 		}
 
 		private void drained() {
+			// System.out.println("Blob " + blobID + "drained at beg");
 			if (drainState < 3)
 				drainState = 3;
 			else
@@ -377,17 +383,18 @@ public class BlobsManagerImpl implements BlobsManager {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			// System.out.println("Blob " + blobID + "is drained");
+			// System.out.println("Blob " + blobID + "is drained at mid");
 
 			if (GlobalConstants.useDrainData && this.reqDrainData) {
 				// System.out.println("**********************************");
 				DrainData dd = blob.getDrainData();
 				drainState = 5;
 
-				for (Token t : dd.getData().keySet()) {
-					System.out.println("From Blob: " + t.toString() + " - "
-							+ dd.getData().get(t).size());
-				}
+				if (dd != null)
+					for (Token t : dd.getData().keySet()) {
+						System.out.println("From Blob: " + t.toString() + " - "
+								+ dd.getData().get(t).size());
+					}
 
 				ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
 				ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
@@ -638,15 +645,19 @@ public class BlobsManagerImpl implements BlobsManager {
 				while (!stopping)
 					coreCode.run();
 			} catch (Error | Exception e) {
-				e.printStackTrace();
-				if (be.drainState == 1 || be.drainState == 2)
-					be.drained();
-				else if (be.drainState == 0) {
-					try {
-						streamNode.controllerConnection
-								.writeObject(AppStatus.ERROR);
-					} catch (IOException e1) {
-						e1.printStackTrace();
+				System.out.println(Thread.currentThread().getName()
+						+ " crached...");
+				if (be.crashed.compareAndSet(false, true)) {
+					e.printStackTrace();
+					if (be.drainState == 1 || be.drainState == 2)
+						be.drained();
+					else if (be.drainState == 0) {
+						try {
+							streamNode.controllerConnection
+									.writeObject(AppStatus.ERROR);
+						} catch (IOException e1) {
+							e1.printStackTrace();
+						}
 					}
 				}
 			}

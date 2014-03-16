@@ -271,8 +271,9 @@ public class StreamJitAppManager {
 
 	public long getFixedOutputTime() throws InterruptedException {
 		long time = tailChannel.getFixedOutputTime();
-		if (apStsPro.error)
+		if (apStsPro.error) {
 			return -1l;
+		}
 		return time;
 	}
 
@@ -442,7 +443,9 @@ public class StreamJitAppManager {
 		@Override
 		public void processERROR() {
 			this.error = true;
-			tailChannel.reset();
+			// This will release the OpenTuner thread which is waiting for fixed
+			// output.
+			tailChannel.releaseAll();
 		}
 
 		@Override

@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.common.base.Stopwatch;
 
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
@@ -115,6 +116,19 @@ public class TailChannel extends TCPInputChannel {
 		skipLatch = new CountDownLatch(1);
 		count = 0;
 		skipLatchUp = true;
+	}
+
+	/**
+	 * This method is needed apart from {@link #reset()} because if a thread
+	 * calls (From {@link AppStatusProcessor#processERROR()} reset() method
+	 * instead of this method, the threads which are waiting on latches at
+	 * {@link #getFixedOutputTime()} will not be released properly because the
+	 * thread thread which is waiting on skipLatch will wait on steady latch.
+	 */
+	public void releaseAll() {
+		steadyLatch.countDown();
+		skipLatch.countDown();
+		count = 0;
 	}
 
 	private class performanceLogger extends Thread {
