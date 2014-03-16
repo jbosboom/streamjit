@@ -127,7 +127,7 @@ public class StreamJitApp {
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
 
 		if (!GlobalConstants.singleNodeOnline) {
-			printPartition(partitionsMachineMap);
+			// printPartition(partitionsMachineMap);
 		}
 
 		List<Set<Worker<?, ?>>> partitionList = new ArrayList<>();

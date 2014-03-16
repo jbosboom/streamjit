@@ -19,7 +19,6 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
-import edu.mit.streamjit.impl.common.BlobThread;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
@@ -95,7 +94,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			be.start();
 
 		if (monBufs == null) {
-			System.out.println("Creating new MonitorBuffers");
+			// System.out.println("Creating new MonitorBuffers");
 			monBufs = new MonitorBuffers();
 			monBufs.start();
 		} else
@@ -172,7 +171,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder) {
 		// TODO: Just to increase the performance. Change it later
 		int bufSize = Math.max(1000, minSize);
-		System.out.println("Buffer size of " + t.toString() + " is " + bufSize);
+		// System.out.println("Buffer size of " + t.toString() + " is " + bufSize);
 		bufferMapBuilder.put(t, new ConcurrentArrayBuffer(bufSize));
 	}
 
@@ -390,11 +389,12 @@ public class BlobsManagerImpl implements BlobsManager {
 				DrainData dd = blob.getDrainData();
 				drainState = 5;
 
-				if (dd != null)
-					for (Token t : dd.getData().keySet()) {
-						System.out.println("From Blob: " + t.toString() + " - "
-								+ dd.getData().get(t).size());
-					}
+				if (dd != null) {
+					// for (Token t : dd.getData().keySet()) {
+					// System.out.println("From Blob: " + t.toString() + " - "
+					// + dd.getData().get(t).size());
+					// }
+				}
 
 				ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
 				ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
@@ -404,9 +404,9 @@ public class BlobsManagerImpl implements BlobsManager {
 						BoundaryChannel chanl = inputChannels.get(t);
 						ImmutableList<Object> draindata = chanl
 								.getUnprocessedData();
-						System.out.println(String.format(
-								"No of unprocessed data of %s is %d",
-								chanl.name(), draindata.size()));
+						// System.out.println(String.format(
+						// "No of unprocessed data of %s is %d",
+						// chanl.name(), draindata.size()));
 						inputDataBuilder.put(t, draindata);
 					}
 
@@ -427,9 +427,9 @@ public class BlobsManagerImpl implements BlobsManager {
 						BoundaryChannel chanl = outputChannels.get(t);
 						ImmutableList<Object> draindata = chanl
 								.getUnprocessedData();
-						System.out.println(String.format(
-								"No of unprocessed data of %s is %d",
-								chanl.name(), draindata.size()));
+						// System.out.println(String.format(
+						// "No of unprocessed data of %s is %d",
+						// chanl.name(), draindata.size()));
 						outputDataBuilder.put(t, draindata);
 					}
 				}
@@ -674,6 +674,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		private final AtomicBoolean stopFlag;
 		int sleepTime = 25000;
 		MonitorBuffers() {
+			super("MonitorBuffers");
 			stopFlag = new AtomicBoolean(false);
 			id = count++;
 		}
@@ -723,7 +724,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		public void stopMonitoring() {
-			System.out.println("MonitorBuffers: Stop monitoring");
+			// System.out.println("MonitorBuffers: Stop monitoring");
 			stopFlag.set(true);
 			this.interrupt();
 		}
