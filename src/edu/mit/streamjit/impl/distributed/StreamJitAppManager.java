@@ -221,11 +221,13 @@ public class StreamJitAppManager {
 		stopwatchRef.set(Stopwatch.createStarted());
 		if (headChannel != null) {
 			headChannel.stop(isFinal);
-			try {
-				headThread.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			// [2014-03-16] Moved to drainingFinished. In any case if headThread
+			// blocked at tcp write, draining will also blocked.
+			// try {
+			// headThread.join();
+			// } catch (InterruptedException e) {
+			// e.printStackTrace();
+			// }
 		}
 	}
 
@@ -241,6 +243,15 @@ public class StreamJitAppManager {
 
 	public void drainingFinished(boolean isFinal) {
 		System.out.println("App Manager : Draining Finished...");
+
+		if (headChannel != null) {
+			try {
+				headThread.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+
 		if (tailChannel != null) {
 			if (isFinal)
 				tailChannel.stop(1);
