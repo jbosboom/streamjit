@@ -65,6 +65,8 @@ public class DrainData implements Serializable {
 	 * @return a merged DrainData
 	 */
 	public DrainData merge(DrainData other) {
+		if (other == null)
+			return this;
 		ImmutableMap.Builder<Token, ImmutableList<Object>> dataBuilder = ImmutableMap.builder();
 		for (Token t : Sets.union(data.keySet(), other.data.keySet())) {
 			ImmutableList<Object> us = getData(t) != null ? getData(t) : ImmutableList.of();
