@@ -230,14 +230,12 @@ public class Compiler2 {
 		ImmutableSortedSet.Builder<WorkerActor> builder = ImmutableSortedSet.naturalOrder();
 		next_worker: for (WorkerActor a : Iterables.filter(actors, WorkerActor.class)) {
 			if (!REMOVABLE_WORKERS.contains(a.worker().getClass())) continue;
-			if (a.worker() instanceof Splitter)
-				for (Storage s : a.outputs())
-					if (!s.initialData().isEmpty())
-						continue next_worker;
-			if (a.worker() instanceof Joiner)
-				for (Storage s : a.inputs())
-					if (!s.initialData().isEmpty())
-						continue next_worker;
+			for (Storage s : a.outputs())
+				if (!s.initialData().isEmpty())
+					continue next_worker;
+			for (Storage s : a.inputs())
+				if (!s.initialData().isEmpty())
+					continue next_worker;
 			if (!REMOVAL_STRATEGY.remove(a, config)) continue;
 			builder.add(a);
 		}
