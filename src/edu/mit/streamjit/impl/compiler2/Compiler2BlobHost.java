@@ -235,11 +235,13 @@ public class Compiler2BlobHost implements Blob {
 	private void mainLoop(MethodHandle coreCode) throws Throwable {
 		try {
 			coreCode.invokeExact();
+			barrier.arriveAndAwaitAdvance();
 		} catch (Throwable ex) {
 			barrier.forceTermination();
+			SwitchPoint.invalidateAll(new SwitchPoint[]{sp1, sp2});
+			ex.printStackTrace();
 			throw ex;
 		}
-		barrier.arriveAndAwaitAdvance();
 	}
 
 	private void doInit() throws Throwable {
@@ -256,12 +258,7 @@ public class Compiler2BlobHost implements Blob {
 				}
 		}
 
-		try {
-			initCode.invoke();
-		} catch (Throwable ex) {
-			barrier.forceTermination();
-			throw ex;
-		}
+		initCode.invoke();
 
 		doWrites(initWriteInstructions);
 
