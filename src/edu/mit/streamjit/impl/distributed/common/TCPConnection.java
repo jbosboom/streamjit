@@ -64,8 +64,9 @@ public class TCPConnection implements Connection {
 			try {
 				ooStream.writeObject(obj);
 
+				n++;
 				// TODO: Any way to improve the performance?
-				if (n++ > resetCount) {
+				if (n > resetCount) {
 					n = 0;
 					ooStream.reset();
 				}
