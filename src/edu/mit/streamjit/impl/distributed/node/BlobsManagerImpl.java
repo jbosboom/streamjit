@@ -31,6 +31,7 @@ import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Utils;
@@ -171,7 +172,8 @@ public class BlobsManagerImpl implements BlobsManager {
 			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder) {
 		// TODO: Just to increase the performance. Change it later
 		int bufSize = Math.max(1000, minSize);
-		// System.out.println("Buffer size of " + t.toString() + " is " + bufSize);
+		// System.out.println("Buffer size of " + t.toString() + " is " +
+		// bufSize);
 		bufferMapBuilder.put(t, new ConcurrentArrayBuffer(bufSize));
 	}
 
@@ -385,57 +387,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			// System.out.println("Blob " + blobID + "is drained at mid");
 
 			if (GlobalConstants.useDrainData && this.reqDrainData) {
-				// System.out.println("**********************************");
-				DrainData dd = blob.getDrainData();
-				drainState = 5;
-
-				if (dd != null) {
-					// for (Token t : dd.getData().keySet()) {
-					// System.out.println("From Blob: " + t.toString() + " - "
-					// + dd.getData().get(t).size());
-					// }
-				}
-
-				ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
-				ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
-
-				for (Token t : blob.getInputs()) {
-					if (inputChannels.containsKey(t)) {
-						BoundaryChannel chanl = inputChannels.get(t);
-						ImmutableList<Object> draindata = chanl
-								.getUnprocessedData();
-						// System.out.println(String.format(
-						// "No of unprocessed data of %s is %d",
-						// chanl.name(), draindata.size()));
-						inputDataBuilder.put(t, draindata);
-					}
-
-					// TODO: Unnecessary data copy. Optimise this.
-					else {
-						Buffer buf = bufferMap.get(t);
-						Object[] bufArray = new Object[buf.size()];
-						buf.readAll(bufArray);
-						assert buf.size() == 0 : String.format(
-								"buffer size is %d. But 0 is expected",
-								buf.size());
-						inputDataBuilder.put(t, ImmutableList.copyOf(bufArray));
-					}
-				}
-
-				for (Token t : blob.getOutputs()) {
-					if (outputChannels.containsKey(t)) {
-						BoundaryChannel chanl = outputChannels.get(t);
-						ImmutableList<Object> draindata = chanl
-								.getUnprocessedData();
-						// System.out.println(String.format(
-						// "No of unprocessed data of %s is %d",
-						// chanl.name(), draindata.size()));
-						outputDataBuilder.put(t, draindata);
-					}
-				}
-
-				SNMessageElement me = new SNDrainElement.DrainedData(blobID,
-						dd, inputDataBuilder.build(), outputDataBuilder.build());
+				SNMessageElement me = getDrainData();
 				try {
 					streamNode.controllerConnection.writeObject(me);
 					// System.out.println(blobID + " DrainData has been sent");
@@ -444,7 +396,6 @@ public class BlobsManagerImpl implements BlobsManager {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-
 				// System.out.println("**********************************");
 			}
 
@@ -460,6 +411,59 @@ public class BlobsManagerImpl implements BlobsManager {
 				monBufs.stopMonitoring();
 
 			// printDrainedStatus();
+		}
+
+		private DrainedData getDrainData() {
+			// System.out.println("**********************************");
+			DrainData dd = blob.getDrainData();
+			drainState = 5;
+
+			if (dd != null) {
+				// for (Token t : dd.getData().keySet()) {
+				// System.out.println("From Blob: " + t.toString() + " - "
+				// + dd.getData().get(t).size());
+				// }
+			}
+
+			ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
+			ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
+
+			for (Token t : blob.getInputs()) {
+				if (inputChannels.containsKey(t)) {
+					BoundaryChannel chanl = inputChannels.get(t);
+					ImmutableList<Object> draindata = chanl
+							.getUnprocessedData();
+					// System.out.println(String.format(
+					// "No of unprocessed data of %s is %d",
+					// chanl.name(), draindata.size()));
+					inputDataBuilder.put(t, draindata);
+				}
+
+				// TODO: Unnecessary data copy. Optimise this.
+				else {
+					Buffer buf = bufferMap.get(t);
+					Object[] bufArray = new Object[buf.size()];
+					buf.readAll(bufArray);
+					assert buf.size() == 0 : String.format(
+							"buffer size is %d. But 0 is expected", buf.size());
+					inputDataBuilder.put(t, ImmutableList.copyOf(bufArray));
+				}
+			}
+
+			for (Token t : blob.getOutputs()) {
+				if (outputChannels.containsKey(t)) {
+					BoundaryChannel chanl = outputChannels.get(t);
+					ImmutableList<Object> draindata = chanl
+							.getUnprocessedData();
+					// System.out.println(String.format(
+					// "No of unprocessed data of %s is %d",
+					// chanl.name(), draindata.size()));
+					outputDataBuilder.put(t, draindata);
+				}
+			}
+
+			return new SNDrainElement.DrainedData(blobID, dd,
+					inputDataBuilder.build(), outputDataBuilder.build());
 		}
 
 		public Token getBlobID() {
