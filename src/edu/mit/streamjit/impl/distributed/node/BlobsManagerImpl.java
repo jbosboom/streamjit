@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Sets;
 
 import edu.mit.streamjit.api.Worker;
@@ -387,7 +388,12 @@ public class BlobsManagerImpl implements BlobsManager {
 			// System.out.println("Blob " + blobID + "is drained at mid");
 
 			if (GlobalConstants.useDrainData && this.reqDrainData) {
-				SNMessageElement me = getDrainData();
+				SNMessageElement me;
+				if (crashed.get())
+					me = getEmptyDrainData();
+				else
+					me = getDrainData();
+
 				try {
 					streamNode.controllerConnection.writeObject(me);
 					// System.out.println(blobID + " DrainData has been sent");
@@ -462,6 +468,20 @@ public class BlobsManagerImpl implements BlobsManager {
 				}
 			}
 
+			return new SNDrainElement.DrainedData(blobID, dd,
+					inputDataBuilder.build(), outputDataBuilder.build());
+		}
+
+		private DrainedData getEmptyDrainData() {
+			drainState = 5;
+			ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
+			ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
+			ImmutableMap.Builder<Token, ImmutableList<Object>> dataBuilder = ImmutableMap
+					.builder();
+			ImmutableTable.Builder<Integer, String, Object> stateBuilder = ImmutableTable
+					.builder();
+			DrainData dd = new DrainData(dataBuilder.build(),
+					stateBuilder.build());
 			return new SNDrainElement.DrainedData(blobID, dd,
 					inputDataBuilder.build(), outputDataBuilder.build());
 		}
