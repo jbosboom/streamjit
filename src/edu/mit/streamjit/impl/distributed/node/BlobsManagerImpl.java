@@ -6,8 +6,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -494,13 +496,20 @@ public class BlobsManagerImpl implements BlobsManager {
 	private static class DrainCallback implements Runnable {
 
 		private final BlobExecuter blobExec;
+		// TODO: [2014-03-17] Just to added for checking the drain time. Remove
+		// it later.
+		private final Stopwatch sw;
 
 		DrainCallback(BlobExecuter be) {
 			this.blobExec = be;
+			sw = Stopwatch.createStarted();
 		}
 
 		@Override
 		public void run() {
+			sw.stop();
+			System.out.println("Time taken to drain " + blobExec.blobID
+					+ " is " + sw.elapsed(TimeUnit.MILLISECONDS) + " ms");
 			blobExec.drained();
 		}
 	}
