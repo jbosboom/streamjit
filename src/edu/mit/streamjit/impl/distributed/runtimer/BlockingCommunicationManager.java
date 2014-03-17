@@ -181,8 +181,8 @@ public class BlockingCommunicationManager implements CommunicationManager {
 	 * 
 	 */
 	private static class SNAgentRunner extends Thread {
-		StreamNodeAgent SNAgent;
-		Connection connection;
+		final StreamNodeAgent SNAgent;
+		final Connection connection;
 
 		private SNAgentRunner(StreamNodeAgent SNAgent, Connection connection) {
 			super(String.format("SNAgentRunner - %d", SNAgent.getNodeID()));
