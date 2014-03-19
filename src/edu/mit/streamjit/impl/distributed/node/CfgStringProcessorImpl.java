@@ -160,9 +160,10 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 					return null;
 				}
 				// DEBUG MSG
-				System.out.println(String.format(
-						"A new blob with workers %s has been created.",
-						workIdentifiers.toString()));
+				if (!GlobalConstants.singleNodeOnline)
+					System.out.println(String.format(
+							"A new blob with workers %s has been created.",
+							workIdentifiers.toString()));
 			}
 			System.out.println("All blobs have been created");
 			return blobSet.build();
