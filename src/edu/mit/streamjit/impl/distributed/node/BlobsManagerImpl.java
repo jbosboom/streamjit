@@ -48,7 +48,7 @@ import edu.mit.streamjit.impl.distributed.common.Utils;
  */
 public class BlobsManagerImpl implements BlobsManager {
 
-	private Set<BlobExecuter> blobExecuters;
+	private Map<Token, BlobExecuter> blobExecuters;
 	private final StreamNode streamNode;
 	private final TCPConnectionProvider conProvider;
 	private Map<Token, TCPConnectionInfo> conInfoMap;
@@ -78,14 +78,15 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		Set<Token> locaTokens = getLocalTokens(blobSet);
-		blobExecuters = new HashSet<>();
+		blobExecuters = new HashMap<>();
 		for (Blob b : blobSet) {
+			Token t = Utils.getBlobID(b);
 			ImmutableMap<Token, BoundaryInputChannel> inputChannels = createInputChannels(
 					Sets.difference(b.getInputs(), locaTokens), bufferMap);
 			ImmutableMap<Token, BoundaryOutputChannel> outputChannels = createOutputChannels(
 					Sets.difference(b.getOutputs(), locaTokens), bufferMap);
-			blobExecuters
-					.add(new BlobExecuter(b, inputChannels, outputChannels));
+			blobExecuters.put(t, new BlobExecuter(t, b, inputChannels,
+					outputChannels));
 		}
 	}
 
@@ -94,16 +95,16 @@ public class BlobsManagerImpl implements BlobsManager {
 	 * manage all CPU and I/O threads those are related to the {@link Blob}s.
 	 */
 	public void start() {
-		for (BlobExecuter be : blobExecuters)
+		for (BlobExecuter be : blobExecuters.values())
 			be.start();
 
-		if (monBufs == null) {
-			// System.out.println("Creating new MonitorBuffers");
-			monBufs = new MonitorBuffers();
-			monBufs.start();
-		} else
-			System.err
-					.println("Mon buffer is not null. Check the logic for bug");
+		// if (monBufs == null) {
+		// // System.out.println("Creating new MonitorBuffers");
+		// monBufs = new MonitorBuffers();
+		// monBufs.start();
+		// } else
+		// System.err
+		// .println("Mon buffer is not null. Check the logic for bug");
 	}
 
 	/**
@@ -111,7 +112,7 @@ public class BlobsManagerImpl implements BlobsManager {
 	 * stopped.
 	 */
 	public void stop() {
-		for (BlobExecuter be : blobExecuters)
+		for (BlobExecuter be : blobExecuters.values())
 			be.stop();
 
 		if (monBufs != null)
@@ -243,7 +244,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		private volatile int drainState;
 		private final Token blobID;
 
-		private final Blob blob;
+		private Blob blob;
 		private Set<BlobThread2> blobThreads;
 
 		private final ImmutableMap<Token, BoundaryInputChannel> inputChannels;
@@ -254,7 +255,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		private boolean reqDrainData;
 
-		private BlobExecuter(Blob blob,
+		private BlobExecuter(Token t, Blob blob,
 				ImmutableMap<Token, BoundaryInputChannel> inputChannels,
 				ImmutableMap<Token, BoundaryOutputChannel> outputChannels) {
 			this.crashed = new AtomicBoolean(false);
@@ -269,16 +270,19 @@ public class BlobsManagerImpl implements BlobsManager {
 
 			for (int i = 0; i < blob.getCoreCount(); i++) {
 				StringBuilder sb = new StringBuilder("Workers-");
+				int limit = 0;
 				for (Worker<?, ?> w : blob.getWorkers()) {
 					sb.append(Workers.getIdentifier(w));
 					sb.append(",");
+					if (++limit > 5)
+						break;
 				}
 				blobThreads.add(new BlobThread2(blob.getCoreCode(i), this, sb
 						.toString()));
 			}
 
 			drainState = 0;
-			this.blobID = Utils.getBlobID(blob);
+			this.blobID = t;
 		}
 
 		private void start() {
@@ -407,8 +411,9 @@ public class BlobsManagerImpl implements BlobsManager {
 				// System.out.println("**********************************");
 			}
 
+			this.blob = null;
 			boolean isLastBlob = true;
-			for (BlobExecuter be : blobExecuters) {
+			for (BlobExecuter be : blobExecuters.values()) {
 				if (be.drainState < 4) {
 					isLastBlob = false;
 					break;
@@ -489,7 +494,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		public Token getBlobID() {
-			return Utils.getBlobID(blob);
+			return blobID;
 		}
 	}
 
@@ -518,7 +523,7 @@ public class BlobsManagerImpl implements BlobsManager {
 	 * Drain the blob identified by the token.
 	 */
 	public void drain(Token blobID, boolean reqDrainData) {
-		for (BlobExecuter be : blobExecuters) {
+		for (BlobExecuter be : blobExecuters.values()) {
 			if (be.getBlobID().equals(blobID)) {
 				be.doDrain(reqDrainData);
 				return;
@@ -533,7 +538,7 @@ public class BlobsManagerImpl implements BlobsManager {
 	 */
 	private synchronized void printDrainedStatus() {
 		System.out.println("****************************************");
-		for (BlobExecuter be : blobExecuters) {
+		for (BlobExecuter be : blobExecuters.values()) {
 			switch (be.drainState) {
 				case 0 :
 					System.out.println(String.format("%s - No Drain Called",
@@ -679,7 +684,7 @@ public class BlobsManagerImpl implements BlobsManager {
 					coreCode.run();
 			} catch (Error | Exception e) {
 				System.out.println(Thread.currentThread().getName()
-						+ " crached...");
+						+ " crashed...");
 				if (be.crashed.compareAndSet(false, true)) {
 					e.printStackTrace();
 					if (be.drainState == 1 || be.drainState == 2)
