@@ -72,6 +72,14 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 		} else {
 			System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 			System.out.println("New Configuration.....");
+			// [2014-3-20] We need to release blobsmanager to release the
+			// memory. Otherwise, Blobthread2.corecode will hold the memory.
+			BlobsManager bm = streamNode.getBlobsManager();
+			if (bm != null) {
+				bm.stop();
+				streamNode.setBlobsManager(null);
+				bm = null;
+			}
 			Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
 			ImmutableSet<Blob> blobSet = getBlobs(cfg, staticConfig, drainData);
 			if (blobSet != null) {
@@ -84,10 +92,6 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 				Map<Token, TCPConnectionInfo> conInfoMap = (Map<Token, TCPConnectionInfo>) cfg
 						.getExtraData(GlobalConstants.CONINFOMAP);
-
-				BlobsManager bm = streamNode.getBlobsManager();
-				if (bm != null)
-					bm.stop();
 
 				streamNode.setBlobsManager(new BlobsManagerImpl(blobSet,
 						conInfoMap, streamNode, conProvider));
