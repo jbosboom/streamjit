@@ -351,9 +351,11 @@ public class BlobsManagerImpl implements BlobsManager {
 				}
 			}
 			// System.out.println("Blob " + blobID + "Input thread's joined");
-			DrainCallback dcb = new DrainCallback(this);
-			drainState = 2;
-			this.blob.drain(dcb);
+			if (this.blob != null) {
+				DrainCallback dcb = new DrainCallback(this);
+				drainState = 2;
+				this.blob.drain(dcb);
+			}
 			// System.out.println("Blob " + blobID +
 			// "this.blob.drain(dcb); passed");
 		}
@@ -427,6 +429,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		private DrainedData getDrainData() {
+			if (this.blob == null)
+				return getEmptyDrainData();
 			// System.out.println("**********************************");
 			DrainData dd = blob.getDrainData();
 			drainState = 5;
