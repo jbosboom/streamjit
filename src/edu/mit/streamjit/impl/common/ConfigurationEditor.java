@@ -130,6 +130,28 @@ public class ConfigurationEditor {
 		}
 	}
 
+	/**
+	 * Generates default cfg of {@link Compiler2BlobFactory}. No modification
+	 * done.
+	 * 
+	 * @param stream
+	 */
+	private static void generate2(OneToOneElement<?, ?> stream) {
+		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
+		stream.visit(primitiveConnector);
+		Worker<?, ?> source = (Worker<?, ?>) primitiveConnector.getSource();
+		BlobFactory bf = new Compiler2BlobFactory();
+		// BlobFactory bf = new DistributedBlobFactory(1);
+
+		Configuration cfg = bf.getDefaultConfiguration(Workers
+				.getAllWorkersInGraph(source));
+
+		name = String.format("hand_%s.cfg", stream.getClass().getSimpleName());
+
+		saveConfg(cfg, 0, name);
+
+	}
+
 	private static void edit1(String name, int maxWor)
 			throws NumberFormatException, IOException {
 		Configuration cfg;
