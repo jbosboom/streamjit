@@ -392,7 +392,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 			if (useDrainDeadLockHandler) {
 				boolean isLastBlob = true;
-				for (BlobExecuter be : blobExecuters) {
+				for (BlobExecuter be : blobExecuters.values()) {
 					if (be.drainState == 0) {
 						isLastBlob = false;
 						break;
@@ -845,7 +845,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 			while (run.get()) {
 				areAllDrained = true;
-				for (BlobExecuter be : blobExecuters) {
+				for (BlobExecuter be : blobExecuters.values()) {
 					if (be.drainState == 1 || be.drainState == 2) {
 						// System.out.println(be.blobID + " is not drained");
 						areAllDrained = false;
