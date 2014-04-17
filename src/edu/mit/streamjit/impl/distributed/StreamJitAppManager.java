@@ -143,6 +143,18 @@ public class StreamJitAppManager {
 			isRunning = false;
 		}
 
+		long heapMaxSize = Runtime.getRuntime().maxMemory();
+		long heapSize = Runtime.getRuntime().totalMemory();
+		long heapFreeSize = Runtime.getRuntime().freeMemory();
+
+		System.out.println("##############Controller######################");
+
+		System.out.println("heapMaxSize = " + heapMaxSize / 1e6);
+		System.out.println("heapSize = " + heapSize / 1e6);
+		System.out.println("heapFreeSize = " + heapFreeSize / 1e6);
+		System.out.println("StraemJit app is running...");
+		System.out.println("##############################################");
+
 		return isRunning;
 	}
 
@@ -185,6 +197,7 @@ public class StreamJitAppManager {
 						+ tailToken.toString(), 0, skipCount,
 				GlobalConstants.outputCount);
 	}
+
 	/**
 	 * Start the execution of the StreamJit application.
 	 */
