@@ -214,7 +214,7 @@ public class ConfigurationEditor {
 			String pythonDict = reader.readLine();
 
 			Configuration finalCfg = rebuildConfiguration(pythonDict, cfg);
-			saveConfg(finalCfg, 0);
+			saveConfg(finalCfg, 0, name);
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
@@ -291,20 +291,19 @@ public class ConfigurationEditor {
 	/**
 	 * Save the configuration.
 	 */
-	private static void saveConfg(Configuration config, int round) {
+	private static void saveConfg(Configuration config, int round, String appName) {
 		String json = config.toJson();
-		String name = "erer";
 		try {
 
 			File dir = new File(String.format("configurations%s%s",
-					File.separator, name));
+					File.separator, appName));
 			if (!dir.exists())
 				if (!dir.mkdirs()) {
 					System.err.println("Make directory failed");
 					return;
 				}
 
-			File file = new File(dir, String.format("%d%s.cfg", round, name));
+			File file = new File(dir, String.format("%d%s.cfg", round, appName));
 			FileWriter writer = new FileWriter(file, false);
 			writer.write(json);
 			writer.flush();
