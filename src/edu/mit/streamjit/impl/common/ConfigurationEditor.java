@@ -157,22 +157,38 @@ public class ConfigurationEditor {
 					IntParameter.class);
 
 			if (wrkrMachine != null) {
-				System.out.println(wrkrMachine.getName() + " - "
-						+ wrkrMachine.getValue());
-				int val = Integer.parseInt(keyinreader.readLine());
-				builder.removeParameter(wrkrMachine.getName());
-				builder.addParameter(new SwitchParameter<Integer>(wrkrMachine
-						.getName(), Integer.class, val, wrkrMachine
-						.getUniverse()));
+				System.out.println(wrkrMachine.toString());
+				boolean isOk1 = false;
+				while (!isOk1) {
+					try {
+						int val = Integer.parseInt(keyinreader.readLine());
+						builder.removeParameter(wrkrMachine.getName());
+						builder.addParameter(new SwitchParameter<Integer>(
+								wrkrMachine.getName(), Integer.class, val,
+								wrkrMachine.getUniverse()));
+						isOk1 = true;
+					} catch (Exception ex) {
+						ex.printStackTrace();
+						isOk1 = false;
+					}
+				}
 			}
 
 			if (wrkrCut != null) {
-				System.out.println(wrkrCut.getName() + " - "
-						+ wrkrCut.getValue());
-				int val = Integer.parseInt(keyinreader.readLine());
-				builder.removeParameter(wrkrCut.getName());
-				builder.addParameter(new IntParameter(wrkrCut.getName(),
-						wrkrCut.getRange(), val));
+				System.out.println(wrkrCut.toString());
+				boolean isOk = false;
+				while (!isOk) {
+					try {
+						int val = Integer.parseInt(keyinreader.readLine());
+						builder.removeParameter(wrkrCut.getName());
+						builder.addParameter(new IntParameter(
+								wrkrCut.getName(), wrkrCut.getRange(), val));
+						isOk = true;
+					} catch (Exception ex) {
+						ex.printStackTrace();
+						isOk = false;
+					}
+				}
 			}
 		}
 
