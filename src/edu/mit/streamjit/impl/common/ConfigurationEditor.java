@@ -16,6 +16,7 @@ import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
+import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.impl.distributed.HotSpotTuning;
@@ -36,15 +37,13 @@ public class ConfigurationEditor {
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		generate1(new FilterBank6.FilterBankPipeline());
+		generate1(new ChannelVocoder7.ChannelVocoder7Kernel(), 16);
 		edit1(name, noofwrks);
 		// print("4366NestedSplitJoinCore.cfg");
 		// convert();
 	}
 
-	private static void generate(OneToOneElement<?, ?> stream) {
-		int noOfnodes = 4;
-
+	private static void generate(OneToOneElement<?, ?> stream, int noOfnodes) {
 		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
 		stream.visit(primitiveConnector);
 		Worker<?, ?> source = (Worker<?, ?>) primitiveConnector.getSource();
@@ -102,9 +101,7 @@ public class ConfigurationEditor {
 		System.out.println("Successfully updated");
 	}
 
-	private static void generate1(OneToOneElement<?, ?> stream) {
-		int noOfnodes = 4;
-
+	private static void generate1(OneToOneElement<?, ?> stream, int noOfnodes) {
 		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
 		stream.visit(primitiveConnector);
 		Worker<?, ?> source = (Worker<?, ?>) primitiveConnector.getSource();
