@@ -61,10 +61,17 @@ public final class GlobalConstants {
 	public static final String CONINFOMAP = "ConInfoMap";
 
 	/**
-	 * Whether to start the tuner automatically or not.
+	 * Decides how to start the opentuner. In first 2 cases, controller starts
+	 * opentuner and establishes connection with it on a random port no range
+	 * from 5000-65536. User can provide port no in 3 case.
+	 * 
 	 * <ol>
-	 * <li>0 - Controller will start the tuner automatically.
-	 * <li>1 - User has to manually start the tuner with correct portNo as
+	 * <li>0 - Controller starts the tuner automatically on a terminal. User can
+	 * see Opentuner related outputs in the new terminal.
+	 * <li>1 - Controller starts the tuner automatically as a Python process. No
+	 * explicit window will be opened. Suitable for remote running through SSH
+	 * terminal.
+	 * <li>2 - User has to manually start the tuner with correct portNo as
 	 * argument. Port no 12563 is used in this case. But it can be changed at
 	 * {@link TCPTuner#startTuner(String)}. We need this option to run the
 	 * tuning on remote machines.

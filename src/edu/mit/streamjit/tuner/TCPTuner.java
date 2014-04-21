@@ -55,6 +55,9 @@ public final class TCPTuner implements OpenTuner {
 		if (GlobalConstants.tunerStartMode == 0) {
 			this.tuner = new ProcessBuilder("xterm", "-e", "python", tunerPath,
 					port.toString()).start();
+		} else if (GlobalConstants.tunerStartMode == 1) {
+			this.tuner = new ProcessBuilder("python", tunerPath,
+					port.toString()).start();
 		} else
 			port = 12563;
 		this.connection = new TunerConnection();
