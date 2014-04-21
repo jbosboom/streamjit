@@ -70,7 +70,7 @@ public final class GlobalConstants {
 	 * tuning on remote machines.
 	 * </ol>
 	 */
-	public static final int tunerMode = 0;
+	public static final int tunerStartMode = 0;
 
 	/**
 	 * To turn on or turn off the drain data. If this is false, drain data will

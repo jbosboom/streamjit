@@ -52,7 +52,7 @@ public final class TCPTuner implements OpenTuner {
 		int min = 5000;
 		Random rand = new Random();
 		Integer port = rand.nextInt(65535 - min) + min;
-		if (GlobalConstants.tunerMode == 0) {
+		if (GlobalConstants.tunerStartMode == 0) {
 			this.tuner = new ProcessBuilder("xterm", "-e", "python", tunerPath,
 					port.toString()).start();
 		} else
