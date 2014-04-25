@@ -35,6 +35,7 @@ import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.drainer.AbstractDrainer;
 import edu.mit.streamjit.impl.common.drainer.BlobGraph;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
@@ -42,7 +43,14 @@ import edu.mit.streamjit.partitioner.Partitioner;
 
 /**
  * A stream compiler that partitions a streamgraph into multiple blobs and
- * execute it on multiple threads.
+ * execute them on a single node. This {@link StreamCompiler} can be used for
+ * following purposes
+ * <ol>
+ * <li>Single blob online tuning.
+ * <li>Multiple blobs on a single node. This will simulate
+ * {@link DistributedStreamCompiler} on a single node to find out deadlocks and
+ * other issues.
+ * </ol>
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Apr 8, 2013
@@ -63,7 +71,6 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 	}
 
 	public ConcurrentStreamCompiler(Configuration cfg) {
-
 		IntParameter threadCount = cfg.getParameter("threadCount",
 				IntParameter.class);
 		this.noOfBlobs = threadCount.getValue();
