@@ -21,10 +21,14 @@ import edu.mit.streamjit.api.Worker;
 
 /**
  * {@link VerifyStreamGraph} currently verifies a stream graph for following
- * correctness. 1) A filter instance should be added only once in the graph. 2)
- * {@link WeightedRoundrobinSplitter} has matching numbers of branches and
- * weights. 3) {@link WeightedRoundrobinJoiner} has matching numbers of weights
- * array and the input branches.
+ * correctness.
+ * <ol>
+ * <li>1) A filter instance should be added only once in the graph.
+ * <li>2) {@link WeightedRoundrobinSplitter} has matching numbers of branches
+ * and weights.
+ * <li>3) {@link WeightedRoundrobinJoiner} has matching numbers of weights array
+ * and the input branches.
+ * </ol>
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 9, 2013
