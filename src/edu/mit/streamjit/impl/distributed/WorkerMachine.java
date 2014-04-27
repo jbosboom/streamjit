@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.google.common.base.Preconditions.*;
+
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
@@ -45,6 +47,8 @@ public final class WorkerMachine extends AbstractPartitionManager {
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers,
 			int noOfMachines) {
+		checkArgument(noOfMachines > 0, String.format(
+				"noOfMachines = %d, It must be > 0", noOfMachines));
 		Configuration.Builder builder = Configuration.builder();
 		List<Integer> machinelist = new ArrayList<>(noOfMachines);
 		for (int i = 1; i <= noOfMachines; i++)

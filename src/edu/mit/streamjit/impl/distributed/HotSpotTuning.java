@@ -1,5 +1,7 @@
 package edu.mit.streamjit.impl.distributed;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,6 +36,8 @@ public final class HotSpotTuning extends AbstractPartitionManager {
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers,
 			int noOfMachines) {
+		checkArgument(noOfMachines > 0, String.format(
+				"noOfMachines = %d, It must be > 0", noOfMachines));
 		PickHotSpots visitor = new PickHotSpots(noOfMachines);
 		app.streamGraph.visit(visitor);
 		return visitor.builder.build();
