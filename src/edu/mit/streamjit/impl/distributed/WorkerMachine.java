@@ -37,7 +37,7 @@ public final class WorkerMachine extends AbstractPartitionManager {
 
 	private final Set<Worker<?, ?>> workerset;
 
-	WorkerMachine(StreamJitApp app) {
+	public WorkerMachine(StreamJitApp app) {
 		super(app);
 		this.workerset = Workers.getAllWorkersInGraph(app.source);
 	}
