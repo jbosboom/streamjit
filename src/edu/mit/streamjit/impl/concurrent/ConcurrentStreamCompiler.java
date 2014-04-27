@@ -59,15 +59,18 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 	int noOfBlobs;
 
 	/**
-	 * @param Patrions
-	 *            a stream graph up to noOfBlobs many blobs and executes each
-	 *            blob on each thread.
+	 * @param noOfBlobs
+	 *            Maximum number of blobs that can be created.
 	 */
 	public ConcurrentStreamCompiler(int noOfBlobs) {
 		if (noOfBlobs < 1)
 			throw new IllegalArgumentException(
 					"noOfBlobs should be 1 or greater");
 		this.noOfBlobs = noOfBlobs;
+	}
+
+	public ConcurrentStreamCompiler() {
+		this(1);
 	}
 
 	public ConcurrentStreamCompiler(Configuration cfg) {
