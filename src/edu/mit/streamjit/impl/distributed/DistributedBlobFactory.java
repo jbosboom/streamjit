@@ -33,7 +33,7 @@ import edu.mit.streamjit.impl.interp.Interpreter.InterpreterBlobFactory;
  */
 public class DistributedBlobFactory implements BlobFactory {
 
-	private int noOfMachines;
+	private final int noOfMachines;
 
 	private final PartitionManager partitionManager;
 
