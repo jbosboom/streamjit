@@ -71,13 +71,15 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 	}
 
 	public ConcurrentStreamCompiler(Configuration cfg) {
-		IntParameter threadCount = cfg.getParameter("threadCount",
-				IntParameter.class);
-		this.noOfBlobs = threadCount.getValue();
-		if (noOfBlobs < 1)
-			throw new IllegalArgumentException(
-					"noOfBlobs should be 1 or greater");
-		this.noOfBlobs = noOfBlobs;
+		IntParameter nBlobs = cfg.getParameter("noOfBlobs", IntParameter.class);
+		if (nBlobs == null)
+			this.noOfBlobs = 1;
+		else {
+			this.noOfBlobs = nBlobs.getValue();
+			if (noOfBlobs < 1)
+				throw new IllegalArgumentException(
+						"noOfBlobs should be 1 or greater");
+		}
 	}
 
 	@Override
