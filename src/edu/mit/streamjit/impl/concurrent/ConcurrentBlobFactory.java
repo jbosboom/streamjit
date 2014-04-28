@@ -43,9 +43,8 @@ public class ConcurrentBlobFactory implements BlobFactory {
 
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
-
-		Configuration concurrentCfg = cfgManager.getDefaultConfiguration(workers,
-				noOfBlobs);
+		Configuration concurrentCfg = cfgManager.getDefaultConfiguration(
+				workers, noOfBlobs);
 		if (!GlobalConstants.useCompilerBlob)
 			return concurrentCfg;
 
@@ -55,5 +54,34 @@ public class ConcurrentBlobFactory implements BlobFactory {
 		for (Parameter p : compilercfg.getParametersMap().values())
 			builder.addParameter(p);
 		return builder.build();
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((cfgManager == null) ? 0 : cfgManager.hashCode());
+		result = prime * result + noOfBlobs;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ConcurrentBlobFactory other = (ConcurrentBlobFactory) obj;
+		if (cfgManager == null) {
+			if (other.cfgManager != null)
+				return false;
+		} else if (!cfgManager.equals(other.cfgManager))
+			return false;
+		if (noOfBlobs != other.noOfBlobs)
+			return false;
+		return true;
 	}
 }
