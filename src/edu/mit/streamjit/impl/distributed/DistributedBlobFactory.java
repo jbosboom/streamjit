@@ -65,9 +65,12 @@ public class DistributedBlobFactory implements BlobFactory {
 
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
+		Configuration distCfg;
+		if (this.noOfMachines > 1)
+			distCfg = partitionManager.getDefaultConfiguration(workers, noOfMachines);
+		else
+			distCfg = Configuration.builder().build();
 
-		Configuration distCfg = partitionManager.getDefaultConfiguration(
-				workers, noOfMachines);
 		if (!Options.useCompilerBlob)
 			return distCfg;
 

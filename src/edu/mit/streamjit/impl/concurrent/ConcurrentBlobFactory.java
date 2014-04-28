@@ -43,8 +43,13 @@ public class ConcurrentBlobFactory implements BlobFactory {
 
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
-		Configuration concurrentCfg = cfgManager.getDefaultConfiguration(
-				workers, noOfBlobs);
+		Configuration concurrentCfg;
+		if (this.noOfBlobs > 1)
+			concurrentCfg = cfgManager.getDefaultConfiguration(workers,
+					noOfBlobs);
+		else
+			concurrentCfg = Configuration.builder().build();
+
 		if (!GlobalConstants.useCompilerBlob)
 			return concurrentCfg;
 
