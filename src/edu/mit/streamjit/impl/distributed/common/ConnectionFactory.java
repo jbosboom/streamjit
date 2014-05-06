@@ -1,8 +1,13 @@
 package edu.mit.streamjit.impl.distributed.common;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.channels.AsynchronousServerSocketChannel;
+import java.nio.channels.AsynchronousSocketChannel;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import edu.mit.streamjit.impl.distributed.runtimer.ListenerSocket;
 
@@ -78,5 +83,21 @@ public class ConnectionFactory {
 			return new SynchronizedTCPConnection(socket);
 		else
 			return new TCPConnection(socket);
+	}
+
+	public static AsynchronousTCPConnection getAsyncConnection(
+			String serverAddress, int portNo) throws IOException,
+			InterruptedException, ExecutionException {
+		AsynchronousServerSocketChannel ssc;
+		AsynchronousSocketChannel sc2;
+		System.out.println("Inside initialization");
+		InetSocketAddress isa = new InetSocketAddress(serverAddress, portNo);
+
+		ssc = AsynchronousServerSocketChannel.open().bind(isa);
+		Future<AsynchronousSocketChannel> accepted = ssc.accept();
+		sc2 = accepted.get();
+
+		ssc.close();
+		return new AsynchronousTCPConnection(sc2);
 	}
 }
