@@ -6,13 +6,17 @@ import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
+import java.nio.channels.CompletionHandler;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AsynchronousTCPConnection implements Connection {
 	private ObjectOutputStream ooStream = null;
 	private AsynchronousSocketChannel asyncSktChannel;
 
 	private MyByteArrayOutputStream bAos;
+	private AtomicBoolean canWrite;
 
 	private boolean isconnected = false;
 	private final int resetCount;
@@ -36,6 +40,7 @@ public class AsynchronousTCPConnection implements Connection {
 			bAos = new MyByteArrayOutputStream(4096);
 			ooStream = new ObjectOutputStream(bAos);
 			isconnected = true;
+			canWrite = new AtomicBoolean(true);
 			// System.out.println(String.format(
 			// "DEBUG: TCP connection %d has been established", count++));
 		} catch (IOException iex) {
@@ -135,5 +140,58 @@ public class AsynchronousTCPConnection implements Connection {
 		public byte[] getBuf() {
 			return buf;
 		}
+	}
+
+	public int write(Object[] data, int offset, int length) throws IOException,
+			InterruptedException, ExecutionException {
+
+		final MyByteArrayOutputStream bAos;
+		final ObjectOutputStream objOS;
+		final AtomicBoolean canWrite;
+
+		objOS = this.ooStream;
+		bAos = this.bAos;
+		canWrite = this.canWrite;
+
+		while (!canWrite.get())
+			Thread.sleep(10);
+
+		int written = 0;
+		while (written < length) {
+			objOS.writeObject(data[offset++]);
+			++written;
+		}
+
+		canWrite.set(false);
+		ByteBuffer bb = ByteBuffer.wrap(bAos.getBuf(), 0, bAos.getCount());
+		asyncSktChannel.write(bb, bb,
+				new CompletionHandler<Integer, ByteBuffer>() {
+					@Override
+					public void completed(Integer result, ByteBuffer attachment) {
+
+						if (attachment.hasRemaining()) {
+							asyncSktChannel.write(attachment, attachment, this);
+						} else {
+							System.out.println("Completed.. ");
+							canWrite.set(true);
+							bAos.reset();
+							try {
+								objOS.reset();
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+					}
+
+					@Override
+					public void failed(Throwable exc, ByteBuffer attachment) {
+						exc.printStackTrace();
+						System.out.println("**************************");
+						canWrite.set(false);
+					}
+				});
+
+		return written;
 	}
 }
