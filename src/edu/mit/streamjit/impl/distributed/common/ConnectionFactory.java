@@ -85,17 +85,21 @@ public class ConnectionFactory {
 			return new TCPConnection(socket);
 	}
 
-	public static AsynchronousTCPConnection getAsyncConnection(
-			String serverAddress, int portNo) throws IOException,
-			InterruptedException, ExecutionException {
+	public static AsynchronousTCPConnection getAsyncConnection(int portNo)
+			throws IOException {
 		AsynchronousServerSocketChannel ssc;
 		AsynchronousSocketChannel sc2;
 		System.out.println("Inside initialization");
-		InetSocketAddress isa = new InetSocketAddress(serverAddress, portNo);
+		InetSocketAddress isa = new InetSocketAddress("", portNo);
 
 		ssc = AsynchronousServerSocketChannel.open().bind(isa);
 		Future<AsynchronousSocketChannel> accepted = ssc.accept();
-		sc2 = accepted.get();
+		try {
+			sc2 = accepted.get();
+		} catch (InterruptedException | ExecutionException ex) {
+			ex.printStackTrace();
+			return null;
+		}
 
 		ssc.close();
 		return new AsynchronousTCPConnection(sc2);
