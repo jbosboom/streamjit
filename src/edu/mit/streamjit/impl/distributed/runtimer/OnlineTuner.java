@@ -163,8 +163,12 @@ public class OnlineTuner implements Runnable {
 				}
 			}
 
-			int multiplier = config.getParameter("multiplier",
-					IntParameter.class).getValue();
+			int multiplier = 1000;
+			IntParameter mulParam = config.getParameter("multiplier",
+					IntParameter.class);
+			if (mulParam != null)
+				multiplier = mulParam.getValue();
+
 			drainer.setBlobGraph(app.blobGraph);
 			System.err.println("Reconfiguring...multiplier = " + multiplier);
 			if (manager.reconfigure(multiplier)) {
