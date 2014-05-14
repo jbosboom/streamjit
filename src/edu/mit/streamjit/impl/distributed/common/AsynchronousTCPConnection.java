@@ -21,7 +21,6 @@ public class AsynchronousTCPConnection implements Connection {
 	private AtomicBoolean canWrite;
 
 	private boolean isconnected = false;
-	private final int resetCount;
 
 	public AsynchronousTCPConnection(AsynchronousSocketChannel asyncSktChannel) {
 		this(asyncSktChannel, 5000);
@@ -35,7 +34,6 @@ public class AsynchronousTCPConnection implements Connection {
 	 */
 	public AsynchronousTCPConnection(AsynchronousSocketChannel asyncSktChannel,
 			int resetCount) {
-		this.resetCount = resetCount;
 		try {
 			this.asyncSktChannel = asyncSktChannel;
 
@@ -43,18 +41,11 @@ public class AsynchronousTCPConnection implements Connection {
 			ooStream = new ObjectOutputStream(bBos);
 			isconnected = true;
 			canWrite = new AtomicBoolean(true);
-			// System.out.println(String.format(
-			// "DEBUG: TCP connection %d has been established", count++));
 		} catch (IOException iex) {
 			isconnected = false;
 			iex.printStackTrace();
 		}
 	}
-
-	// This is introduced to reduce the ooStream.reset(); frequency. Too many
-	// resets, i.e., reset the ooStream for every new write severely affects the
-	// performance.
-	int n = 0;
 
 	@Override
 	public void writeObject(Object obj) throws IOException {
