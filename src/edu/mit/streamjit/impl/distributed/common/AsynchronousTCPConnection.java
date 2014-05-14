@@ -17,7 +17,7 @@ public class AsynchronousTCPConnection implements Connection {
 	private ObjectOutputStream ooStream = null;
 	private AsynchronousSocketChannel asyncSktChannel;
 
-	private MyByteArrayOutputStream bAos;
+	private ByteBufferOutputStream bBos;
 	private AtomicBoolean canWrite;
 
 	private boolean isconnected = false;
@@ -39,8 +39,8 @@ public class AsynchronousTCPConnection implements Connection {
 		try {
 			this.asyncSktChannel = asyncSktChannel;
 
-			bAos = new MyByteArrayOutputStream(4096);
-			ooStream = new ObjectOutputStream(bAos);
+			bBos = new ByteBufferOutputStream();
+			ooStream = new ObjectOutputStream(bBos);
 			isconnected = true;
 			canWrite = new AtomicBoolean(true);
 			// System.out.println(String.format(
@@ -61,11 +61,10 @@ public class AsynchronousTCPConnection implements Connection {
 		if (isStillConnected()) {
 			try {
 				ooStream.writeObject(obj);
-				ByteBuffer bb = ByteBuffer.wrap(bAos.getBuf(), 0,
-						bAos.getCount());
+				ByteBuffer bb = bBos.getByteBuffer();
 
 				Future<Integer> nBytes = asyncSktChannel.write(bb);
-				bAos.reset();
+				bBos.reset();
 
 				n++;
 				// TODO: Any way to improve the performance?
@@ -129,30 +128,15 @@ public class AsynchronousTCPConnection implements Connection {
 		this.ooStream.flush();
 	}
 
-	// http://stackoverflow.com/a/15686667/505406
-	private class MyByteArrayOutputStream extends ByteArrayOutputStream {
-		public MyByteArrayOutputStream(int size) {
-			super(size);
-		}
-
-		public int getCount() {
-			return count;
-		}
-
-		public byte[] getBuf() {
-			return buf;
-		}
-	}
-
 	public int write(Object[] data, int offset, int length) throws IOException,
 			InterruptedException, ExecutionException {
 
-		final MyByteArrayOutputStream bAos;
+		final ByteBufferOutputStream bBos;
 		final ObjectOutputStream objOS;
 		final AtomicBoolean canWrite;
 
 		objOS = this.ooStream;
-		bAos = this.bAos;
+		bBos = this.bBos;
 		canWrite = this.canWrite;
 
 		while (!canWrite.get())
@@ -165,7 +149,7 @@ public class AsynchronousTCPConnection implements Connection {
 		}
 
 		canWrite.set(false);
-		ByteBuffer bb = ByteBuffer.wrap(bAos.getBuf(), 0, bAos.getCount());
+		ByteBuffer bb = bBos.getByteBuffer();
 		asyncSktChannel.write(bb, bb,
 				new CompletionHandler<Integer, ByteBuffer>() {
 					@Override
@@ -176,7 +160,7 @@ public class AsynchronousTCPConnection implements Connection {
 						} else {
 							System.out.println("Completed.. ");
 							canWrite.set(true);
-							bAos.reset();
+							bBos.reset();
 							try {
 								objOS.reset();
 							} catch (IOException e) {
