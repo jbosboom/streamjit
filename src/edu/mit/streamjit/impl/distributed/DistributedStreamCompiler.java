@@ -149,7 +149,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 						.println("Reading the configuration from configuration file");
 				System.err
 						.println("No matching between parameters in the read configuration and parameters in the default configuration");
-				return null;
+				controller.closeAll();
+				throw new IllegalConfigurationException();
 			}
 			this.cfg = cfg1;
 		}
@@ -310,6 +311,21 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		public void awaitDrained(long timeout, TimeUnit unit)
 				throws InterruptedException, TimeoutException {
 			drainer.awaitDrained(timeout, unit);
+		}
+	}
+
+	private class IllegalConfigurationException extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
+
+		private static final String tag = "IllegalConfigurationException";
+
+		private IllegalConfigurationException() {
+			super(tag);
+		}
+
+		private IllegalConfigurationException(String msg) {
+			super(String.format("%s : %s", tag, msg));
 		}
 	}
 }
