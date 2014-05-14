@@ -89,7 +89,7 @@ public class ConnectionFactory {
 			throws IOException {
 		AsynchronousServerSocketChannel ssc;
 		AsynchronousSocketChannel sc2;
-		InetSocketAddress isa = new InetSocketAddress("", portNo);
+		InetSocketAddress isa = new InetSocketAddress("0.0.0.0", portNo);
 
 		ssc = AsynchronousServerSocketChannel.open().bind(isa);
 		Future<AsynchronousSocketChannel> accepted = ssc.accept();
