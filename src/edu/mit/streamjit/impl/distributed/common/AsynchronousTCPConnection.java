@@ -49,22 +49,16 @@ public class AsynchronousTCPConnection implements Connection {
 
 	@Override
 	public void writeObject(Object obj) throws IOException {
-
-		if (isStillConnected()) {
-
-			while (!canWrite.get())
-				;
-
-			try {
-				ooStream.writeObject(obj);
-				send();
-			} catch (IOException ix) {
-				isconnected = false;
-				throw ix;
-			}
-		} else {
-			throw new IOException("TCPConnection: Socket is not connected");
-		}
+		throw new java.lang.Error("Method not Implemented");
+		/*
+		 * if (isStillConnected()) {
+		 * 
+		 * while (!canWrite.get()) ;
+		 * 
+		 * try { ooStream.writeObject(obj); send(); } catch (IOException ix) {
+		 * isconnected = false; throw ix; } } else { throw new
+		 * IOException("TCPConnection: Socket is not connected"); }
+		 */
 	}
 
 	public int write(Object[] data, int offset, int length) throws IOException,
