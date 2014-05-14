@@ -89,11 +89,12 @@ public class ConnectionFactory {
 			throws IOException {
 		AsynchronousServerSocketChannel ssc;
 		AsynchronousSocketChannel sc2;
-		System.out.println("Inside initialization");
 		InetSocketAddress isa = new InetSocketAddress("", portNo);
 
 		ssc = AsynchronousServerSocketChannel.open().bind(isa);
 		Future<AsynchronousSocketChannel> accepted = ssc.accept();
+		System.out.println("Waiting for asynchronous socket connection @ port "
+				+ portNo);
 		try {
 			sc2 = accepted.get();
 		} catch (InterruptedException | ExecutionException ex) {
