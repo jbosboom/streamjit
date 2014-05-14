@@ -251,6 +251,7 @@ public class OnlineTuner implements Runnable {
 					ret = reconfigure(cfg);
 					writer.write(ret.second.toString());
 					writer.write('\n');
+					writer.flush();
 					total += ret.second;
 				}
 				double avg = total / count;

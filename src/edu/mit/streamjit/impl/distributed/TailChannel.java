@@ -156,6 +156,7 @@ public class TailChannel extends TCPInputChannel {
 
 					writer.write(time.toString());
 					writer.write('\n');
+					writer.flush();
 
 					reset();
 
