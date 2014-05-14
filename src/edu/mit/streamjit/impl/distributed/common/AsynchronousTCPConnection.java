@@ -10,7 +10,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AsynchronousTCPConnection implements Connection {
@@ -58,40 +57,85 @@ public class AsynchronousTCPConnection implements Connection {
 
 	@Override
 	public void writeObject(Object obj) throws IOException {
+
 		if (isStillConnected()) {
+
+			while (!canWrite.get())
+				;
+
 			try {
 				ooStream.writeObject(obj);
-				ByteBuffer bb = bBos.getByteBuffer();
-
-				Future<Integer> nBytes = asyncSktChannel.write(bb);
-				bBos.reset();
-
-				n++;
-				// TODO: Any way to improve the performance?
-				if (n > resetCount) {
-					n = 0;
-					ooStream.reset();
-				}
-				// System.out.println("Object send...");
+				send();
 			} catch (IOException ix) {
-				// Following doesn't change when other side of the socket is
-				// closed.....
-				/*
-				 * System.out.println("socket.isBound()" + socket.isBound());
-				 * System.out.println("socket.isClosed()" + socket.isClosed());
-				 * System.out.println("socket.isConnected()" +
-				 * socket.isConnected());
-				 * System.out.println("socket.isInputShutdown()" +
-				 * socket.isInputShutdown());
-				 * System.out.println("socket.isOutputShutdown()" +
-				 * socket.isOutputShutdown());
-				 */
 				isconnected = false;
 				throw ix;
 			}
 		} else {
 			throw new IOException("TCPConnection: Socket is not connected");
 		}
+	}
+
+	public int write(Object[] data, int offset, int length) throws IOException,
+			InterruptedException, ExecutionException {
+
+		final ObjectOutputStream objOS;
+		final AtomicBoolean canWrite;
+
+		objOS = this.ooStream;
+		canWrite = this.canWrite;
+
+		while (!canWrite.get())
+			;
+
+		int written = 0;
+		while (written < length) {
+			objOS.writeObject(data[offset++]);
+			++written;
+		}
+		send();
+		return written;
+	}
+
+	private void send() {
+		final ObjectOutputStream objOS;
+		final AtomicBoolean canWrite;
+		final ByteBufferOutputStream bBos;
+
+		objOS = this.ooStream;
+		bBos = this.bBos;
+		canWrite = this.canWrite;
+
+		canWrite.set(false);
+		ByteBuffer bb = bBos.getByteBuffer();
+		bb.flip();
+		asyncSktChannel.write(bb, bb,
+				new CompletionHandler<Integer, ByteBuffer>() {
+					@Override
+					public void completed(Integer result, ByteBuffer attachment) {
+
+						if (attachment.hasRemaining()) {
+							// System.out.println("Re writing......");
+							asyncSktChannel.write(attachment, attachment, this);
+						} else {
+							// System.out.println("Completed.. ");
+							bBos.reset();
+							try {
+								objOS.reset();
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+							canWrite.set(true);
+						}
+					}
+
+					@Override
+					public void failed(Throwable exc, ByteBuffer attachment) {
+						exc.printStackTrace();
+						System.out.println("**************************");
+						canWrite.set(false);
+					}
+				});
 	}
 
 	public final void closeConnection() {
@@ -126,59 +170,6 @@ public class AsynchronousTCPConnection implements Connection {
 	public void softClose() throws IOException {
 		this.ooStream.write('\u001a');
 		this.ooStream.flush();
-	}
-
-	public int write(Object[] data, int offset, int length) throws IOException,
-			InterruptedException, ExecutionException {
-
-		final ByteBufferOutputStream bBos;
-		final ObjectOutputStream objOS;
-		final AtomicBoolean canWrite;
-
-		objOS = this.ooStream;
-		bBos = this.bBos;
-		canWrite = this.canWrite;
-
-		while (!canWrite.get())
-			Thread.sleep(10);
-
-		int written = 0;
-		while (written < length) {
-			objOS.writeObject(data[offset++]);
-			++written;
-		}
-
-		canWrite.set(false);
-		ByteBuffer bb = bBos.getByteBuffer();
-		asyncSktChannel.write(bb, bb,
-				new CompletionHandler<Integer, ByteBuffer>() {
-					@Override
-					public void completed(Integer result, ByteBuffer attachment) {
-
-						if (attachment.hasRemaining()) {
-							asyncSktChannel.write(attachment, attachment, this);
-						} else {
-							System.out.println("Completed.. ");
-							canWrite.set(true);
-							bBos.reset();
-							try {
-								objOS.reset();
-							} catch (IOException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-						}
-					}
-
-					@Override
-					public void failed(Throwable exc, ByteBuffer attachment) {
-						exc.printStackTrace();
-						System.out.println("**************************");
-						canWrite.set(false);
-					}
-				});
-
-		return written;
 	}
 
 	/**
