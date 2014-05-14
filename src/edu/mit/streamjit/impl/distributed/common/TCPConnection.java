@@ -231,7 +231,7 @@ public class TCPConnection implements Connection {
 	 */
 	public static class TCPConnectionProvider {
 
-		private ConcurrentMap<TCPConnectionInfo, TCPConnection> allConnections;
+		private ConcurrentMap<TCPConnectionInfo, Connection> allConnections;
 
 		private final int myNodeID;
 
@@ -270,7 +270,7 @@ public class TCPConnection implements Connection {
 		 */
 		public Connection getConnection(TCPConnectionInfo conInfo, int timeOut)
 				throws SocketTimeoutException, IOException {
-			TCPConnection con = allConnections.get(conInfo);
+			Connection con = allConnections.get(conInfo);
 			if (con != null) {
 				if (con.isStillConnected()) {
 					return con;
@@ -281,8 +281,12 @@ public class TCPConnection implements Connection {
 			}
 
 			if (conInfo.getSrcID() == myNodeID) {
-				con = ConnectionFactory.getConnection(conInfo.getPortNo(),
-						timeOut, false);
+				if (myNodeID == 0)
+					con = ConnectionFactory.getConnection(conInfo.getPortNo(),
+							timeOut, false);
+				else
+					con = ConnectionFactory.getAsyncConnection(conInfo
+							.getPortNo());
 			} else if (conInfo.getDstID() == myNodeID) {
 				InetAddress ipAddress = iNetAddressMap.get(conInfo.getSrcID());
 				if (ipAddress.isLoopbackAddress())
@@ -297,8 +301,13 @@ public class TCPConnection implements Connection {
 		}
 
 		public void closeAllConnections() {
-			for (TCPConnection con : allConnections.values()) {
-				con.closeConnection();
+			for (Connection con : allConnections.values()) {
+				try {
+					con.closeConnection();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 		}
 	}
