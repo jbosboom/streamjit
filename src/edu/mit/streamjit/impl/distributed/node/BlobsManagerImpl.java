@@ -106,6 +106,9 @@ public class BlobsManagerImpl implements BlobsManager {
 	 */
 	public void start() {
 		for (BlobExecuter be : blobExecuters.values())
+			be.startChannels();
+
+		for (BlobExecuter be : blobExecuters.values())
 			be.start();
 
 		// if (monBufs == null) {
@@ -293,18 +296,21 @@ public class BlobsManagerImpl implements BlobsManager {
 			this.blobID = t;
 		}
 
-		private void start() {
-			for (BoundaryInputChannel bc : inputChannels.values()) {
-				Thread t = new Thread(bc.getRunnable(), bc.name());
-				t.start();
-				inputChannelThreads.add(t);
-			}
-
+		private void startChannels() {
 			for (BoundaryOutputChannel bc : outputChannels.values()) {
 				Thread t = new Thread(bc.getRunnable(), bc.name());
 				t.start();
 				outputChannelThreads.add(t);
 			}
+
+			for (BoundaryInputChannel bc : inputChannels.values()) {
+				Thread t = new Thread(bc.getRunnable(), bc.name());
+				t.start();
+				inputChannelThreads.add(t);
+			}
+		}
+
+		private void start() {
 
 			for (Thread t : outputChannelThreads) {
 				try {
