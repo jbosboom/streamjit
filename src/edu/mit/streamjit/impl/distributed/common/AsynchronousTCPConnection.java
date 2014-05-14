@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AsynchronousTCPConnection implements Connection {
@@ -168,8 +169,21 @@ public class AsynchronousTCPConnection implements Connection {
 
 	@Override
 	public void softClose() throws IOException {
-		this.ooStream.write('\u001a');
-		this.ooStream.flush();
+		while (!canWrite.get())
+			;
+		char c = '\u001a';
+		byte[] b = new byte[8];
+		b[0] = (byte) c;
+		b[1] = (byte) (c << 8);
+		ByteBuffer buffer = ByteBuffer.wrap(b);
+		Future<Integer> nBytes = asyncSktChannel.write(buffer);
+		int n = -1;
+		try {
+			n = nBytes.get();
+		} catch (InterruptedException | ExecutionException e1) {
+			e1.printStackTrace();
+		}
+		System.out.println("softClose- nBytes = " + n);
 	}
 
 	/**
