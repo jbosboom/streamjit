@@ -17,6 +17,7 @@ import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Sets;
 
 import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.impl.blob.AsyncTCPBuffer;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
@@ -53,6 +54,8 @@ public class BlobsManagerImpl implements BlobsManager {
 	private final TCPConnectionProvider conProvider;
 	private Map<Token, TCPConnectionInfo> conInfoMap;
 
+	private Set<Token> globalOutputTokens;
+
 	private MonitorBuffers monBufs;
 
 	private volatile DrainDeadLockHandler drainDeadLockHandler;
@@ -83,10 +86,6 @@ public class BlobsManagerImpl implements BlobsManager {
 		this.useDrainDeadLockHandler = false;
 
 		bufferMap = createBufferMap(blobSet);
-
-		for (Blob b : blobSet) {
-			b.installBuffers(bufferMap);
-		}
 
 		Set<Token> locaTokens = getLocalTokens(blobSet);
 		blobExecuters = new HashMap<>();
@@ -157,8 +156,8 @@ public class BlobsManagerImpl implements BlobsManager {
 				minOutputBufCapaciy.keySet());
 		Set<Token> globalInputTokens = Sets.difference(
 				minInputBufCapaciy.keySet(), localTokens);
-		Set<Token> globalOutputTokens = Sets.difference(
-				minOutputBufCapaciy.keySet(), localTokens);
+		globalOutputTokens = Sets.difference(minOutputBufCapaciy.keySet(),
+				localTokens);
 
 		for (Token t : localTokens) {
 			int bufSize = Math.max(minInputBufCapaciy.get(t),
@@ -171,10 +170,6 @@ public class BlobsManagerImpl implements BlobsManager {
 			addBuffer(t, bufSize, bufferMapBuilder);
 		}
 
-		for (Token t : globalOutputTokens) {
-			int bufSize = minOutputBufCapaciy.get(t);
-			addBuffer(t, bufSize, bufferMapBuilder);
-		}
 		return bufferMapBuilder.build();
 	}
 
@@ -245,8 +240,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		ImmutableMap.Builder<Token, BoundaryOutputChannel> outputChannelMap = new ImmutableMap.Builder<>();
 		for (Token t : outputTokens) {
 			TCPConnectionInfo conInfo = conInfoMap.get(t);
-			outputChannelMap.put(t, new TCPOutputChannel(bufferMap.get(t),
-					conProvider, conInfo, t.toString(), 0));
+			outputChannelMap.put(t, new AsyncTCPOutputChannel(conProvider,
+					conInfo, t.toString(), 0));
 		}
 		return outputChannelMap.build();
 	}
@@ -310,6 +305,34 @@ public class BlobsManagerImpl implements BlobsManager {
 				t.start();
 				outputChannelThreads.add(t);
 			}
+
+			for (Thread t : outputChannelThreads) {
+				try {
+					t.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+
+			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
+					.builder();
+			for (Token t : blob.getInputs()) {
+				bufferMapBuilder.put(t, bufferMap.get(t));
+			}
+
+			for (Token t : blob.getOutputs()) {
+				if (globalOutputTokens.contains(t)) {
+					AsyncTCPOutputChannel asyChannel = (AsyncTCPOutputChannel) outputChannels
+							.get(t);
+					Buffer b = new AsyncTCPBuffer(asyChannel.getConnection());
+					bufferMapBuilder.put(t, b);
+				} else {
+					Buffer b = bufferMap.get(t);
+					bufferMapBuilder.put(t, b);
+				}
+			}
+
+			blob.installBuffers(bufferMapBuilder.build());
 
 			for (Thread t : blobThreads)
 				t.start();
@@ -756,6 +779,7 @@ public class BlobsManagerImpl implements BlobsManager {
 				}
 			}
 		}
+
 		public void requestStop() {
 			stopping = true;
 		}
@@ -767,6 +791,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		private final int id;
 		private final AtomicBoolean stopFlag;
 		int sleepTime = 25000;
+
 		MonitorBuffers() {
 			super("MonitorBuffers");
 			stopFlag = new AtomicBoolean(false);
