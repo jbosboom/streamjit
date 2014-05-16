@@ -12,7 +12,6 @@ import java.nio.channels.CompletionHandler;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class AsynchronousTCPConnection implements Connection {
@@ -142,19 +141,12 @@ public class AsynchronousTCPConnection implements Connection {
 
 	@Override
 	public void softClose() throws IOException {
-		char c = '\u001a';
-		byte[] b = new byte[8];
-		b[0] = (byte) c;
-		b[1] = (byte) (c << 8);
-		ByteBuffer buffer = ByteBuffer.wrap(b);
-		Future<Integer> nBytes = asyncSktChannel.write(buffer);
-		int n = -1;
-		try {
-			n = nBytes.get();
-		} catch (InterruptedException | ExecutionException e1) {
-			e1.printStackTrace();
-		}
-		System.out.println("softClose- nBytes = " + n);
+		while (!bBAos.newWrite());
+		byte[] ba = "close\n".getBytes();
+		bBAos.bytebufferArray[bBAos.writeIndex].write(ba, 0, ba.length);
+		bBAos.writeCompleted();
+		send();
+		System.err.println("Softclosed is called");
 	}
 
 	/**
