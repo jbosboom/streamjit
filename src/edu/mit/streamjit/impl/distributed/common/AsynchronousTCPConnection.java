@@ -13,16 +13,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class AsynchronousTCPConnection implements Connection {
 	private ObjectOutputStream ooStream = null;
 	private AsynchronousSocketChannel asyncSktChannel;
-
-	private ByteBufferOutputStream bBos;
-	private AtomicBoolean canWrite;
-
+	private ByteBufferArrayOutputStream bBAos;
 	private boolean isconnected = false;
 
 	public AsynchronousTCPConnection(AsynchronousSocketChannel asyncSktChannel) {
@@ -40,10 +36,9 @@ public class AsynchronousTCPConnection implements Connection {
 		try {
 			this.asyncSktChannel = asyncSktChannel;
 
-			bBos = new ByteBufferOutputStream();
-			ooStream = new ObjectOutputStream(bBos);
+			bBAos = new ByteBufferArrayOutputStream(2);
+			ooStream = new ObjectOutputStream(bBAos);
 			isconnected = true;
-			canWrite = new AtomicBoolean(true);
 		} catch (IOException iex) {
 			isconnected = false;
 			iex.printStackTrace();
@@ -67,33 +62,33 @@ public class AsynchronousTCPConnection implements Connection {
 	public int write(Object[] data, int offset, int length) throws IOException,
 			InterruptedException, ExecutionException {
 
-		final ObjectOutputStream objOS;
-		final AtomicBoolean canWrite;
-
-		objOS = this.ooStream;
-		canWrite = this.canWrite;
-
-		while (!canWrite.get());
+		final ObjectOutputStream objOS = this.ooStream;
+		final ByteBufferArrayOutputStream bBAos = this.bBAos;
 
 		int written = 0;
-		while (written < length) {
-			objOS.writeObject(data[offset++]);
-			++written;
+		if (bBAos.newWrite()) {
+			while (written < length) {
+				objOS.writeObject(data[offset++]);
+				++written;
+			}
+			objOS.reset();
+			bBAos.writeCompleted();
 		}
+
 		send();
 		return written;
 	}
 
 	private void send() {
-		final ObjectOutputStream objOS;
-		final AtomicBoolean canWrite;
 		final ByteBufferOutputStream bBos;
+		final ByteBufferArrayOutputStream bBAos;
 
-		objOS = this.ooStream;
-		bBos = this.bBos;
-		canWrite = this.canWrite;
+		bBAos = this.bBAos;
 
-		canWrite.set(false);
+		bBos = bBAos.newRead();
+		if (bBos == null)
+			return;
+
 		ByteBuffer bb = bBos.getByteBuffer();
 		bb.flip();
 		asyncSktChannel.write(bb, bb,
@@ -102,18 +97,10 @@ public class AsynchronousTCPConnection implements Connection {
 					public void completed(Integer result, ByteBuffer attachment) {
 
 						if (attachment.hasRemaining()) {
-							// System.out.println("Re writing......");
 							asyncSktChannel.write(attachment, attachment, this);
 						} else {
-							// System.out.println("Completed.. ");
-							bBos.reset();
-							try {
-								objOS.reset();
-							} catch (IOException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-							canWrite.set(true);
+							bBAos.readCompleted();
+							send();
 						}
 					}
 
@@ -121,7 +108,6 @@ public class AsynchronousTCPConnection implements Connection {
 					public void failed(Throwable exc, ByteBuffer attachment) {
 						exc.printStackTrace();
 						System.out.println("**************************");
-						canWrite.set(false);
 					}
 				});
 	}
@@ -156,7 +142,6 @@ public class AsynchronousTCPConnection implements Connection {
 
 	@Override
 	public void softClose() throws IOException {
-		while (!canWrite.get());
 		char c = '\u001a';
 		byte[] b = new byte[8];
 		b[0] = (byte) c;
