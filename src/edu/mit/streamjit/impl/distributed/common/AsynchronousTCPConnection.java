@@ -185,9 +185,9 @@ public class AsynchronousTCPConnection implements Connection {
 	 * @author Arthur van Hoff
 	 * @since JDK1.0
 	 * 
-	 * 
-	 *        This is just a copy of {@link ByteArrayOutputStream} and just byte
-	 *        array is replaced by {@link ByteBuffer} for performance.
+	 *        This is a copy of {@link ByteArrayOutputStream} and byte array in
+	 *        ByteArrayOutputStream is replaced by {@link ByteBuffer} for
+	 *        performance.
 	 * @author sumanan
 	 * @since May 10, 2014
 	 */
@@ -274,6 +274,8 @@ public class AsynchronousTCPConnection implements Connection {
 			bb.flip();
 			newBb.put(bb);
 			bb = newBb;
+			System.out.println("Growing bytebuffer. newCapacity = "
+					+ newCapacity);
 		}
 
 		/**
