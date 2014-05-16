@@ -9,9 +9,12 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class AsynchronousTCPConnection implements Connection {
 	private ObjectOutputStream ooStream = null;
@@ -70,8 +73,7 @@ public class AsynchronousTCPConnection implements Connection {
 		objOS = this.ooStream;
 		canWrite = this.canWrite;
 
-		while (!canWrite.get())
-			;
+		while (!canWrite.get());
 
 		int written = 0;
 		while (written < length) {
@@ -154,8 +156,7 @@ public class AsynchronousTCPConnection implements Connection {
 
 	@Override
 	public void softClose() throws IOException {
-		while (!canWrite.get())
-			;
+		while (!canWrite.get());
 		char c = '\u001a';
 		byte[] b = new byte[8];
 		b[0] = (byte) c;
@@ -503,6 +504,113 @@ public class AsynchronousTCPConnection implements Connection {
 
 		public ByteBuffer getByteBuffer() {
 			return bb;
+		}
+	}
+
+	private enum Status {
+		canWrite, beingWritten, canRead, beingRead
+	}
+
+	public class ByteBufferArrayOutputStream extends OutputStream {
+
+		private final int debugPrint;
+
+		private int readIndex;
+		private int writeIndex;
+		private final ByteBufferOutputStream[] bytebufferArray;
+		private Map<Integer, AtomicReference<Status>> bufferStatus;
+
+		public ByteBufferArrayOutputStream(int listSize) {
+			debugPrint = 0;
+			writeIndex = 0;
+			readIndex = 0;
+			bytebufferArray = new ByteBufferOutputStream[listSize];
+			bufferStatus = new HashMap<>(listSize);
+			for (int i = 0; i < bytebufferArray.length; i++) {
+				bytebufferArray[i] = new ByteBufferOutputStream();
+				bufferStatus.put(i,
+						new AtomicReference<Status>(Status.canWrite));
+			}
+		}
+
+		@Override
+		public void write(int b) throws IOException {
+			bytebufferArray[writeIndex].write(b);
+		}
+
+		public void write(byte b[], int off, int len) throws IOException {
+			bytebufferArray[writeIndex].write(b, off, len);
+		}
+
+		public boolean newWrite() {
+			if (bufferStatus.get(writeIndex).compareAndSet(Status.canWrite,
+					Status.beingWritten)) {
+				if (debugPrint > 0)
+					System.out.println(Thread.currentThread().getName()
+							+ " : newWrite-canWrite : " + "writeIndex - "
+							+ writeIndex + ", readIndex - " + readIndex);
+				return true;
+			} else {
+				if (debugPrint > 0)
+					System.out.println(Thread.currentThread().getName()
+							+ " : newWrite-failed : " + "writeIndex - "
+							+ writeIndex + ", readIndex - " + readIndex);
+				return false;
+			}
+		}
+
+		public void writeCompleted() {
+			if (debugPrint > 0)
+				System.out.println(Thread.currentThread().getName()
+						+ " : writeCompleted : " + "writeIndex - " + writeIndex
+						+ ", readIndex - " + readIndex);
+			boolean ret = bufferStatus.get(writeIndex).compareAndSet(
+					Status.beingWritten, Status.canRead);
+			if (!ret)
+				throw new IllegalStateException("bufferStatus conflict");
+
+			writeIndex = (writeIndex + 1) % bytebufferArray.length;
+		}
+
+		public synchronized ByteBufferOutputStream newRead() {
+			if (bufferStatus.get(readIndex).get() == Status.beingRead) {
+				if (debugPrint > 0)
+					System.out.println(Thread.currentThread().getName()
+							+ " : newRead-beingRead : " + "writeIndex - "
+							+ writeIndex + ", readIndex - " + readIndex);
+				return null;
+			}
+
+			if (bufferStatus.get(readIndex).compareAndSet(Status.canRead,
+					Status.beingRead)) {
+				if (debugPrint > 0)
+					System.out.println(Thread.currentThread().getName()
+							+ " : newRead-canRead : " + "writeIndex - "
+							+ writeIndex + ", readIndex - " + readIndex);
+				if (bytebufferArray[readIndex].getCount() == 0) {
+					throw new IllegalStateException(
+							"bytebufferArray[a].getCount() != 0 is expected.");
+				}
+				return bytebufferArray[readIndex];
+			} else {
+				if (debugPrint > 0)
+					System.out.println(Thread.currentThread().getName()
+							+ " : newRead - not can read " + readIndex);
+				return null;
+			}
+		}
+
+		public void readCompleted() {
+			if (debugPrint > 0)
+				System.out.println(Thread.currentThread().getName()
+						+ " : readCompleted : " + "writeIndex - " + writeIndex
+						+ ", readIndex - " + readIndex);
+			boolean ret = bufferStatus.get(readIndex).compareAndSet(
+					Status.beingRead, Status.canWrite);
+			if (!ret)
+				throw new IllegalStateException("bufferStatus conflict");
+			bytebufferArray[readIndex].reset();
+			readIndex = (readIndex + 1) % bytebufferArray.length;
 		}
 	}
 }
