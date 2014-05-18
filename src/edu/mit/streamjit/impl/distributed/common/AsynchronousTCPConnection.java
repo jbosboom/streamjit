@@ -142,8 +142,8 @@ public class AsynchronousTCPConnection implements Connection {
 	@Override
 	public void softClose() throws IOException {
 		while (!bBAos.newWrite());
-		byte[] ba = "close\n".getBytes();
-		bBAos.bytebufferArray[bBAos.writeIndex].write(ba, 0, ba.length);
+		this.ooStream.write('\u001a');
+		this.ooStream.flush();
 		bBAos.writeCompleted();
 		send();
 		System.err.println("Softclosed is called");
