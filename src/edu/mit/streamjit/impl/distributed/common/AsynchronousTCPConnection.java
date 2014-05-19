@@ -543,12 +543,12 @@ public class AsynchronousTCPConnection implements Connection {
 				System.out.println(Thread.currentThread().getName()
 						+ " : writeCompleted : " + "writeIndex - " + writeIndex
 						+ ", readIndex - " + readIndex);
-			boolean ret = bufferStatus.get(writeIndex).compareAndSet(
+			int w = writeIndex;
+			writeIndex = (writeIndex + 1) % bytebufferArray.length;
+			boolean ret = bufferStatus.get(w).compareAndSet(
 					Status.beingWritten, Status.canRead);
 			if (!ret)
 				throw new IllegalStateException("bufferStatus conflict");
-
-			writeIndex = (writeIndex + 1) % bytebufferArray.length;
 		}
 
 		public synchronized ByteBufferOutputStream newRead() {
@@ -584,12 +584,13 @@ public class AsynchronousTCPConnection implements Connection {
 				System.out.println(Thread.currentThread().getName()
 						+ " : readCompleted : " + "writeIndex - " + writeIndex
 						+ ", readIndex - " + readIndex);
-			boolean ret = bufferStatus.get(readIndex).compareAndSet(
-					Status.beingRead, Status.canWrite);
+			bytebufferArray[readIndex].reset();
+			int r = readIndex;
+			readIndex = (readIndex + 1) % bytebufferArray.length;
+			boolean ret = bufferStatus.get(r).compareAndSet(Status.beingRead,
+					Status.canWrite);
 			if (!ret)
 				throw new IllegalStateException("bufferStatus conflict");
-			bytebufferArray[readIndex].reset();
-			readIndex = (readIndex + 1) % bytebufferArray.length;
 		}
 	}
 }
