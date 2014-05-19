@@ -131,7 +131,7 @@ public class AsynchronousTCPConnection implements Connection {
 
 	@Override
 	public <T> T readObject() throws IOException, ClassNotFoundException {
-		throw new IOException(
+		throw new java.lang.Error(
 				"Reading object is not supported in asynchronous tcp mode");
 	}
 
@@ -146,7 +146,7 @@ public class AsynchronousTCPConnection implements Connection {
 		this.ooStream.flush();
 		bBAos.writeCompleted();
 		send();
-		System.err.println("Softclosed is called");
+		System.err.println("Softclose is called");
 	}
 
 	/**
