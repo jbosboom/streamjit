@@ -105,8 +105,8 @@ public class AsynchronousTCPConnection implements Connection {
 
 					@Override
 					public void failed(Throwable exc, ByteBuffer attachment) {
+						isconnected = false;
 						exc.printStackTrace();
-						System.out.println("**************************");
 					}
 				});
 	}
