@@ -20,11 +20,17 @@ public class AsyncTCPOutputChannel implements BoundaryOutputChannel {
 
 	TCPConnectionInfo conInfo;
 
+	private volatile boolean isFinal;
+
+	private volatile boolean stopCalled;
+
 	public AsyncTCPOutputChannel(TCPConnectionProvider conProvider,
 			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		name = "AsyncTCPOutputChannel " + bufferTokenName;
 		this.conProvider = conProvider;
 		this.conInfo = conInfo;
+		isFinal = false;
+		stopCalled = false;
 	}
 
 	@Override
@@ -71,7 +77,15 @@ public class AsyncTCPOutputChannel implements BoundaryOutputChannel {
 
 	@Override
 	public void stop(boolean isFinal) {
-
+		this.isFinal = isFinal;
+		if (!stopCalled) {
+			try {
+				con.softClose();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		stopCalled = true;
 	}
 
 	@Override
