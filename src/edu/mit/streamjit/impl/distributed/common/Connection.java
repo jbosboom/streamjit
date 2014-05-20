@@ -56,7 +56,7 @@ public interface Connection {
 	 * when the thread is blocked at {@link ObjectInputStream#readObject()}
 	 * method call.
 	 * </p>
-	 *
+	 * 
 	 * @throws IOException
 	 */
 	public void softClose() throws IOException;
@@ -105,10 +105,13 @@ public interface Connection {
 		public int hashCode() {
 			final int prime = 31;
 			int result = 1;
-			int min = Math.min(srcID, dstID);
-			int max = Math.max(srcID, dstID);
-			result = prime * result + min;
-			result = prime * result + max;
+			/*
+			 * int min = Math.min(srcID, dstID); int max = Math.max(srcID,
+			 * dstID); result = prime * result + min; result = prime * result +
+			 * max;
+			 */
+			result = prime * result + srcID;
+			result = prime * result + dstID;
 			return result;
 		}
 
@@ -121,13 +124,15 @@ public interface Connection {
 			if (!(obj instanceof ConnectionInfo))
 				return false;
 			ConnectionInfo other = (ConnectionInfo) obj;
-			int myMin = Math.min(srcID, dstID);
-			int myMax = Math.max(srcID, dstID);
-			int otherMin = Math.min(other.srcID, other.dstID);
-			int otherMax = Math.max(other.srcID, other.dstID);
-			if (myMin != otherMin)
+			/*
+			 * int myMin = Math.min(srcID, dstID); int myMax = Math.max(srcID,
+			 * dstID); int otherMin = Math.min(other.srcID, other.dstID); int
+			 * otherMax = Math.max(other.srcID, other.dstID); if (myMin !=
+			 * otherMin) return false; if (myMax != otherMax) return false;
+			 */
+			if (srcID != other.srcID)
 				return false;
-			if (myMax != otherMax)
+			if (dstID != other.dstID)
 				return false;
 			return true;
 		}
