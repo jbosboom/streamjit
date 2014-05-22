@@ -179,9 +179,12 @@ public interface Connection {
 		 * @param nodeID
 		 *            : nodeID of the {@link StreamNode} that invokes this
 		 *            method.
+		 * @param networkInfo
+		 *            : network info of the system.
 		 * @return {@link Connection} that is described by this
 		 *         {@link ConnectionInfo}.
 		 */
-		public abstract Connection makeConnection(int nodeID);
+		public abstract Connection makeConnection(int nodeID,
+				NetworkInfo networkInfo, int timeOut);
 	}
 }
