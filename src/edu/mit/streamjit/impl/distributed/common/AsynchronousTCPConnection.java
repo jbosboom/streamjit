@@ -14,10 +14,31 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Uses {@link AsynchronousSocketChannel} from Java's NIO.2 to send data. This
+ * class only supports bulk asynchronous write. Reads ({@link #readObject()}) or
+ * single object writes ({@link #writeObject(Object)}) are not supported.
+ * Serialises object array into {@link ByteBuffer} and sends it over a
+ * {@link AsynchronousSocketChannel}. Further, for the performance purposes, in
+ * oder to parallelise serialisation task and sending task, multiple
+ * {@link ByteBuffer}s are used. So that while user thread is serialising the
+ * data into a {@link ByteBuffer}, Java threads can send the already written
+ * bytebuffers.
+ * 
+ * @author Sumanan sumanan@mit.edu
+ * @since May 05, 2014
+ * 
+ */
 public class AsynchronousTCPConnection implements Connection {
+	/**
+	 * Backed by {@link ByteBufferArrayOutputStream}.
+	 */
 	private ObjectOutputStream ooStream = null;
+
 	private AsynchronousSocketChannel asyncSktChannel;
+
 	private ByteBufferArrayOutputStream bBAos;
+
 	private boolean isconnected = false;
 
 	public AsynchronousTCPConnection(AsynchronousSocketChannel asyncSktChannel) {
@@ -486,17 +507,51 @@ public class AsynchronousTCPConnection implements Connection {
 		}
 	}
 
+	/**
+	 * A {@link ByteBufferOutputStream} ( implicitly {@link ByteBuffer} ) can be
+	 * in one of following 4 state. State of a {@link ByteBufferOutputStream}
+	 * expected to change in a cyclic manner, from canWrite -> beingWritten ->
+	 * canRead -> beingRead -> canWrite.
+	 * 
+	 * @author sumanan
+	 */
 	private enum Status {
 		canWrite, beingWritten, canRead, beingRead
 	}
 
+	/**
+	 * Writers must call {@link #newWrite()} before begins the write process and
+	 * call {@link #writeCompleted()} after the end of write process. Whatever
+	 * written in between these two calls will be captured into single
+	 * {@link ByteBufferOutputStream}.
+	 * 
+	 * Like writers, readers also call {@link #newRead()} to get the current
+	 * {@link ByteBufferOutputStream} to read and must call
+	 * {@link #readCompleted()} after the end of read process.
+	 * 
+	 * @author sumanan
+	 * 
+	 */
 	public class ByteBufferArrayOutputStream extends OutputStream {
 
 		private final int debugPrint;
 
+		/**
+		 * Read index of {@link #bytebufferArray}.
+		 */
 		private int readIndex;
+
+		/**
+		 * Write index of {@link #bytebufferArray}.
+		 */
 		private int writeIndex;
+
 		private final ByteBufferOutputStream[] bytebufferArray;
+
+		/**
+		 * Keeps the {@link Status} of each element in the
+		 * {@link #bytebufferArray}
+		 */
 		private Map<Integer, AtomicReference<Status>> bufferStatus;
 
 		public ByteBufferArrayOutputStream(int listSize) {
@@ -521,6 +576,13 @@ public class AsynchronousTCPConnection implements Connection {
 			bytebufferArray[writeIndex].write(b, off, len);
 		}
 
+		/**
+		 * Do not forget to call {@link #writeCompleted()} after every
+		 * successful bulk writes. Whatever written in between these two calls
+		 * will be captured into single {@link ByteBufferOutputStream}.
+		 * 
+		 * @return <code>true</code> iff the next buffer is free to write.
+		 */
 		public boolean newWrite() {
 			if (bufferStatus.get(writeIndex).compareAndSet(Status.canWrite,
 					Status.beingWritten)) {
@@ -538,6 +600,10 @@ public class AsynchronousTCPConnection implements Connection {
 			}
 		}
 
+		/**
+		 * Writer must call this method right after the writing of an collection
+		 * of objects is completed.
+		 */
 		public void writeCompleted() {
 			if (debugPrint > 0)
 				System.out.println(Thread.currentThread().getName()
@@ -551,6 +617,14 @@ public class AsynchronousTCPConnection implements Connection {
 				throw new IllegalStateException("bufferStatus conflict");
 		}
 
+		/**
+		 * Do not forget to call {@link #readCompleted()} after every successful
+		 * read of a {@link ByteBufferOutputStream}.
+		 * 
+		 * @return Next available {@link ByteBufferOutputStream} if available or
+		 *         <code>null</code> if no {@link ByteBufferOutputStream} is
+		 *         available to read.
+		 */
 		public synchronized ByteBufferOutputStream newRead() {
 			if (bufferStatus.get(readIndex).get() == Status.beingRead) {
 				if (debugPrint > 0)
@@ -579,6 +653,10 @@ public class AsynchronousTCPConnection implements Connection {
 			}
 		}
 
+		/**
+		 * Reader must call this method right after the reading process is
+		 * completed.
+		 */
 		public void readCompleted() {
 			if (debugPrint > 0)
 				System.out.println(Thread.currentThread().getName()
