@@ -82,7 +82,7 @@ public interface Connection {
 	 * hashCode() and equals() methods. <b>The whole point of this class is to
 	 * identify a connection between two machines.</b>
 	 */
-	public class ConnectionInfo implements Serializable {
+	public abstract class ConnectionInfo implements Serializable {
 
 		private static final long serialVersionUID = 1L;
 
@@ -169,5 +169,14 @@ public interface Connection {
 					"ConnectionInfo [srcID=%d, dstID=%d, isSymmetric=%s]",
 					srcID, dstID, isSymmetric);
 		}
+
+		/**
+		 * This function will establish a new connection according to the
+		 * connection info.
+		 * 
+		 * @return {@link Connection} that is described by this
+		 *         {@link ConnectionInfo}.
+		 */
+		public abstract Connection makeConnection(int myNodeID);
 	}
 }
