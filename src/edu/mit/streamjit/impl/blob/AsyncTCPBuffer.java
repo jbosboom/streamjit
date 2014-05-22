@@ -1,7 +1,6 @@
 package edu.mit.streamjit.impl.blob;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 
 import edu.mit.streamjit.impl.distributed.common.AsynchronousTCPConnection;
 
@@ -27,7 +26,7 @@ public class AsyncTCPBuffer extends AbstractWriteOnlyBuffer {
 	public int write(Object[] data, int offset, int length) {
 		try {
 			return con.write(data, offset, length);
-		} catch (IOException | InterruptedException | ExecutionException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		return 0;

@@ -11,7 +11,6 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -79,8 +78,7 @@ public class AsynchronousTCPConnection implements Connection {
 		 */
 	}
 
-	public int write(Object[] data, int offset, int length) throws IOException,
-			InterruptedException, ExecutionException {
+	public int write(Object[] data, int offset, int length) throws IOException {
 
 		final ObjectOutputStream objOS = this.ooStream;
 		final ByteBufferArrayOutputStream bBAos = this.bBAos;
@@ -133,13 +131,13 @@ public class AsynchronousTCPConnection implements Connection {
 	}
 
 	public final void closeConnection() {
+		isconnected = false;
 		try {
 			if (ooStream != null)
 				this.ooStream.close();
 			if (asyncSktChannel != null)
 				this.asyncSktChannel.close();
 		} catch (IOException ex) {
-			isconnected = false;
 			ex.printStackTrace();
 		}
 	}
@@ -154,10 +152,6 @@ public class AsynchronousTCPConnection implements Connection {
 	public <T> T readObject() throws IOException, ClassNotFoundException {
 		throw new java.lang.Error(
 				"Reading object is not supported in asynchronous tcp mode");
-	}
-
-	public InetAddress getInetAddress() {
-		throw new java.lang.Error("Method not Implemented");
 	}
 
 	@Override

@@ -93,6 +93,7 @@ public class TCPConnection implements Connection {
 	}
 
 	public final void closeConnection() {
+		isconnected = false;
 		try {
 			if (ooStream != null)
 				this.ooStream.close();
@@ -101,7 +102,6 @@ public class TCPConnection implements Connection {
 			if (socket != null)
 				this.socket.close();
 		} catch (IOException ex) {
-			isconnected = false;
 			ex.printStackTrace();
 		}
 	}
