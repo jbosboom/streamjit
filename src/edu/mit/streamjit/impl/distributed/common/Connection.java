@@ -80,9 +80,9 @@ public interface Connection {
 
 		private static final long serialVersionUID = 1L;
 
-		private int srcID;
+		private final int srcID;
 
-		private int dstID;
+		private final int dstID;
 
 		public ConnectionInfo(int srcID, int dstID) {
 			this.srcID = srcID;
