@@ -5,9 +5,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
-
-import com.google.common.base.Stopwatch;
 
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
