@@ -1,7 +1,5 @@
 package edu.mit.streamjit.impl.distributed.common;
 
-import java.io.IOException;
-
 import com.google.common.collect.ImmutableList;
 
 import edu.mit.streamjit.impl.blob.Buffer;
@@ -26,7 +24,7 @@ public interface BoundaryChannel {
 	 */
 	Runnable getRunnable();
 
-	public ImmutableList<Object> getUnprocessedData();
+	ImmutableList<Object> getUnprocessedData();
 
 	/**
 	 * Interface that represents input channels.
