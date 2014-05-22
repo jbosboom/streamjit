@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
+
 /**
  * Communication interface for an IO connection that is already created, i.e.,
  * creating a connections is not handled at here. Consider
@@ -86,14 +88,14 @@ public interface Connection {
 
 		private static final long serialVersionUID = 1L;
 
-		private final int srcID;
+		protected final int srcID;
 
-		private final int dstID;
+		protected final int dstID;
 
 		/**
 		 * Tells whether this connection is symmetric or not.
 		 */
-		private final boolean isSymmetric;
+		protected final boolean isSymmetric;
 
 		public ConnectionInfo(int srcID, int dstID) {
 			this(srcID, dstID, true);
@@ -174,9 +176,12 @@ public interface Connection {
 		 * This function will establish a new connection according to the
 		 * connection info.
 		 * 
+		 * @param nodeID
+		 *            : nodeID of the {@link StreamNode} that invokes this
+		 *            method.
 		 * @return {@link Connection} that is described by this
 		 *         {@link ConnectionInfo}.
 		 */
-		public abstract Connection makeConnection(int myNodeID);
+		public abstract Connection makeConnection(int nodeID);
 	}
 }
