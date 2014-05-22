@@ -175,7 +175,7 @@ public class TCPConnection implements Connection {
 
 		private static final long serialVersionUID = 1L;
 
-		int portNo;
+		private final int portNo;
 
 		public TCPConnectionInfo(int srcID, int dstID, int portNo) {
 			super(srcID, dstID);
@@ -216,6 +216,34 @@ public class TCPConnection implements Connection {
 			return "TCPConnectionInfo [srcID=" + getSrcID() + ", dstID="
 					+ getDstID() + ", portID=" + portNo + "]";
 		}
+
+		@Override
+		public Connection makeConnection(int nodeID, NetworkInfo networkInfo,
+				int timeOut) {
+			Connection con = null;
+			if (srcID == nodeID) {
+				try {
+					con = ConnectionFactory.getConnection(portNo, timeOut,
+							false);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+
+			else if (dstID == nodeID) {
+				InetAddress ipAddress = networkInfo.getInetAddress(srcID);
+				try {
+					con = ConnectionFactory.getConnection(
+							ipAddress.getHostAddress(), portNo, false);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			} else {
+				throw new IllegalArgumentException(
+						"Neither srcID nor dstID matches with nodeID");
+			}
+			return con;
+		}
 	}
 
 	/**
@@ -231,17 +259,16 @@ public class TCPConnection implements Connection {
 	 */
 	public static class TCPConnectionProvider {
 
-		private ConcurrentMap<TCPConnectionInfo, Connection> allConnections;
+		private ConcurrentMap<ConnectionInfo, Connection> allConnections;
 
 		private final int myNodeID;
 
-		private final Map<Integer, InetAddress> iNetAddressMap;
+		private final NetworkInfo networkInfo;
 
-		public TCPConnectionProvider(int myNodeID,
-				Map<Integer, InetAddress> iNetAddressMap) {
-			checkNotNull(iNetAddressMap, "nodeInfoMap is null");
+		public TCPConnectionProvider(int myNodeID, NetworkInfo networkInfo) {
+			checkNotNull(networkInfo, "networkInfo is null");
 			this.myNodeID = myNodeID;
-			this.iNetAddressMap = iNetAddressMap;
+			this.networkInfo = networkInfo;
 			this.allConnections = new ConcurrentHashMap<>();
 		}
 
@@ -252,7 +279,7 @@ public class TCPConnection implements Connection {
 		 * @return
 		 * @throws IOException
 		 */
-		public Connection getConnection(TCPConnectionInfo conInfo)
+		public Connection getConnection(ConnectionInfo conInfo)
 				throws IOException {
 			return getConnection(conInfo, 0);
 		}
@@ -268,7 +295,7 @@ public class TCPConnection implements Connection {
 		 * @throws SocketTimeoutException
 		 * @throws IOException
 		 */
-		public Connection getConnection(TCPConnectionInfo conInfo, int timeOut)
+		public Connection getConnection(ConnectionInfo conInfo, int timeOut)
 				throws SocketTimeoutException, IOException {
 			Connection con = allConnections.get(conInfo);
 			if (con != null) {
@@ -280,22 +307,10 @@ public class TCPConnection implements Connection {
 				}
 			}
 
-			if (conInfo.getSrcID() == myNodeID) {
-				if (myNodeID == 0)
-					con = ConnectionFactory.getConnection(conInfo.getPortNo(),
-							timeOut, false);
-				else
-					con = ConnectionFactory.getAsyncConnection(conInfo
-							.getPortNo());
-			} else if (conInfo.getDstID() == myNodeID) {
-				InetAddress ipAddress = iNetAddressMap.get(conInfo.getSrcID());
-				if (ipAddress.isLoopbackAddress())
-					ipAddress = iNetAddressMap.get(0);
+			con = conInfo.makeConnection(myNodeID, networkInfo, timeOut);
+			if (con == null)
+				throw new IOException("Connection making process failed.");
 
-				int portNo = conInfo.getPortNo();
-				con = ConnectionFactory.getConnection(
-						ipAddress.getHostAddress(), portNo, false);
-			}
 			allConnections.put(conInfo, con);
 			return con;
 		}
@@ -305,7 +320,6 @@ public class TCPConnection implements Connection {
 				try {
 					con.closeConnection();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
