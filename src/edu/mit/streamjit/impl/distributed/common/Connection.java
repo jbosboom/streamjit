@@ -65,10 +65,16 @@ public interface Connection {
 	public boolean isStillConnected();
 
 	/**
-	 * Describes a connection between two machines. ConnectionInfo is considered
+	 * Describes a connection between two machines.
+	 * <ol>
+	 * <li>if isSymmetric is <code>true</code>, ConnectionInfo is considered
 	 * symmetric for equal() and hashCode() calculation. As long as same
 	 * machineIDs are involved, irrespect of srcID and dstID positions, these
 	 * methods return same result.
+	 * <li>
+	 * if isSymmetric is <code>false</code> srcID and dstID will be treated as
+	 * not interchangeable entities.
+	 * </ol>
 	 * 
 	 * <p>
 	 * <b>Note : </b> All instances of ConnectionInfo, including subclass
@@ -84,9 +90,19 @@ public interface Connection {
 
 		private final int dstID;
 
+		/**
+		 * Tells whether this connection is symmetric or not.
+		 */
+		private final boolean isSymmetric;
+
 		public ConnectionInfo(int srcID, int dstID) {
+			this(srcID, dstID, true);
+		}
+
+		public ConnectionInfo(int srcID, int dstID, boolean isSymmetric) {
 			this.srcID = srcID;
 			this.dstID = dstID;
+			this.isSymmetric = isSymmetric;
 		}
 
 		public int getSrcID() {
@@ -97,17 +113,24 @@ public interface Connection {
 			return dstID;
 		}
 
+		public boolean isSymmetric() {
+			return isSymmetric;
+		}
+
 		@Override
 		public int hashCode() {
 			final int prime = 31;
 			int result = 1;
-			/*
-			 * int min = Math.min(srcID, dstID); int max = Math.max(srcID,
-			 * dstID); result = prime * result + min; result = prime * result +
-			 * max;
-			 */
-			result = prime * result + srcID;
-			result = prime * result + dstID;
+			if (isSymmetric) {
+				int min = Math.min(srcID, dstID);
+				int max = Math.max(srcID, dstID);
+				result = prime * result + min;
+				result = prime * result + max;
+			} else {
+				result = prime * result + srcID;
+				result = prime * result + dstID;
+			}
+			result = prime * result + (isSymmetric ? 1231 : 1237);
 			return result;
 		}
 
@@ -120,22 +143,31 @@ public interface Connection {
 			if (!(obj instanceof ConnectionInfo))
 				return false;
 			ConnectionInfo other = (ConnectionInfo) obj;
-			/*
-			 * int myMin = Math.min(srcID, dstID); int myMax = Math.max(srcID,
-			 * dstID); int otherMin = Math.min(other.srcID, other.dstID); int
-			 * otherMax = Math.max(other.srcID, other.dstID); if (myMin !=
-			 * otherMin) return false; if (myMax != otherMax) return false;
-			 */
-			if (srcID != other.srcID)
-				return false;
-			if (dstID != other.dstID)
+			if (isSymmetric) {
+				int myMin = Math.min(srcID, dstID);
+				int myMax = Math.max(srcID, dstID);
+				int otherMin = Math.min(other.srcID, other.dstID);
+				int otherMax = Math.max(other.srcID, other.dstID);
+				if (myMin != otherMin)
+					return false;
+				if (myMax != otherMax)
+					return false;
+			} else {
+				if (srcID != other.srcID)
+					return false;
+				if (dstID != other.dstID)
+					return false;
+			}
+			if (isSymmetric != other.isSymmetric)
 				return false;
 			return true;
 		}
 
 		@Override
 		public String toString() {
-			return "ConnectionInfo [srcID=" + srcID + ", dstID=" + dstID + "]";
+			return String.format(
+					"ConnectionInfo [srcID=%d, dstID=%d, isSymmetric=%s]",
+					srcID, dstID, isSymmetric);
 		}
 	}
 }
