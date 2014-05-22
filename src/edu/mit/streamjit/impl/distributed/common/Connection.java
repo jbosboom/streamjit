@@ -4,12 +4,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 
-import edu.mit.streamjit.impl.distributed.node.StreamNode;
-import edu.mit.streamjit.impl.distributed.runtimer.Controller;
-
 /**
- * Communication interface for both {@link StreamNode} and {@link Controller}
- * side. This interface is for an IO connection that is already created, i.e.,
+ * Communication interface for an IO connection that is already created, i.e.,
  * creating a connections is not handled at here. Consider
  * {@link ConnectionFactory} to create a connection. </p> For the moment,
  * communicates at object granularity level. We may need to add primitive
