@@ -5,13 +5,14 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
  * Uses {@link AsynchronousSocketChannel} from Java's NIO.2 to send data. This
@@ -156,7 +157,8 @@ public class AsynchronousTCPConnection implements Connection {
 
 	@Override
 	public void softClose() throws IOException {
-		while (!bBAos.newWrite());
+		while (!bBAos.newWrite())
+			;
 		this.ooStream.write('\u001a');
 		this.ooStream.flush();
 		bBAos.writeCompleted();
@@ -663,6 +665,81 @@ public class AsynchronousTCPConnection implements Connection {
 					Status.canWrite);
 			if (!ret)
 				throw new IllegalStateException("bufferStatus conflict");
+		}
+	}
+
+	/**
+	 * Uniquely identifies a Asynchronous TCP connection among all connected
+	 * machines.
+	 * 
+	 * <p>
+	 * NOTE: IPAddress is not included for the moment to avoid re-sending same
+	 * information again and again for every reconfiguration. machineId to
+	 * {@link NodeInfo} map will be sent initially. So {@link StreamNode}s can
+	 * get ipAddress of a machine from that map.
+	 */
+	public static class AsyncTCPConnectionInfo extends ConnectionInfo {
+
+		private static final long serialVersionUID = 1L;
+
+		private final int portNo;
+
+		public AsyncTCPConnectionInfo(int srcID, int dstID, int portNo) {
+			super(srcID, dstID, false);
+			Ipv4Validator validator = Ipv4Validator.getInstance();
+			if (!validator.isValid(portNo))
+				throw new IllegalArgumentException("Invalid port No");
+			this.portNo = portNo;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = super.hashCode();
+			result = prime * result + portNo;
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (!super.equals(obj))
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			AsyncTCPConnectionInfo other = (AsyncTCPConnectionInfo) obj;
+			if (portNo != other.portNo)
+				return false;
+			return true;
+		}
+
+		@Override
+		public String toString() {
+			return "AsyncTCPConnectionInfo [srcID=" + getSrcID() + ", dstID="
+					+ getDstID() + ", portID=" + portNo + "]";
+		}
+
+		@Override
+		public Connection makeConnection(int nodeID, NetworkInfo networkInfo,
+				int timeOut) {
+			Connection con = null;
+			if (srcID == nodeID) {
+				try {
+					con = ConnectionFactory.getAsyncConnection(portNo);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+
+			else if (dstID == nodeID) {
+				throw new IllegalStateException(
+						"Only senders can use AsynchronousTCPConnection");
+			} else {
+				throw new IllegalArgumentException(
+						"Neither srcID nor dstID matches with nodeID");
+			}
+			return con;
 		}
 	}
 }
