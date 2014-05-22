@@ -39,16 +39,6 @@ public class AsyncTCPOutputChannel implements BoundaryOutputChannel {
 	}
 
 	@Override
-	public final void closeConnection() throws IOException {
-		con.softClose();
-	}
-
-	@Override
-	public boolean isStillConnected() {
-		return (con == null) ? false : con.isStillConnected();
-	}
-
-	@Override
 	public Runnable getRunnable() {
 		return new Runnable() {
 			@Override
@@ -65,13 +55,7 @@ public class AsyncTCPOutputChannel implements BoundaryOutputChannel {
 	}
 
 	@Override
-	public int getOtherNodeID() {
-		return 0;
-	}
-
-	@Override
 	public ImmutableList<Object> getUnprocessedData() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 

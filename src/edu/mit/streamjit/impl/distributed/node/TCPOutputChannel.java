@@ -74,16 +74,9 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 		writer = w;
 	}
 
-	@Override
-	public final void closeConnection() throws IOException {
+	private void closeConnection() throws IOException {
 		// tcpConnection.closeConnection();
 		tcpConnection.softClose();
-	}
-
-	@Override
-	public final boolean isStillConnected() {
-		return (tcpConnection == null) ? false : tcpConnection
-				.isStillConnected();
 	}
 
 	@Override
@@ -156,11 +149,6 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 						+ count + " items have been sent");
 			}
 		}
-	}
-
-	@Override
-	public final int getOtherNodeID() {
-		return 0;
 	}
 
 	@Override

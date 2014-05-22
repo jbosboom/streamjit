@@ -21,27 +21,10 @@ public interface BoundaryChannel {
 	String name();
 
 	/**
-	 * Close the connection.
-	 * 
-	 * @throws IOException
-	 */
-	void closeConnection() throws IOException;
-
-	/**
-	 * @return true iff the connection with the other node is still valid.
-	 */
-	boolean isStillConnected();
-
-	/**
 	 * @return {@link Runnable} that does all IO communication and send
 	 *         data(stream tuples) to other node (or receive from other node).
 	 */
 	Runnable getRunnable();
-
-	/**
-	 * @return Other end of the node's ID.
-	 */
-	int getOtherNodeID();
 
 	public ImmutableList<Object> getUnprocessedData();
 

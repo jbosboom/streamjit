@@ -87,15 +87,9 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		writer = w;
 	}
 
-	@Override
-	public void closeConnection() throws IOException {
+	private void closeConnection() throws IOException {
 		// tcpConnection.closeConnection();
 		this.isClosed = true;
-	}
-
-	@Override
-	public boolean isStillConnected() {
-		return tcpConnection.isStillConnected();
 	}
 
 	@Override
@@ -337,11 +331,6 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				}
 			}
 		}
-	}
-
-	@Override
-	public int getOtherNodeID() {
-		return 0;
 	}
 
 	@Override
