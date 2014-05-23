@@ -19,9 +19,11 @@ import edu.mit.streamjit.impl.distributed.common.ConfigurationString.Configurati
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
+import edu.mit.streamjit.impl.distributed.common.NetworkInfo;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.AsynchronousTCPConnection.AsyncTCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
@@ -58,7 +60,7 @@ public class Controller {
 	 */
 	public final int controllerNodeID;
 
-	private Set<TCPConnectionInfo> currentConInfos;
+	private Set<ConnectionInfo> currentConInfos;
 
 	public Controller() {
 		this.comManager = new BlockingCommunicationManager();
@@ -128,20 +130,22 @@ public class Controller {
 
 		inetMap.put(controllerNodeID, comManager.getLocalAddress());
 		builder.putExtraData(GlobalConstants.INETADDRESS_MAP, inetMap);
-		this.conProvider = new TCPConnectionProvider(controllerNodeID, inetMap);
+		NetworkInfo networkinfo = new NetworkInfo(inetMap);
+		this.conProvider = new TCPConnectionProvider(controllerNodeID,
+				networkinfo);
 		ConfigurationString json = new ConfigurationString(builder.build()
 				.toJson(), ConfigType.STATIC, null);
 		sendToAll(json);
 	}
 
-	public Map<Token, TCPConnectionInfo> buildConInfoMap(
+	public Map<Token, ConnectionInfo> buildConInfoMap(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
 			Worker<?, ?> source, Worker<?, ?> sink) {
 
 		assert partitionsMachineMap != null : "partitionsMachineMap is null";
 
-		Set<TCPConnectionInfo> usedConInfos = new HashSet<>();
-		Map<Token, TCPConnectionInfo> conInfoMap = new HashMap<>();
+		Set<ConnectionInfo> usedConInfos = new HashSet<>();
+		Map<Token, ConnectionInfo> conInfoMap = new HashMap<>();
 
 		for (Integer machineID : partitionsMachineMap.keySet()) {
 			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap
@@ -187,15 +191,15 @@ public class Controller {
 	 * {@link #buildConInfoMap(Map, Worker, Worker)} method.
 	 */
 	private void addtoconInfoMap(int srcID, int dstID, Token t,
-			Set<TCPConnectionInfo> usedConInfos,
-			Map<Token, TCPConnectionInfo> conInfoMap) {
+			Set<ConnectionInfo> usedConInfos,
+			Map<Token, ConnectionInfo> conInfoMap) {
 
 		ConnectionInfo conInfo = new ConnectionInfo(srcID, dstID);
 
-		List<TCPConnectionInfo> conSet = getTcpConInfo(conInfo);
-		TCPConnectionInfo tcpConInfo = null;
+		List<ConnectionInfo> conSet = getTcpConInfo(conInfo);
+		ConnectionInfo tcpConInfo = null;
 
-		for (TCPConnectionInfo con : conSet) {
+		for (ConnectionInfo con : conSet) {
 			if (!usedConInfos.contains(con)) {
 				tcpConInfo = con;
 				break;
@@ -203,7 +207,11 @@ public class Controller {
 		}
 
 		if (tcpConInfo == null) {
-			tcpConInfo = new TCPConnectionInfo(srcID, dstID, startPortNo++);
+			if (srcID == 0)
+				tcpConInfo = new TCPConnectionInfo(srcID, dstID, startPortNo++);
+			else
+				tcpConInfo = new AsyncTCPConnectionInfo(srcID, dstID,
+						startPortNo++);
 			this.currentConInfos.add(tcpConInfo);
 		}
 
@@ -211,9 +219,9 @@ public class Controller {
 		usedConInfos.add(tcpConInfo);
 	}
 
-	private List<TCPConnectionInfo> getTcpConInfo(ConnectionInfo conInfo) {
-		List<TCPConnectionInfo> conList = new ArrayList<>();
-		for (TCPConnectionInfo tcpconInfo : currentConInfos) {
+	private List<ConnectionInfo> getTcpConInfo(ConnectionInfo conInfo) {
+		List<ConnectionInfo> conList = new ArrayList<>();
+		for (ConnectionInfo tcpconInfo : currentConInfos) {
 			if (conInfo.equals(tcpconInfo))
 				conList.add(tcpconInfo);
 		}
@@ -281,11 +289,16 @@ public class Controller {
 		}
 	}
 
-	public TCPConnectionInfo getNewTCPConInfo(TCPConnectionInfo conInfo) {
+	public ConnectionInfo getNewTCPConInfo(ConnectionInfo conInfo) {
 		if (currentConInfos.contains(conInfo))
 			currentConInfos.remove(conInfo);
-		TCPConnectionInfo newConinfo = new TCPConnectionInfo(
-				conInfo.getSrcID(), conInfo.getDstID(), startPortNo++);
+		ConnectionInfo newConinfo;
+		if (conInfo.getSrcID() == 0)
+			newConinfo = new TCPConnectionInfo(conInfo.getSrcID(),
+					conInfo.getDstID(), startPortNo++);
+		else
+			newConinfo = new AsyncTCPConnectionInfo(conInfo.getSrcID(),
+					conInfo.getDstID(), startPortNo++);
 		currentConInfos.add(newConinfo);
 
 		return newConinfo;

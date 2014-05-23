@@ -10,7 +10,7 @@ import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 
 /**
@@ -35,7 +35,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private final TCPConnectionProvider conProvider;
 
-	private final TCPConnectionInfo conInfo;
+	private final ConnectionInfo conInfo;
 
 	private Connection tcpConnection;
 
@@ -50,7 +50,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 	protected ImmutableList<Object> unProcessedData;
 
 	public TCPOutputChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
+			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this.buffer = buffer;
 		this.conProvider = conProvider;
 		this.conInfo = conInfo;

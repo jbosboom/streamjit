@@ -1,6 +1,6 @@
 package edu.mit.streamjit.impl.distributed.common;
 
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 
 public class SNException implements SNMessageElement {
 
@@ -18,9 +18,9 @@ public class SNException implements SNMessageElement {
 	public static final class AddressBindException extends SNException {
 		private static final long serialVersionUID = 1L;
 
-		public final TCPConnectionInfo conInfo;
+		public final ConnectionInfo conInfo;
 
-		public AddressBindException(TCPConnectionInfo conInfo) {
+		public AddressBindException(ConnectionInfo conInfo) {
 			this.conInfo = conInfo;
 		}
 	}

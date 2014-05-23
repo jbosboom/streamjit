@@ -23,6 +23,7 @@ import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
@@ -36,7 +37,6 @@ import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor
 import edu.mit.streamjit.impl.distributed.common.SNException;
 import edu.mit.streamjit.impl.distributed.common.SNException.AddressBindException;
 import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 public class StreamJitAppManager {
@@ -83,7 +83,7 @@ public class StreamJitAppManager {
 
 	private volatile AppStatus status;
 
-	private Map<Token, TCPConnectionInfo> conInfoMap;
+	private Map<Token, ConnectionInfo> conInfoMap;
 
 	public StreamJitAppManager(Controller controller, StreamJitApp app,
 			ConfigurationManager cfgManager) {
@@ -164,10 +164,10 @@ public class StreamJitAppManager {
 	 * @param cfg
 	 * @param bufferMap
 	 */
-	private void setupHeadTail(Map<Token, TCPConnectionInfo> conInfoMap,
+	private void setupHeadTail(Map<Token, ConnectionInfo> conInfoMap,
 			ImmutableMap<Token, Buffer> bufferMap, int multiplier) {
 
-		TCPConnectionInfo headconInfo = conInfoMap.get(headToken);
+		ConnectionInfo headconInfo = conInfoMap.get(headToken);
 		assert headconInfo != null : "No head connection info exists in conInfoMap";
 		assert headconInfo.getSrcID() == controller.controllerNodeID
 				|| headconInfo.getDstID() == controller.controllerNodeID : "Head channel should start from the controller. "
@@ -181,7 +181,7 @@ public class StreamJitAppManager {
 				controller.getConProvider(), headconInfo, "headChannel - "
 						+ headToken.toString(), 0);
 
-		TCPConnectionInfo tailconInfo = conInfoMap.get(tailToken);
+		ConnectionInfo tailconInfo = conInfoMap.get(tailToken);
 		assert tailconInfo != null : "No tail connection info exists in conInfoMap";
 		assert tailconInfo.getSrcID() == controller.controllerNodeID
 				|| tailconInfo.getDstID() == controller.controllerNodeID : "Tail channel should ends at the controller. "
@@ -368,7 +368,7 @@ public class StreamJitAppManager {
 
 		private final Object abExLock = new Object();
 
-		private Set<TCPConnectionInfo> exConInfos;
+		private Set<ConnectionInfo> exConInfos;
 
 		private SNExceptionProcessorImpl() {
 			exConInfos = new HashSet<>();
@@ -388,7 +388,7 @@ public class StreamJitAppManager {
 				}
 
 				Token t = null;
-				for (Map.Entry<Token, TCPConnectionInfo> entry : conInfoMap
+				for (Map.Entry<Token, ConnectionInfo> entry : conInfoMap
 						.entrySet()) {
 					if (abEx.conInfo.equals(entry.getValue())) {
 						t = entry.getKey();
@@ -401,7 +401,7 @@ public class StreamJitAppManager {
 							"Illegal TCP connection - " + abEx.conInfo);
 				}
 
-				TCPConnectionInfo coninfo = controller
+				ConnectionInfo coninfo = controller
 						.getNewTCPConInfo(abEx.conInfo);
 
 				exConInfos.add(abEx.conInfo);

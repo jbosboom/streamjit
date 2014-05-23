@@ -5,7 +5,7 @@ import com.google.common.collect.ImmutableList;
 import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 
@@ -19,7 +19,7 @@ import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 public class HeadChannel extends TCPOutputChannel {
 
 	public HeadChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
+			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
 	}
 

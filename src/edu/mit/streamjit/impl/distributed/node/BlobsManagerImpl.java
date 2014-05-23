@@ -32,11 +32,11 @@ import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DoDrain;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainDataRequest;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 
@@ -52,7 +52,7 @@ public class BlobsManagerImpl implements BlobsManager {
 	private Map<Token, BlobExecuter> blobExecuters;
 	private final StreamNode streamNode;
 	private final TCPConnectionProvider conProvider;
-	private Map<Token, TCPConnectionInfo> conInfoMap;
+	private Map<Token, ConnectionInfo> conInfoMap;
 
 	private Set<Token> globalOutputTokens;
 
@@ -74,7 +74,7 @@ public class BlobsManagerImpl implements BlobsManager {
 	private final boolean useDrainDeadLockHandler;
 
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
-			Map<Token, TCPConnectionInfo> conInfoMap, StreamNode streamNode,
+			Map<Token, ConnectionInfo> conInfoMap, StreamNode streamNode,
 			TCPConnectionProvider conProvider) {
 		this.conInfoMap = conInfoMap;
 		this.streamNode = streamNode;
@@ -231,7 +231,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			Set<Token> inputTokens, ImmutableMap<Token, Buffer> bufferMap) {
 		ImmutableMap.Builder<Token, BoundaryInputChannel> inputChannelMap = new ImmutableMap.Builder<>();
 		for (Token t : inputTokens) {
-			TCPConnectionInfo conInfo = conInfoMap.get(t);
+			ConnectionInfo conInfo = conInfoMap.get(t);
 			inputChannelMap.put(t, new TCPInputChannel(bufferMap.get(t),
 					conProvider, conInfo, t.toString(), 0));
 		}
@@ -242,7 +242,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			Set<Token> outputTokens, ImmutableMap<Token, Buffer> bufferMap) {
 		ImmutableMap.Builder<Token, BoundaryOutputChannel> outputChannelMap = new ImmutableMap.Builder<>();
 		for (Token t : outputTokens) {
-			TCPConnectionInfo conInfo = conInfoMap.get(t);
+			ConnectionInfo conInfo = conInfoMap.get(t);
 			outputChannelMap.put(t, new AsyncTCPOutputChannel(conProvider,
 					conInfo, t.toString(), 0));
 		}

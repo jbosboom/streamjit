@@ -10,8 +10,8 @@ import com.google.common.base.Stopwatch;
 
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
 
@@ -48,7 +48,7 @@ public class TailChannel extends TCPInputChannel {
 	 *            of outputs at the beginning).
 	 */
 	public TailChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel,
+			ConnectionInfo conInfo, String bufferTokenName, int debugLevel,
 			int skipCount, int steadyCount) {
 		super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
 		this.skipCount = skipCount;

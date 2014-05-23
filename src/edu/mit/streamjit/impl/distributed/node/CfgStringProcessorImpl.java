@@ -30,7 +30,8 @@ import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecif
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.NetworkInfo;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
@@ -64,8 +65,10 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 				Map<Integer, InetAddress> iNetAddressMap = (Map<Integer, InetAddress>) staticConfig
 						.getExtraData(GlobalConstants.INETADDRESS_MAP);
 
+				NetworkInfo networkInfo = new NetworkInfo(iNetAddressMap);
+
 				this.conProvider = new TCPConnectionProvider(
-						streamNode.getNodeID(), iNetAddressMap);
+						streamNode.getNodeID(), networkInfo);
 			} else
 				System.err
 						.println("New static configuration received...But Ignored...");
@@ -90,7 +93,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 					e.printStackTrace();
 				}
 
-				Map<Token, TCPConnectionInfo> conInfoMap = (Map<Token, TCPConnectionInfo>) cfg
+				Map<Token, ConnectionInfo> conInfoMap = (Map<Token, ConnectionInfo>) cfg
 						.getExtraData(GlobalConstants.CONINFOMAP);
 
 				streamNode.setBlobsManager(new BlobsManagerImpl(blobSet,
@@ -216,7 +219,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 		URL url;
 		try {
 			url = jarFile.toURI().toURL();
-			URL[] urls = new URL[]{url};
+			URL[] urls = new URL[] { url };
 
 			ClassLoader loader = new URLClassLoader(urls);
 			Class<?> topStreamClass;

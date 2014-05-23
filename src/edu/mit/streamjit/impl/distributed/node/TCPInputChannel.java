@@ -15,7 +15,7 @@ import edu.mit.streamjit.impl.blob.AbstractBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 
 /**
@@ -44,7 +44,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private final TCPConnectionProvider conProvider;
 
-	private final TCPConnectionInfo conInfo;
+	private final ConnectionInfo conInfo;
 
 	private Connection tcpConnection;
 
@@ -61,7 +61,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	private ImmutableList<Object> unProcessedData;
 
 	public TCPInputChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
+			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this.buffer = buffer;
 		this.conProvider = conProvider;
 		this.conInfo = conInfo;
