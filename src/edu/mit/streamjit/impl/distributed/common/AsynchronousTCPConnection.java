@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
@@ -157,8 +158,7 @@ public class AsynchronousTCPConnection implements Connection {
 
 	@Override
 	public void softClose() throws IOException {
-		while (!bBAos.newWrite())
-			;
+		while (!bBAos.newWrite());
 		this.ooStream.write('\u001a');
 		this.ooStream.flush();
 		bBAos.writeCompleted();
@@ -733,8 +733,13 @@ public class AsynchronousTCPConnection implements Connection {
 			}
 
 			else if (dstID == nodeID) {
-				throw new IllegalStateException(
-						"Only senders can use AsynchronousTCPConnection");
+				InetAddress ipAddress = networkInfo.getInetAddress(srcID);
+				try {
+					con = ConnectionFactory.getConnection(
+							ipAddress.getHostAddress(), portNo, false);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			} else {
 				throw new IllegalArgumentException(
 						"Neither srcID nor dstID matches with nodeID");
