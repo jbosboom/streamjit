@@ -101,7 +101,7 @@ public interface Connection {
 			this(srcID, dstID, true);
 		}
 
-		public ConnectionInfo(int srcID, int dstID, boolean isSymmetric) {
+		protected ConnectionInfo(int srcID, int dstID, boolean isSymmetric) {
 			this.srcID = srcID;
 			this.dstID = dstID;
 			this.isSymmetric = isSymmetric;
@@ -136,6 +136,15 @@ public interface Connection {
 			return result;
 		}
 
+		/*
+		 * (non-Javadoc)
+		 * 
+		 * @see java.lang.Object#equals(java.lang.Object) equals() overwritten
+		 * here breaks the reflexive(), symmetric() and transitive() properties,
+		 * especially when subclasses involves. The purpose of this overwriting
+		 * is to check whether an already established connection could be
+		 * reused.
+		 */
 		@Override
 		public boolean equals(Object obj) {
 			if (this == obj)
@@ -145,7 +154,7 @@ public interface Connection {
 			if (!(obj instanceof ConnectionInfo))
 				return false;
 			ConnectionInfo other = (ConnectionInfo) obj;
-			if (isSymmetric) {
+			if (other.isSymmetric) {
 				int myMin = Math.min(srcID, dstID);
 				int myMax = Math.max(srcID, dstID);
 				int otherMin = Math.min(other.srcID, other.dstID);
@@ -160,8 +169,6 @@ public interface Connection {
 				if (dstID != other.dstID)
 					return false;
 			}
-			if (isSymmetric != other.isSymmetric)
-				return false;
 			return true;
 		}
 

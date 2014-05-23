@@ -178,7 +178,7 @@ public class TCPConnection implements Connection {
 		private final int portNo;
 
 		public TCPConnectionInfo(int srcID, int dstID, int portNo) {
-			super(srcID, dstID);
+			super(srcID, dstID, true);
 			Ipv4Validator validator = Ipv4Validator.getInstance();
 			if (!validator.isValid(portNo))
 				throw new IllegalArgumentException("Invalid port No");
