@@ -434,4 +434,16 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 		return unProcessedData;
 	}
+
+	@Override
+	public Connection getConnection() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public ConnectionInfo getConnectionInfo() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

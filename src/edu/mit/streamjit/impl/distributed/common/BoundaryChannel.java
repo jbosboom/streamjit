@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.distributed.common;
 import com.google.common.collect.ImmutableList;
 
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 
 /**
  * {@link BoundaryChannel} wraps a {@link Buffer} that crosses over the
@@ -25,6 +26,10 @@ public interface BoundaryChannel {
 	Runnable getRunnable();
 
 	ImmutableList<Object> getUnprocessedData();
+
+	Connection getConnection();
+
+	ConnectionInfo getConnectionInfo();
 
 	/**
 	 * Interface that represents input channels.

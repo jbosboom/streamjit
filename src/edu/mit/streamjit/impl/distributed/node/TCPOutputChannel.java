@@ -237,4 +237,14 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 					"Still processing... No unprocessed data");
 		return unProcessedData;
 	}
+
+	@Override
+	public Connection getConnection() {
+		return tcpConnection;
+	}
+
+	@Override
+	public ConnectionInfo getConnectionInfo() {
+		return conInfo;
+	}
 }

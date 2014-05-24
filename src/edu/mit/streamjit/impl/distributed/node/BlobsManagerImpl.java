@@ -24,6 +24,7 @@ import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.distributed.common.AsynchronousTCPConnection;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
@@ -330,7 +331,9 @@ public class BlobsManagerImpl implements BlobsManager {
 				if (globalOutputTokens.contains(t)) {
 					AsyncTCPOutputChannel asyChannel = (AsyncTCPOutputChannel) outputChannels
 							.get(t);
-					Buffer b = new AsyncTCPBuffer(asyChannel.getConnection());
+					Buffer b = new AsyncTCPBuffer(
+							(AsynchronousTCPConnection) asyChannel
+									.getConnection());
 					bufferMapBuilder.put(t, b);
 				} else {
 					Buffer b = bufferMap.get(t);

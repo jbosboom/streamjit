@@ -5,7 +5,6 @@ import java.io.IOException;
 import com.google.common.collect.ImmutableList;
 
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
-import edu.mit.streamjit.impl.distributed.common.AsynchronousTCPConnection;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
@@ -18,7 +17,7 @@ public class AsyncTCPOutputChannel implements BoundaryOutputChannel {
 
 	private final TCPConnectionProvider conProvider;
 
-	ConnectionInfo conInfo;
+	private final ConnectionInfo conInfo;
 
 	private volatile boolean isFinal;
 
@@ -77,7 +76,13 @@ public class AsyncTCPOutputChannel implements BoundaryOutputChannel {
 
 	}
 
-	public AsynchronousTCPConnection getConnection() {
-		return (AsynchronousTCPConnection) con;
+	@Override
+	public Connection getConnection() {
+		return con;
+	}
+
+	@Override
+	public ConnectionInfo getConnectionInfo() {
+		return conInfo;
 	}
 }
