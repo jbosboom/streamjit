@@ -17,19 +17,18 @@ import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Sets;
 
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.AsyncTCPBuffer;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.distributed.common.AsynchronousTCPConnection;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannelFactory;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannelFactory.*;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannelManager.*;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DoDrain;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainDataRequest;
@@ -56,8 +55,6 @@ public class BlobsManagerImpl implements BlobsManager {
 	private final StreamNode streamNode;
 	private final BoundaryChannelFactory chnlFactory;
 	private Map<Token, ConnectionInfo> conInfoMap;
-
-	private Set<Token> globalOutputTokens;
 
 	private MonitorBuffers monBufs;
 
@@ -89,6 +86,10 @@ public class BlobsManagerImpl implements BlobsManager {
 		this.useDrainDeadLockHandler = false;
 
 		bufferMap = createBufferMap(blobSet);
+
+		for (Blob b : blobSet) {
+			b.installBuffers(bufferMap);
+		}
 
 		Set<Token> locaTokens = getLocalTokens(blobSet);
 		blobExecuters = new HashMap<>();
@@ -162,8 +163,8 @@ public class BlobsManagerImpl implements BlobsManager {
 				minOutputBufCapaciy.keySet());
 		Set<Token> globalInputTokens = Sets.difference(
 				minInputBufCapaciy.keySet(), localTokens);
-		globalOutputTokens = Sets.difference(minOutputBufCapaciy.keySet(),
-				localTokens);
+		Set<Token> globalOutputTokens = Sets.difference(
+				minOutputBufCapaciy.keySet(), localTokens);
 
 		for (Token t : localTokens) {
 			int bufSize = Math.max(minInputBufCapaciy.get(t),
@@ -176,6 +177,10 @@ public class BlobsManagerImpl implements BlobsManager {
 			addBuffer(t, bufSize, bufferMapBuilder);
 		}
 
+		for (Token t : globalOutputTokens) {
+			int bufSize = minOutputBufCapaciy.get(t);
+			addBuffer(t, bufSize, bufferMapBuilder);
+		}
 		return bufferMapBuilder.build();
 	}
 
@@ -262,11 +267,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		private Blob blob;
 		private Set<BlobThread2> blobThreads;
 
-		private final ImmutableMap<Token, BoundaryInputChannel> inputChannels;
-		private final ImmutableMap<Token, BoundaryOutputChannel> outputChannels;
-
-		Set<Thread> inputChannelThreads;
-		Set<Thread> outputChannelThreads;
+		private final BoundaryInputChannelManager inChnlManager;
+		private final BoundaryOutputChannelManager outChnlManager;
 
 		private boolean reqDrainData;
 
@@ -278,10 +280,10 @@ public class BlobsManagerImpl implements BlobsManager {
 			this.blobThreads = new HashSet<>();
 			assert blob.getInputs().containsAll(inputChannels.keySet());
 			assert blob.getOutputs().containsAll(outputChannels.keySet());
-			this.inputChannels = inputChannels;
-			this.outputChannels = outputChannels;
-			inputChannelThreads = new HashSet<>(inputChannels.values().size());
-			outputChannelThreads = new HashSet<>(outputChannels.values().size());
+			this.inChnlManager = new ChannelManagers.BlockingInputChannelManager(
+					inputChannels);
+			this.outChnlManager = new ChannelManagers.BlockingOutputChannelManager(
+					outputChannels);
 
 			for (int i = 0; i < blob.getCoreCount(); i++) {
 				StringBuilder sb = new StringBuilder("Workers-");
@@ -301,50 +303,13 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		private void startChannels() {
-			for (BoundaryOutputChannel bc : outputChannels.values()) {
-				Thread t = new Thread(bc.getRunnable(), bc.name());
-				t.start();
-				outputChannelThreads.add(t);
-			}
-
-			for (BoundaryInputChannel bc : inputChannels.values()) {
-				Thread t = new Thread(bc.getRunnable(), bc.name());
-				t.start();
-				inputChannelThreads.add(t);
-			}
+			outChnlManager.start();
+			inChnlManager.start();
 		}
 
 		private void start() {
-
-			for (Thread t : outputChannelThreads) {
-				try {
-					t.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-
-			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
-					.builder();
-			for (Token t : blob.getInputs()) {
-				bufferMapBuilder.put(t, bufferMap.get(t));
-			}
-
-			for (Token t : blob.getOutputs()) {
-				if (globalOutputTokens.contains(t)) {
-					AsyncTCPOutputChannel asyChannel = (AsyncTCPOutputChannel) outputChannels
-							.get(t);
-					Buffer b = new AsyncTCPBuffer(
-							(AsynchronousTCPConnection) asyChannel
-									.getConnection());
-					bufferMapBuilder.put(t, b);
-				} else {
-					Buffer b = bufferMap.get(t);
-					bufferMapBuilder.put(t, b);
-				}
-			}
-
-			blob.installBuffers(bufferMapBuilder.build());
+			outChnlManager.waitToStart();
+			inChnlManager.waitToStart();
 
 			for (Thread t : blobThreads)
 				t.start();
@@ -353,14 +318,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		private void stop() {
-
-			for (BoundaryInputChannel bc : inputChannels.values()) {
-				bc.stop(1);
-			}
-
-			for (BoundaryOutputChannel bc : outputChannels.values()) {
-				bc.stop(true);
-			}
+			inChnlManager.stop(1);
+			outChnlManager.stop(true);
 
 			for (Thread t : blobThreads) {
 				try {
@@ -394,18 +353,20 @@ public class BlobsManagerImpl implements BlobsManager {
 			this.reqDrainData = reqDrainData;
 			drainState = 1;
 
-			for (BoundaryInputChannel bc : inputChannels.values()) {
-				// TODO: [2014-02-05] rearranged this order to call stop(3)
-				// whenever GlobalConstants.useDrainData is false irrespective
-				// of reqDrainData.
-				if (GlobalConstants.useDrainData)
-					if (!this.reqDrainData)
-						bc.stop(1);
-					else
-						bc.stop(2);
+			int stopType;
+			// TODO: [2014-02-05] rearranged this order to call stop(3)
+			// whenever GlobalConstants.useDrainData is false irrespective
+			// of reqDrainData.
+			if (GlobalConstants.useDrainData)
+				if (!this.reqDrainData)
+					stopType = 1;
 				else
-					bc.stop(3);
-			}
+					stopType = 2;
+			else
+				stopType = 3;
+
+			inChnlManager.stop(stopType);
+			// inChnlManager.waitToStop();
 
 			// TODO: [2014-03-14] I commented following lines to avoid one dead
 			// lock case when draining. Deadlock 5 and 6.
@@ -453,17 +414,8 @@ public class BlobsManagerImpl implements BlobsManager {
 				bt.requestStop();
 			}
 
-			for (BoundaryOutputChannel bc : outputChannels.values()) {
-				bc.stop(!this.reqDrainData);
-			}
-
-			for (Thread t : outputChannelThreads) {
-				try {
-					t.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
+			outChnlManager.stop(!this.reqDrainData);
+			outChnlManager.waitToStop();
 
 			if (drainState > 3)
 				return;
@@ -532,6 +484,8 @@ public class BlobsManagerImpl implements BlobsManager {
 			ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
 			ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
 
+			ImmutableMap<Token, BoundaryInputChannel> inputChannels = inChnlManager
+					.inputChannelsMap();
 			for (Token t : blob.getInputs()) {
 				if (inputChannels.containsKey(t)) {
 					BoundaryChannel chanl = inputChannels.get(t);
@@ -554,6 +508,8 @@ public class BlobsManagerImpl implements BlobsManager {
 				}
 			}
 
+			ImmutableMap<Token, BoundaryOutputChannel> outputChannels = outChnlManager
+					.outputChannelsMap();
 			for (Token t : blob.getOutputs()) {
 				if (outputChannels.containsKey(t)) {
 					BoundaryChannel chanl = outputChannels.get(t);
