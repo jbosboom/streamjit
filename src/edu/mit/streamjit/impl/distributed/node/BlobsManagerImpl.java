@@ -28,6 +28,8 @@ import edu.mit.streamjit.impl.distributed.common.AsynchronousTCPConnection;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannelFactory;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannelFactory.*;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DoDrain;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainDataRequest;
@@ -52,7 +54,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private Map<Token, BlobExecuter> blobExecuters;
 	private final StreamNode streamNode;
-	private final TCPConnectionProvider conProvider;
+	private final BoundaryChannelFactory chnlFactory;
 	private Map<Token, ConnectionInfo> conInfoMap;
 
 	private Set<Token> globalOutputTokens;
@@ -79,7 +81,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			TCPConnectionProvider conProvider) {
 		this.conInfoMap = conInfoMap;
 		this.streamNode = streamNode;
-		this.conProvider = conProvider;
+		this.chnlFactory = new TCPBoundaryChannelFactory(conProvider);
 
 		this.cmdProcessor = new CommandProcessorImpl();
 		this.drainProcessor = new CTRLRDrainProcessorImpl();
@@ -233,8 +235,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		ImmutableMap.Builder<Token, BoundaryInputChannel> inputChannelMap = new ImmutableMap.Builder<>();
 		for (Token t : inputTokens) {
 			ConnectionInfo conInfo = conInfoMap.get(t);
-			inputChannelMap.put(t, new TCPInputChannel(bufferMap.get(t),
-					conProvider, conInfo, t.toString(), 0));
+			inputChannelMap.put(t,
+					chnlFactory.makeInputChannel(t, bufferMap.get(t), conInfo));
 		}
 		return inputChannelMap.build();
 	}
@@ -244,8 +246,9 @@ public class BlobsManagerImpl implements BlobsManager {
 		ImmutableMap.Builder<Token, BoundaryOutputChannel> outputChannelMap = new ImmutableMap.Builder<>();
 		for (Token t : outputTokens) {
 			ConnectionInfo conInfo = conInfoMap.get(t);
-			outputChannelMap.put(t, new AsyncTCPOutputChannel(conProvider,
-					conInfo, t.toString(), 0));
+			outputChannelMap
+					.put(t, chnlFactory.makeOutputChannel(t, bufferMap.get(t),
+							conInfo));
 		}
 		return outputChannelMap.build();
 	}
