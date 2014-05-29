@@ -63,6 +63,13 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private final ImmutableMap<Token, Buffer> bufferMap;
 
+	/**
+	 * if true {@link DrainDeadLockHandler} will be used to unlock the draining
+	 * time dead lock. Otherwise dynamic buffer will be used for local buffers
+	 * to handled drain time data growth.
+	 */
+	private final boolean useDrainDeadLockHandler;
+
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
 			Map<Token, TCPConnectionInfo> conInfoMap, StreamNode streamNode,
 			TCPConnectionProvider conProvider) {
@@ -73,6 +80,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		this.cmdProcessor = new CommandProcessorImpl();
 		this.drainProcessor = new CTRLRDrainProcessorImpl();
 		this.drainDeadLockHandler = null;
+		this.useDrainDeadLockHandler = false;
 
 		bufferMap = createBufferMap(blobSet);
 
@@ -382,18 +390,20 @@ public class BlobsManagerImpl implements BlobsManager {
 			// System.out.println("Blob " + blobID +
 			// "this.blob.drain(dcb); passed");
 
-			boolean isLastBlob = true;
-			for (BlobExecuter be : blobExecuters) {
-				if (be.drainState == 0) {
-					isLastBlob = false;
-					break;
+			if (useDrainDeadLockHandler) {
+				boolean isLastBlob = true;
+				for (BlobExecuter be : blobExecuters) {
+					if (be.drainState == 0) {
+						isLastBlob = false;
+						break;
+					}
 				}
-			}
 
-			if (isLastBlob && drainDeadLockHandler == null) {
-				System.out.println("****Starting DrainDeadLockHandler***");
-				drainDeadLockHandler = new DrainDeadLockHandler();
-				drainDeadLockHandler.start();
+				if (isLastBlob && drainDeadLockHandler == null) {
+					System.out.println("****Starting DrainDeadLockHandler***");
+					drainDeadLockHandler = new DrainDeadLockHandler();
+					drainDeadLockHandler.start();
+				}
 			}
 		}
 
