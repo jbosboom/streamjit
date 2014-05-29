@@ -55,6 +55,8 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private MonitorBuffers monBufs;
 
+	private volatile DrainDeadLockHandler drainDeadLockHandler;
+
 	private final CTRLRDrainProcessor drainProcessor;
 
 	private final CommandProcessor cmdProcessor;
@@ -70,6 +72,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		this.cmdProcessor = new CommandProcessorImpl();
 		this.drainProcessor = new CTRLRDrainProcessorImpl();
+		this.drainDeadLockHandler = null;
 
 		bufferMap = createBufferMap(blobSet);
 
@@ -117,6 +120,9 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		if (monBufs != null)
 			monBufs.stopMonitoring();
+
+		if (drainDeadLockHandler != null)
+			drainDeadLockHandler.stopit();
 	}
 
 	// TODO: Buffer sizes, including head and tail buffers, must be optimized.
@@ -343,13 +349,15 @@ public class BlobsManagerImpl implements BlobsManager {
 					bc.stop(3);
 			}
 
-			for (Thread t : inputChannelThreads) {
-				try {
-					t.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
+			// TODO: [2014-03-14] I commented following lines to avoid one dead
+			// lock case when draining. Deadlock 5 and 6.
+			// for (Thread t : inputChannelThreads) {
+			// try {
+			// t.join();
+			// } catch (InterruptedException e) {
+			// e.printStackTrace();
+			// }
+			// }
 			// System.out.println("Blob " + blobID + "Input thread's joined");
 			if (this.blob != null) {
 				DrainCallback dcb = new DrainCallback(this);
@@ -358,6 +366,20 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 			// System.out.println("Blob " + blobID +
 			// "this.blob.drain(dcb); passed");
+
+			boolean isLastBlob = true;
+			for (BlobExecuter be : blobExecuters) {
+				if (be.drainState == 0) {
+					isLastBlob = false;
+					break;
+				}
+			}
+
+			if (isLastBlob && drainDeadLockHandler == null) {
+				System.out.println("****Starting DrainDeadLockHandler***");
+				drainDeadLockHandler = new DrainDeadLockHandler();
+				drainDeadLockHandler.start();
+			}
 		}
 
 		private void drained() {
@@ -422,9 +444,14 @@ public class BlobsManagerImpl implements BlobsManager {
 				}
 			}
 
-			if (isLastBlob && monBufs != null)
-				monBufs.stopMonitoring();
+			if (isLastBlob) {
+				if (monBufs != null)
+					monBufs.stopMonitoring();
 
+				if (drainDeadLockHandler != null)
+					drainDeadLockHandler.stopit();
+
+			}
 			// printDrainedStatus();
 		}
 
@@ -769,6 +796,65 @@ public class BlobsManagerImpl implements BlobsManager {
 			// System.out.println("MonitorBuffers: Stop monitoring");
 			stopFlag.set(true);
 			this.interrupt();
+		}
+	}
+
+	private class DrainDeadLockHandler extends Thread {
+		final AtomicBoolean run;
+
+		private DrainDeadLockHandler() {
+			this.run = new AtomicBoolean(true);
+		}
+
+		public void run() {
+			try {
+				Thread.sleep(5000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+			System.out
+					.println("DrainDeadLockHandler is goint to clean buffers...");
+			boolean areAllDrained = false;
+
+			while (run.get()) {
+				areAllDrained = true;
+				for (BlobExecuter be : blobExecuters) {
+					if (be.drainState == 1 || be.drainState == 2) {
+						// System.out.println(be.blobID + " is not drained");
+						areAllDrained = false;
+						for (Token t : be.blob.getOutputs()) {
+							Buffer b = bufferMap.get(t);
+							int size = b.size();
+							if (size == 0)
+								continue;
+							System.out.println(String.format(
+									"Buffer %s has %d data. Going to clean it",
+									t.toString(), size));
+							Object[] obArray = new Object[size];
+							b.readAll(obArray);
+						}
+						for (Token t : be.blob.getInputs()) {
+							Buffer b = bufferMap.get(t);
+							int size = b.size();
+							if (size == 0)
+								continue;
+							System.out.println(String.format(
+									"Buffer %s has %d data. Going to clean it",
+									t.toString(), size));
+							Object[] obArray = new Object[size];
+							b.readAll(obArray);
+						}
+					}
+				}
+
+				if (areAllDrained)
+					break;
+			}
+		}
+
+		public void stopit() {
+			this.run.set(false);
 		}
 	}
 }
