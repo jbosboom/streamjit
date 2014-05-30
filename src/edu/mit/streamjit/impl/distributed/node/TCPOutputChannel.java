@@ -168,8 +168,12 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 		if (debugLevel > 0)
 			System.out.println(Thread.currentThread().getName()
 					+ " - stop request");
-		this.isFinal = isFinal;
-		this.stopFlag.set(true);
+		if (!this.stopFlag.get()) {
+			this.isFinal = isFinal;
+			this.stopFlag.set(true);
+		} else if (debugLevel > 0) {
+			System.err.println("Stop has already been called.");
+		}
 	}
 
 	/**

@@ -145,7 +145,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		int bufFullCount = 0;
 		try {
 			Object obj = tcpConnection.readObject();
-			if(obj == null)	// [2014-03-15] Sometimes null is received.
+			if (obj == null) // [2014-03-15] Sometimes null is received.
 				return;
 			count++;
 
@@ -347,7 +347,11 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	@Override
 	public void stop(int type) {
 		assert 0 < type && type < 4 : "Undefined stop type";
-		this.stopType.set(type);
+		if (this.stopType.get() == 0) {
+			stopType.set(type);
+		} else if (debugLevel > 0) {
+			System.err.println("Stop has already been called.");
+		}
 	}
 
 	@Override
