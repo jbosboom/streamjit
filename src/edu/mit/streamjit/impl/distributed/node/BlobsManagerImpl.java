@@ -329,20 +329,8 @@ public class BlobsManagerImpl implements BlobsManager {
 				}
 			}
 
-			for (Thread t : inputChannelThreads) {
-				try {
-					t.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-			for (Thread t : outputChannelThreads) {
-				try {
-					t.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
+			inChnlManager.waitToStop();
+			outChnlManager.waitToStop();
 
 			if (monBufs != null)
 				monBufs.stopMonitoring();
