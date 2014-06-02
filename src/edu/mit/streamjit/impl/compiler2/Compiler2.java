@@ -58,6 +58,9 @@ import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.bytecode.Module;
 import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Modifier;
@@ -1625,5 +1628,37 @@ public class Compiler2 {
 			bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
 		}
 		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);
+	}
+
+	private void printDot(String stage) {
+		try (FileWriter fw = new FileWriter(stage+".dot");
+				BufferedWriter bw = new BufferedWriter(fw)) {
+			bw.write("digraph {\n");
+			for (ActorGroup g : groups) {
+				bw.write("subgraph cluster_"+Integer.toString(g.id()).replace('-', '_')+" {\n");
+				for (Actor a : g.actors())
+					bw.write(String.format("\"%s\";\n", nodeName(a)));
+				bw.write("label = \"x"+externalSchedule.get(g)+"\";\n");
+				bw.write("}\n");
+			}
+			for (ActorGroup g : groups) {
+				for (Actor a : g.actors()) {
+					for (Storage s : a.outputs())
+						for (Actor b : s.downstream())
+							bw.write(String.format("\"%s\" -> \"%s\";\n", nodeName(a), nodeName(b)));
+				}
+			}
+			bw.write("}\n");
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		}
+	}
+
+	private String nodeName(Actor a) {
+		if (a instanceof TokenActor)
+			return (((TokenActor)a).isInput()) ? "input" : "output";
+		WorkerActor wa = (WorkerActor)a;
+		String workerClassName = wa.worker().getClass().getSimpleName();
+		return workerClassName.replaceAll("[a-z]", "") + "@" + Integer.toString(wa.id()).replace('-', '_');
 	}
 }
