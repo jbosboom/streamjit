@@ -298,6 +298,9 @@ public class BlobsManagerImpl implements BlobsManager {
 						.toString()));
 			}
 
+			if (blobThreads.size() < 1)
+				throw new IllegalStateException("No blobs to execute");
+
 			drainState = 0;
 			this.blobID = t;
 		}
