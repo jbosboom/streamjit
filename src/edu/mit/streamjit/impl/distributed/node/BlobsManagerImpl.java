@@ -285,17 +285,11 @@ public class BlobsManagerImpl implements BlobsManager {
 			this.outChnlManager = new ChannelManagers.BlockingOutputChannelManager(
 					outputChannels);
 
+			String baseName = getName(blob);
 			for (int i = 0; i < blob.getCoreCount(); i++) {
-				StringBuilder sb = new StringBuilder("Workers-");
-				int limit = 0;
-				for (Worker<?, ?> w : blob.getWorkers()) {
-					sb.append(Workers.getIdentifier(w));
-					sb.append(",");
-					if (++limit > 5)
-						break;
-				}
-				blobThreads.add(new BlobThread2(blob.getCoreCode(i), this, sb
-						.toString()));
+				String name = String.format("%s - %d", baseName, i);
+				blobThreads
+						.add(new BlobThread2(blob.getCoreCode(i), this, name));
 			}
 
 			if (blobThreads.size() < 1)
@@ -303,6 +297,24 @@ public class BlobsManagerImpl implements BlobsManager {
 
 			drainState = 0;
 			this.blobID = t;
+		}
+
+		/**
+		 * Returns a name for thread.
+		 * 
+		 * @param blob
+		 * @return
+		 */
+		private String getName(Blob blob) {
+			StringBuilder sb = new StringBuilder("Workers-");
+			int limit = 0;
+			for (Worker<?, ?> w : blob.getWorkers()) {
+				sb.append(Workers.getIdentifier(w));
+				sb.append(",");
+				if (++limit > 5)
+					break;
+			}
+			return sb.toString();
 		}
 
 		private void startChannels() {
