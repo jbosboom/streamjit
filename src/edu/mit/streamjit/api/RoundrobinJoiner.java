@@ -51,6 +51,6 @@ public final class RoundrobinJoiner<T> extends Joiner<T, T> {
 
 	@Override
 	public String toString() {
-		return String.format("RoundrobinJoiner(%d)", itemsPerExecution);
+		return String.format("RoundrobinJoiner(%d)@%d", itemsPerExecution, getIdentifier());
 	}
 }
