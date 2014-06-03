@@ -35,16 +35,16 @@ public final class Compiler2BlobFactory implements BlobFactory {
 		Compiler2.EXTERNAL_STORAGE_STRATEGY.makeParameters(workers, builder);
 		for (Worker<?, ?> w : workers)
 			for (int i = 0; i < Compiler2.ALLOCATION_STRATEGY.maxNumCores(); ++i) {
-				List<String> names = new ArrayList<>();
 				int id = Workers.getIdentifier(w);
-				for (int j = 0; j < w.getPopRates().size(); ++j)
-					names.add(String.format("Core%dWorker%dInput%dIndexFxnTransformer", i, id, j));
-				for (int j = 0; j < w.getPushRates().size(); ++j)
-					names.add(String.format("Core%dWorker%dOutput%dIndexFxnTransformer", i, id, j));
-				for (String name : names)
-					builder.addParameter(new Configuration.SwitchParameter<>(name, IndexFunctionTransformer.class,
-							Compiler2.INDEX_FUNCTION_TRANSFORMERS.asList().get(0),
-							Compiler2.INDEX_FUNCTION_TRANSFORMERS));
+//				List<String> names = new ArrayList<>();
+//				for (int j = 0; j < w.getPopRates().size(); ++j)
+//					names.add(String.format("Core%dWorker%dInput%dIndexFxnTransformer", i, id, j));
+//				for (int j = 0; j < w.getPushRates().size(); ++j)
+//					names.add(String.format("Core%dWorker%dOutput%dIndexFxnTransformer", i, id, j));
+//				for (String name : names)
+//					builder.addParameter(new Configuration.SwitchParameter<>(name, IndexFunctionTransformer.class,
+//							Compiler2.INDEX_FUNCTION_TRANSFORMERS.asList().get(0),
+//							Compiler2.INDEX_FUNCTION_TRANSFORMERS));
 
 				builder.addParameter(new Configuration.IntParameter(String.format("UnrollCore%dGroup%d", i, id),
 						1, 1024, 1));

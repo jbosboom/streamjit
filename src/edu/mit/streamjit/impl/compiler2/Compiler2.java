@@ -908,19 +908,20 @@ public class Compiler2 {
 		ImmutableMap<Storage, ConcreteStorage> internalStorage = createStorage(true, INTERNAL_STORAGE_STRATEGY.asFactory(config));
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
+		IndexFunctionTransformer ift = new IdentityIndexFunctionTransformer();
 		for (int i = 0; i < maxNumCores; ++i) {
 			ImmutableTable.Builder<Actor, Integer, IndexFunctionTransformer> inputTransformers = ImmutableTable.builder(),
 					outputTransformers = ImmutableTable.builder();
 			for (Actor a : Iterables.filter(actors, WorkerActor.class)) {
 				for (int j = 0; j < a.inputs().size(); ++j) {
-					String name = String.format("Core%dWorker%dInput%dIndexFxnTransformer", i, a.id(), j);
-					SwitchParameter<IndexFunctionTransformer> param = config.getParameter(name, SwitchParameter.class, IndexFunctionTransformer.class);
-					inputTransformers.put(a, j, param.getValue());
+//					String name = String.format("Core%dWorker%dInput%dIndexFxnTransformer", i, a.id(), j);
+//					SwitchParameter<IndexFunctionTransformer> param = config.getParameter(name, SwitchParameter.class, IndexFunctionTransformer.class);
+					inputTransformers.put(a, j, ift);
 				}
 				for (int j = 0; j < a.outputs().size(); ++j) {
-					String name = String.format("Core%dWorker%dOutput%dIndexFxnTransformer", i, a.id(), j);
-					SwitchParameter<IndexFunctionTransformer> param = config.getParameter(name, SwitchParameter.class, IndexFunctionTransformer.class);
-					outputTransformers.put(a, j, param.getValue());
+//					String name = String.format("Core%dWorker%dOutput%dIndexFxnTransformer", i, a.id(), j);
+//					SwitchParameter<IndexFunctionTransformer> param = config.getParameter(name, SwitchParameter.class, IndexFunctionTransformer.class);
+					outputTransformers.put(a, j, ift);
 				}
 			}
 
