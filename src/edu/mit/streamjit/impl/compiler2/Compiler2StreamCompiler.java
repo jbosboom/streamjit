@@ -9,6 +9,7 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.test.Datasets;
 import java.nio.file.Path;
 import java.util.Random;
 import java.util.Set;
@@ -97,6 +98,9 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 
 	@Override
 	protected Blob makeBlob(ImmutableSet<Worker<?, ?>> workers, Configuration configuration, Input<?> input, Output<?> output) {
+		//When reporting throughput, repeat the input as needed.
+		if ((Boolean)configuration.getExtraData("reportThroughput"))
+			input = Datasets.cycle(input);
 		return new Compiler2(workers, configuration, getMaxNumCores(), null, input, output).compile();
 	}
 
