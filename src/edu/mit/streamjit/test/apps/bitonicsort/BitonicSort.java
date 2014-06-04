@@ -71,8 +71,8 @@ public final class BitonicSort implements BenchmarkProvider {
 				String filename = "BitonicSort"+n+".in";
 				Input<Integer> input = Input.fromBinaryFile(Paths.get("data/"+filename), Integer.class, ByteOrder.LITTLE_ENDIAN);
 				input = Datasets.nCopies(COPIES, input);
-				Input<Integer> output = Datasets.transformAll(new GroupSorter(n, ascending), input);
-				Dataset data = new Dataset(filename, input).withOutput(output);
+//				Input<Integer> output = Datasets.transformAll(new GroupSorter(n, ascending), input);
+				Dataset data = new Dataset(filename, input);//.withOutput(output);
 				String benchmarkName = String.format("BitonicSort (N = %d, %s)", n, ascending ? "asc" : "desc");
 				benchmarks.add(new SuppliedBenchmark(benchmarkName, BitonicSortKernel.class, ImmutableList.of(n, ascending), data));
 			}
