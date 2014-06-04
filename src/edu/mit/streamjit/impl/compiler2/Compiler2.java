@@ -94,9 +94,9 @@ public class Compiler2 {
 	public static final RemovalStrategy REMOVAL_STRATEGY = new BitsetRemovalStrategy();
 	public static final FusionStrategy FUSION_STRATEGY = new BitsetFusionStrategy();
 	public static final UnboxingStrategy UNBOXING_STRATEGY = new BitsetUnboxingStrategy();
-	public static final AllocationStrategy ALLOCATION_STRATEGY = new CompositionAllocationStrategy(8);
-	public static final StorageStrategy INTERNAL_STORAGE_STRATEGY = new StandardInternalStorageStrategy();
-	public static final StorageStrategy EXTERNAL_STORAGE_STRATEGY = new StandardExternalStorageStrategy();
+	public static final AllocationStrategy ALLOCATION_STRATEGY = new SubsetBiasAllocationStrategy(8);
+	public static final StorageStrategy INTERNAL_STORAGE_STRATEGY = new TuneInternalStorageStrategy();
+	public static final StorageStrategy EXTERNAL_STORAGE_STRATEGY = new TuneExternalStorageStrategy();
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
