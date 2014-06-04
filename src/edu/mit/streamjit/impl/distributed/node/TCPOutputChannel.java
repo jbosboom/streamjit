@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.common.collect.ImmutableList;
 
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
@@ -48,6 +49,12 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 	private int count;
 
 	protected ImmutableList<Object> unProcessedData;
+
+	public TCPOutputChannel(int bufSize, TCPConnectionProvider conProvider,
+			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
+		this(new ConcurrentArrayBuffer(bufSize), conProvider, conInfo,
+				bufferTokenName, debugLevel);
+	}
 
 	public TCPOutputChannel(Buffer buffer, TCPConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {

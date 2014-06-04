@@ -13,6 +13,7 @@ import com.google.common.collect.ImmutableList;
 
 import edu.mit.streamjit.impl.blob.AbstractBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
@@ -59,6 +60,12 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	int count;
 
 	private ImmutableList<Object> unProcessedData;
+
+	public TCPInputChannel(int bufSize, TCPConnectionProvider conProvider,
+			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
+		this(new ConcurrentArrayBuffer(bufSize), conProvider, conInfo,
+				bufferTokenName, debugLevel);
+	}
 
 	public TCPInputChannel(Buffer buffer, TCPConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
