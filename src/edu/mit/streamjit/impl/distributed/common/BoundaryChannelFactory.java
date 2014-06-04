@@ -24,6 +24,12 @@ public interface BoundaryChannelFactory {
 	BoundaryOutputChannel makeOutputChannel(Token t, Buffer buffer,
 			ConnectionInfo conInfo);
 
+	BoundaryInputChannel makeInputChannel(Token t, int bufSize,
+			ConnectionInfo conInfo);
+
+	BoundaryOutputChannel makeOutputChannel(Token t, int bufSize,
+			ConnectionInfo conInfo);
+
 	/**
 	 * Makes blocking {@link TCPInputChannel} and {@link TCPOutputChannel}.
 	 * 
@@ -51,6 +57,20 @@ public interface BoundaryChannelFactory {
 			return new TCPOutputChannel(buffer, conProvider, conInfo,
 					t.toString(), 0);
 		}
+
+		@Override
+		public BoundaryInputChannel makeInputChannel(Token t, int bufSize,
+				ConnectionInfo conInfo) {
+			return new TCPInputChannel(bufSize, conProvider, conInfo,
+					t.toString(), 0);
+		}
+
+		@Override
+		public BoundaryOutputChannel makeOutputChannel(Token t, int bufSize,
+				ConnectionInfo conInfo) {
+			return new TCPOutputChannel(bufSize, conProvider, conInfo,
+					t.toString(), 0);
+		}
 	}
 
 	/**
@@ -66,6 +86,13 @@ public interface BoundaryChannelFactory {
 
 		@Override
 		public BoundaryOutputChannel makeOutputChannel(Token t, Buffer buffer,
+				ConnectionInfo conInfo) {
+			return new AsyncTCPOutputChannel(conProvider, conInfo,
+					t.toString(), 0);
+		}
+
+		@Override
+		public BoundaryOutputChannel makeOutputChannel(Token t, int bufSize,
 				ConnectionInfo conInfo) {
 			return new AsyncTCPOutputChannel(conProvider, conInfo,
 					t.toString(), 0);
