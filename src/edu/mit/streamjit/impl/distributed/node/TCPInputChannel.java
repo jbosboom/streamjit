@@ -446,4 +446,9 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	@Override
+	public Buffer getBuffer() {
+		return buffer;
+	}
 }

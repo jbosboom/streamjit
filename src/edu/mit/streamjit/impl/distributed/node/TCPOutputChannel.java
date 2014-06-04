@@ -247,4 +247,9 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 	public ConnectionInfo getConnectionInfo() {
 		return conInfo;
 	}
+
+	@Override
+	public Buffer getBuffer() {
+		return buffer;
+	}
 }

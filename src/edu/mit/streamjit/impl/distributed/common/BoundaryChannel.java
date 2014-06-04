@@ -31,6 +31,8 @@ public interface BoundaryChannel {
 
 	ConnectionInfo getConnectionInfo();
 
+	Buffer getBuffer();
+
 	/**
 	 * Interface that represents input channels.
 	 */
