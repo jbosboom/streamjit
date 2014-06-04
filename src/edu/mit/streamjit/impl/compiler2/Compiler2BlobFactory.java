@@ -56,8 +56,8 @@ public final class Compiler2BlobFactory implements BlobFactory {
 		builder.addParameter(new Configuration.IntParameter("InitBufferingCost", 0, 100, 100));
 		//TODO: this really belongs in BlobHostStreamCompiler, but we have to
 		//add it here or we won't pick it up in the default configuration.
-		Configuration.PermutationParameter<Integer> affinity = new Configuration.PermutationParameter<>("$affinity", Integer.class, Affinity.getMaximalAffinity());
-		builder.addParameter(affinity);
+//		Configuration.PermutationParameter<Integer> affinity = new Configuration.PermutationParameter<>("$affinity", Integer.class, Affinity.getMaximalAffinity());
+//		builder.addParameter(affinity);
 		return builder.addParameter(new Configuration.IntParameter("multiplier", 1, Short.MAX_VALUE, 1))
 				.build();
 	}
