@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -10,6 +11,7 @@ import com.google.common.collect.Sets;
 
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 
 /**
@@ -128,6 +130,98 @@ public interface BufferManager {
 		@Override
 		public ImmutableMap<Token, Buffer> localBufferMap() {
 			return localBufferMap;
+		}
+
+		protected final void createLocaBuffers() {
+			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
+					.<Token, Buffer> builder();
+			for (Token t : localTokens) {
+				int bufSize = bufferSizes.get(t);
+				bufferMapBuilder.put(t, new ConcurrentArrayBuffer(bufSize));
+			}
+			localBufferMap = bufferMapBuilder.build();
+		}
+	}
+
+	/**
+	 * Calculates buffer sizes locally at {@link StreamNode} side. No central
+	 * calculation involved.
+	 */
+	public class LocalBufferManager extends AbstractBufferManager {
+		public LocalBufferManager(Set<Blob> blobSet) {
+			super(blobSet);
+		}
+
+		@Override
+		public void initialise() {
+			bufferSizes = calculateBufferSizes(blobSet);
+			createLocaBuffers();
+			isbufferSizesReady = true;
+		}
+
+		@Override
+		public void initialise2(Map<Token, Integer> minInputBufSizes) {
+			throw new java.lang.Error(
+					"initialise2() is not supposed to be called");
+		}
+
+		// TODO: Buffer sizes, including head and tail buffers, must be
+		// optimised. consider adding some tuning factor
+		private ImmutableMap<Token, Integer> calculateBufferSizes(
+				Set<Blob> blobSet) {
+			ImmutableMap.Builder<Token, Integer> bufferSizeMapBuilder = ImmutableMap
+					.<Token, Integer> builder();
+
+			Map<Token, Integer> minInputBufCapaciy = new HashMap<>();
+			Map<Token, Integer> minOutputBufCapaciy = new HashMap<>();
+
+			for (Blob b : blobSet) {
+				Set<Blob.Token> inputs = b.getInputs();
+				for (Token t : inputs) {
+					minInputBufCapaciy.put(t, b.getMinimumBufferCapacity(t));
+				}
+
+				Set<Blob.Token> outputs = b.getOutputs();
+				for (Token t : outputs) {
+					minOutputBufCapaciy.put(t, b.getMinimumBufferCapacity(t));
+				}
+			}
+
+			Set<Token> localTokens = Sets.intersection(
+					minInputBufCapaciy.keySet(), minOutputBufCapaciy.keySet());
+			Set<Token> globalInputTokens = Sets.difference(
+					minInputBufCapaciy.keySet(), localTokens);
+			Set<Token> globalOutputTokens = Sets.difference(
+					minOutputBufCapaciy.keySet(), localTokens);
+
+			for (Token t : localTokens) {
+				int bufSize = Math.max(minInputBufCapaciy.get(t),
+						minOutputBufCapaciy.get(t));
+				addBuffer(t, bufSize, bufferSizeMapBuilder);
+			}
+
+			for (Token t : globalInputTokens) {
+				int bufSize = minInputBufCapaciy.get(t);
+				addBuffer(t, bufSize, bufferSizeMapBuilder);
+			}
+
+			for (Token t : globalOutputTokens) {
+				int bufSize = minOutputBufCapaciy.get(t);
+				addBuffer(t, bufSize, bufferSizeMapBuilder);
+			}
+			return bufferSizeMapBuilder.build();
+		}
+
+		/**
+		 * Just introduced to avoid code duplication.
+		 */
+		private void addBuffer(Token t, int minSize,
+				ImmutableMap.Builder<Token, Integer> bufferSizeMapBuilder) {
+			// TODO: Just to increase the performance. Change it later
+			int bufSize = Math.max(1000, minSize);
+			// System.out.println("Buffer size of " + t.toString() + " is " +
+			// bufSize);
+			bufferSizeMapBuilder.put(t, bufSize);
 		}
 	}
 }
