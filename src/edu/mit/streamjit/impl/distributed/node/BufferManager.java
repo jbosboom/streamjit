@@ -147,7 +147,7 @@ public interface BufferManager {
 	 * Calculates buffer sizes locally at {@link StreamNode} side. No central
 	 * calculation involved.
 	 */
-	public class LocalBufferManager extends AbstractBufferManager {
+	public static class LocalBufferManager extends AbstractBufferManager {
 		public LocalBufferManager(Set<Blob> blobSet) {
 			super(blobSet);
 		}
@@ -197,17 +197,17 @@ public interface BufferManager {
 			for (Token t : localTokens) {
 				int bufSize = Math.max(minInputBufCapaciy.get(t),
 						minOutputBufCapaciy.get(t));
-				addBuffer(t, bufSize, bufferSizeMapBuilder);
+				addBufferSize(t, bufSize, bufferSizeMapBuilder);
 			}
 
 			for (Token t : globalInputTokens) {
 				int bufSize = minInputBufCapaciy.get(t);
-				addBuffer(t, bufSize, bufferSizeMapBuilder);
+				addBufferSize(t, bufSize, bufferSizeMapBuilder);
 			}
 
 			for (Token t : globalOutputTokens) {
 				int bufSize = minOutputBufCapaciy.get(t);
-				addBuffer(t, bufSize, bufferSizeMapBuilder);
+				addBufferSize(t, bufSize, bufferSizeMapBuilder);
 			}
 			return bufferSizeMapBuilder.build();
 		}
@@ -215,7 +215,7 @@ public interface BufferManager {
 		/**
 		 * Just introduced to avoid code duplication.
 		 */
-		private void addBuffer(Token t, int minSize,
+		private void addBufferSize(Token t, int minSize,
 				ImmutableMap.Builder<Token, Integer> bufferSizeMapBuilder) {
 			// TODO: Just to increase the performance. Change it later
 			int bufSize = Math.max(1000, minSize);
