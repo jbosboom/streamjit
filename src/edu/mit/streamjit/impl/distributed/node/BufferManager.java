@@ -1,10 +1,14 @@
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
+import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 
@@ -53,7 +57,77 @@ public interface BufferManager {
 	boolean isbufferSizesReady();
 
 	/**
-	 * @return local buffers
+	 * @return local buffers if buffer sizes are calculated. Otherwise returns
+	 *         null.
 	 */
 	ImmutableMap<Token, Buffer> localBufferMap();
+
+	public static abstract class AbstractBufferManager implements BufferManager {
+
+		protected final Set<Blob> blobSet;
+
+		protected final ImmutableSet<Token> localTokens;
+
+		protected final ImmutableSet<Token> globalInputTokens;
+
+		protected final ImmutableSet<Token> globalOutputTokens;
+
+		protected boolean isbufferSizesReady;
+
+		protected ImmutableMap<Token, Integer> bufferSizes;
+
+		ImmutableMap<Token, Buffer> localBufferMap;
+
+		public AbstractBufferManager(Set<Blob> blobSet) {
+			this.blobSet = blobSet;
+
+			Set<Token> inputTokens = new HashSet<>();
+			Set<Token> outputTokens = new HashSet<>();
+			for (Blob b : blobSet) {
+				inputTokens.addAll(b.getInputs());
+				outputTokens.addAll(b.getOutputs());
+			}
+
+			localTokens = ImmutableSet.copyOf(Sets.intersection(inputTokens,
+					outputTokens));
+			globalInputTokens = ImmutableSet.copyOf(Sets.difference(
+					inputTokens, localTokens));
+			globalOutputTokens = ImmutableSet.copyOf(Sets.difference(
+					outputTokens, localTokens));
+
+			isbufferSizesReady = false;
+			bufferSizes = null;
+			localBufferMap = null;
+		}
+
+		@Override
+		public ImmutableSet<Token> localTokens() {
+			return localTokens;
+		}
+
+		@Override
+		public ImmutableSet<Token> outputTokens() {
+			return globalOutputTokens;
+		}
+
+		@Override
+		public ImmutableSet<Token> inputTokens() {
+			return globalInputTokens;
+		}
+
+		@Override
+		public ImmutableMap<Token, Integer> bufferSizes() {
+			return bufferSizes;
+		}
+
+		@Override
+		public boolean isbufferSizesReady() {
+			return isbufferSizesReady;
+		}
+
+		@Override
+		public ImmutableMap<Token, Buffer> localBufferMap() {
+			return localBufferMap;
+		}
+	}
 }
