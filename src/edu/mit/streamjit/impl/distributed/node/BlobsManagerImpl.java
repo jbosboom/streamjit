@@ -19,7 +19,6 @@ import com.google.common.collect.Sets;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Workers;
@@ -41,6 +40,7 @@ import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Utils;
+import edu.mit.streamjit.impl.distributed.node.BufferManager.LocalBufferManager;
 
 /**
  * {@link BlobsManagerImpl} responsible to run all {@link Blob}s those are
@@ -64,7 +64,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private final CommandProcessor cmdProcessor;
 
-	private final ImmutableMap<Token, Buffer> bufferMap;
+	private final BufferManager bufferManager;
 
 	/**
 	 * if true {@link DrainDeadLockHandler} will be used to unlock the draining
@@ -84,21 +84,24 @@ public class BlobsManagerImpl implements BlobsManager {
 		this.drainProcessor = new CTRLRDrainProcessorImpl();
 		this.drainDeadLockHandler = null;
 		this.useDrainDeadLockHandler = false;
+		this.bufferManager = new LocalBufferManager(blobSet);
 
-		bufferMap = createBufferMap(blobSet);
+		bufferManager.initialise();
+		if (bufferManager.isbufferSizesReady())
+			createBEs(blobSet);
+	}
 
-		for (Blob b : blobSet) {
-			b.installBuffers(bufferMap);
-		}
-
-		Set<Token> locaTokens = getLocalTokens(blobSet);
+	private void createBEs(ImmutableSet<Blob> blobSet) {
 		blobExecuters = new HashMap<>();
+		Set<Token> locaTokens = bufferManager.localTokens();
+		ImmutableMap<Token, Integer> bufferSizesMap = bufferManager
+				.bufferSizes();
 		for (Blob b : blobSet) {
 			Token t = Utils.getBlobID(b);
 			ImmutableMap<Token, BoundaryInputChannel> inputChannels = createInputChannels(
-					Sets.difference(b.getInputs(), locaTokens), bufferMap);
+					Sets.difference(b.getInputs(), locaTokens), bufferSizesMap);
 			ImmutableMap<Token, BoundaryOutputChannel> outputChannels = createOutputChannels(
-					Sets.difference(b.getOutputs(), locaTokens), bufferMap);
+					Sets.difference(b.getOutputs(), locaTokens), bufferSizesMap);
 			blobExecuters.put(t, new BlobExecuter(t, b, inputChannels,
 					outputChannels));
 		}
@@ -138,67 +141,6 @@ public class BlobsManagerImpl implements BlobsManager {
 		if (drainDeadLockHandler != null)
 			drainDeadLockHandler.stopit();
 	}
-	// TODO: Buffer sizes, including head and tail buffers, must be optimized.
-	// consider adding some tuning factor
-	private ImmutableMap<Token, Buffer> createBufferMap(Set<Blob> blobSet) {
-		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
-				.<Token, Buffer> builder();
-
-		Map<Token, Integer> minInputBufCapaciy = new HashMap<>();
-		Map<Token, Integer> minOutputBufCapaciy = new HashMap<>();
-
-		for (Blob b : blobSet) {
-			Set<Blob.Token> inputs = b.getInputs();
-			for (Token t : inputs) {
-				minInputBufCapaciy.put(t, b.getMinimumBufferCapacity(t));
-			}
-
-			Set<Blob.Token> outputs = b.getOutputs();
-			for (Token t : outputs) {
-				minOutputBufCapaciy.put(t, b.getMinimumBufferCapacity(t));
-			}
-		}
-
-		Set<Token> localTokens = Sets.intersection(minInputBufCapaciy.keySet(),
-				minOutputBufCapaciy.keySet());
-		Set<Token> globalInputTokens = Sets.difference(
-				minInputBufCapaciy.keySet(), localTokens);
-		Set<Token> globalOutputTokens = Sets.difference(
-				minOutputBufCapaciy.keySet(), localTokens);
-
-		for (Token t : localTokens) {
-			int bufSize = Math.max(minInputBufCapaciy.get(t),
-					minOutputBufCapaciy.get(t));
-			addBuffer(t, bufSize, bufferMapBuilder);
-		}
-
-		for (Token t : globalInputTokens) {
-			int bufSize = minInputBufCapaciy.get(t);
-			addBuffer(t, bufSize, bufferMapBuilder);
-		}
-
-		for (Token t : globalOutputTokens) {
-			int bufSize = minOutputBufCapaciy.get(t);
-			addBuffer(t, bufSize, bufferMapBuilder);
-		}
-		return bufferMapBuilder.build();
-	}
-
-	/**
-	 * Just introduced to avoid code duplication.
-	 * 
-	 * @param t
-	 * @param minSize
-	 * @param bufferMapBuilder
-	 */
-	private void addBuffer(Token t, int minSize,
-			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder) {
-		// TODO: Just to increase the performance. Change it later
-		int bufSize = Math.max(1000, minSize);
-		// System.out.println("Buffer size of " + t.toString() + " is " +
-		// bufSize);
-		bufferMapBuilder.put(t, new ConcurrentArrayBuffer(bufSize));
-	}
 
 	private long gcd(long a, long b) {
 		while (true) {
@@ -236,7 +178,7 @@ public class BlobsManagerImpl implements BlobsManager {
 	}
 
 	private ImmutableMap<Token, BoundaryInputChannel> createInputChannels(
-			Set<Token> inputTokens, ImmutableMap<Token, Buffer> bufferMap) {
+			Set<Token> inputTokens, ImmutableMap<Token, Integer> bufferMap) {
 		ImmutableMap.Builder<Token, BoundaryInputChannel> inputChannelMap = new ImmutableMap.Builder<>();
 		for (Token t : inputTokens) {
 			ConnectionInfo conInfo = conInfoMap.get(t);
@@ -247,7 +189,7 @@ public class BlobsManagerImpl implements BlobsManager {
 	}
 
 	private ImmutableMap<Token, BoundaryOutputChannel> createOutputChannels(
-			Set<Token> outputTokens, ImmutableMap<Token, Buffer> bufferMap) {
+			Set<Token> outputTokens, ImmutableMap<Token, Integer> bufferMap) {
 		ImmutableMap.Builder<Token, BoundaryOutputChannel> outputChannelMap = new ImmutableMap.Builder<>();
 		for (Token t : outputTokens) {
 			ConnectionInfo conInfo = conInfoMap.get(t);
@@ -271,6 +213,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		private final BoundaryOutputChannelManager outChnlManager;
 
 		private boolean reqDrainData;
+
+		private ImmutableMap<Token, Buffer> bufferMap;
 
 		private BlobExecuter(Token t, Blob blob,
 				ImmutableMap<Token, BoundaryInputChannel> inputChannels,
@@ -325,6 +269,9 @@ public class BlobsManagerImpl implements BlobsManager {
 		private void start() {
 			outChnlManager.waitToStart();
 			inChnlManager.waitToStart();
+
+			bufferMap = buildBufferMap();
+			blob.installBuffers(bufferMap);
 
 			for (Thread t : blobThreads)
 				t.start();
@@ -545,6 +492,44 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		public Token getBlobID() {
 			return blobID;
+		}
+
+		private ImmutableMap<Token, Buffer> buildBufferMap() {
+			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
+					.builder();
+			ImmutableMap<Token, Buffer> localBufferMap = bufferManager
+					.localBufferMap();
+			ImmutableMap<Token, BoundaryInputChannel> inputChannels = inChnlManager
+					.inputChannelsMap();
+			ImmutableMap<Token, BoundaryOutputChannel> outputChannels = outChnlManager
+					.outputChannelsMap();
+
+			for (Token t : blob.getInputs()) {
+				if (localBufferMap.containsKey(t)) {
+					assert !inputChannels.containsKey(t) : "Same channels is exists in both localBuffer and inputChannel";
+					bufferMapBuilder.put(t, localBufferMap.get(t));
+				} else if (inputChannels.containsKey(t)) {
+					BoundaryInputChannel chnl = inputChannels.get(t);
+					bufferMapBuilder.put(t, chnl.getBuffer());
+				} else {
+					throw new AssertionError(String.format(
+							"No Buffer for input channel %s ", t));
+				}
+			}
+
+			for (Token t : blob.getOutputs()) {
+				if (localBufferMap.containsKey(t)) {
+					assert !outputChannels.containsKey(t) : "Same channels is exists in both localBuffer and outputChannel";
+					bufferMapBuilder.put(t, localBufferMap.get(t));
+				} else if (outputChannels.containsKey(t)) {
+					BoundaryOutputChannel chnl = outputChannels.get(t);
+					bufferMapBuilder.put(t, chnl.getBuffer());
+				} else {
+					throw new AssertionError(String.format(
+							"No Buffer for output channel %s ", t));
+				}
+			}
+			return bufferMapBuilder.build();
 		}
 	}
 
@@ -782,17 +767,25 @@ public class BlobsManagerImpl implements BlobsManager {
 						Thread.sleep(sleepTime);
 					} catch (InterruptedException e) {
 					}
-					if (bufferMap == null) {
+					if (blobExecuters == null) {
 						writter.write("Buffer map is null...\n");
 						continue;
 					}
-					if (stopFlag.get())
-						break;
 					writter.write("----------------------------------\n");
-					for (Map.Entry<Token, Buffer> en : bufferMap.entrySet()) {
-						writter.write(en.getKey() + " - "
-								+ en.getValue().size());
-						writter.write('\n');
+					for (BlobExecuter be : blobExecuters.values()) {
+						if (be.bufferMap == null) {
+							writter.write("Buffer map is null...\n");
+							continue;
+						}
+						if (stopFlag.get())
+							break;
+
+						for (Map.Entry<Token, Buffer> en : be.bufferMap
+								.entrySet()) {
+							writter.write(en.getKey() + " - "
+									+ en.getValue().size());
+							writter.write('\n');
+						}
 					}
 					writter.write("----------------------------------\n");
 					writter.flush();
@@ -846,7 +839,7 @@ public class BlobsManagerImpl implements BlobsManager {
 						// System.out.println(be.blobID + " is not drained");
 						areAllDrained = false;
 						for (Token t : be.blob.getOutputs()) {
-							Buffer b = bufferMap.get(t);
+							Buffer b = be.bufferMap.get(t);
 							int size = b.size();
 							if (size == 0)
 								continue;
@@ -857,7 +850,7 @@ public class BlobsManagerImpl implements BlobsManager {
 							b.readAll(obArray);
 						}
 						for (Token t : be.blob.getInputs()) {
-							Buffer b = bufferMap.get(t);
+							Buffer b = be.bufferMap.get(t);
 							int size = b.size();
 							if (size == 0)
 								continue;
