@@ -142,41 +142,6 @@ public class BlobsManagerImpl implements BlobsManager {
 			drainDeadLockHandler.stopit();
 	}
 
-	private long gcd(long a, long b) {
-		while (true) {
-			if (a == 0)
-				return b;
-			b %= a;
-			if (b == 0)
-				return a;
-			a %= b;
-		}
-	}
-
-	private long lcm(long a, long b) {
-		long val = gcd(a, b);
-		long quotient = a / val;
-		return val != 0 ? b * quotient : 0;
-	}
-
-	private Set<Token> getLocalTokens(Set<Blob> blobSet) {
-		Set<Token> inputTokens = new HashSet<>();
-		Set<Token> outputTokens = new HashSet<>();
-
-		for (Blob b : blobSet) {
-			Set<Token> inputs = b.getInputs();
-			for (Token t : inputs) {
-				inputTokens.add(t);
-			}
-
-			Set<Token> outputs = b.getOutputs();
-			for (Token t : outputs) {
-				outputTokens.add(t);
-			}
-		}
-		return Sets.intersection(inputTokens, outputTokens);
-	}
-
 	private ImmutableMap<Token, BoundaryInputChannel> createInputChannels(
 			Set<Token> inputTokens, ImmutableMap<Token, Integer> bufferMap) {
 		ImmutableMap.Builder<Token, BoundaryInputChannel> inputChannelMap = new ImmutableMap.Builder<>();
