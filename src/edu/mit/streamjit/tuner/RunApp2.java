@@ -25,8 +25,8 @@ public final class RunApp2 {
 		Configuration cfg;
 		if (args[0].startsWith("@")) {
 			List<String> lines = Files.readAllLines(Paths.get(args[0].substring(1)), StandardCharsets.UTF_8);
-			if (lines.size() != 1)
-				throw new RuntimeException("Response file contained "+lines.size()+" lines");
+//			if (lines.size() != 1)
+//				throw new RuntimeException("Response file contained "+lines.size()+" lines");
 			cfg = Configuration.fromJson(lines.get(0));
 		} else
 			cfg = Configuration.fromJson(args[0]);

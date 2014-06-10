@@ -128,10 +128,12 @@ public final class FMRadio {
 	private static final class BandPassFilter extends Pipeline<Float, Float> {
 		private BandPassFilter(float rate, float low, float high, int taps) {
 			// The splitjoin is BPFCore in the StreamIt source.
-			super(new Splitjoin<>(new DuplicateSplitter<Float>(),
-					new RoundrobinJoiner<Float>(), new LowPassFilter(rate, low,
-							taps, 0), new LowPassFilter(rate, high, taps, 0)),
-					new Subtractor());
+			super(new Splitjoin<>(
+					new DuplicateSplitter<Float>(),
+					new RoundrobinJoiner<Float>(),
+					new LowPassFilter(rate, low, taps, 0),
+					new LowPassFilter(rate, high, taps, 0)),
+				new Subtractor());
 		}
 	}
 

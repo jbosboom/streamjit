@@ -34,6 +34,10 @@ import java.util.Map;
  * CheckVisitor with a connected graph, but it will need to be re-connected
  * afterward, and data in channels may be lost to the garbage collector if the
  * channels are not strongly referenced elsewhere.
+ *
+ * TODO: CheckVisitor does not correctly reason about 0 rates, which can be used
+ * to "inject" data into a graph with a splitjoin; even legal uses will be
+ * reported as errors.
  * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
  * @since 8/8/2013
  */
