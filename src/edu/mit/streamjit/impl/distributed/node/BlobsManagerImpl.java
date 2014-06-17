@@ -40,6 +40,7 @@ import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Utils;
+import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 import edu.mit.streamjit.impl.distributed.node.BufferManager.LocalBufferManager;
 
 /**
@@ -167,6 +168,12 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private class BlobExecuter {
 
+		/**
+		 * This flag will be set to true if an exception thrown by the core code
+		 * of the {@link Blob}. Any exception occurred in a blob's corecode will
+		 * be informed to {@link Controller} to halt the application. See the
+		 * {@link BlobThread2}.
+		 */
 		private AtomicBoolean crashed;
 		private volatile int drainState;
 		private final Token blobID;
