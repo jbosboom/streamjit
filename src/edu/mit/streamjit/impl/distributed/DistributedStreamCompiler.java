@@ -143,7 +143,10 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		if (GlobalConstants.tune == 0) {
 			Configuration cfg1 = readConfiguration(stream.getClass()
 					.getSimpleName());
-			if (!this.cfg.getParametersMap().keySet()
+			if (cfg1 == null) {
+				controller.closeAll();
+				throw new IllegalConfigurationException();
+			} else if (!this.cfg.getParametersMap().keySet()
 					.equals(cfg1.getParametersMap().keySet())) {
 				System.err
 						.println("Reading the configuration from configuration file");
