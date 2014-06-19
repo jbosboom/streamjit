@@ -279,10 +279,9 @@ public class StreamJitAppManager {
 			}
 		}
 
-		if (isFinal) {
-			this.status = AppStatus.STOPPED;
-			controller.closeAll();
-		}
+		if (isFinal)
+			stop();
+
 		isRunning = false;
 
 		Stopwatch sw = stopwatchRef.get();
@@ -333,7 +332,7 @@ public class StreamJitAppManager {
 
 	public void stop() {
 		this.status = AppStatus.STOPPED;
-		tailChannel.reset();
+		tailChannel.releaseAll();
 		controller.closeAll();
 		dp.drainer.stop();
 	}
