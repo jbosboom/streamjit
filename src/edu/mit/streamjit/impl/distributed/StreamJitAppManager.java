@@ -177,7 +177,7 @@ public class StreamJitAppManager {
 			throw new IllegalArgumentException(
 					"No head buffer in the passed bufferMap.");
 
-		headChannel = new HeadChannel(bufferMap.get(headToken),
+		headChannel = new HeadChannel.TCPHeadChannel(bufferMap.get(headToken),
 				controller.getConProvider(), headconInfo, "headChannel - "
 						+ headToken.toString(), 0);
 
