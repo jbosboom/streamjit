@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.distributed;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -110,14 +109,8 @@ public class StreamJitAppManager {
 		Configuration.Builder builder = Configuration.builder(cfgManager
 				.getDynamicConfiguration());
 
-		Map<Token, Map.Entry<Integer, Integer>> tokenMachineMap = new HashMap<>();
-		Map<Token, Integer> portIdMap = new HashMap<>();
-
 		conInfoMap = controller.buildConInfoMap(app.partitionsMachineMap,
 				app.source, app.sink);
-
-		builder.putExtraData(GlobalConstants.TOKEN_MACHINE_MAP, tokenMachineMap)
-				.putExtraData(GlobalConstants.PORTID_MAP, portIdMap);
 
 		builder.putExtraData(GlobalConstants.CONINFOMAP, conInfoMap);
 
