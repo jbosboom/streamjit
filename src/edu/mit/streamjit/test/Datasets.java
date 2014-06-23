@@ -71,6 +71,44 @@ public final class Datasets {
 			increment(1);
 			return ret;
 		}
+
+		@Override
+		public int read(Object[] data, int offset, int length) {
+			int read = 0;
+			int min = Math.min(size(), length);
+			Object obj;
+			while (read < min && (obj = peek(read)) != null) {
+				data[offset++] = obj;
+				++read;
+			}
+			increment(read);
+			return read;
+		}
+
+		@Override
+		public boolean readAll(Object[] data) {
+			return readAll(data, 0);
+		}
+
+		@Override
+		public boolean readAll(Object[] data, int offset) {
+			int required = data.length - offset;
+			if (required > size())
+				return false;
+			int read;
+			for (read = 0; read < required; ++offset, ++read) {
+				Object e = peek(read);
+				// We checked size() above, so we should never fail here, except
+				// in
+				// case of concurrent modification by another reader.
+				assert e != null;
+				data[offset] = e;
+			}
+			increment(read);
+			assert (data.length == offset) : "data.length != offset - Check the arithmetic";
+			return true;
+		}
+
 		@Override
 		public int size() {
 			if (cycles < 0) return 0;
