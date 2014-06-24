@@ -31,11 +31,11 @@ public class HeadChannel {
 		}
 	}
 
-	public static class AsynchTCPHeadChannel extends AsyncTCPOutputChannel {
+	public static class AsyncTCPHeadChannel extends AsyncTCPOutputChannel {
 
 		final Buffer readBuffer;
 		private volatile boolean stopCalled;
-		public AsynchTCPHeadChannel(Buffer buffer,
+		public AsyncTCPHeadChannel(Buffer buffer,
 				TCPConnectionProvider conProvider, ConnectionInfo conInfo,
 				String bufferTokenName, int debugLevel) {
 			super(conProvider, conInfo, bufferTokenName, debugLevel);
