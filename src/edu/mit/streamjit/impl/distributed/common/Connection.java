@@ -195,5 +195,33 @@ public interface Connection {
 				int timeOut) {
 			throw new java.lang.Error("This method is not supposed to call");
 		}
+
+	}
+
+	/**
+	 * ConnectionType serves two purposes
+	 * <ol>
+	 * <li>Tune the connections. This will passed to opentuner.
+	 * <li>Indicate the {@link StreamNode} to create appropriate
+	 * {@link BoundaryChannel}. This will be bound with {@link ConnectionInfo}.
+	 * </ol>
+	 */
+	public enum ConnectionType {
+		/**
+		 * Blocking TCP socket connection
+		 */
+		BTCP, /**
+		 * Non-Blocking TCP socket connection
+		 */
+		NBTCP, /**
+		 * Asynchronous TCP socket connection
+		 */
+		ATCP, /**
+		 * Blocking InfiniBand
+		 */
+		BIB, /**
+		 * Non-Blocking InfiniBand
+		 */
+		NBIB
 	}
 }
