@@ -11,6 +11,8 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
+import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
+import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 
 /**
  * TCPConnection is not thread safe.
@@ -250,13 +252,15 @@ public class TCPConnection implements Connection {
 		@Override
 		public BoundaryInputChannel inputChannel(Token t, int bufSize,
 				TCPConnectionProvider conProvider) {
-			throw new java.lang.Error("This method is not supposed to call");
+			return new TCPInputChannel(bufSize, conProvider, this,
+					t.toString(), 0);
 		}
 
 		@Override
 		public BoundaryOutputChannel outputChannel(Token t, int bufSize,
 				TCPConnectionProvider conProvider) {
-			throw new java.lang.Error("This method is not supposed to call");
+			return new TCPOutputChannel(bufSize, conProvider, this,
+					t.toString(), 0);
 		}
 	}
 
