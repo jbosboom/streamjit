@@ -2,12 +2,14 @@ package edu.mit.streamjit.impl.distributed.common;
 
 import java.io.*;
 import java.net.*;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static com.google.common.base.Preconditions.*;
 
+import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
@@ -243,6 +245,18 @@ public class TCPConnection implements Connection {
 						"Neither srcID nor dstID matches with nodeID");
 			}
 			return con;
+		}
+
+		@Override
+		public BoundaryInputChannel inputChannel(Token t, int bufSize,
+				TCPConnectionProvider conProvider) {
+			throw new java.lang.Error("This method is not supposed to call");
+		}
+
+		@Override
+		public BoundaryOutputChannel outputChannel(Token t, int bufSize,
+				TCPConnectionProvider conProvider) {
+			throw new java.lang.Error("This method is not supposed to call");
 		}
 	}
 

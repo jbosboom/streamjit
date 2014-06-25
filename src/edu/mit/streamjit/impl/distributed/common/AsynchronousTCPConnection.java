@@ -14,6 +14,10 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import edu.mit.streamjit.impl.blob.AbstractWriteOnlyBuffer;
+import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
@@ -159,7 +163,8 @@ public class AsynchronousTCPConnection implements Connection {
 
 	@Override
 	public void softClose() throws IOException {
-		while (!bBAos.newWrite());
+		while (!bBAos.newWrite())
+			;
 		this.ooStream.write('\u001a');
 		this.ooStream.flush();
 		bBAos.writeCompleted();
@@ -746,6 +751,20 @@ public class AsynchronousTCPConnection implements Connection {
 						"Neither srcID nor dstID matches with nodeID");
 			}
 			return con;
+		}
+
+		@Override
+		public BoundaryInputChannel inputChannel(Token t, int bufSize,
+				TCPConnectionProvider conProvider) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public BoundaryOutputChannel outputChannel(Token t, int bufSize,
+				TCPConnectionProvider conProvider) {
+			// TODO Auto-generated method stub
+			return null;
 		}
 	}
 

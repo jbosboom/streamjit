@@ -4,6 +4,10 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 
+import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
@@ -193,6 +197,12 @@ public interface Connection {
 		 */
 		public abstract Connection makeConnection(int nodeID,
 				NetworkInfo networkInfo, int timeOut);
+
+		public abstract BoundaryInputChannel inputChannel(Token t, int bufSize,
+				TCPConnectionProvider conProvider);
+
+		public abstract BoundaryOutputChannel outputChannel(Token t,
+				int bufSize, TCPConnectionProvider conProvider);
 	}
 
 	/**
@@ -215,6 +225,18 @@ public interface Connection {
 		@Override
 		public Connection makeConnection(int nodeID, NetworkInfo networkInfo,
 				int timeOut) {
+			throw new java.lang.Error("This method is not supposed to call");
+		}
+
+		@Override
+		public BoundaryInputChannel inputChannel(Token t, int bufSize,
+				TCPConnectionProvider conProvider) {
+			throw new java.lang.Error("This method is not supposed to call");
+		}
+
+		@Override
+		public BoundaryOutputChannel outputChannel(Token t, int bufSize,
+				TCPConnectionProvider conProvider) {
 			throw new java.lang.Error("This method is not supposed to call");
 		}
 	}
