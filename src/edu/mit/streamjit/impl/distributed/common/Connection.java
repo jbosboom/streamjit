@@ -84,7 +84,7 @@ public interface Connection {
 	 * hashCode() and equals() methods. <b>The whole point of this class is to
 	 * identify a connection between two machines.</b>
 	 */
-	public class ConnectionInfo implements Serializable {
+	public abstract class ConnectionInfo implements Serializable {
 
 		private static final long serialVersionUID = 1L;
 
@@ -191,11 +191,32 @@ public interface Connection {
 		 * @return {@link Connection} that is described by this
 		 *         {@link ConnectionInfo}.
 		 */
+		public abstract Connection makeConnection(int nodeID,
+				NetworkInfo networkInfo, int timeOut);
+	}
+
+	/**
+	 * We need an instance of {@link ConnectionInfo} to compare and get a
+	 * concrete {@link ConnectionInfo} from the list of already created
+	 * {@link ConnectionInfo}s. This class is added for that purpose.
+	 */
+	public static class GenericConnectionInfo extends ConnectionInfo {
+
+		private static final long serialVersionUID = 1L;
+
+		public GenericConnectionInfo(int srcID, int dstID) {
+			super(srcID, dstID);
+		}
+
+		public GenericConnectionInfo(int srcID, int dstID, boolean isSymmetric) {
+			super(srcID, dstID, isSymmetric);
+		}
+
+		@Override
 		public Connection makeConnection(int nodeID, NetworkInfo networkInfo,
 				int timeOut) {
 			throw new java.lang.Error("This method is not supposed to call");
 		}
-
 	}
 
 	/**

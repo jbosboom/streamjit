@@ -17,6 +17,7 @@ import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.GenericConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.NetworkInfo;
@@ -194,7 +195,7 @@ public class Controller {
 			Set<ConnectionInfo> usedConInfos,
 			Map<Token, ConnectionInfo> conInfoMap) {
 
-		ConnectionInfo conInfo = new ConnectionInfo(srcID, dstID);
+		ConnectionInfo conInfo = new GenericConnectionInfo(srcID, dstID);
 
 		List<ConnectionInfo> conSet = getTcpConInfo(conInfo);
 		ConnectionInfo tcpConInfo = null;

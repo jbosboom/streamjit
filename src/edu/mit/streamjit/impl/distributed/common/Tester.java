@@ -7,12 +7,18 @@ package edu.mit.streamjit.impl.distributed.common;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import edu.mit.streamjit.impl.distributed.common.AsynchronousTCPConnection.AsyncTCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionType;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.GenericConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
+
+;
 
 public class Tester {
 
@@ -21,7 +27,8 @@ public class Tester {
 	 */
 	public static void main(String[] args) {
 		// test1();
-		test2();
+		// test2();
+		test3();
 	}
 
 	/**
@@ -71,10 +78,10 @@ public class Tester {
 		ConnectionInfo tcpConInfo3 = new TCPConnectionInfo(4, 1, 8989);
 		ConnectionInfo tcpConInfo4 = new TCPConnectionInfo(4, 1, 8980);
 
-		ConnectionInfo conInfo1 = new ConnectionInfo(1, 4, true);
-		ConnectionInfo conInfo2 = new ConnectionInfo(1, 4, false);
-		ConnectionInfo conInfo3 = new ConnectionInfo(4, 1, true);
-		ConnectionInfo conInfo4 = new ConnectionInfo(4, 1, false);
+		ConnectionInfo conInfo1 = new GenericConnectionInfo(1, 4, true);
+		ConnectionInfo conInfo2 = new GenericConnectionInfo(1, 4, false);
+		ConnectionInfo conInfo3 = new GenericConnectionInfo(4, 1, true);
+		ConnectionInfo conInfo4 = new GenericConnectionInfo(4, 1, false);
 
 		System.out.println("AsyncTCPConnectionInfo - AsyncTCPConnectionInfo");
 		System.out.println(asyConInfo1.equals(asyConInfo2));
@@ -144,4 +151,10 @@ public class Tester {
 		System.out.println(tesMap.containsKey(conInfo4));
 	}
 
+	private static void test3() {
+		List<ConnectionType> conlist = Arrays.asList(ConnectionType.values());
+		for (ConnectionType connectionType : conlist) {
+			System.out.println(connectionType);
+		}
+	}
 }
