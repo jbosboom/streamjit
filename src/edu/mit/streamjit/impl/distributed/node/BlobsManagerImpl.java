@@ -25,8 +25,6 @@ import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
-import edu.mit.streamjit.impl.distributed.common.BoundaryChannelFactory;
-import edu.mit.streamjit.impl.distributed.common.BoundaryChannelFactory.*;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannelManager.*;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DoDrain;
@@ -54,7 +52,6 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private Map<Token, BlobExecuter> blobExecuters;
 	private final StreamNode streamNode;
-	private final BoundaryChannelFactory chnlFactory;
 	private Map<Token, ConnectionInfo> conInfoMap;
 
 	private MonitorBuffers monBufs;
@@ -66,6 +63,8 @@ public class BlobsManagerImpl implements BlobsManager {
 	private final CommandProcessor cmdProcessor;
 
 	private final BufferManager bufferManager;
+
+	private final TCPConnectionProvider conProvider;
 
 	/**
 	 * if true {@link DrainDeadLockHandler} will be used to unlock the draining
@@ -79,7 +78,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			TCPConnectionProvider conProvider) {
 		this.conInfoMap = conInfoMap;
 		this.streamNode = streamNode;
-		this.chnlFactory = new TCPBoundaryChannelFactory(conProvider);
+		this.conProvider = conProvider;
 
 		this.cmdProcessor = new CommandProcessorImpl();
 		this.drainProcessor = new CTRLRDrainProcessorImpl();
@@ -149,7 +148,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		for (Token t : inputTokens) {
 			ConnectionInfo conInfo = conInfoMap.get(t);
 			inputChannelMap.put(t,
-					chnlFactory.makeInputChannel(t, bufferMap.get(t), conInfo));
+					conInfo.inputChannel(t, bufferMap.get(t), conProvider));
 		}
 		return inputChannelMap.build();
 	}
@@ -159,9 +158,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		ImmutableMap.Builder<Token, BoundaryOutputChannel> outputChannelMap = new ImmutableMap.Builder<>();
 		for (Token t : outputTokens) {
 			ConnectionInfo conInfo = conInfoMap.get(t);
-			outputChannelMap
-					.put(t, chnlFactory.makeOutputChannel(t, bufferMap.get(t),
-							conInfo));
+			outputChannelMap.put(t,
+					conInfo.outputChannel(t, bufferMap.get(t), conProvider));
 		}
 		return outputChannelMap.build();
 	}
@@ -196,10 +194,8 @@ public class BlobsManagerImpl implements BlobsManager {
 			this.blobThreads = new HashSet<>();
 			assert blob.getInputs().containsAll(inputChannels.keySet());
 			assert blob.getOutputs().containsAll(outputChannels.keySet());
-			this.inChnlManager = new ChannelManagers.BlockingInputChannelManager(
-					inputChannels);
-			this.outChnlManager = new ChannelManagers.BlockingOutputChannelManager(
-					outputChannels);
+			this.inChnlManager = new InputChannelManager(inputChannels);
+			this.outChnlManager = new OutputChannelManager(outputChannels);
 
 			String baseName = getName(blob);
 			for (int i = 0; i < blob.getCoreCount(); i++) {

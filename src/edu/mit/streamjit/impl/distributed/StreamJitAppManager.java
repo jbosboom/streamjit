@@ -18,6 +18,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
+import edu.mit.streamjit.impl.distributed.common.AsynchronousTCPConnection.AsyncTCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.Command;
@@ -36,6 +37,7 @@ import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor
 import edu.mit.streamjit.impl.distributed.common.SNException;
 import edu.mit.streamjit.impl.distributed.common.SNException.AddressBindException;
 import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 public class StreamJitAppManager {
@@ -170,9 +172,16 @@ public class StreamJitAppManager {
 			throw new IllegalArgumentException(
 					"No head buffer in the passed bufferMap.");
 
-		headChannel = new HeadChannel.TCPHeadChannel(bufferMap.get(headToken),
-				controller.getConProvider(), headconInfo, "headChannel - "
-						+ headToken.toString(), 0);
+		if (headconInfo instanceof TCPConnectionInfo)
+			headChannel = new HeadChannel.TCPHeadChannel(
+					bufferMap.get(headToken), controller.getConProvider(),
+					headconInfo, "headChannel - " + headToken.toString(), 0);
+		else if (headconInfo instanceof AsyncTCPConnectionInfo)
+			headChannel = new HeadChannel.AsyncTCPHeadChannel(
+					bufferMap.get(headToken), controller.getConProvider(),
+					headconInfo, "headChannel - " + headToken.toString(), 0);
+		else
+			throw new IllegalStateException("Head ConnectionInfo doesn't match");
 
 		ConnectionInfo tailconInfo = conInfoMap.get(tailToken);
 		assert tailconInfo != null : "No tail connection info exists in conInfoMap";
