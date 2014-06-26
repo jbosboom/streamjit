@@ -135,7 +135,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		StreamJitApp app = new StreamJitApp(stream, source, sink);
 		ConfigurationManager cfgManager = new HotSpotTuning(app);
-		ConnectionManager conManager = new ConnectionManager.NoConnectionParams(
+		ConnectionManager conManager = new ConnectionManager.BlockingTCPNoParams(
 				controller.controllerNodeID);
 		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManager,
 				Math.max(noOfnodes - 1, 1));

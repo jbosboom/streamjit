@@ -180,9 +180,9 @@ public interface ConnectionManager {
 		}
 	}
 
-	public static class NoConnectionParams extends AbstractConnectionManager {
+	public static abstract class NoParams extends AbstractConnectionManager {
 
-		public NoConnectionParams(int controllerNodeID) {
+		public NoParams(int controllerNodeID) {
 			super(controllerNodeID);
 		}
 
@@ -197,12 +197,6 @@ public interface ConnectionManager {
 			return Configuration.builder().build();
 		}
 
-		/**
-		 * Just extracted from {@link #buildConInfoMap(Map, Worker, Worker)}
-		 * because the code snippet in this method happened to repeat three
-		 * times inside the {@link #buildConInfoMap(Map, Worker, Worker)}
-		 * method.
-		 */
 		protected void addtoconInfoMap(int srcID, int dstID, Token t,
 				Set<ConnectionInfo> usedConInfos,
 				Map<Token, ConnectionInfo> conInfoMap) {
@@ -220,12 +214,41 @@ public interface ConnectionManager {
 			}
 
 			if (tcpConInfo == null) {
-				tcpConInfo = new TCPConnectionInfo(srcID, dstID, startPortNo++);
+				tcpConInfo = makeConnectionInfo(srcID, dstID, startPortNo++);
 				this.currentConInfos.add(tcpConInfo);
 			}
 
 			conInfoMap.put(t, tcpConInfo);
 			usedConInfos.add(tcpConInfo);
+		}
+
+		protected abstract ConnectionInfo makeConnectionInfo(int srcID,
+				int dstID, int portNo);
+	}
+
+	public static class BlockingTCPNoParams extends NoParams {
+
+		public BlockingTCPNoParams(int controllerNodeID) {
+			super(controllerNodeID);
+		}
+
+		@Override
+		protected ConnectionInfo makeConnectionInfo(int srcID, int dstID,
+				int portNo) {
+			return new TCPConnectionInfo(srcID, dstID, portNo);
+		}
+	}
+
+	public static class AsyncTCPNoParams extends NoParams {
+
+		public AsyncTCPNoParams(int controllerNodeID) {
+			super(controllerNodeID);
+		}
+
+		@Override
+		protected ConnectionInfo makeConnectionInfo(int srcID, int dstID,
+				int portNo) {
+			return new AsyncTCPConnectionInfo(srcID, dstID, portNo);
 		}
 	}
 
