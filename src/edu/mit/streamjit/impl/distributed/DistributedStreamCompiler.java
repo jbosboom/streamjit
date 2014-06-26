@@ -135,8 +135,10 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		StreamJitApp app = new StreamJitApp(stream, source, sink);
 		ConfigurationManager cfgManager = new HotSpotTuning(app);
-		BlobFactory bf = new DistributedBlobFactory(cfgManager, Math.max(
-				noOfnodes - 1, 1));
+		ConnectionManager conManager = new ConnectionManager.NoConnectionParams(
+				controller.controllerNodeID);
+		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManager,
+				Math.max(noOfnodes - 1, 1));
 		this.cfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(source));
 
@@ -182,7 +184,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			Portals.setConstraints(portal, constraints);
 
 		StreamJitAppManager manager = new StreamJitAppManager(controller, app,
-				cfgManager);
+				cfgManager, conManager);
 		final AbstractDrainer drainer = new DistributedDrainer(manager);
 		drainer.setBlobGraph(app.blobGraph);
 

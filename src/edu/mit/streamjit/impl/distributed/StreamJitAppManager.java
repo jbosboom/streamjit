@@ -52,6 +52,8 @@ public class StreamJitAppManager {
 
 	private final Controller controller;
 
+	private final ConnectionManager conManager;
+
 	private final StreamJitApp app;
 
 	private final ConfigurationManager cfgManager;
@@ -87,10 +89,11 @@ public class StreamJitAppManager {
 	private Map<Token, ConnectionInfo> conInfoMap;
 
 	public StreamJitAppManager(Controller controller, StreamJitApp app,
-			ConfigurationManager cfgManager) {
+			ConfigurationManager cfgManager, ConnectionManager conManager) {
 		this.controller = controller;
 		this.app = app;
 		this.cfgManager = cfgManager;
+		this.conManager = conManager;
 		this.status = AppStatus.NOT_STARTED;
 		this.exP = new SNExceptionProcessorImpl();
 		this.ep = new ErrorProcessorImpl();
@@ -111,8 +114,8 @@ public class StreamJitAppManager {
 		Configuration.Builder builder = Configuration.builder(cfgManager
 				.getDynamicConfiguration());
 
-		conInfoMap = controller.buildConInfoMap(app.partitionsMachineMap,
-				app.source, app.sink);
+		conInfoMap = conManager.conInfoMap(app.blobConfiguration,
+				app.partitionsMachineMap, app.source, app.sink);
 
 		builder.putExtraData(GlobalConstants.CONINFOMAP, conInfoMap);
 
@@ -402,7 +405,7 @@ public class StreamJitAppManager {
 							"Illegal TCP connection - " + abEx.conInfo);
 				}
 
-				ConnectionInfo coninfo = controller
+				ConnectionInfo coninfo = conManager
 						.getNewTCPConInfo(abEx.conInfo);
 
 				exConInfos.add(abEx.conInfo);
