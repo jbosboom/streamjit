@@ -3,12 +3,12 @@ package edu.mit.streamjit.util.bytecode.insts;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Function;
 import edu.mit.streamjit.util.bytecode.BasicBlock;
-import edu.mit.streamjit.util.Parented;
-import edu.mit.streamjit.util.ParentedList;
+import edu.mit.streamjit.util.bytecode.Parented;
+import edu.mit.streamjit.util.bytecode.ParentedList;
 import edu.mit.streamjit.util.bytecode.User;
 import edu.mit.streamjit.util.bytecode.Value;
 import edu.mit.streamjit.util.bytecode.types.Type;
-import edu.mit.streamjit.util.IntrusiveList;
+import edu.mit.streamjit.util.bytecode.IntrusiveList;
 import java.util.Arrays;
 import java.util.List;
 

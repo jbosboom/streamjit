@@ -1,4 +1,4 @@
-package edu.mit.streamjit.util;
+package edu.mit.streamjit.util.bytecode;
 
 import static com.google.common.base.Preconditions.*;
 import java.lang.annotation.ElementType;

@@ -1,7 +1,5 @@
 package edu.mit.streamjit.util.bytecode;
 
-import edu.mit.streamjit.util.Parented;
-import edu.mit.streamjit.util.ParentedList;
 import com.google.common.base.Joiner;
 import edu.mit.streamjit.util.bytecode.types.RegularType;
 import static com.google.common.base.Preconditions.*;
@@ -9,7 +7,6 @@ import com.google.common.collect.Sets;
 import com.google.common.primitives.Shorts;
 import edu.mit.streamjit.util.bytecode.types.FieldType;
 import edu.mit.streamjit.util.bytecode.types.TypeFactory;
-import edu.mit.streamjit.util.IntrusiveList;
 import java.util.EnumSet;
 import java.util.Set;
 

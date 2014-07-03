@@ -1,14 +1,11 @@
 package edu.mit.streamjit.util.bytecode;
 
-import edu.mit.streamjit.util.Parented;
-import edu.mit.streamjit.util.ParentedList;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import edu.mit.streamjit.util.bytecode.insts.Instruction;
 import edu.mit.streamjit.util.bytecode.insts.TerminatorInst;
 import edu.mit.streamjit.util.bytecode.types.BasicBlockType;
-import edu.mit.streamjit.util.IntrusiveList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;

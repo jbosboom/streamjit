@@ -1,7 +1,5 @@
 package edu.mit.streamjit.util.bytecode;
 
-import edu.mit.streamjit.util.Parented;
-import edu.mit.streamjit.util.ParentedList;
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.base.Joiner;
@@ -15,7 +13,6 @@ import com.google.common.reflect.Invokable;
 import edu.mit.streamjit.util.bytecode.insts.Instruction;
 import edu.mit.streamjit.util.bytecode.types.RegularType;
 import edu.mit.streamjit.util.bytecode.types.VoidType;
-import edu.mit.streamjit.util.IntrusiveList;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
