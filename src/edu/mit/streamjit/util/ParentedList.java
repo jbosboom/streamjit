@@ -83,8 +83,10 @@ public class ParentedList<P, C extends Parented<P>> extends IntrusiveList<C> {
 	private void setParent(C t, P newParent) {
 		try {
 			mhSetParent.invoke(t, newParent);
+		} catch (RuntimeException | Error ex) {
+			throw ex;
 		} catch (Throwable ex) {
-			throw SneakyThrows.sneakyThrow(ex);
+			throw new AssertionError("can't happen! field setter handles cannot throw checked exceptions", ex);
 		}
 	}
 
