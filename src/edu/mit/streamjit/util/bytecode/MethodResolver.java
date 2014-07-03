@@ -1,12 +1,8 @@
 package edu.mit.streamjit.util.bytecode;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import edu.mit.streamjit.api.WeightedRoundrobinJoiner;
-import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.MethodNodeBuilder;
-import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.util.SneakyThrows;
 import edu.mit.streamjit.util.bytecode.insts.ArrayLengthInst;
 import edu.mit.streamjit.util.bytecode.insts.ArrayLoadInst;
@@ -32,8 +28,6 @@ import edu.mit.streamjit.util.bytecode.types.Type;
 import edu.mit.streamjit.util.bytecode.types.TypeFactory;
 import edu.mit.streamjit.util.bytecode.types.VoidType;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1154,27 +1148,6 @@ public final class MethodResolver {
 		@Override
 		public String toString() {
 			return "Locals: "+Arrays.toString(locals)+", Stack: "+stack.toString();
-		}
-	}
-
-	public static void main(String[] args) throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
-//		Class<?> sgc = Class.forName("edu.mit.streamjit.api.WeightedRoundrobinSplitter");
-//		Constructor<?> ctor = sgc.getDeclaredConstructor();
-//		ctor.setAccessible(true);
-//		OneToOneElement<?, ?> sgh = (OneToOneElement<?, ?>)ctor.newInstance();
-//		ConnectWorkersVisitor cwv = new ConnectWorkersVisitor();
-//		sgh.visit(cwv);
-		ImmutableSet<Worker<?, ?>> workers = Workers.getAllWorkersInGraph(new WeightedRoundrobinJoiner<>(5, 10, 5));
-
-		PrintWriter pw = new PrintWriter(System.out, true);
-		Module m = new Module();
-		for (Worker<?, ?> w : workers) {
-			Klass k = m.getKlass(w.getClass());
-			for (Method method : k.methods())
-				if (!method.isResolved() && method.isResolvable()) {
-					method.resolve();
-					method.dump(pw);
-				}
 		}
 	}
 }
