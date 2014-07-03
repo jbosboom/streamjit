@@ -267,32 +267,40 @@ public class IntrusiveList<T> extends AbstractSequentialList<T> {
 	private T getPrevious(T t) {
 		try {
 			return (T)mhGetPrevious.invoke(t);
+		} catch (RuntimeException | Error ex) {
+			throw ex;
 		} catch (Throwable ex) {
-			throw SneakyThrows.sneakyThrow(ex);
+			throw new AssertionError("can't happen! field getter handles cannot throw checked exceptions", ex);
 		}
 	}
 	private T setPrevious(T t, T newPrevious) {
 		T oldPrevious = getPrevious(t);
 		try {
 			mhSetPrevious.invoke(t, newPrevious);
+		} catch (RuntimeException | Error ex) {
+			throw ex;
 		} catch (Throwable ex) {
-			throw SneakyThrows.sneakyThrow(ex);
+			throw new AssertionError("can't happen! field setter handles cannot throw checked exceptions", ex);
 		}
 		return oldPrevious;
 	}
 	private T getNext(T t) {
 		try {
 			return (T)mhGetNext.invoke(t);
+		} catch (RuntimeException | Error ex) {
+			throw ex;
 		} catch (Throwable ex) {
-			throw SneakyThrows.sneakyThrow(ex);
+			throw new AssertionError("can't happen! field getter handles cannot throw checked exceptions", ex);
 		}
 	}
 	private T setNext(T t, T newNext) {
 		T oldNext = getNext(t);
 		try {
 			mhSetNext.invoke(t, newNext);
+		} catch (RuntimeException | Error ex) {
+			throw ex;
 		} catch (Throwable ex) {
-			throw SneakyThrows.sneakyThrow(ex);
+			throw new AssertionError("can't happen! field setter handles cannot throw checked exceptions", ex);
 		}
 		return oldNext;
 	}
