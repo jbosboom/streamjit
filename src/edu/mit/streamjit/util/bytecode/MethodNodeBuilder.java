@@ -1,6 +1,5 @@
-package edu.mit.streamjit.impl.common;
+package edu.mit.streamjit.util.bytecode;
 
-import edu.mit.streamjit.util.bytecode.Method;
 import edu.mit.streamjit.util.bytecode.types.MethodType;
 import java.io.IOException;
 import org.objectweb.asm.ClassReader;

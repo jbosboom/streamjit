@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.common;
 
+import edu.mit.streamjit.util.bytecode.MethodNodeBuilder;
 import com.google.common.collect.ImmutableList;
 import com.google.common.math.IntMath;
 import com.google.common.primitives.Ints;

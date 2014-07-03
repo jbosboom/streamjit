@@ -2,7 +2,6 @@ package edu.mit.streamjit.util.bytecode;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
-import edu.mit.streamjit.impl.common.MethodNodeBuilder;
 import edu.mit.streamjit.util.SneakyThrows;
 import edu.mit.streamjit.util.bytecode.insts.ArrayLengthInst;
 import edu.mit.streamjit.util.bytecode.insts.ArrayLoadInst;
