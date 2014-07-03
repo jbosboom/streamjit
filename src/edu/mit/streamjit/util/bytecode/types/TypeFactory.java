@@ -1,12 +1,12 @@
 package edu.mit.streamjit.util.bytecode.types;
 
 import static com.google.common.base.Preconditions.*;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.util.bytecode.Klass;
 import edu.mit.streamjit.util.bytecode.Module;
 import edu.mit.streamjit.util.ReflectionUtils;
-import edu.mit.streamjit.util.SneakyThrows;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -263,7 +263,7 @@ public final class TypeFactory implements Iterable<Type> {
 			} catch (IllegalArgumentException ex) {
 				continue;
 			} catch (Throwable t) {
-				throw SneakyThrows.sneakyThrow(t);
+				throw Throwables.propagate(t);
 			}
 		throw new AssertionError("No type for "+klass);
 	}
