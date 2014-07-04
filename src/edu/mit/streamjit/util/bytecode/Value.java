@@ -4,7 +4,6 @@ import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.util.bytecode.types.Type;
 import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.ImmutableSet;
-import edu.mit.streamjit.util.ReflectionUtils;
 import java.util.Objects;
 
 /**
@@ -60,7 +59,7 @@ public abstract class Value {
 	void addUse(Use use) {
 		//We assert rather than check because this is for internal use only.
 		assert use != null;
-		assert ReflectionUtils.calledDirectlyFrom(Use.class);
+//		assert ReflectionUtils.calledDirectlyFrom(Use.class);
 		assert use.getOperand() == this : "Adding use of wrong object"+use+", "+this;
 		ImmutableSet<Use> newUses = ImmutableSet.<Use>builder().addAll(uses).add(use).build();
 		assert newUses.size() == uses.size()+1 : "Adding duplicate use: " + use;
@@ -73,7 +72,7 @@ public abstract class Value {
 	 */
 	void removeUse(Use use) {
 		assert use != null;
-		assert ReflectionUtils.calledDirectlyFrom(Use.class);
+//		assert ReflectionUtils.calledDirectlyFrom(Use.class);
 		assert use.getOperand() == this : "Removing use of wrong object"+use+", "+this;
 		ImmutableSet.Builder<Use> builder = ImmutableSet.builder();
 		for (Use u : uses)

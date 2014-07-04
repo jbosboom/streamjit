@@ -1,6 +1,5 @@
 package edu.mit.streamjit.util.bytecode;
 
-import edu.mit.streamjit.util.ReflectionUtils;
 import java.util.Objects;
 
 /**
@@ -33,7 +32,7 @@ public class Use {
 
 	//for internal use only!
 	void setOperandIndex(int index) {
-		assert ReflectionUtils.calledDirectlyFrom(User.class);
+//		assert ReflectionUtils.calledDirectlyFrom(User.class);
 		operandIndex = index;
 	}
 

@@ -3,7 +3,6 @@ package edu.mit.streamjit.util.bytecode;
 import static com.google.common.base.Preconditions.*;
 import edu.mit.streamjit.util.bytecode.types.Type;
 import edu.mit.streamjit.util.bytecode.types.WrapperType;
-import edu.mit.streamjit.util.ReflectionUtils;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -18,7 +17,7 @@ public class ConstantFactory implements Iterable<Constant<?>> {
 	private final Map<Object, Constant<?>> constantsMap = new HashMap<>();
 
 	ConstantFactory(Module parent) {
-		assert ReflectionUtils.calledDirectlyFrom(Module.class);
+//		assert ReflectionUtils.calledDirectlyFrom(Module.class);
 		this.parent = checkNotNull(parent);
 	}
 

@@ -6,7 +6,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import edu.mit.streamjit.util.bytecode.Klass;
 import edu.mit.streamjit.util.bytecode.Module;
-import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -24,7 +23,7 @@ import java.util.Map;
 public final class TypeFactory implements Iterable<Type> {
 	static {
 		//We depend on this because we use an IdentityHashMap.
-		assert ReflectionUtils.usesObjectEquality(Klass.class);
+//		assert ReflectionUtils.usesObjectEquality(Klass.class);
 		Class<?>[] TYPE_CLASSES = {
 			WrapperType.class, ArrayType.class, ReferenceType.class,
 			PrimitiveType.class, VoidType.class
@@ -53,7 +52,7 @@ public final class TypeFactory implements Iterable<Type> {
 	private final BasicBlockType basicBlockType;
 	private final NullType nullType;
 	public TypeFactory(Module parent) {
-		assert ReflectionUtils.calledDirectlyFrom(Module.class);
+//		assert ReflectionUtils.calledDirectlyFrom(Module.class);
 		this.parent = checkNotNull(parent);
 		this.basicBlockType = new BasicBlockType(parent);
 		this.nullType = new NullType(parent);
