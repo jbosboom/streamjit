@@ -68,9 +68,8 @@ public interface ConnectionManager {
 
 	public ConnectionInfo getNewTCPConInfo(ConnectionInfo conInfo);
 
-	public abstract static class AbstractConnectionManager
-			implements
-				ConnectionManager {
+	public abstract static class AbstractConnectionManager implements
+			ConnectionManager {
 
 		private final int controllerNodeID;
 
@@ -162,6 +161,11 @@ public interface ConnectionManager {
 					conList.add(tcpconInfo);
 			}
 			return conList;
+		}
+
+		protected String getParamName(Token t) {
+			return String.format("ConnectionType-%d:%d",
+					t.getUpstreamIdentifier(), t.getDownstreamIdentifier());
 		}
 
 		public ConnectionInfo getNewTCPConInfo(ConnectionInfo conInfo) {
@@ -290,11 +294,6 @@ public interface ConnectionManager {
 			Configuration.Builder cfgBuilder = Configuration.builder();
 			addChannelParameters(cfgBuilder, workers);
 			return cfgBuilder.build();
-		}
-
-		protected String getParamName(Token t) {
-			return String.format("ConnectionType-%d:%d",
-					t.getUpstreamIdentifier(), t.getDownstreamIdentifier());
 		}
 
 		@Override
