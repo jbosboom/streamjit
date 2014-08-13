@@ -291,6 +291,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				softClosed = true;
 				hasData = false;
 			} catch (IOException e) {
+				e.printStackTrace();
 				System.out
 						.println("finalReceive:Closing by IOException. Not by softClose.");
 				hasData = false;

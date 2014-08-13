@@ -182,6 +182,7 @@ public class OnlineTuner implements Runnable {
 				time = -1l;
 			}
 		} catch (Exception ex) {
+			ex.printStackTrace();
 			System.err
 					.println("Couldn't compile the stream graph with this configuration");
 			time = -1l;

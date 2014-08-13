@@ -14,7 +14,7 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
 
 public class AsyncTCPOutputChannel implements BoundaryOutputChannel {
 
-	private Connection con;
+	private volatile Connection con;
 
 	private final String name;
 
@@ -67,6 +67,8 @@ public class AsyncTCPOutputChannel implements BoundaryOutputChannel {
 
 	@Override
 	public void stop(boolean isFinal) {
+		while (con == null)
+			;
 		this.isFinal = isFinal;
 		if (!stopCalled) {
 			try {
