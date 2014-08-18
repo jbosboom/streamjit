@@ -538,7 +538,7 @@ public class AsynchronousTCPConnection implements Connection {
 	 */
 	public class ByteBufferArrayOutputStream extends OutputStream {
 
-		private final int debugPrint;
+		private final int debugLevel;
 
 		/**
 		 * Read index of {@link #bytebufferArray}.
@@ -559,7 +559,7 @@ public class AsynchronousTCPConnection implements Connection {
 		private Map<Integer, AtomicReference<Status>> bufferStatus;
 
 		public ByteBufferArrayOutputStream(int listSize) {
-			debugPrint = 0;
+			debugLevel = 0;
 			writeIndex = 0;
 			readIndex = 0;
 			bytebufferArray = new ByteBufferOutputStream[listSize];
@@ -590,13 +590,13 @@ public class AsynchronousTCPConnection implements Connection {
 		public boolean newWrite() {
 			if (bufferStatus.get(writeIndex).compareAndSet(Status.canWrite,
 					Status.beingWritten)) {
-				if (debugPrint > 0)
+				if (debugLevel > 0)
 					System.out.println(Thread.currentThread().getName()
 							+ " : newWrite-canWrite : " + "writeIndex - "
 							+ writeIndex + ", readIndex - " + readIndex);
 				return true;
 			} else {
-				if (debugPrint > 0)
+				if (debugLevel > 0)
 					System.out.println(Thread.currentThread().getName()
 							+ " : newWrite-failed : " + "writeIndex - "
 							+ writeIndex + ", readIndex - " + readIndex);
@@ -609,7 +609,7 @@ public class AsynchronousTCPConnection implements Connection {
 		 * of objects is completed.
 		 */
 		public void writeCompleted() {
-			if (debugPrint > 0)
+			if (debugLevel > 0)
 				System.out.println(Thread.currentThread().getName()
 						+ " : writeCompleted : " + "writeIndex - " + writeIndex
 						+ ", readIndex - " + readIndex);
@@ -636,7 +636,7 @@ public class AsynchronousTCPConnection implements Connection {
 		 */
 		public synchronized ByteBufferOutputStream newRead() {
 			if (bufferStatus.get(readIndex).get() == Status.beingRead) {
-				if (debugPrint > 0)
+				if (debugLevel > 0)
 					System.out.println(Thread.currentThread().getName()
 							+ " : newRead-beingRead : " + "writeIndex - "
 							+ writeIndex + ", readIndex - " + readIndex);
@@ -645,7 +645,7 @@ public class AsynchronousTCPConnection implements Connection {
 
 			if (bufferStatus.get(readIndex).compareAndSet(Status.canRead,
 					Status.beingRead)) {
-				if (debugPrint > 0)
+				if (debugLevel > 0)
 					System.out.println(Thread.currentThread().getName()
 							+ " : newRead-canRead : " + "writeIndex - "
 							+ writeIndex + ", readIndex - " + readIndex);
@@ -655,7 +655,7 @@ public class AsynchronousTCPConnection implements Connection {
 				}
 				return bytebufferArray[readIndex];
 			} else {
-				if (debugPrint > 0)
+				if (debugLevel > 0)
 					System.out.println(Thread.currentThread().getName()
 							+ " : newRead - not can read " + readIndex);
 				return null;
@@ -667,7 +667,7 @@ public class AsynchronousTCPConnection implements Connection {
 		 * completed.
 		 */
 		public void readCompleted() {
-			if (debugPrint > 0)
+			if (debugLevel > 0)
 				System.out.println(Thread.currentThread().getName()
 						+ " : readCompleted : " + "writeIndex - " + writeIndex
 						+ ", readIndex - " + readIndex);
