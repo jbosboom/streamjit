@@ -62,6 +62,14 @@ public class HeadChannel {
 						while (written < read) {
 							written += writeBuffer.write(data, written, read
 									- written);
+							if (written == 0) {
+								try {
+									// TODO: Verify this sleep time.
+									Thread.sleep(500);
+								} catch (InterruptedException e) {
+									e.printStackTrace();
+								}
+							}
 						}
 					}
 				}
