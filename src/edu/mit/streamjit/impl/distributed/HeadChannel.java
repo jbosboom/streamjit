@@ -35,6 +35,7 @@ public class HeadChannel {
 
 		final Buffer readBuffer;
 		private volatile boolean stopCalled;
+
 		public AsyncTCPHeadChannel(Buffer buffer,
 				TCPConnectionProvider conProvider, ConnectionInfo conInfo,
 				String bufferTokenName, int debugLevel) {
@@ -54,13 +55,19 @@ public class HeadChannel {
 					final int dataLength = 10000;
 					final Object[] data = new Object[dataLength];
 					int read = 1;
+					int written = 0;
 					while (read != 0 && !stopCalled) {
 						read = readBuffer.read(data, 0, data.length);
-						writeBuffer.write(data, 0, read);
+						written = 0;
+						while (written < read) {
+							written += writeBuffer.write(data, written, read
+									- written);
+						}
 					}
 				}
 			};
 		}
+
 		protected void fillUnprocessedData() {
 			throw new Error("Method not implemented");
 		}
