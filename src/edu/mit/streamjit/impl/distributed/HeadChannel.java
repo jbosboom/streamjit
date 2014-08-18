@@ -56,7 +56,7 @@ public class HeadChannel {
 					final Object[] data = new Object[dataLength];
 					int read = 1;
 					int written = 0;
-					while (read != 0 && !stopCalled) {
+					while (!stopCalled) {
 						read = readBuffer.read(data, 0, data.length);
 						written = 0;
 						while (written < read) {
