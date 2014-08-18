@@ -617,8 +617,13 @@ public class AsynchronousTCPConnection implements Connection {
 			writeIndex = (writeIndex + 1) % bytebufferArray.length;
 			boolean ret = bufferStatus.get(w).compareAndSet(
 					Status.beingWritten, Status.canRead);
-			if (!ret)
-				throw new IllegalStateException("bufferStatus conflict");
+			if (!ret) {
+				String msg = String.format("BufferState conflict : " + "writeIndex - "
+						+ writeIndex + ", readIndex - " + readIndex
+						+ " - Status of the writeBuffer is "
+						+ bufferStatus.get(w).get());
+				throw new IllegalStateException(msg);
+			}
 		}
 
 		/**
