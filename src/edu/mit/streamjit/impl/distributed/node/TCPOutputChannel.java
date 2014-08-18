@@ -28,7 +28,7 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
  */
 public class TCPOutputChannel implements BoundaryOutputChannel {
 
-	FileWriter writer;
+	private final FileWriter writer;
 
 	private final int debugLevel;
 
