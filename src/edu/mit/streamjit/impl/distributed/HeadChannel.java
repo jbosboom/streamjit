@@ -35,6 +35,7 @@ public class HeadChannel {
 
 		final Buffer readBuffer;
 		private volatile boolean stopCalled;
+		private volatile boolean isFinal;
 
 		public AsyncTCPHeadChannel(Buffer buffer,
 				TCPConnectionProvider conProvider, ConnectionInfo conInfo,
@@ -72,6 +73,7 @@ public class HeadChannel {
 							}
 						}
 					}
+					stopSuper(isFinal);
 				}
 			};
 		}
@@ -82,8 +84,12 @@ public class HeadChannel {
 
 		@Override
 		public void stop(boolean isFinal) {
-			super.stop(isFinal);
+			this.isFinal = isFinal;
 			this.stopCalled = true;
+		}
+
+		private void stopSuper(boolean isFinal) {
+			super.stop(isFinal);
 		}
 	}
 
