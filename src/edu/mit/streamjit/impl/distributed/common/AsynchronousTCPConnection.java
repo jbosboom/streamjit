@@ -165,8 +165,14 @@ public class AsynchronousTCPConnection implements Connection {
 
 	@Override
 	public void softClose() throws IOException {
-		while (!bBAos.newWrite())
-			;
+		while (!bBAos.newWrite()) {
+			try {
+				// TODO : Find correct time for sleep.
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 		this.ooStream.write('\u001a');
 		this.ooStream.flush();
 		bBAos.writeCompleted();
@@ -590,6 +596,7 @@ public class AsynchronousTCPConnection implements Connection {
 		public boolean newWrite() {
 			if (bufferStatus.get(writeIndex).compareAndSet(Status.canWrite,
 					Status.beingWritten)) {
+
 				if (debugLevel > 0)
 					System.out.println(Thread.currentThread().getName()
 							+ " : newWrite-canWrite : " + "writeIndex - "
@@ -618,9 +625,9 @@ public class AsynchronousTCPConnection implements Connection {
 			boolean ret = bufferStatus.get(w).compareAndSet(
 					Status.beingWritten, Status.canRead);
 			if (!ret) {
-				String msg = String.format("BufferState conflict : " + "writeIndex - "
-						+ writeIndex + ", readIndex - " + readIndex
-						+ " - Status of the writeBuffer is "
+				String msg = String.format("BufferState conflict : "
+						+ "writeIndex - " + writeIndex + ", readIndex - "
+						+ readIndex + " - Status of the writeBuffer is "
 						+ bufferStatus.get(w).get());
 				throw new IllegalStateException(msg);
 			}
