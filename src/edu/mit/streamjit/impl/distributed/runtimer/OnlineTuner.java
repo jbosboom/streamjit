@@ -103,6 +103,7 @@ public class OnlineTuner implements Runnable {
 
 		} catch (IOException e) {
 			e.printStackTrace();
+			terminate();
 		}
 
 		try {
@@ -110,6 +111,9 @@ public class OnlineTuner implements Runnable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+
+		if (needTermination)
+			terminate();
 	}
 
 	private void evaluate() {
@@ -208,11 +212,7 @@ public class OnlineTuner implements Runnable {
 		evaluateConfig(handCfg, "Handtuned configuration");
 
 		if (needTermination) {
-			if (manager.isRunning()) {
-				drainer.startDraining(1);
-			} else {
-				manager.stop();
-			}
+			terminate();
 		} else {
 			Pair<Boolean, Long> ret = reconfigure(finalcfg);
 			if (ret.first && ret.second > 0)
@@ -220,6 +220,14 @@ public class OnlineTuner implements Runnable {
 						.println("Application is running forever with the final configuration.");
 			else
 				System.err.println("Invalid final configuration.");
+		}
+	}
+
+	private void terminate() {
+		if (manager.isRunning()) {
+			drainer.startDraining(1);
+		} else {
+			manager.stop();
 		}
 	}
 
