@@ -160,25 +160,33 @@ public abstract class AbstractDrainer {
 	 */
 	public final boolean startDraining(int type) {
 		if (state == DrainerState.NODRAINING) {
+			boolean isFinal = false;
 			switch (type) {
 				case 0 :
 					this.blobGraph.clearDrainData();
 					this.state = DrainerState.INTERMEDIATE;
 					drainDataLatch = new CountDownLatch(1);
 					intermediateLatch = new CountDownLatch(1);
-					prepareDraining(false);
 					break;
 				case 1 :
 					this.state = DrainerState.FINAL;
-					prepareDraining(false);
 					break;
 				case 2 :
 					this.state = DrainerState.FINAL;
-					prepareDraining(true);
+					isFinal = true;
 					break;
 				default :
 					throw new IllegalArgumentException(
 							"Invalid draining type. type can be 0, 1, or 2.");
+			}
+
+			try {
+				prepareDraining(isFinal);
+			} catch (Exception e) {
+				this.state = DrainerState.NODRAINING;
+				System.err
+						.println("No Drain called. Exception in prepareDraining()");
+				throw e;
 			}
 
 			if (GlobalConstants.needDrainDeadlockHandler)
