@@ -10,9 +10,9 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 import edu.mit.streamjit.impl.blob.Blob;
+import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
-import edu.mit.streamjit.impl.blob.Blob.Token;
 
 /**
  * {@link BlobsManager} will use the services from {@link BufferManager}.

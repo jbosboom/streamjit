@@ -1,15 +1,16 @@
 package edu.mit.streamjit.tuner;
 
-import edu.mit.streamjit.api.StreamCompiler;
-import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
-import edu.mit.streamjit.test.Benchmark;
-import edu.mit.streamjit.test.Benchmarker;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+
+import edu.mit.streamjit.api.StreamCompiler;
+import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
+import edu.mit.streamjit.test.Benchmark;
+import edu.mit.streamjit.test.Benchmarker;
 
 /**
  * Runs a benchmark using a specified configuration.

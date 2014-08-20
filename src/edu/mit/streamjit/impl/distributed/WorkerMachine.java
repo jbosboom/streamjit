@@ -11,12 +11,12 @@ import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
+import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
+import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager.AbstractConfigurationManager;
 
 /**

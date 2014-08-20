@@ -1,9 +1,10 @@
 package edu.mit.streamjit.impl.concurrent;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import java.util.Map;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableMap;
 
 import edu.mit.streamjit.impl.blob.Blob;

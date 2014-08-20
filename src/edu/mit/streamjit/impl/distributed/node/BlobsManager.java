@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.node;
 
+import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 

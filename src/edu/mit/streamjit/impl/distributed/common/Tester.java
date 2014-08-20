@@ -13,10 +13,10 @@ import java.util.List;
 import java.util.Map;
 
 import edu.mit.streamjit.impl.distributed.common.AsynchronousTCPConnection.AsyncTCPConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionType;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.Connection.GenericConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionType;
+import edu.mit.streamjit.impl.distributed.common.Connection.GenericConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 
 ;
 

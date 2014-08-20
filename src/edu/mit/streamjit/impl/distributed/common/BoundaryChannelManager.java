@@ -8,7 +8,8 @@ import java.util.Set;
 import com.google.common.collect.ImmutableMap;
 
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.*;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.node.AsyncTCPOutputChannel;
 
 /**
