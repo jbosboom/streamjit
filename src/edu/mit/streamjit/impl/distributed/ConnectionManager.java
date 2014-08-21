@@ -295,6 +295,18 @@ public interface ConnectionManager {
 								.values()));
 				cfgBuilder.addParameter(p);
 			}
+
+			// Add Parameter for global output channel.
+			Set<Worker<?, ?>> tail = Workers.getBottommostWorkers(workers);
+			assert tail.size() == 1 : "Multiple first workers";
+			for (Worker<?, ?> lastWorker : tail) {
+				Token t = Token.createOverallOutputToken(lastWorker);
+				Parameter p = new Configuration.SwitchParameter<ConnectionType>(
+						getParamName(t), ConnectionType.class,
+						ConnectionType.BTCP, Arrays.asList(ConnectionType
+								.values()));
+				cfgBuilder.addParameter(p);
+			}
 		}
 
 		@Override
