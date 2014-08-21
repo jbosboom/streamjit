@@ -13,6 +13,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.Builder;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
+import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.AsynchronousTCPConnection.AsyncTCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
@@ -316,10 +317,55 @@ public interface ConnectionManager {
 			return cfgBuilder.build();
 		}
 
-		@Override
 		protected void addtoconInfoMap(int srcID, int dstID, Token t,
 				Set<ConnectionInfo> usedConInfos,
 				Map<Token, ConnectionInfo> conInfoMap, Configuration cfg) {
+
+			ConnectionInfo conInfo = new GenericConnectionInfo(srcID, dstID);
+
+			List<ConnectionInfo> conSet = getTcpConInfo(conInfo);
+			ConnectionInfo tcpConInfo = null;
+
+			for (ConnectionInfo con : conSet) {
+				if (!usedConInfos.contains(con)) {
+					tcpConInfo = con;
+					break;
+				}
+			}
+
+			if (tcpConInfo == null) {
+				tcpConInfo = makeConnectionInfo(srcID, dstID, t, cfg);
+				this.currentConInfos.add(tcpConInfo);
+			}
+
+			conInfoMap.put(t, tcpConInfo);
+			usedConInfos.add(tcpConInfo);
+		}
+
+		private ConnectionInfo makeConnectionInfo(int srcID, int dstID,
+				Token t, Configuration cfg) {
+			SwitchParameter<ConnectionType> p = cfg.getParameter(
+					getParamName(t), SwitchParameter.class,
+					ConnectionType.class);
+
+			if (p == null)
+				throw new IllegalStateException(String.format(
+						"No tuning parameter for connection %s", t));
+
+			ConnectionInfo conInfo;
+			switch (p.getValue()) {
+				case BTCP :
+					conInfo = new TCPConnectionInfo(srcID, dstID, startPortNo++);
+					break;
+				case ATCP :
+					conInfo = new AsyncTCPConnectionInfo(srcID, dstID,
+							startPortNo++);
+					break;
+				default :
+					throw new IllegalStateException(String.format(
+							"Unsupported connection type - %s", p.getValue()));
+			}
+			return conInfo;
 		}
 	}
 }
