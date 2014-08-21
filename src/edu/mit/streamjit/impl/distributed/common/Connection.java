@@ -255,16 +255,22 @@ public interface Connection {
 		 */
 		BTCP, /**
 		 * Non-Blocking TCP socket connection
+		 * 
+		 * NBTCP,
 		 */
-		NBTCP, /**
+		/**
 		 * Asynchronous TCP socket connection
 		 */
-		ATCP, /**
+		ATCP,
+		/**
 		 * Blocking InfiniBand
+		 * 
+		 * BIB,
 		 */
-		BIB, /**
+		/**
 		 * Non-Blocking InfiniBand
+		 * 
+		 * NBIB
 		 */
-		NBIB
 	}
 }
