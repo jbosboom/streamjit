@@ -229,7 +229,7 @@ public interface ConnectionManager {
 			}
 
 			if (tcpConInfo == null) {
-				tcpConInfo = makeConnectionInfo(srcID, dstID, startPortNo++);
+				tcpConInfo = makeConnectionInfo(srcID, dstID);
 				this.currentConInfos.add(tcpConInfo);
 			}
 
@@ -238,7 +238,7 @@ public interface ConnectionManager {
 		}
 
 		protected abstract ConnectionInfo makeConnectionInfo(int srcID,
-				int dstID, int portNo);
+				int dstID);
 	}
 
 	public static class BlockingTCPNoParams extends NoParams {
@@ -248,9 +248,8 @@ public interface ConnectionManager {
 		}
 
 		@Override
-		protected ConnectionInfo makeConnectionInfo(int srcID, int dstID,
-				int portNo) {
-			return new TCPConnectionInfo(srcID, dstID, portNo);
+		protected ConnectionInfo makeConnectionInfo(int srcID, int dstID) {
+			return new TCPConnectionInfo(srcID, dstID, startPortNo++);
 		}
 	}
 
@@ -261,9 +260,8 @@ public interface ConnectionManager {
 		}
 
 		@Override
-		protected ConnectionInfo makeConnectionInfo(int srcID, int dstID,
-				int portNo) {
-			return new AsyncTCPConnectionInfo(srcID, dstID, portNo);
+		protected ConnectionInfo makeConnectionInfo(int srcID, int dstID) {
+			return new AsyncTCPConnectionInfo(srcID, dstID, startPortNo++);
 		}
 	}
 
