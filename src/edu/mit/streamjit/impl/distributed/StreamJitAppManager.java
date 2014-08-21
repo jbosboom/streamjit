@@ -406,7 +406,7 @@ public class StreamJitAppManager {
 				}
 
 				ConnectionInfo coninfo = conManager
-						.getNewTCPConInfo(abEx.conInfo);
+						.replaceConInfo(abEx.conInfo);
 
 				exConInfos.add(abEx.conInfo);
 

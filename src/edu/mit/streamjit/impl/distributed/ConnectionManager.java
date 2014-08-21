@@ -21,6 +21,7 @@ import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionType;
 import edu.mit.streamjit.impl.distributed.common.Connection.GenericConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
  * Generates configuration parameters to tune the {@link Connection}'s
@@ -66,7 +67,17 @@ public interface ConnectionManager {
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap,
 			Worker<?, ?> source, Worker<?, ?> sink);
 
-	public ConnectionInfo getNewTCPConInfo(ConnectionInfo conInfo);
+	/**
+	 * Sometimes an assigned TCP ports may not available to make new connection
+	 * at {@link StreamNode}s side. In this case a new {@link ConnectionInfo}
+	 * must be created to replace already created {@link ConnectionInfo}.
+	 * 
+	 * @param conInfo
+	 *            : Problematic {@link ConnectionInfo}.
+	 * @return : New {@link ConnectionInfo} to replace problematic
+	 *         {@link ConnectionInfo}.
+	 */
+	public ConnectionInfo replaceConInfo(ConnectionInfo conInfo);
 
 	public abstract static class AbstractConnectionManager implements
 			ConnectionManager {
@@ -168,7 +179,7 @@ public interface ConnectionManager {
 					t.getUpstreamIdentifier(), t.getDownstreamIdentifier());
 		}
 
-		public ConnectionInfo getNewTCPConInfo(ConnectionInfo conInfo) {
+		public ConnectionInfo replaceConInfo(ConnectionInfo conInfo) {
 			if (currentConInfos.contains(conInfo))
 				currentConInfos.remove(conInfo);
 			ConnectionInfo newConinfo;
