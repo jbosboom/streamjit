@@ -125,7 +125,7 @@ public interface ConnectionManager {
 								partitionsMachineMap);
 						Token t = new Token(w, succ);
 						addtoconInfoMap(machineID, dstMachineID, t,
-								usedConInfos, conInfoMap);
+								usedConInfos, conInfoMap, cfg);
 					}
 				}
 			}
@@ -133,12 +133,12 @@ public interface ConnectionManager {
 			Token headToken = Token.createOverallInputToken(source);
 			int dstMachineID = getAssignedMachine(source, partitionsMachineMap);
 			addtoconInfoMap(controllerNodeID, dstMachineID, headToken,
-					usedConInfos, conInfoMap);
+					usedConInfos, conInfoMap, cfg);
 
 			Token tailToken = Token.createOverallOutputToken(sink);
 			int srcMahineID = getAssignedMachine(sink, partitionsMachineMap);
 			addtoconInfoMap(srcMahineID, controllerNodeID, tailToken,
-					usedConInfos, conInfoMap);
+					usedConInfos, conInfoMap, cfg);
 
 			return conInfoMap;
 		}
@@ -163,7 +163,7 @@ public interface ConnectionManager {
 
 		protected abstract void addtoconInfoMap(int srcID, int dstID, Token t,
 				Set<ConnectionInfo> usedConInfos,
-				Map<Token, ConnectionInfo> conInfoMap);
+				Map<Token, ConnectionInfo> conInfoMap, Configuration cfg);
 
 		protected List<ConnectionInfo> getTcpConInfo(ConnectionInfo conInfo) {
 			List<ConnectionInfo> conList = new ArrayList<>();
@@ -214,7 +214,7 @@ public interface ConnectionManager {
 
 		protected void addtoconInfoMap(int srcID, int dstID, Token t,
 				Set<ConnectionInfo> usedConInfos,
-				Map<Token, ConnectionInfo> conInfoMap) {
+				Map<Token, ConnectionInfo> conInfoMap, Configuration cfg) {
 
 			ConnectionInfo conInfo = new GenericConnectionInfo(srcID, dstID);
 
@@ -270,7 +270,6 @@ public interface ConnectionManager {
 	public static class AllConnectionParams extends AbstractConnectionManager {
 		public AllConnectionParams(int controllerNodeID) {
 			super(controllerNodeID);
-			// TODO Auto-generated constructor stub
 		}
 
 		@Override
@@ -310,9 +309,7 @@ public interface ConnectionManager {
 		@Override
 		protected void addtoconInfoMap(int srcID, int dstID, Token t,
 				Set<ConnectionInfo> usedConInfos,
-				Map<Token, ConnectionInfo> conInfoMap) {
-			// TODO Auto-generated method stub
-
+				Map<Token, ConnectionInfo> conInfoMap, Configuration cfg) {
 		}
 	}
 }
