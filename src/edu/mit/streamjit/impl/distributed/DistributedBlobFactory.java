@@ -77,7 +77,7 @@ public class DistributedBlobFactory implements BlobFactory {
 		for (Parameter p : compilercfg.getParametersMap().values())
 			builder.addParameter(p);
 
-		connectionManager.addChannelParameters(builder, workers);
+		connectionManager.addConnectionParameters(builder, workers);
 		return builder.build();
 	}
 

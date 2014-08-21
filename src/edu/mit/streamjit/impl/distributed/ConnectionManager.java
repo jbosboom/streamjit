@@ -42,7 +42,7 @@ public interface ConnectionManager {
 	 * @param cfgBuilder
 	 * @param workers
 	 */
-	public void addChannelParameters(Configuration.Builder cfgBuilder,
+	public void addConnectionParameters(Configuration.Builder cfgBuilder,
 			Set<Worker<?, ?>> workers);
 
 	/**
@@ -203,7 +203,7 @@ public interface ConnectionManager {
 		}
 
 		@Override
-		public void addChannelParameters(Builder cfgBuilder,
+		public void addConnectionParameters(Builder cfgBuilder,
 				Set<Worker<?, ?>> workers) {
 			return;
 		}
@@ -272,7 +272,7 @@ public interface ConnectionManager {
 		}
 
 		@Override
-		public void addChannelParameters(Builder cfgBuilder,
+		public void addConnectionParameters(Builder cfgBuilder,
 				Set<Worker<?, ?>> workers) {
 			for (Worker<?, ?> w : workers) {
 				for (Worker<?, ?> succ : Workers.getSuccessors(w)) {
@@ -313,7 +313,7 @@ public interface ConnectionManager {
 		@Override
 		public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
 			Configuration.Builder cfgBuilder = Configuration.builder();
-			addChannelParameters(cfgBuilder, workers);
+			addConnectionParameters(cfgBuilder, workers);
 			return cfgBuilder.build();
 		}
 
