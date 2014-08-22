@@ -75,7 +75,10 @@ public class OnlineTuner implements Runnable {
 			while (manager.getStatus() != AppStatus.STOPPED) {
 				String cfgJson = tuner.readLine();
 				if (cfgJson == null)
+				{
+					System.err.println("OpenTuner closed unexpectly.");
 					break;
+				}
 
 				// At the end of the tuning, Opentuner will send "Completed"
 				// msg. This means no more tuning.
