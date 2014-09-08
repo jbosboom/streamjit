@@ -37,7 +37,7 @@ import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
  * @since May 05, 2014
  * 
  */
-public class AsynchronousTCPConnection implements Connection {
+public class AsyncTCPConnection implements Connection {
 	/**
 	 * Backed by {@link ByteBufferArrayOutputStream}.
 	 */
@@ -49,7 +49,7 @@ public class AsynchronousTCPConnection implements Connection {
 
 	private boolean isconnected = false;
 
-	public AsynchronousTCPConnection(AsynchronousSocketChannel asyncSktChannel) {
+	public AsyncTCPConnection(AsynchronousSocketChannel asyncSktChannel) {
 		this(asyncSktChannel, 5000);
 	}
 
@@ -59,7 +59,7 @@ public class AsynchronousTCPConnection implements Connection {
 	 *            reset the {@link ObjectOutputStream} after this no of sends.
 	 *            To avoid out of memory error.
 	 */
-	public AsynchronousTCPConnection(AsynchronousSocketChannel asyncSktChannel,
+	public AsyncTCPConnection(AsynchronousSocketChannel asyncSktChannel,
 			int resetCount) {
 		try {
 			this.asyncSktChannel = asyncSktChannel;
@@ -783,9 +783,9 @@ public class AsynchronousTCPConnection implements Connection {
 
 	public static class AsyncTCPBuffer extends AbstractWriteOnlyBuffer {
 
-		private final AsynchronousTCPConnection con;
+		private final AsyncTCPConnection con;
 
-		public AsyncTCPBuffer(AsynchronousTCPConnection con) {
+		public AsyncTCPBuffer(AsyncTCPConnection con) {
 			this.con = con;
 		}
 

@@ -85,7 +85,7 @@ public class ConnectionFactory {
 			return new TCPConnection(socket);
 	}
 
-	public static AsynchronousTCPConnection getAsyncConnection(int portNo)
+	public static AsyncTCPConnection getAsyncConnection(int portNo)
 			throws IOException {
 		AsynchronousServerSocketChannel ssc;
 		AsynchronousSocketChannel sc2;
@@ -103,6 +103,6 @@ public class ConnectionFactory {
 		}
 
 		ssc.close();
-		return new AsynchronousTCPConnection(sc2);
+		return new AsyncTCPConnection(sc2);
 	}
 }

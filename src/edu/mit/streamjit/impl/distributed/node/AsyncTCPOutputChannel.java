@@ -5,8 +5,8 @@ import java.io.IOException;
 import com.google.common.collect.ImmutableList;
 
 import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.distributed.common.AsynchronousTCPConnection;
-import edu.mit.streamjit.impl.distributed.common.AsynchronousTCPConnection.AsyncTCPBuffer;
+import edu.mit.streamjit.impl.distributed.common.AsyncTCPConnection;
+import edu.mit.streamjit.impl.distributed.common.AsyncTCPConnection.AsyncTCPBuffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
@@ -51,7 +51,7 @@ public class AsyncTCPOutputChannel implements BoundaryOutputChannel {
 					try {
 						con = conProvider.getConnection(conInfo);
 						buffer = new AsyncTCPBuffer(
-								(AsynchronousTCPConnection) con);
+								(AsyncTCPConnection) con);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
