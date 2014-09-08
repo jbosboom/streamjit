@@ -20,7 +20,7 @@ import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputC
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.AsyncTCPOutputChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
-import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
+import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
 
 /**
  * Uses {@link AsynchronousSocketChannel} from Java's NIO.2 to send data. This
@@ -770,7 +770,7 @@ public class AsyncTCPConnection implements Connection {
 		@Override
 		public BoundaryInputChannel inputChannel(Token t, int bufSize,
 				TCPConnectionProvider conProvider) {
-			return new TCPInputChannel(bufSize, conProvider, this,
+			return new BlockingInputChannel(bufSize, conProvider, this,
 					t.toString(), 0);
 		}
 

@@ -17,7 +17,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
-import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
+import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
 import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
 
 /**
@@ -258,7 +258,7 @@ public class TCPConnection implements Connection {
 		@Override
 		public BoundaryInputChannel inputChannel(Token t, int bufSize,
 				TCPConnectionProvider conProvider) {
-			return new TCPInputChannel(bufSize, conProvider, this,
+			return new BlockingInputChannel(bufSize, conProvider, this,
 					t.toString(), 0);
 		}
 

@@ -13,9 +13,9 @@ import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
-import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
+import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
 
-public class TailChannel extends TCPInputChannel {
+public class TailChannel extends BlockingInputChannel {
 
 	private final int skipCount;
 

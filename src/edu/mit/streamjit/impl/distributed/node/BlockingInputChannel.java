@@ -33,7 +33,7 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
  * @author Sumanan sumanan@mit.edu
  * @since May 29, 2013
  */
-public class TCPInputChannel implements BoundaryInputChannel {
+public class BlockingInputChannel implements BoundaryInputChannel {
 
 	private final FileWriter writer;
 
@@ -61,13 +61,13 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private ImmutableList<Object> unProcessedData;
 
-	public TCPInputChannel(int bufSize, TCPConnectionProvider conProvider,
+	public BlockingInputChannel(int bufSize, TCPConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this(new ConcurrentArrayBuffer(bufSize), conProvider, conInfo,
 				bufferTokenName, debugLevel);
 	}
 
-	public TCPInputChannel(Buffer buffer, TCPConnectionProvider conProvider,
+	public BlockingInputChannel(Buffer buffer, TCPConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this.buffer = buffer;
 		this.conProvider = conProvider;
