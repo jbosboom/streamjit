@@ -8,7 +8,7 @@ import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.AsyncTCPOutputChannel;
-import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
+import edu.mit.streamjit.impl.distributed.node.BlockingOutputChannel;
 
 /**
  * Head Channel is just a wrapper to TCPOutputChannel that skips
@@ -19,7 +19,7 @@ import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
  */
 public class HeadChannel {
 
-	public static class TCPHeadChannel extends TCPOutputChannel {
+	public static class TCPHeadChannel extends BlockingOutputChannel {
 
 		public TCPHeadChannel(Buffer buffer, TCPConnectionProvider conProvider,
 				ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {

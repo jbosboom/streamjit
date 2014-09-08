@@ -18,7 +18,7 @@ import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputCh
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
-import edu.mit.streamjit.impl.distributed.node.TCPOutputChannel;
+import edu.mit.streamjit.impl.distributed.node.BlockingOutputChannel;
 
 /**
  * TCPConnection is not thread safe.
@@ -265,7 +265,7 @@ public class TCPConnection implements Connection {
 		@Override
 		public BoundaryOutputChannel outputChannel(Token t, int bufSize,
 				TCPConnectionProvider conProvider) {
-			return new TCPOutputChannel(bufSize, conProvider, this,
+			return new BlockingOutputChannel(bufSize, conProvider, this,
 					t.toString(), 0);
 		}
 	}

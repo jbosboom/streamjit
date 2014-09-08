@@ -26,7 +26,7 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
  * @author Sumanan sumanan@mit.edu
  * @since May 29, 2013
  */
-public class TCPOutputChannel implements BoundaryOutputChannel {
+public class BlockingOutputChannel implements BoundaryOutputChannel {
 
 	private final FileWriter writer;
 
@@ -50,13 +50,13 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	protected ImmutableList<Object> unProcessedData;
 
-	public TCPOutputChannel(int bufSize, TCPConnectionProvider conProvider,
+	public BlockingOutputChannel(int bufSize, TCPConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this(new ConcurrentArrayBuffer(bufSize), conProvider, conInfo,
 				bufferTokenName, debugLevel);
 	}
 
-	public TCPOutputChannel(Buffer buffer, TCPConnectionProvider conProvider,
+	public BlockingOutputChannel(Buffer buffer, TCPConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this.buffer = buffer;
 		this.conProvider = conProvider;
