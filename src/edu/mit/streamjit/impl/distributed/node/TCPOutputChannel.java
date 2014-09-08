@@ -38,7 +38,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private final ConnectionInfo conInfo;
 
-	private Connection tcpConnection;
+	private Connection connection;
 
 	private final AtomicBoolean stopFlag;
 
@@ -83,7 +83,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private void closeConnection() throws IOException {
 		// tcpConnection.closeConnection();
-		tcpConnection.softClose();
+		connection.softClose();
 	}
 
 	@Override
@@ -91,9 +91,9 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 		return new Runnable() {
 			@Override
 			public void run() {
-				if (tcpConnection == null || !tcpConnection.isStillConnected()) {
+				if (connection == null || !connection.isStillConnected()) {
 					try {
-						tcpConnection = conProvider.getConnection(conInfo);
+						connection = conProvider.getConnection(conInfo);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -134,7 +134,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 		while (this.buffer.size() > 0 && !stopFlag.get()) {
 			try {
 				Object obj = buffer.read();
-				tcpConnection.writeObject(obj);
+				connection.writeObject(obj);
 				count++;
 
 				if (debugLevel == 3) {
@@ -179,7 +179,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 		while (this.buffer.size() > 0) {
 			try {
 				Object o = buffer.read();
-				tcpConnection.writeObject(o);
+				connection.writeObject(o);
 				count++;
 
 				if (debugLevel == 3) {
@@ -205,11 +205,11 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	private void reConnect() {
 		try {
-			this.tcpConnection.closeConnection();
+			this.connection.closeConnection();
 			while (!stopFlag.get()) {
 				System.out.println("TCPOutputChannel : Reconnecting...");
 				try {
-					this.tcpConnection = conProvider.getConnection(conInfo,
+					this.connection = conProvider.getConnection(conInfo,
 							1000);
 					return;
 				} catch (SocketTimeoutException stex) {
@@ -247,7 +247,7 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	@Override
 	public Connection getConnection() {
-		return tcpConnection;
+		return connection;
 	}
 
 	@Override

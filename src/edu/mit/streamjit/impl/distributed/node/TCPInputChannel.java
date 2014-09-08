@@ -47,7 +47,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private final ConnectionInfo conInfo;
 
-	private Connection tcpConnection;
+	private Connection connection;
 
 	private final AtomicInteger stopType;
 
@@ -104,9 +104,9 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		return new Runnable() {
 			@Override
 			public void run() {
-				if (tcpConnection == null || !tcpConnection.isStillConnected()) {
+				if (connection == null || !connection.isStillConnected()) {
 					try {
-						tcpConnection = conProvider.getConnection(conInfo);
+						connection = conProvider.getConnection(conInfo);
 					} catch (IOException e) {
 						// TODO: Need to handle this exception.
 						e.printStackTrace();
@@ -145,7 +145,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	public void receiveData() {
 		int bufFullCount = 0;
 		try {
-			Object obj = tcpConnection.readObject();
+			Object obj = connection.readObject();
 			if (obj == null) // [2014-03-15] Sometimes null is received.
 				return;
 			count++;
@@ -230,7 +230,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		do {
 			bufFullCount = 0;
 			try {
-				Object obj = tcpConnection.readObject();
+				Object obj = connection.readObject();
 				count++;
 
 				if (debugLevel == 2) {
@@ -308,7 +308,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		boolean hasData;
 		do {
 			try {
-				Object obj = tcpConnection.readObject();
+				Object obj = connection.readObject();
 				hasData = true;
 			} catch (ClassNotFoundException e) {
 				hasData = true;
@@ -328,8 +328,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		while (stopType.get() == 0) {
 			try {
 				System.out.println("TCPInputChannel : Reconnecting...");
-				this.tcpConnection.closeConnection();
-				tcpConnection = conProvider.getConnection(conInfo);
+				this.connection.closeConnection();
+				connection = conProvider.getConnection(conInfo);
 				return;
 			} catch (IOException e) {
 				try {
