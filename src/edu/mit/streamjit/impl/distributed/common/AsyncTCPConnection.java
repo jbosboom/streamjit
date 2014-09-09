@@ -17,10 +17,9 @@ import edu.mit.streamjit.impl.blob.AbstractWriteOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.AsyncOutputChannel;
-import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
  * Uses {@link AsynchronousSocketChannel} from Java's NIO.2 to send data. This

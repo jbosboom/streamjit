@@ -12,7 +12,7 @@ import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 
 /**
  * This is {@link BoundaryOutputChannel} over TCP. Reads data from the given

@@ -17,7 +17,7 @@ import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 
 /**
  * This is {@link BoundaryInputChannel} over TCP. Receive objects from TCP

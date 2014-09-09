@@ -11,8 +11,8 @@ import com.google.common.base.Stopwatch;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
 
 public class TailChannel extends BlockingInputChannel {

@@ -10,7 +10,7 @@ import edu.mit.streamjit.impl.distributed.common.AsyncTCPConnection.AsyncTCPBuff
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 
 public class AsyncOutputChannel implements BoundaryOutputChannel {
 

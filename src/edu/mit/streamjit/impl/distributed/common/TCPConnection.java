@@ -1,7 +1,5 @@
 package edu.mit.streamjit.impl.distributed.common;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectInputStream;
@@ -9,16 +7,13 @@ import java.io.ObjectOutputStream;
 import java.io.OptionalDataException;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.SocketTimeoutException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
-import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
 import edu.mit.streamjit.impl.distributed.node.BlockingOutputChannel;
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
  * TCPConnection is not thread safe.
@@ -267,86 +262,6 @@ public class TCPConnection implements Connection {
 				ConnectionProvider conProvider) {
 			return new BlockingOutputChannel(bufSize, conProvider, this,
 					t.toString(), 0);
-		}
-	}
-
-	/**
-	 * Keeps all opened {@link TCPConnection}s for a machine. Each machine
-	 * should have a single instance of this class and use this class to make
-	 * new connections.
-	 * 
-	 * <p>
-	 * TODO: Need to make this class singleton. I didn't do it now because in
-	 * current way, controller and a local {@link StreamNode} are running in a
-	 * same JVM. So first, local {@link StreamNode} should be made to run on a
-	 * different JVM and then make this class singleton.
-	 */
-	public static class ConnectionProvider {
-
-		private ConcurrentMap<ConnectionInfo, Connection> allConnections;
-
-		private final int myNodeID;
-
-		private final NetworkInfo networkInfo;
-
-		public ConnectionProvider(int myNodeID, NetworkInfo networkInfo) {
-			checkNotNull(networkInfo, "networkInfo is null");
-			this.myNodeID = myNodeID;
-			this.networkInfo = networkInfo;
-			this.allConnections = new ConcurrentHashMap<>();
-		}
-
-		/**
-		 * See {@link #getConnection(TCPConnectionInfo, int)}.
-		 * 
-		 * @param conInfo
-		 * @return
-		 * @throws IOException
-		 */
-		public Connection getConnection(ConnectionInfo conInfo)
-				throws IOException {
-			return getConnection(conInfo, 0);
-		}
-
-/**
-		 * If the connection corresponds to conInfo is already established
-		 * returns the connection. Try to make a new connection otherwise.
-		 *
-		 * @param conInfo - Information that uniquely identifies a {@link TCPConnection
-		 * @param timeOut - Time out only valid if making connection needs to be
-		 * 			done through a listener socket. i.e, conInfo.getSrcID() == myNodeID.
-		 * @return
-		 * @throws SocketTimeoutException
-		 * @throws IOException
-		 */
-		public Connection getConnection(ConnectionInfo conInfo, int timeOut)
-				throws SocketTimeoutException, IOException {
-			Connection con = allConnections.get(conInfo);
-			if (con != null) {
-				if (con.isStillConnected()) {
-					return con;
-				} else {
-					throw new AssertionError("con.closeConnection()");
-					// con.closeConnection();
-				}
-			}
-
-			con = conInfo.makeConnection(myNodeID, networkInfo, timeOut);
-			if (con == null)
-				throw new IOException("Connection making process failed.");
-
-			allConnections.put(conInfo, con);
-			return con;
-		}
-
-		public void closeAllConnections() {
-			for (Connection con : allConnections.values()) {
-				try {
-					con.closeConnection();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
 		}
 	}
 }
