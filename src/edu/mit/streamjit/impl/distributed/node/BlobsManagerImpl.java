@@ -39,7 +39,7 @@ import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.BufferManager.LocalBufferManager;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
@@ -67,7 +67,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private final BufferManager bufferManager;
 
-	private final TCPConnectionProvider conProvider;
+	private final ConnectionProvider conProvider;
 
 	/**
 	 * if true {@link DrainDeadLockHandler} will be used to unlock the draining
@@ -78,7 +78,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
 			Map<Token, ConnectionInfo> conInfoMap, StreamNode streamNode,
-			TCPConnectionProvider conProvider) {
+			ConnectionProvider conProvider) {
 		this.conInfoMap = conInfoMap;
 		this.streamNode = streamNode;
 		this.conProvider = conProvider;

@@ -6,7 +6,7 @@ import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.AsyncOutputChannel;
 import edu.mit.streamjit.impl.distributed.node.BlockingOutputChannel;
 
@@ -21,7 +21,7 @@ public class HeadChannel {
 
 	public static class TCPHeadChannel extends BlockingOutputChannel {
 
-		public TCPHeadChannel(Buffer buffer, TCPConnectionProvider conProvider,
+		public TCPHeadChannel(Buffer buffer, ConnectionProvider conProvider,
 				ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 			super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
 		}
@@ -38,7 +38,7 @@ public class HeadChannel {
 		private volatile boolean isFinal;
 
 		public AsyncHeadChannel(Buffer buffer,
-				TCPConnectionProvider conProvider, ConnectionInfo conInfo,
+				ConnectionProvider conProvider, ConnectionInfo conInfo,
 				String bufferTokenName, int debugLevel) {
 			super(conProvider, conInfo, bufferTokenName, debugLevel);
 			readBuffer = buffer;

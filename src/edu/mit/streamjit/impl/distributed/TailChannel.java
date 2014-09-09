@@ -12,7 +12,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
 
 public class TailChannel extends BlockingInputChannel {
@@ -47,7 +47,7 @@ public class TailChannel extends BlockingInputChannel {
 	 *            get this amount of outputs ( after skipping skipCount number
 	 *            of outputs at the beginning).
 	 */
-	public TailChannel(Buffer buffer, TCPConnectionProvider conProvider,
+	public TailChannel(Buffer buffer, ConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel,
 			int skipCount, int steadyCount) {
 		super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);

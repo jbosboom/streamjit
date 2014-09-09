@@ -17,7 +17,7 @@ import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
 
 /**
  * This is {@link BoundaryInputChannel} over TCP. Receive objects from TCP
@@ -43,7 +43,7 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 
 	private Buffer extraBuffer;
 
-	private final TCPConnectionProvider conProvider;
+	private final ConnectionProvider conProvider;
 
 	private final ConnectionInfo conInfo;
 
@@ -61,13 +61,13 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 
 	private ImmutableList<Object> unProcessedData;
 
-	public BlockingInputChannel(int bufSize, TCPConnectionProvider conProvider,
+	public BlockingInputChannel(int bufSize, ConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this(new ConcurrentArrayBuffer(bufSize), conProvider, conInfo,
 				bufferTokenName, debugLevel);
 	}
 
-	public BlockingInputChannel(Buffer buffer, TCPConnectionProvider conProvider,
+	public BlockingInputChannel(Buffer buffer, ConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this.buffer = buffer;
 		this.conProvider = conProvider;

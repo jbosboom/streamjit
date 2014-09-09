@@ -257,14 +257,14 @@ public class TCPConnection implements Connection {
 
 		@Override
 		public BoundaryInputChannel inputChannel(Token t, int bufSize,
-				TCPConnectionProvider conProvider) {
+				ConnectionProvider conProvider) {
 			return new BlockingInputChannel(bufSize, conProvider, this,
 					t.toString(), 0);
 		}
 
 		@Override
 		public BoundaryOutputChannel outputChannel(Token t, int bufSize,
-				TCPConnectionProvider conProvider) {
+				ConnectionProvider conProvider) {
 			return new BlockingOutputChannel(bufSize, conProvider, this,
 					t.toString(), 0);
 		}
@@ -281,7 +281,7 @@ public class TCPConnection implements Connection {
 	 * same JVM. So first, local {@link StreamNode} should be made to run on a
 	 * different JVM and then make this class singleton.
 	 */
-	public static class TCPConnectionProvider {
+	public static class ConnectionProvider {
 
 		private ConcurrentMap<ConnectionInfo, Connection> allConnections;
 
@@ -289,7 +289,7 @@ public class TCPConnection implements Connection {
 
 		private final NetworkInfo networkInfo;
 
-		public TCPConnectionProvider(int myNodeID, NetworkInfo networkInfo) {
+		public ConnectionProvider(int myNodeID, NetworkInfo networkInfo) {
 			checkNotNull(networkInfo, "networkInfo is null");
 			this.myNodeID = myNodeID;
 			this.networkInfo = networkInfo;

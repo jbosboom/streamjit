@@ -10,7 +10,7 @@ import edu.mit.streamjit.impl.distributed.common.AsyncTCPConnection.AsyncTCPBuff
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
 
 public class AsyncOutputChannel implements BoundaryOutputChannel {
 
@@ -18,7 +18,7 @@ public class AsyncOutputChannel implements BoundaryOutputChannel {
 
 	private final String name;
 
-	private final TCPConnectionProvider conProvider;
+	private final ConnectionProvider conProvider;
 
 	private final ConnectionInfo conInfo;
 
@@ -28,7 +28,7 @@ public class AsyncOutputChannel implements BoundaryOutputChannel {
 
 	private volatile boolean stopCalled;
 
-	public AsyncOutputChannel(TCPConnectionProvider conProvider,
+	public AsyncOutputChannel(ConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		name = "AsyncTCPOutputChannel " + bufferTokenName;
 		this.conProvider = conProvider;

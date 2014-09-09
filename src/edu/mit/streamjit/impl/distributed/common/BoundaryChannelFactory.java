@@ -5,7 +5,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.AsyncOutputChannel;
 import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
 import edu.mit.streamjit.impl.distributed.node.BlockingOutputChannel;
@@ -38,9 +38,9 @@ public interface BoundaryChannelFactory {
 			implements
 				BoundaryChannelFactory {
 
-		protected final TCPConnectionProvider conProvider;
+		protected final ConnectionProvider conProvider;
 
-		public TCPBoundaryChannelFactory(TCPConnectionProvider conProvider) {
+		public TCPBoundaryChannelFactory(ConnectionProvider conProvider) {
 			this.conProvider = conProvider;
 		}
 
@@ -80,7 +80,7 @@ public interface BoundaryChannelFactory {
 	 */
 	public class AsyncBoundaryChannelFactory extends TCPBoundaryChannelFactory {
 
-		public AsyncBoundaryChannelFactory(TCPConnectionProvider conProvider) {
+		public AsyncBoundaryChannelFactory(ConnectionProvider conProvider) {
 			super(conProvider);
 		}
 

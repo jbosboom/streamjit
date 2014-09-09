@@ -34,7 +34,7 @@ import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.NetworkInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
@@ -49,7 +49,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	private Configuration staticConfig = null;
 
-	private TCPConnectionProvider conProvider;
+	private ConnectionProvider conProvider;
 
 	public CfgStringProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
@@ -67,7 +67,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 				NetworkInfo networkInfo = new NetworkInfo(iNetAddressMap);
 
-				this.conProvider = new TCPConnectionProvider(
+				this.conProvider = new ConnectionProvider(
 						streamNode.getNodeID(), networkInfo);
 			} else
 				System.err

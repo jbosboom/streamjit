@@ -12,7 +12,7 @@ import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
 
 /**
  * This is {@link BoundaryOutputChannel} over TCP. Reads data from the given
@@ -34,7 +34,7 @@ public class BlockingOutputChannel implements BoundaryOutputChannel {
 
 	private final Buffer buffer;
 
-	private final TCPConnectionProvider conProvider;
+	private final ConnectionProvider conProvider;
 
 	private final ConnectionInfo conInfo;
 
@@ -50,13 +50,13 @@ public class BlockingOutputChannel implements BoundaryOutputChannel {
 
 	protected ImmutableList<Object> unProcessedData;
 
-	public BlockingOutputChannel(int bufSize, TCPConnectionProvider conProvider,
+	public BlockingOutputChannel(int bufSize, ConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this(new ConcurrentArrayBuffer(bufSize), conProvider, conInfo,
 				bufferTokenName, debugLevel);
 	}
 
-	public BlockingOutputChannel(Buffer buffer, TCPConnectionProvider conProvider,
+	public BlockingOutputChannel(Buffer buffer, ConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this.buffer = buffer;
 		this.conProvider = conProvider;

@@ -15,7 +15,7 @@ import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.NetworkInfo;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.TCPConnection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 
@@ -31,7 +31,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.Communic
  */
 public class Controller {
 
-	private TCPConnectionProvider conProvider;
+	private ConnectionProvider conProvider;
 
 	private CommunicationManager comManager;
 
@@ -116,7 +116,7 @@ public class Controller {
 		inetMap.put(controllerNodeID, comManager.getLocalAddress());
 		builder.putExtraData(GlobalConstants.INETADDRESS_MAP, inetMap);
 		NetworkInfo networkinfo = new NetworkInfo(inetMap);
-		this.conProvider = new TCPConnectionProvider(controllerNodeID,
+		this.conProvider = new ConnectionProvider(controllerNodeID,
 				networkinfo);
 		ConfigurationString json = new ConfigurationString(builder.build()
 				.toJson(), ConfigType.STATIC, null);
@@ -148,7 +148,7 @@ public class Controller {
 		}
 	}
 
-	public TCPConnectionProvider getConProvider() {
+	public ConnectionProvider getConProvider() {
 		return conProvider;
 	}
 
