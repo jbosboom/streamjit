@@ -6,7 +6,7 @@ import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputCh
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
-import edu.mit.streamjit.impl.distributed.node.AsyncTCPOutputChannel;
+import edu.mit.streamjit.impl.distributed.node.AsyncOutputChannel;
 import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
 import edu.mit.streamjit.impl.distributed.node.BlockingOutputChannel;
 
@@ -75,7 +75,7 @@ public interface BoundaryChannelFactory {
 
 	/**
 	 * Makes blocking {@link BlockingInputChannel} and asynchronous
-	 * {@link AsyncTCPOutputChannel}.
+	 * {@link AsyncOutputChannel}.
 	 * 
 	 */
 	public class AsyncBoundaryChannelFactory extends TCPBoundaryChannelFactory {
@@ -87,14 +87,14 @@ public interface BoundaryChannelFactory {
 		@Override
 		public BoundaryOutputChannel makeOutputChannel(Token t, Buffer buffer,
 				ConnectionInfo conInfo) {
-			return new AsyncTCPOutputChannel(conProvider, conInfo,
+			return new AsyncOutputChannel(conProvider, conInfo,
 					t.toString(), 0);
 		}
 
 		@Override
 		public BoundaryOutputChannel makeOutputChannel(Token t, int bufSize,
 				ConnectionInfo conInfo) {
-			return new AsyncTCPOutputChannel(conProvider, conInfo,
+			return new AsyncOutputChannel(conProvider, conInfo,
 					t.toString(), 0);
 		}
 	}

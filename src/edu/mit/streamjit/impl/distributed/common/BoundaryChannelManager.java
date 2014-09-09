@@ -10,7 +10,7 @@ import com.google.common.collect.ImmutableMap;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
-import edu.mit.streamjit.impl.distributed.node.AsyncTCPOutputChannel;
+import edu.mit.streamjit.impl.distributed.node.AsyncOutputChannel;
 
 /**
  * Manages set of {@link BoundaryChannel}s.
@@ -139,7 +139,7 @@ public interface BoundaryChannelManager {
 		public void waitToStart() {
 			for (Map.Entry<BoundaryOutputChannel, Thread> en : outputChannelThreads
 					.entrySet()) {
-				if (en.getKey() instanceof AsyncTCPOutputChannel) {
+				if (en.getKey() instanceof AsyncOutputChannel) {
 					try {
 						en.getValue().join();
 					} catch (InterruptedException e) {

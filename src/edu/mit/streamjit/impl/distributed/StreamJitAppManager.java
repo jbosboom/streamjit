@@ -180,7 +180,7 @@ public class StreamJitAppManager {
 					bufferMap.get(headToken), controller.getConProvider(),
 					headconInfo, "headChannel - " + headToken.toString(), 0);
 		else if (headconInfo instanceof AsyncTCPConnectionInfo)
-			headChannel = new HeadChannel.AsyncTCPHeadChannel(
+			headChannel = new HeadChannel.AsyncHeadChannel(
 					bufferMap.get(headToken), controller.getConProvider(),
 					headconInfo, "headChannel - " + headToken.toString(), 0);
 		else

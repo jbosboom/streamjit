@@ -18,7 +18,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
-import edu.mit.streamjit.impl.distributed.node.AsyncTCPOutputChannel;
+import edu.mit.streamjit.impl.distributed.node.AsyncOutputChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
 
@@ -777,7 +777,7 @@ public class AsyncTCPConnection implements Connection {
 		@Override
 		public BoundaryOutputChannel outputChannel(Token t, int bufSize,
 				TCPConnectionProvider conProvider) {
-			return new AsyncTCPOutputChannel(conProvider, this, t.toString(), 0);
+			return new AsyncOutputChannel(conProvider, this, t.toString(), 0);
 		}
 	}
 

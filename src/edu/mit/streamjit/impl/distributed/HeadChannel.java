@@ -7,7 +7,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
-import edu.mit.streamjit.impl.distributed.node.AsyncTCPOutputChannel;
+import edu.mit.streamjit.impl.distributed.node.AsyncOutputChannel;
 import edu.mit.streamjit.impl.distributed.node.BlockingOutputChannel;
 
 /**
@@ -31,13 +31,13 @@ public class HeadChannel {
 		}
 	}
 
-	public static class AsyncTCPHeadChannel extends AsyncTCPOutputChannel {
+	public static class AsyncHeadChannel extends AsyncOutputChannel {
 
 		final Buffer readBuffer;
 		private volatile boolean stopCalled;
 		private volatile boolean isFinal;
 
-		public AsyncTCPHeadChannel(Buffer buffer,
+		public AsyncHeadChannel(Buffer buffer,
 				TCPConnectionProvider conProvider, ConnectionInfo conInfo,
 				String bufferTokenName, int debugLevel) {
 			super(conProvider, conInfo, bufferTokenName, debugLevel);
