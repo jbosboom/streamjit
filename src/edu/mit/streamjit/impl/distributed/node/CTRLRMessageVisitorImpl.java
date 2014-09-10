@@ -8,7 +8,7 @@ import edu.mit.streamjit.impl.distributed.common.CTRLRMessageVisitor;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
-import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationProcessor;
 import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements;
 import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements.MiscCtrlElementProcessor;
 import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements.NewConInfo;
@@ -24,13 +24,13 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 
 	private final StreamNode streamNode;
 	private final RequestProcessor rp;
-	private final ConfigurationStringProcessor jp;
+	private final ConfigurationProcessor jp;
 	private final MiscCtrlElementProcessor miscProcessor;
 
 	public CTRLRMessageVisitorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 		this.rp = new RequestProcessorImpl();
-		this.jp = new CfgStringProcessorImpl(streamNode);
+		this.jp = new ConfigurationProcessorImpl(streamNode);
 		this.miscProcessor = new MiscCtrlElementProcessorImpl();
 	}
 

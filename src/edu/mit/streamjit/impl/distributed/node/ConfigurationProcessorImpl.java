@@ -29,7 +29,7 @@ import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter.BlobSpecifier;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
-import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationProcessor;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Error;
@@ -38,12 +38,12 @@ import edu.mit.streamjit.impl.distributed.common.NetworkInfo;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
- * {@link ConfigurationStringProcessor} at {@link StreamNode} side.
+ * {@link ConfigurationProcessor} at {@link StreamNode} side.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since May 27, 2013
  */
-public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
+public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 
 	private StreamNode streamNode;
 
@@ -51,7 +51,7 @@ public class CfgStringProcessorImpl implements ConfigurationStringProcessor {
 
 	private ConnectionProvider conProvider;
 
-	public CfgStringProcessorImpl(StreamNode streamNode) {
+	public ConfigurationProcessorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 	}
 
