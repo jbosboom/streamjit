@@ -188,6 +188,9 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		private boolean reqDrainData;
 
+		/**
+		 * Buffers for all input and output edges of the {@link #blob}.
+		 */
 		private ImmutableMap<Token, Buffer> bufferMap;
 
 		private BlobExecuter(Token t, Blob blob,
@@ -793,6 +796,23 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 	}
 
+	/**
+	 * Handles another type of deadlock which occurs when draining. A Down blob,
+	 * that has more than one upper blob, cannot progress because some of its
+	 * upper blobs are drained and hence no input on the corresponding input
+	 * channels, and other upper blobs blocked at their output channels as the
+	 * down blob is no more consuming data. So those non-drained upper blobs are
+	 * going to stuck forever at their output channels and the down blob will
+	 * not receive DODrain command from the controller.
+	 * 
+	 * This class just discard the buffer contents so that blocked blobs can
+	 * progress.
+	 * 
+	 * See the Deadlock 5.
+	 * 
+	 * @author sumanan
+	 * 
+	 */
 	private class DrainDeadLockHandler extends Thread {
 		final AtomicBoolean run;
 
