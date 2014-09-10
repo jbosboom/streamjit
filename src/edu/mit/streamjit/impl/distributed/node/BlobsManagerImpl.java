@@ -715,6 +715,14 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private static int count = 0;
 
+	/**
+	 * Profiles the buffer sizes in a timely manner and log that information
+	 * into a text file. This information may be useful to analyse and find out
+	 * deadlock situations.
+	 * 
+	 * @author sumanan
+	 * 
+	 */
 	private class MonitorBuffers extends Thread {
 		private final int id;
 		private final AtomicBoolean stopFlag;
