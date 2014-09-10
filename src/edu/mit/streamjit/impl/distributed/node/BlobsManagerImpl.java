@@ -55,7 +55,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private Map<Token, BlobExecuter> blobExecuters;
 	private final StreamNode streamNode;
-	private Map<Token, ConnectionInfo> conInfoMap;
+	private final Map<Token, ConnectionInfo> conInfoMap;
 
 	private MonitorBuffers monBufs;
 
