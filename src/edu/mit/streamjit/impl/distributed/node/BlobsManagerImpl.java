@@ -95,6 +95,7 @@ public class BlobsManagerImpl implements BlobsManager {
 	}
 
 	private void createBEs(ImmutableSet<Blob> blobSet) {
+		assert bufferManager.isbufferSizesReady() : "Buffer sizes must be available to create BlobExecuters.";
 		blobExecuters = new HashMap<>();
 		Set<Token> locaTokens = bufferManager.localTokens();
 		ImmutableMap<Token, Integer> bufferSizesMap = bufferManager
