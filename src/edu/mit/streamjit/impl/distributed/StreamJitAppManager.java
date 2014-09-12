@@ -42,27 +42,23 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 public class StreamJitAppManager {
 
-	private SNDrainProcessorImpl dp = null;
-
-	private SNExceptionProcessorImpl exP = null;
-
-	private ErrorProcessor ep = null;
+	private final StreamJitApp app;
 
 	private AppStatusProcessorImpl apStsPro = null;
 
-	private final Controller controller;
+	private final ConfigurationManager cfgManager;
+
+	private Map<Token, ConnectionInfo> conInfoMap;
 
 	private final ConnectionManager conManager;
 
-	private final StreamJitApp app;
+	private final Controller controller;
 
-	private final ConfigurationManager cfgManager;
+	private SNDrainProcessorImpl dp = null;
 
-	private final Token headToken;
+	private ErrorProcessor ep = null;
 
-	private final Token tailToken;
-
-	private boolean isRunning;
+	private SNExceptionProcessorImpl exP = null;
 
 	/**
 	 * A {@link BoundaryOutputChannel} for the head of the stream graph. If the
@@ -72,6 +68,14 @@ public class StreamJitAppManager {
 	 */
 	private BoundaryOutputChannel headChannel;
 
+	private Thread headThread;
+
+	private final Token headToken;
+
+	private boolean isRunning;
+
+	private volatile AppStatus status;
+
 	/**
 	 * A {@link BoundaryInputChannel} for the tail of the whole stream graph. If
 	 * the sink {@link Worker} happened to fall outside the {@link Controller},
@@ -80,13 +84,14 @@ public class StreamJitAppManager {
 	 */
 	private TailChannel tailChannel;
 
-	private Thread headThread;
-
 	private Thread tailThread;
 
-	private volatile AppStatus status;
+	private final Token tailToken;
 
-	private Map<Token, ConnectionInfo> conInfoMap;
+	/**
+	 * [2014-03-15] Just to measure the draining time
+	 */
+	AtomicReference<Stopwatch> stopwatchRef = new AtomicReference<>();
 
 	public StreamJitAppManager(Controller controller, StreamJitApp app,
 			ConfigurationManager cfgManager, ConnectionManager conManager) {
@@ -107,6 +112,100 @@ public class StreamJitAppManager {
 
 		headToken = Token.createOverallInputToken(app.source);
 		tailToken = Token.createOverallOutputToken(app.sink);
+	}
+
+	public AppStatusProcessor appStatusProcessor() {
+		return apStsPro;
+	}
+
+	public void drain(Token blobID, boolean isFinal) {
+		// System.out.println("Drain requested to blob " + blobID);
+		if (!app.blobtoMachineMap.containsKey(blobID))
+			throw new IllegalArgumentException(blobID
+					+ " not found in the blobtoMachineMap");
+		int nodeID = app.blobtoMachineMap.get(blobID);
+		controller
+				.send(nodeID, new CTRLRDrainElement.DoDrain(blobID, !isFinal));
+	}
+
+	public void drainingFinished(boolean isFinal) {
+		System.out.println("App Manager : Draining Finished...");
+
+		if (headChannel != null) {
+			try {
+				headThread.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+
+		if (tailChannel != null) {
+			if (isFinal)
+				tailChannel.stop(1);
+			else if (GlobalConstants.useDrainData)
+				tailChannel.stop(2);
+			else
+				tailChannel.stop(3);
+			try {
+				tailThread.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+
+		if (isFinal)
+			stop();
+
+		isRunning = false;
+
+		Stopwatch sw = stopwatchRef.get();
+		if (sw != null) {
+			sw.stop();
+			long time = sw.elapsed(TimeUnit.MILLISECONDS);
+			System.out.println("Draining time is " + time + " milli seconds");
+		}
+	}
+
+	public void drainingStarted(boolean isFinal) {
+		stopwatchRef.set(Stopwatch.createStarted());
+		if (headChannel != null) {
+			headChannel.stop(isFinal);
+			// [2014-03-16] Moved to drainingFinished. In any case if headThread
+			// blocked at tcp write, draining will also blocked.
+			// try {
+			// headThread.join();
+			// } catch (InterruptedException e) {
+			// e.printStackTrace();
+			// }
+		}
+	}
+
+	public SNDrainProcessor drainProcessor() {
+		return dp;
+	}
+
+	public ErrorProcessor errorProcessor() {
+		return ep;
+	}
+
+	public SNExceptionProcessor exceptionProcessor() {
+		return exP;
+	}
+
+	public long getFixedOutputTime() throws InterruptedException {
+		long time = tailChannel.getFixedOutputTime();
+		if (apStsPro.error) {
+			return -1l;
+		}
+		return time;
+	}
+
+	public AppStatus getStatus() {
+		return status;
+	}
+
+	public boolean isRunning() {
+		return isRunning;
 	}
 
 	public boolean reconfigure(int multiplier) {
@@ -154,6 +253,23 @@ public class StreamJitAppManager {
 		System.out.println("##############################################");
 
 		return isRunning;
+	}
+
+	public void setDrainer(AbstractDrainer drainer) {
+		assert dp == null : "SNDrainProcessor has already been set";
+		this.dp = new SNDrainProcessorImpl(drainer);
+	}
+
+	public void stop() {
+		this.status = AppStatus.STOPPED;
+		tailChannel.releaseAll();
+		controller.closeAll();
+		dp.drainer.stop();
+	}
+
+	private void reset() {
+		exP.exConInfos = new HashSet<>();
+		apStsPro.reset();
 	}
 
 	/**
@@ -226,120 +342,99 @@ public class StreamJitAppManager {
 		}
 	}
 
-	public boolean isRunning() {
-		return isRunning;
+	/**
+	 * {@link AppStatusProcessor} at {@link Controller} side.
+	 * 
+	 * @author Sumanan sumanan@mit.edu
+	 * @since Aug 11, 2013
+	 */
+	private class AppStatusProcessorImpl implements AppStatusProcessor {
+
+		private boolean compilationError;
+
+		private CountDownLatch compileLatch;
+
+		private volatile boolean error;
+
+		private final int noOfnodes;
+
+		private AppStatusProcessorImpl(int noOfnodes) {
+			this.noOfnodes = noOfnodes;
+		}
+
+		@Override
+		public void processCOMPILATION_ERROR() {
+			System.err.println("Compilation error");
+			this.compilationError = true;
+			compileLatch.countDown();
+		}
+
+		@Override
+		public void processCOMPILED() {
+			compileLatch.countDown();
+		}
+
+		@Override
+		public void processERROR() {
+			this.error = true;
+			// This will release the OpenTuner thread which is waiting for fixed
+			// output.
+			tailChannel.releaseAll();
+		}
+
+		@Override
+		public void processNO_APP() {
+		}
+
+		@Override
+		public void processNOT_STARTED() {
+		}
+
+		@Override
+		public void processRUNNING() {
+		}
+
+		@Override
+		public void processSTOPPED() {
+		}
+
+		private void reset() {
+			compileLatch = new CountDownLatch(noOfnodes);
+			this.compilationError = false;
+			this.error = false;
+		}
+
+		private boolean waitForCompilation() {
+			try {
+				compileLatch.await();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			return !this.compilationError;
+		}
 	}
 
 	/**
-	 * [2014-03-15] Just to measure the draining time
+	 * {@link ErrorProcessor} at {@link Controller} side.
+	 * 
+	 * @author Sumanan sumanan@mit.edu
+	 * @since Aug 11, 2013
 	 */
-	AtomicReference<Stopwatch> stopwatchRef = new AtomicReference<>();
+	private class ErrorProcessorImpl implements ErrorProcessor {
 
-	public void drainingStarted(boolean isFinal) {
-		stopwatchRef.set(Stopwatch.createStarted());
-		if (headChannel != null) {
-			headChannel.stop(isFinal);
-			// [2014-03-16] Moved to drainingFinished. In any case if headThread
-			// blocked at tcp write, draining will also blocked.
-			// try {
-			// headThread.join();
-			// } catch (InterruptedException e) {
-			// e.printStackTrace();
-			// }
-		}
-	}
-
-	public void drain(Token blobID, boolean isFinal) {
-		// System.out.println("Drain requested to blob " + blobID);
-		if (!app.blobtoMachineMap.containsKey(blobID))
-			throw new IllegalArgumentException(blobID
-					+ " not found in the blobtoMachineMap");
-		int nodeID = app.blobtoMachineMap.get(blobID);
-		controller
-				.send(nodeID, new CTRLRDrainElement.DoDrain(blobID, !isFinal));
-	}
-
-	public void drainingFinished(boolean isFinal) {
-		System.out.println("App Manager : Draining Finished...");
-
-		if (headChannel != null) {
-			try {
-				headThread.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-
-		if (tailChannel != null) {
-			if (isFinal)
-				tailChannel.stop(1);
-			else if (GlobalConstants.useDrainData)
-				tailChannel.stop(2);
-			else
-				tailChannel.stop(3);
-			try {
-				tailThread.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-
-		if (isFinal)
+		@Override
+		public void processFILE_NOT_FOUND() {
+			System.err
+					.println("No application jar file in streamNode. Terminating...");
 			stop();
-
-		isRunning = false;
-
-		Stopwatch sw = stopwatchRef.get();
-		if (sw != null) {
-			sw.stop();
-			long time = sw.elapsed(TimeUnit.MILLISECONDS);
-			System.out.println("Draining time is " + time + " milli seconds");
 		}
-	}
 
-	public long getFixedOutputTime() throws InterruptedException {
-		long time = tailChannel.getFixedOutputTime();
-		if (apStsPro.error) {
-			return -1l;
+		@Override
+		public void processWORKER_NOT_FOUND() {
+			System.err
+					.println("No top level class in the jar file. Terminating...");
+			stop();
 		}
-		return time;
-	}
-
-	public void setDrainer(AbstractDrainer drainer) {
-		assert dp == null : "SNDrainProcessor has already been set";
-		this.dp = new SNDrainProcessorImpl(drainer);
-	}
-
-	public SNDrainProcessor drainProcessor() {
-		return dp;
-	}
-
-	public SNExceptionProcessor exceptionProcessor() {
-		return exP;
-	}
-
-	public ErrorProcessor errorProcessor() {
-		return ep;
-	}
-
-	public AppStatusProcessor appStatusProcessor() {
-		return apStsPro;
-	}
-
-	public AppStatus getStatus() {
-		return status;
-	}
-
-	private void reset() {
-		exP.exConInfos = new HashSet<>();
-		apStsPro.reset();
-	}
-
-	public void stop() {
-		this.status = AppStatus.STOPPED;
-		tailChannel.releaseAll();
-		controller.closeAll();
-		dp.drainer.stop();
 	}
 
 	/**
@@ -379,10 +474,6 @@ public class StreamJitAppManager {
 		}
 
 		@Override
-		public void process(SNException ex) {
-		}
-
-		@Override
 		public void process(AddressBindException abEx) {
 			synchronized (abExLock) {
 				if (exConInfos.contains(abEx.conInfo)) {
@@ -415,100 +506,9 @@ public class StreamJitAppManager {
 				controller.send(coninfo.getDstID(), msg);
 			}
 		}
-	}
-
-	/**
-	 * {@link ErrorProcessor} at {@link Controller} side.
-	 * 
-	 * @author Sumanan sumanan@mit.edu
-	 * @since Aug 11, 2013
-	 */
-	private class ErrorProcessorImpl implements ErrorProcessor {
 
 		@Override
-		public void processFILE_NOT_FOUND() {
-			System.err
-					.println("No application jar file in streamNode. Terminating...");
-			stop();
-		}
-
-		@Override
-		public void processWORKER_NOT_FOUND() {
-			System.err
-					.println("No top level class in the jar file. Terminating...");
-			stop();
-		}
-	}
-
-	/**
-	 * {@link AppStatusProcessor} at {@link Controller} side.
-	 * 
-	 * @author Sumanan sumanan@mit.edu
-	 * @since Aug 11, 2013
-	 */
-	private class AppStatusProcessorImpl implements AppStatusProcessor {
-
-		private CountDownLatch compileLatch;
-
-		private boolean compilationError;
-
-		private volatile boolean error;
-
-		private final int noOfnodes;
-
-		private AppStatusProcessorImpl(int noOfnodes) {
-			this.noOfnodes = noOfnodes;
-		}
-
-		@Override
-		public void processRUNNING() {
-		}
-
-		@Override
-		public void processSTOPPED() {
-		}
-
-		@Override
-		public void processERROR() {
-			this.error = true;
-			// This will release the OpenTuner thread which is waiting for fixed
-			// output.
-			tailChannel.releaseAll();
-		}
-
-		@Override
-		public void processNOT_STARTED() {
-		}
-
-		@Override
-		public void processNO_APP() {
-		}
-
-		@Override
-		public void processCOMPILED() {
-			compileLatch.countDown();
-		}
-
-		@Override
-		public void processCOMPILATION_ERROR() {
-			System.err.println("Compilation error");
-			this.compilationError = true;
-			compileLatch.countDown();
-		}
-
-		private void reset() {
-			compileLatch = new CountDownLatch(noOfnodes);
-			this.compilationError = false;
-			this.error = false;
-		}
-
-		private boolean waitForCompilation() {
-			try {
-				compileLatch.await();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-			return !this.compilationError;
+		public void process(SNException ex) {
 		}
 	}
 }
