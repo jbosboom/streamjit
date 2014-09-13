@@ -20,6 +20,7 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
@@ -34,6 +35,7 @@ import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainPro
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DoDrain;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainDataRequest;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
+import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
@@ -309,6 +311,22 @@ public class BlobsManagerImpl implements BlobsManager {
 			return blobID;
 		}
 
+		/**
+		 * Gets buffer from {@link BoundaryChannel}s and builds bufferMap. The
+		 * bufferMap will contain all input and output edges of the
+		 * {@link #blob}.
+		 * 
+		 * Note that, Some {@link BoundaryChannel}s (e.g.,
+		 * {@link AsyncOutputChannel}) create {@link Buffer}s after establishing
+		 * {@link Connection} with other end. So this method must be called
+		 * after establishing all IO connections.
+		 * {@link InputChannelManager#waitToStart()} and
+		 * {@link OutputChannelManager#waitToStart()} ensure that the IO
+		 * connections are successfully established.
+		 * 
+		 * @return Buffer map which contains {@link Buffers} for all input and
+		 *         output edges of the {@link #blob}.
+		 */
 		private ImmutableMap<Token, Buffer> buildBufferMap() {
 			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
 					.builder();
