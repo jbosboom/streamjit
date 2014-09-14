@@ -80,7 +80,10 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 		this.isClosed = false;
 		this.stopType = new AtomicInteger(0);
 		count = 0;
+		writer = fileWriter();
+	}
 
+	private FileWriter fileWriter() {
 		FileWriter w = null;
 		if (this.debugLevel == 5) {
 			try {
@@ -91,7 +94,7 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 				e.printStackTrace();
 			}
 		}
-		writer = w;
+		return w;
 	}
 
 	private void closeConnection() throws IOException {

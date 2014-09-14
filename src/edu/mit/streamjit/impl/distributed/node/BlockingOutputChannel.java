@@ -67,7 +67,10 @@ public class BlockingOutputChannel implements BoundaryOutputChannel {
 		this.debugLevel = debugLevel;
 		this.unProcessedData = null;
 		count = 0;
+		writer = fileWriter();
+	}
 
+	private FileWriter fileWriter() {
 		FileWriter w = null;
 		if (this.debugLevel == 5) {
 			try {
@@ -78,7 +81,7 @@ public class BlockingOutputChannel implements BoundaryOutputChannel {
 				e.printStackTrace();
 			}
 		}
-		writer = w;
+		return w;
 	}
 
 	private void closeConnection() throws IOException {
