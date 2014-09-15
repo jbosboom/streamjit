@@ -789,25 +789,12 @@ public class BlobsManagerImpl implements BlobsManager {
 						areAllDrained = false;
 						for (Token t : be.blob.getOutputs()) {
 							Buffer b = be.bufferMap.get(t);
-							int size = b.size();
-							if (size == 0)
-								continue;
-							System.out.println(String.format(
-									"Buffer %s has %d data. Going to clean it",
-									t.toString(), size));
-							Object[] obArray = new Object[size];
-							b.readAll(obArray);
+							clean(b, t);
 						}
+
 						for (Token t : be.blob.getInputs()) {
 							Buffer b = be.bufferMap.get(t);
-							int size = b.size();
-							if (size == 0)
-								continue;
-							System.out.println(String.format(
-									"Buffer %s has %d data. Going to clean it",
-									t.toString(), size));
-							Object[] obArray = new Object[size];
-							b.readAll(obArray);
+							clean(b, t);
 						}
 					}
 				}
@@ -815,6 +802,17 @@ public class BlobsManagerImpl implements BlobsManager {
 				if (areAllDrained)
 					break;
 			}
+		}
+
+		private void clean(Buffer b, Token t) {
+			int size = b.size();
+			if (size == 0)
+				return;
+			System.out.println(String.format(
+					"Buffer %s has %d data. Going to clean it", t.toString(),
+					size));
+			Object[] obArray = new Object[size];
+			b.readAll(obArray);
 		}
 
 		public void stopit() {
