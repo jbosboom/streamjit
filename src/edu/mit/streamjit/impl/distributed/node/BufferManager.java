@@ -132,7 +132,7 @@ public interface BufferManager {
 			return localBufferMap;
 		}
 
-		protected final void createLocaBuffers() {
+		protected final void createLocalBuffers() {
 			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
 					.<Token, Buffer> builder();
 			for (Token t : localTokens) {
@@ -155,7 +155,7 @@ public interface BufferManager {
 		@Override
 		public void initialise() {
 			bufferSizes = calculateBufferSizes(blobSet);
-			createLocaBuffers();
+			createLocalBuffers();
 			isbufferSizesReady = true;
 		}
 
