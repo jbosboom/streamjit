@@ -782,26 +782,37 @@ public class BlobsManagerImpl implements BlobsManager {
 			boolean areAllDrained = false;
 
 			while (run.get()) {
-				areAllDrained = true;
-				for (BlobExecuter be : blobExecuters.values()) {
-					if (be.drainState == 1 || be.drainState == 2) {
-						// System.out.println(be.blobID + " is not drained");
-						areAllDrained = false;
-						for (Token t : be.blob.getOutputs()) {
-							Buffer b = be.bufferMap.get(t);
-							clean(b, t);
-						}
-
-						for (Token t : be.blob.getInputs()) {
-							Buffer b = be.bufferMap.get(t);
-							clean(b, t);
-						}
-					}
-				}
-
+				areAllDrained = cleanAllBuffers();
 				if (areAllDrained)
 					break;
 			}
+		}
+
+		/**
+		 * Go through all blocked blobs and clean all input and output buffers.
+		 * This method is useful when we don't care about the drain data.
+		 * 
+		 * @return true iff there is no blocked blobs, i.e., all blobs have
+		 *         completed the draining.
+		 */
+		private boolean cleanAllBuffers() {
+			boolean areAllDrained = true;
+			for (BlobExecuter be : blobExecuters.values()) {
+				if (be.drainState == 1 || be.drainState == 2) {
+					// System.out.println(be.blobID + " is not drained");
+					areAllDrained = false;
+					for (Token t : be.blob.getOutputs()) {
+						Buffer b = be.bufferMap.get(t);
+						clean(b, t);
+					}
+
+					for (Token t : be.blob.getInputs()) {
+						Buffer b = be.bufferMap.get(t);
+						clean(b, t);
+					}
+				}
+			}
+			return areAllDrained;
 		}
 
 		private void clean(Buffer b, Token t) {
