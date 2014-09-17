@@ -479,9 +479,14 @@ public class BlobsManagerImpl implements BlobsManager {
 
 			ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
 			ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
-
 			ImmutableMap<Token, BoundaryInputChannel> inputChannels = inChnlManager
 					.inputChannelsMap();
+
+			// In a proper system the following line should be called inside
+			// doDrain(), just after inChnlManager.stop(). Read the comment
+			// in doDrain().
+			inChnlManager.waitToStop();
+
 			for (Token t : blob.getInputs()) {
 				if (inputChannels.containsKey(t)) {
 					BoundaryChannel chanl = inputChannels.get(t);
