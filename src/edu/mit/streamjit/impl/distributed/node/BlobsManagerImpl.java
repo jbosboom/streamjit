@@ -121,21 +121,8 @@ public class BlobsManagerImpl implements BlobsManager {
 	}
 
 	public void reqDrainedData(Set<Token> blobSet) {
-		// ImmutableMap.Builder<Token, DrainData> builder = new
-		// ImmutableMap.Builder<>();
-		// for (BlobExecuter be : blobExecuters) {
-		// if (be.isDrained) {
-		// builder.put(be.blobID, be.blob.getDrainData());
-		// }
-		// }
-		//
-		// try {
-		// streamNode.controllerConnection
-		// .writeObject(new SNDrainElement.DrainedData(builder.build()));
-		// } catch (IOException e) {
-		// // TODO Auto-generated catch block
-		// e.printStackTrace();
-		// }
+		throw new UnsupportedOperationException(
+				"Method reqDrainedData not implemented");
 	}
 
 	/**
@@ -383,18 +370,10 @@ public class BlobsManagerImpl implements BlobsManager {
 				stopType = 3;
 
 			inChnlManager.stop(stopType);
-			// inChnlManager.waitToStop();
-
 			// TODO: [2014-03-14] I commented following lines to avoid one dead
 			// lock case when draining. Deadlock 5 and 6.
-			// for (Thread t : inputChannelThreads) {
-			// try {
-			// t.join();
-			// } catch (InterruptedException e) {
-			// e.printStackTrace();
-			// }
-			// }
-			// System.out.println("Blob " + blobID + "Input thread's joined");
+			// inChnlManager.waitToStop();
+
 			if (this.blob != null) {
 				DrainCallback dcb = new DrainCallback(this);
 				drainState = 2;
