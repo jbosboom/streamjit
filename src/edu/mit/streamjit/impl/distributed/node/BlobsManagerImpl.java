@@ -370,9 +370,11 @@ public class BlobsManagerImpl implements BlobsManager {
 				stopType = 3;
 
 			inChnlManager.stop(stopType);
-			// TODO: [2014-03-14] I commented following lines to avoid one dead
+			// TODO: [2014-03-14] I commented following line to avoid one dead
 			// lock case when draining. Deadlock 5 and 6.
-			// inChnlManager.waitToStop();
+			// [2014-09-17] Lets waitToStop() if drain data is required.
+			if (stopType != 3)
+				inChnlManager.waitToStop();
 
 			if (this.blob != null) {
 				DrainCallback dcb = new DrainCallback(this);
