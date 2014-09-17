@@ -27,7 +27,7 @@ public class TailChannel extends BlockingInputChannel {
 
 	private volatile CountDownLatch skipLatch;
 
-	private performanceLogger pLogger = null;
+	private PerformanceLogger pLogger = null;
 
 	private boolean skipLatchUp;
 
@@ -58,7 +58,7 @@ public class TailChannel extends BlockingInputChannel {
 		skipLatch = new CountDownLatch(1);
 		this.skipLatchUp = true;
 		if (GlobalConstants.tune == 0) {
-			pLogger = new performanceLogger();
+			pLogger = new PerformanceLogger();
 			pLogger.start();
 		}
 	}
@@ -131,11 +131,11 @@ public class TailChannel extends BlockingInputChannel {
 		count = 0;
 	}
 
-	private class performanceLogger extends Thread {
+	private class PerformanceLogger extends Thread {
 
 		private AtomicBoolean stopFlag;
 
-		private performanceLogger() {
+		private PerformanceLogger() {
 			stopFlag = new AtomicBoolean(false);
 		}
 
@@ -148,6 +148,9 @@ public class TailChannel extends BlockingInputChannel {
 				e1.printStackTrace();
 				return;
 			}
+
+			writeInitialInfo(writer);
+
 			while (++i < 10 && !stopFlag.get()) {
 				try {
 					Long time = getFixedOutputTime();
@@ -166,6 +169,25 @@ public class TailChannel extends BlockingInputChannel {
 			}
 			try {
 				writer.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+			System.out.println("PerformanceLogger exits. App will run till "
+					+ "inputdata exhausted.");
+		}
+
+		private void writeInitialInfo(FileWriter writer) {
+			System.out.println(String.format(
+					"PerformanceLogger starts to log the time to"
+							+ " produce %d number of outputs",
+					GlobalConstants.outputCount));
+
+			try {
+				writer.write(String.format("GlobalConstants.outputCount = %d",
+						GlobalConstants.outputCount));
+				writer.write('\n');
+				writer.flush();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
