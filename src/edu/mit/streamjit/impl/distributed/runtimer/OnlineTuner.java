@@ -127,6 +127,12 @@ public class OnlineTuner implements Runnable {
 				app.name));
 		evaluateConfig(handCfg, "Handtuned configuration");
 
+		try {
+			drainer.dumpDraindataStatistics();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
 		terminate();
 	}
 
