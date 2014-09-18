@@ -144,6 +144,10 @@ public class OnlineTuner implements Runnable {
 	 */
 	private Pair<Boolean, Long> reconfigure(Configuration config) {
 		long time;
+
+		if (manager.getStatus() == AppStatus.STOPPED)
+			return new Pair<Boolean, Long>(false, 0l);
+
 		try {
 			if (!cfgManager.newConfiguration(config)) {
 				return new Pair<Boolean, Long>(true, -1l);
