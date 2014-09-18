@@ -208,7 +208,8 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		public void close() {
 			try {
 				SNAgent.stopRequest();
-				connection.writeObject(Request.EXIT);
+				if (connection.isStillConnected())
+					connection.writeObject(Request.EXIT);
 				connection.closeConnection();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
