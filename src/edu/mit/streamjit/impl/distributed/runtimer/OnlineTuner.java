@@ -74,8 +74,7 @@ public class OnlineTuner implements Runnable {
 			System.out.println("New tune run.............");
 			while (manager.getStatus() != AppStatus.STOPPED) {
 				String cfgJson = tuner.readLine();
-				if (cfgJson == null)
-				{
+				if (cfgJson == null) {
 					System.err.println("OpenTuner closed unexpectly.");
 					break;
 				}
@@ -128,11 +127,7 @@ public class OnlineTuner implements Runnable {
 				app.name));
 		evaluateConfig(handCfg, "Handtuned configuration");
 
-		if (manager.isRunning()) {
-			drainer.startDraining(1);
-		} else {
-			manager.stop();
-		}
+		terminate();
 	}
 
 	/**
