@@ -124,47 +124,13 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			Input<I> input, Output<O> output) {
 		Pair<Worker<I, ?>, Worker<?, O>> srcSink = visit(stream);
 		Controller controller = establishController();
-
 		StreamJitApp app = new StreamJitApp(stream, srcSink.first,
 				srcSink.second);
 		ConfigurationManager cfgManager = new HotSpotTuning(app);
 		ConnectionManager conManager = new ConnectionManager.BlockingTCPNoParams(
 				controller.controllerNodeID);
-		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManager,
-				Math.max(noOfnodes - 1, 1));
-		this.cfg = bf.getDefaultConfiguration(Workers
-				.getAllWorkersInGraph(srcSink.first));
-
-		if (GlobalConstants.tune == 0) {
-			Configuration cfg1 = readConfiguration(stream.getClass()
-					.getSimpleName());
-			if (cfg1 == null) {
-				controller.closeAll();
-				throw new IllegalConfigurationException();
-			} else if (!this.cfg.getParametersMap().keySet()
-					.equals(cfg1.getParametersMap().keySet())) {
-				System.err
-						.println("Reading the configuration from configuration file");
-				System.err
-						.println("No matching between parameters in the read configuration and parameters in the default configuration");
-				controller.closeAll();
-				throw new IllegalConfigurationException();
-			}
-			this.cfg = cfg1;
-		}
-
-		if (cfg == null) {
-			System.err
-					.println("Configuration is null. Runs the app with horizontal partitioning.");
-			Integer[] machineIds = new Integer[this.noOfnodes - 1];
-			for (int i = 0; i < machineIds.length; i++) {
-				machineIds[i] = i + 1;
-			}
-			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
-					machineIds, stream, srcSink.first, srcSink.second);
-			app.newPartitionMap(partitionsMachineMap);
-		} else
-			cfgManager.newConfiguration(cfg);
+		setConfiguration(controller, srcSink, stream, app, cfgManager,
+				conManager);
 
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
 		// context.
@@ -300,6 +266,47 @@ public class DistributedStreamCompiler implements StreamCompiler {
 					"File reader error. No %s configuration file.", name));
 		}
 		return null;
+	}
+
+	private <I, O> void setConfiguration(Controller controller,
+			Pair<Worker<I, ?>, Worker<?, O>> srcSink,
+			OneToOneElement<I, O> stream, StreamJitApp app,
+			ConfigurationManager cfgManager, ConnectionManager conManager) {
+		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManager,
+				Math.max(noOfnodes - 1, 1));
+		this.cfg = bf.getDefaultConfiguration(Workers
+				.getAllWorkersInGraph(srcSink.first));
+		if (GlobalConstants.tune == 0) {
+			Configuration cfg1 = readConfiguration(stream.getClass()
+					.getSimpleName());
+			if (cfg1 == null) {
+				controller.closeAll();
+				throw new IllegalConfigurationException();
+			} else if (!this.cfg.getParametersMap().keySet()
+					.equals(cfg1.getParametersMap().keySet())) {
+				System.err
+						.println("Reading the configuration from configuration file");
+				System.err
+						.println("No matching between parameters in the read "
+								+ "configuration and parameters in the default configuration");
+				controller.closeAll();
+				throw new IllegalConfigurationException();
+			}
+			this.cfg = cfg1;
+		}
+
+		if (cfg == null) {
+			System.err
+					.println("Configuration is null. Runs the app with horizontal partitioning.");
+			Integer[] machineIds = new Integer[this.noOfnodes - 1];
+			for (int i = 0; i < machineIds.length; i++) {
+				machineIds[i] = i + 1;
+			}
+			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
+					machineIds, stream, srcSink.first, srcSink.second);
+			app.newPartitionMap(partitionsMachineMap);
+		} else
+			cfgManager.newConfiguration(cfg);
 	}
 
 	private <I, O> Pair<Worker<I, ?>, Worker<?, O>> visit(
