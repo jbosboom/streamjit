@@ -76,6 +76,13 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	private int noOfnodes;
 
 	/**
+	 * Run the whole application on the controller node.
+	 */
+	public DistributedStreamCompiler() {
+		this(1);
+	}
+
+	/**
 	 * @param noOfnodes
 	 *            : Total number of nodes the stream application intended to run
 	 *            - including controller node. If it is 1 then it means the
@@ -85,13 +92,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		if (noOfnodes < 1)
 			throw new IllegalArgumentException("noOfnodes must be 1 or greater");
 		this.noOfnodes = noOfnodes;
-	}
-
-	/**
-	 * Run the whole application on the controller node.
-	 */
-	public DistributedStreamCompiler() {
-		this(1);
 	}
 
 	/**
@@ -233,18 +233,25 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		return cs;
 	}
 
-	private Configuration readConfiguration(String simpeName) {
-		String name = String.format("%s.cfg", simpeName);
-		try {
-			BufferedReader reader = new BufferedReader(new FileReader(name));
-			String json = reader.readLine();
-			reader.close();
-			return Configuration.fromJson(json);
-		} catch (Exception ex) {
-			System.err.println(String.format(
-					"File reader error. No %s configuration file.", name));
+	/**
+	 * TODO: Need to check for other default subtypes of {@link OneToOneElement}
+	 * s. Now only checks for first generation children.
+	 * 
+	 * @param stream
+	 * @throws StreamCompilationFailedException
+	 *             if stream is default subtype of OneToOneElement
+	 */
+	private <I, O> void checkforDefaultOneToOneElement(
+			OneToOneElement<I, O> stream) {
+
+		if (stream.getClass() == Pipeline.class
+				|| stream.getClass() == Splitjoin.class
+				|| stream.getClass() == Filter.class) {
+			throw new StreamCompilationFailedException(
+					"Default subtypes of OneToOneElement are not accepted for"
+							+ " compilation by this compiler. OneToOneElement"
+							+ " that passed should be unique");
 		}
-		return null;
 	}
 
 	private <I, O> Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
@@ -274,23 +281,18 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		return partitionsMachineMap;
 	}
 
-	/**
-	 * TODO: Need to check for other default subtypes of {@link OneToOneElement}
-	 * s. Now only checks for first generation children.
-	 * 
-	 * @param stream
-	 * @throws StreamCompilationFailedException
-	 *             if stream is default subtype of OneToOneElement
-	 */
-	private <I, O> void checkforDefaultOneToOneElement(
-			OneToOneElement<I, O> stream) {
-
-		if (stream.getClass() == Pipeline.class
-				|| stream.getClass() == Splitjoin.class
-				|| stream.getClass() == Filter.class) {
-			throw new StreamCompilationFailedException(
-					"Default subtypes of OneToOneElement are not accepted for compilation by this compiler. OneToOneElement that passed should be unique");
+	private Configuration readConfiguration(String simpeName) {
+		String name = String.format("%s.cfg", simpeName);
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(name));
+			String json = reader.readLine();
+			reader.close();
+			return Configuration.fromJson(json);
+		} catch (Exception ex) {
+			System.err.println(String.format(
+					"File reader error. No %s configuration file.", name));
 		}
+		return null;
 	}
 
 	private static class DistributedCompiledStream implements CompiledStream {
@@ -299,11 +301,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		public DistributedCompiledStream(AbstractDrainer drainer) {
 			this.drainer = drainer;
-		}
-
-		@Override
-		public boolean isDrained() {
-			return drainer.isDrained();
 		}
 
 		@Override
@@ -316,6 +313,11 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		public void awaitDrained(long timeout, TimeUnit unit)
 				throws InterruptedException, TimeoutException {
 			drainer.awaitDrained(timeout, unit);
+		}
+
+		@Override
+		public boolean isDrained() {
+			return drainer.isDrained();
 		}
 	}
 
