@@ -47,6 +47,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.DistributedDrainer;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
+import edu.mit.streamjit.util.Pair;
 
 /**
  * 
@@ -106,16 +107,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 	public <I, O> CompiledStream compile(OneToOneElement<I, O> stream,
 			Input<I> input, Output<O> output) {
-
-		checkforDefaultOneToOneElement(stream);
-
-		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
-		stream.visit(primitiveConnector);
-		Worker<I, ?> source = (Worker<I, ?>) primitiveConnector.getSource();
-		Worker<?, O> sink = (Worker<?, O>) primitiveConnector.getSink();
-
-		VerifyStreamGraph verifier = new VerifyStreamGraph();
-		stream.visit(verifier);
+		Pair<Worker<I, ?>, Worker<?, O>> srcSink = visit(stream);
 
 		Map<CommunicationType, Integer> conTypeCount = new HashMap<>();
 
@@ -133,14 +125,15 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Controller controller = new Controller();
 		controller.connect(conTypeCount);
 
-		StreamJitApp app = new StreamJitApp(stream, source, sink);
+		StreamJitApp app = new StreamJitApp(stream, srcSink.first,
+				srcSink.second);
 		ConfigurationManager cfgManager = new HotSpotTuning(app);
 		ConnectionManager conManager = new ConnectionManager.BlockingTCPNoParams(
 				controller.controllerNodeID);
 		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManager,
 				Math.max(noOfnodes - 1, 1));
 		this.cfg = bf.getDefaultConfiguration(Workers
-				.getAllWorkersInGraph(source));
+				.getAllWorkersInGraph(srcSink.first));
 
 		if (GlobalConstants.tune == 0) {
 			Configuration cfg1 = readConfiguration(stream.getClass()
@@ -168,7 +161,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 				machineIds[i] = i + 1;
 			}
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
-					machineIds, stream, source, sink);
+					machineIds, stream, srcSink.first, srcSink.second);
 			app.newPartitionMap(partitionsMachineMap);
 		} else
 			cfgManager.newConfiguration(cfg);
@@ -176,7 +169,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
 		// context.
 		List<MessageConstraint> constraints = MessageConstraint
-				.findConstraints(source);
+				.findConstraints(srcSink.first);
 		Set<Portal<?>> portals = new HashSet<>();
 		for (MessageConstraint mc : constraints)
 			portals.add(mc.getPortal());
@@ -216,8 +209,10 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
 				.<Token, Buffer> builder();
 
-		bufferMapBuilder.put(Token.createOverallInputToken(source), head);
-		bufferMapBuilder.put(Token.createOverallOutputToken(sink), tail);
+		bufferMapBuilder
+				.put(Token.createOverallInputToken(srcSink.first), head);
+		bufferMapBuilder.put(Token.createOverallOutputToken(srcSink.second),
+				tail);
 
 		app.bufferMap = bufferMapBuilder.build();
 		app.constraints = constraints;
@@ -293,6 +288,19 @@ public class DistributedStreamCompiler implements StreamCompiler {
 					"File reader error. No %s configuration file.", name));
 		}
 		return null;
+	}
+
+	private <I, O> Pair<Worker<I, ?>, Worker<?, O>> visit(
+			OneToOneElement<I, O> stream) {
+		checkforDefaultOneToOneElement(stream);
+		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
+		stream.visit(primitiveConnector);
+		Worker<I, ?> source = (Worker<I, ?>) primitiveConnector.getSource();
+		Worker<?, O> sink = (Worker<?, O>) primitiveConnector.getSink();
+
+		VerifyStreamGraph verifier = new VerifyStreamGraph();
+		stream.visit(verifier);
+		return new Pair<Worker<I, ?>, Worker<?, O>>(source, sink);
 	}
 
 	private static class DistributedCompiledStream implements CompiledStream {
