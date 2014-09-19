@@ -77,31 +77,46 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	private int noOfnodes;
 
 	/**
-	 * Run the whole application on the controller node.
+	 * Run the whole application on the controller node. No distributions. See
+	 * {@link #DistributedStreamCompiler(int, Configuration)}
 	 */
 	public DistributedStreamCompiler() {
-		this(1);
+		this(1, null);
 	}
 
 	/**
-	 * @param noOfnodes
-	 *            : Total number of nodes the stream application intended to run
-	 *            - including controller node. If it is 1 then it means the
-	 *            whole stream application is supposed to run on controller.
+	 * See {@link #DistributedStreamCompiler(int, Configuration)}. As no
+	 * configuration is passed, tuner will activated to tune for better
+	 * configuration.
 	 */
 	public DistributedStreamCompiler(int noOfnodes) {
-		if (noOfnodes < 1)
-			throw new IllegalArgumentException("noOfnodes must be 1 or greater");
-		this.noOfnodes = noOfnodes;
+		this(noOfnodes, null);
 	}
 
 	/**
-	 * Run the application with the passed configureation.
+	 * Run the application with the passed configuration. Pass null if the
+	 * intention is to tune the application.
+	 * 
+	 * @param noOfnodes
+	 *            : Total number of nodes the stream application intended to run
+	 *            including the controller node. If it is 1 then it means the
+	 *            whole stream application is supposed to run on controller.
+	 * @param cfg
+	 *            Run the application with the passed {@link Configuration}. If
+	 *            it is null, tuner will be activated to tune for better
+	 *            configuration.
 	 */
 	public DistributedStreamCompiler(int noOfnodes, Configuration cfg) {
 		if (noOfnodes < 1)
 			throw new IllegalArgumentException("noOfnodes must be 1 or greater");
-		this.noOfnodes = noOfnodes;
+		if (GlobalConstants.singleNodeOnline) {
+			System.out
+					.println("Flag GlobalConstants.singleNodeOnline is enabled."
+							+ " noOfNodes passed as compiler argument has no effect");
+			this.noOfnodes = 1;
+		} else
+			this.noOfnodes = noOfnodes;
+
 		this.cfg = cfg;
 	}
 
@@ -110,13 +125,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Pair<Worker<I, ?>, Worker<?, O>> srcSink = visit(stream);
 
 		Map<CommunicationType, Integer> conTypeCount = new HashMap<>();
-
-		if (GlobalConstants.singleNodeOnline) {
-			System.out
-					.println("Flag GlobalConstants.singleNodeOnline is enabled."
-							+ " noOfNodes passed as compiler argument has no effect");
-			this.noOfnodes = 1;
-		}
 
 		if (this.noOfnodes == 1)
 			conTypeCount.put(CommunicationType.LOCAL, 1);
