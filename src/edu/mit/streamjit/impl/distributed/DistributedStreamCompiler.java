@@ -123,15 +123,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	public <I, O> CompiledStream compile(OneToOneElement<I, O> stream,
 			Input<I> input, Output<O> output) {
 		Pair<Worker<I, ?>, Worker<?, O>> srcSink = visit(stream);
-
-		Map<CommunicationType, Integer> conTypeCount = new HashMap<>();
-
-		if (this.noOfnodes == 1)
-			conTypeCount.put(CommunicationType.LOCAL, 1);
-		else
-			conTypeCount.put(CommunicationType.TCP, this.noOfnodes - 1);
-		Controller controller = new Controller();
-		controller.connect(conTypeCount);
+		Controller controller = establishController();
 
 		StreamJitApp app = new StreamJitApp(stream, srcSink.first,
 				srcSink.second);
@@ -255,6 +247,18 @@ public class DistributedStreamCompiler implements StreamCompiler {
 							+ " compilation by this compiler. OneToOneElement"
 							+ " that passed should be unique");
 		}
+	}
+
+	private Controller establishController() {
+		Map<CommunicationType, Integer> conTypeCount = new HashMap<>();
+
+		if (this.noOfnodes == 1)
+			conTypeCount.put(CommunicationType.LOCAL, 1);
+		else
+			conTypeCount.put(CommunicationType.TCP, this.noOfnodes - 1);
+		Controller controller = new Controller();
+		controller.connect(conTypeCount);
+		return controller;
 	}
 
 	private <I, O> Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
