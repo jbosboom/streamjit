@@ -147,40 +147,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		final AbstractDrainer drainer = new DistributedDrainer(manager);
 		drainer.setBlobGraph(app.blobGraph);
 
-		// TODO: derive a algorithm to find good buffer size and use here.
-		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
-				10000);
-		Buffer tail = OutputBufferFactory.unwrap(output).createWritableBuffer(
-				10000);
-
-		boolean needTermination;
-
-		if (input instanceof ManualInput) {
-			needTermination = false;
-			InputBufferFactory
-					.setManualInputDelegate(
-							(ManualInput<I>) input,
-							new InputBufferFactory.AbstractManualInputDelegate<I>(
-									head) {
-								@Override
-								public void drain() {
-									drainer.startDraining(2);
-								}
-							});
-		} else {
-			needTermination = true;
-			head = new HeadBuffer(head, drainer);
-		}
-
-		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
-				.<Token, Buffer> builder();
-
-		bufferMapBuilder
-				.put(Token.createOverallInputToken(srcSink.first), head);
-		bufferMapBuilder.put(Token.createOverallOutputToken(srcSink.second),
-				tail);
-
-		app.bufferMap = bufferMapBuilder.build();
+		boolean needTermination = setBufferMap(input, output, drainer, app,
+				srcSink);
 		app.constraints = constraints;
 
 		manager.reconfigure(1);
@@ -266,6 +234,49 @@ public class DistributedStreamCompiler implements StreamCompiler {
 					"File reader error. No %s configuration file.", name));
 		}
 		return null;
+	}
+
+	/**
+	 * Sets head and tail buffers.
+	 */
+	private <I, O> boolean setBufferMap(Input<I> input, Output<O> output,
+			final AbstractDrainer drainer, StreamJitApp app,
+			Pair<Worker<I, ?>, Worker<?, O>> srcSink) {
+		// TODO: derive a algorithm to find good buffer size and use here.
+		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
+				10000);
+		Buffer tail = OutputBufferFactory.unwrap(output).createWritableBuffer(
+				10000);
+
+		boolean needTermination;
+
+		if (input instanceof ManualInput) {
+			needTermination = false;
+			InputBufferFactory
+					.setManualInputDelegate(
+							(ManualInput<I>) input,
+							new InputBufferFactory.AbstractManualInputDelegate<I>(
+									head) {
+								@Override
+								public void drain() {
+									drainer.startDraining(2);
+								}
+							});
+		} else {
+			needTermination = true;
+			head = new HeadBuffer(head, drainer);
+		}
+
+		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
+				.<Token, Buffer> builder();
+
+		bufferMapBuilder
+				.put(Token.createOverallInputToken(srcSink.first), head);
+		bufferMapBuilder.put(Token.createOverallOutputToken(srcSink.second),
+				tail);
+
+		app.bufferMap = bufferMapBuilder.build();
+		return needTermination;
 	}
 
 	private <I, O> void setConfiguration(Controller controller,
