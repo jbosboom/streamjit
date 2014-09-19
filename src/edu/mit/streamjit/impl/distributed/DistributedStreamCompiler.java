@@ -299,15 +299,22 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		if (cfg == null) {
 			System.err
 					.println("Configuration is null. Runs the app with horizontal partitioning.");
-			Integer[] machineIds = new Integer[this.noOfnodes - 1];
-			for (int i = 0; i < machineIds.length; i++) {
-				machineIds[i] = i + 1;
-			}
-			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
-					machineIds, stream, srcSink.first, srcSink.second);
-			app.newPartitionMap(partitionsMachineMap);
+			manualPartition(srcSink, stream, app);
+
 		} else
 			cfgManager.newConfiguration(cfg);
+	}
+
+	private <I, O> void manualPartition(
+			Pair<Worker<I, ?>, Worker<?, O>> srcSink,
+			OneToOneElement<I, O> stream, StreamJitApp app) {
+		Integer[] machineIds = new Integer[this.noOfnodes - 1];
+		for (int i = 0; i < machineIds.length; i++) {
+			machineIds[i] = i + 1;
+		}
+		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
+				machineIds, stream, srcSink.first, srcSink.second);
+		app.newPartitionMap(partitionsMachineMap);
 	}
 
 	private <I, O> void setConstrains(Pair<Worker<I, ?>, Worker<?, O>> srcSink,
