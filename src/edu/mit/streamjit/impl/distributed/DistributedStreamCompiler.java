@@ -132,16 +132,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		setConfiguration(controller, srcSink, stream, app, cfgManager,
 				conManager);
 
-		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
-		// context.
-		List<MessageConstraint> constraints = MessageConstraint
-				.findConstraints(srcSink.first);
-		Set<Portal<?>> portals = new HashSet<>();
-		for (MessageConstraint mc : constraints)
-			portals.add(mc.getPortal());
-		for (Portal<?> portal : portals)
-			Portals.setConstraints(portal, constraints);
-
 		StreamJitAppManager manager = new StreamJitAppManager(controller, app,
 				cfgManager, conManager);
 		final AbstractDrainer drainer = new DistributedDrainer(manager);
@@ -149,7 +139,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		boolean needTermination = setBufferMap(input, output, drainer, app,
 				srcSink);
-		app.constraints = constraints;
+		setConstrains(srcSink, app);
 
 		manager.reconfigure(1);
 		CompiledStream cs = new DistributedCompiledStream(drainer);
@@ -318,6 +308,20 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			app.newPartitionMap(partitionsMachineMap);
 		} else
 			cfgManager.newConfiguration(cfg);
+	}
+
+	private <I, O> void setConstrains(Pair<Worker<I, ?>, Worker<?, O>> srcSink,
+			StreamJitApp app) {
+		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
+		// context.
+		List<MessageConstraint> constraints = MessageConstraint
+				.findConstraints(srcSink.first);
+		Set<Portal<?>> portals = new HashSet<>();
+		for (MessageConstraint mc : constraints)
+			portals.add(mc.getPortal());
+		for (Portal<?> portal : portals)
+			Portals.setConstraints(portal, constraints);
+		app.constraints = constraints;
 	}
 
 	private <I, O> Pair<Worker<I, ?>, Worker<?, O>> visit(
