@@ -152,6 +152,25 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		return cs;
 	}
 
+	private <I, O> Configuration cfgFromFile(OneToOneElement<I, O> stream,
+			Controller controller, Configuration defaultCfg) {
+		Configuration cfg1 = readConfiguration(stream.getClass()
+				.getSimpleName());
+		if (cfg1 == null) {
+			controller.closeAll();
+			throw new IllegalConfigurationException();
+		} else if (!verifyCfg(defaultCfg, cfg1)) {
+			System.err
+					.println("Reading the configuration from configuration file");
+			System.err
+					.println("No matching between parameters in the read "
+							+ "configuration and parameters in the default configuration");
+			controller.closeAll();
+			throw new IllegalConfigurationException();
+		}
+		return cfg1;
+	}
+
 	/**
 	 * TODO: Need to check for other default subtypes of {@link OneToOneElement}
 	 * s. Now only checks for first generation children.
@@ -210,6 +229,18 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			}
 		}
 		return partitionsMachineMap;
+	}
+
+	private <I, O> void manualPartition(
+			Pair<Worker<I, ?>, Worker<?, O>> srcSink,
+			OneToOneElement<I, O> stream, StreamJitApp app) {
+		Integer[] machineIds = new Integer[this.noOfnodes - 1];
+		for (int i = 0; i < machineIds.length; i++) {
+			machineIds[i] = i + 1;
+		}
+		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
+				machineIds, stream, srcSink.first, srcSink.second);
+		app.newPartitionMap(partitionsMachineMap);
 	}
 
 	private Configuration readConfiguration(String simpeName) {
@@ -275,46 +306,23 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			ConfigurationManager cfgManager, ConnectionManager conManager) {
 		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManager,
 				Math.max(noOfnodes - 1, 1));
-		this.cfg = bf.getDefaultConfiguration(Workers
+		Configuration defaultCfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(srcSink.first));
-		if (GlobalConstants.tune == 0) {
-			Configuration cfg1 = readConfiguration(stream.getClass()
-					.getSimpleName());
-			if (cfg1 == null) {
-				controller.closeAll();
-				throw new IllegalConfigurationException();
-			} else if (!this.cfg.getParametersMap().keySet()
-					.equals(cfg1.getParametersMap().keySet())) {
+
+		if (this.cfg != null) {
+			if (!verifyCfg(defaultCfg, this.cfg)) {
 				System.err
-						.println("Reading the configuration from configuration file");
-				System.err
-						.println("No matching between parameters in the read "
+						.println("No matching between parameters in the passed "
 								+ "configuration and parameters in the default configuration");
 				controller.closeAll();
 				throw new IllegalConfigurationException();
 			}
-			this.cfg = cfg1;
-		}
-
-		if (cfg == null) {
-			System.err
-					.println("Configuration is null. Runs the app with horizontal partitioning.");
-			manualPartition(srcSink, stream, app);
-
+		} else if (GlobalConstants.tune == 0) {
+			this.cfg = cfgFromFile(stream, controller, defaultCfg);
 		} else
-			cfgManager.newConfiguration(cfg);
-	}
+			this.cfg = defaultCfg;
 
-	private <I, O> void manualPartition(
-			Pair<Worker<I, ?>, Worker<?, O>> srcSink,
-			OneToOneElement<I, O> stream, StreamJitApp app) {
-		Integer[] machineIds = new Integer[this.noOfnodes - 1];
-		for (int i = 0; i < machineIds.length; i++) {
-			machineIds[i] = i + 1;
-		}
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
-				machineIds, stream, srcSink.first, srcSink.second);
-		app.newPartitionMap(partitionsMachineMap);
+		cfgManager.newConfiguration(this.cfg);
 	}
 
 	private <I, O> void setConstrains(Pair<Worker<I, ?>, Worker<?, O>> srcSink,
@@ -329,6 +337,13 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		for (Portal<?> portal : portals)
 			Portals.setConstraints(portal, constraints);
 		app.constraints = constraints;
+	}
+
+	private <I, O> boolean verifyCfg(Configuration defaultCfg, Configuration cfg) {
+		if (defaultCfg.getParametersMap().keySet()
+				.equals(cfg.getParametersMap().keySet()))
+			return true;
+		return false;
 	}
 
 	private <I, O> Pair<Worker<I, ?>, Worker<?, O>> visit(
