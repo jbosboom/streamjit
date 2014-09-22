@@ -4,6 +4,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -74,9 +76,9 @@ public class BlobsManagerImpl implements BlobsManager {
 	private final StreamNode streamNode;
 
 	/**
-	 * if true {@link BufferCleaner} will be used to unlock the draining
-	 * time dead lock. Otherwise dynamic buffer will be used for local buffers
-	 * to handled drain time data growth.
+	 * if true {@link BufferCleaner} will be used to unlock the draining time
+	 * dead lock. Otherwise dynamic buffer will be used for local buffers to
+	 * handled drain time data growth.
 	 */
 	private final boolean useBufferCleaner;
 
@@ -357,10 +359,6 @@ public class BlobsManagerImpl implements BlobsManager {
 			this.drainType = drainType;
 			drainState = 1;
 
-			// TODO: [2014-02-05] rearranged this order to call stop(3)
-			// whenever GlobalConstants.useDrainData is false irrespective
-			// of reqDrainData.
-
 			inChnlManager.stop(drainType.toint());
 			// TODO: [2014-03-14] I commented following line to avoid one dead
 			// lock case when draining. Deadlock 5 and 6.
@@ -376,7 +374,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			// System.out.println("Blob " + blobID +
 			// "this.blob.drain(dcb); passed");
 
-			if (useBufferCleaner) {
+			if (useBufferCleaner && drainType != DrainType.FINAL) {
 				boolean isLastBlob = true;
 				for (BlobExecuter be : blobExecuters.values()) {
 					if (be.drainState == 0) {
@@ -387,7 +385,8 @@ public class BlobsManagerImpl implements BlobsManager {
 
 				if (isLastBlob && bufferCleaner == null) {
 					System.out.println("****Starting BufferCleaner***");
-					bufferCleaner = new BufferCleaner();
+					bufferCleaner = new BufferCleaner(
+							drainType == DrainType.INTERMEDIATE);
 					bufferCleaner.start();
 				}
 			}
@@ -473,6 +472,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 			ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
 			ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
+
 			ImmutableMap<Token, BoundaryInputChannel> inputChannels = inChnlManager
 					.inputChannelsMap();
 
@@ -492,14 +492,8 @@ public class BlobsManagerImpl implements BlobsManager {
 					inputDataBuilder.put(t, draindata);
 				}
 
-				// TODO: Unnecessary data copy. Optimise this.
 				else {
-					Buffer buf = bufferMap.get(t);
-					Object[] bufArray = new Object[buf.size()];
-					buf.readAll(bufArray);
-					assert buf.size() == 0 : String.format(
-							"buffer size is %d. But 0 is expected", buf.size());
-					inputDataBuilder.put(t, ImmutableList.copyOf(bufArray));
+					unprocessedDataFromLocalBuffer(inputDataBuilder, t);
 				}
 			}
 
@@ -519,6 +513,23 @@ public class BlobsManagerImpl implements BlobsManager {
 
 			return new SNDrainElement.DrainedData(blobID, dd,
 					inputDataBuilder.build(), outputDataBuilder.build());
+		}
+
+		// TODO: Unnecessary data copy. Optimise this.
+		private void unprocessedDataFromLocalBuffer(
+				ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder,
+				Token t) {
+			Object[] bufArray;
+			if (bufferCleaner == null) {
+				Buffer buf = bufferMap.get(t);
+				bufArray = new Object[buf.size()];
+				buf.readAll(bufArray);
+				assert buf.size() == 0 : String.format(
+						"buffer size is %d. But 0 is expected", buf.size());
+			} else {
+				bufArray = bufferCleaner.copiedBuffer(t);
+			}
+			inputDataBuilder.put(t, ImmutableList.copyOf(bufArray));
 		}
 
 		private DrainedData getEmptyDrainData() {
@@ -743,9 +754,20 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		final AtomicBoolean run;
 
-		private BufferCleaner() {
+		final boolean needToCopyDrainData;
+
+		final Map<Token, List<Object[]>> newlocalBufferMap;
+
+		private BufferCleaner(boolean needToCopyDrainData) {
 			super("BufferCleaner");
+			System.out.println("Buffer Cleaner : needToCopyDrainData == "
+					+ needToCopyDrainData);
 			this.run = new AtomicBoolean(true);
+			this.needToCopyDrainData = needToCopyDrainData;
+			if (needToCopyDrainData)
+				newlocalBufferMap = new HashMap<>();
+			else
+				newlocalBufferMap = null;
 		}
 
 		public void run() {
@@ -755,14 +777,23 @@ public class BlobsManagerImpl implements BlobsManager {
 				return;
 			}
 
-			System.out
-					.println("BufferCleaner is goint to clean buffers...");
+			System.out.println("BufferCleaner is going to clean buffers...");
 			boolean areAllDrained = false;
 
 			while (run.get()) {
-				areAllDrained = cleanAllBuffers();
+				if (needToCopyDrainData)
+					areAllDrained = copyLocalBuffers();
+				else
+					areAllDrained = cleanAllBuffers();
+
 				if (areAllDrained)
 					break;
+
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					break;
+				}
 			}
 		}
 
@@ -804,9 +835,73 @@ public class BlobsManagerImpl implements BlobsManager {
 			b.readAll(obArray);
 		}
 
+		/**
+		 * Copy only the local buffers into a new large buffer to make the
+		 * blocked blob to progress. This copied buffer can be sent to
+		 * controller as a drain data.
+		 */
+		private boolean copyLocalBuffers() {
+			ImmutableMap<Token, Buffer> localBufferMap = bufferManager
+					.localBufferMap();
+			boolean areAllDrained = true;
+			for (BlobExecuter be : blobExecuters.values()) {
+				if (be.drainState == 1 || be.drainState == 2) {
+					// System.out.println(be.blobID + " is not drained");
+					areAllDrained = false;
+					for (Token t : be.blob.getOutputs()) {
+						if (localBufferMap.containsKey(t)) {
+							Buffer b = be.bufferMap.get(t);
+							copy(b, t);
+						}
+					}
+				}
+			}
+			return areAllDrained;
+		}
+
+		private void copy(Buffer b, Token t) {
+			int size = b.size();
+			if (size == 0)
+				return;
+
+			if (!newlocalBufferMap.containsKey(t)) {
+				newlocalBufferMap.put(t, new LinkedList<Object[]>());
+			}
+
+			List<Object[]> list = newlocalBufferMap.get(t);
+			Object[] bufArray = new Object[size];
+			b.readAll(bufArray);
+			assert b.size() == 0 : String.format(
+					"buffer size is %d. But 0 is expected", b.size());
+			list.add(bufArray);
+		}
+
 		public void stopit() {
 			this.run.set(false);
 			this.interrupt();
+		}
+
+		public Object[] copiedBuffer(Token t) {
+			assert needToCopyDrainData : "BufferCleaner is not in buffer copy mode";
+			copy(bufferManager.localBufferMap().get(t), t);
+			List<Object[]> list = newlocalBufferMap.get(t);
+			if (list.size() == 0)
+				return new Object[0];
+			else if (list.size() == 1)
+				return list.get(0);
+
+			int size = 0;
+			for (Object[] array : list) {
+				size += array.length;
+			}
+
+			int destPos = 0;
+			Object[] mergedArray = new Object[size];
+			for (Object[] array : list) {
+				System.arraycopy(array, 0, mergedArray, destPos, array.length);
+				destPos += array.length;
+			}
+			return mergedArray;
 		}
 	}
 
