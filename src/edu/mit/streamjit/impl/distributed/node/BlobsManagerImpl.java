@@ -34,11 +34,11 @@ import edu.mit.streamjit.impl.distributed.common.BoundaryChannelManager.OutputCh
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DoDrain;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainDataRequest;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
@@ -101,10 +101,10 @@ public class BlobsManagerImpl implements BlobsManager {
 	/**
 	 * Drain the blob identified by the token.
 	 */
-	public void drain(Token blobID, boolean reqDrainData) {
+	public void drain(Token blobID, DrainType drainType) {
 		for (BlobExecuter be : blobExecuters.values()) {
 			if (be.getBlobID().equals(blobID)) {
-				be.doDrain(reqDrainData);
+				be.doDrain(drainType);
 				return;
 			}
 		}
@@ -267,7 +267,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		private final BoundaryOutputChannelManager outChnlManager;
 
-		private boolean reqDrainData;
+		private DrainType drainType;
 
 		private BlobExecuter(Token t, Blob blob,
 				ImmutableMap<Token, BoundaryInputChannel> inputChannels,
@@ -352,28 +352,20 @@ public class BlobsManagerImpl implements BlobsManager {
 			return bufferMapBuilder.build();
 		}
 
-		private void doDrain(boolean reqDrainData) {
+		private void doDrain(DrainType drainType) {
 			// System.out.println("Blob " + blobID + "is doDrain");
-			this.reqDrainData = reqDrainData;
+			this.drainType = drainType;
 			drainState = 1;
 
-			int stopType;
 			// TODO: [2014-02-05] rearranged this order to call stop(3)
 			// whenever GlobalConstants.useDrainData is false irrespective
 			// of reqDrainData.
-			if (GlobalConstants.useDrainData)
-				if (!this.reqDrainData)
-					stopType = 1;
-				else
-					stopType = 2;
-			else
-				stopType = 3;
 
-			inChnlManager.stop(stopType);
+			inChnlManager.stop(drainType.toint());
 			// TODO: [2014-03-14] I commented following line to avoid one dead
 			// lock case when draining. Deadlock 5 and 6.
 			// [2014-09-17] Lets waitToStop() if drain data is required.
-			if (stopType != 3)
+			if (drainType != DrainType.DISCARD)
 				inChnlManager.waitToStop();
 
 			if (this.blob != null) {
@@ -412,7 +404,7 @@ public class BlobsManagerImpl implements BlobsManager {
 				bt.requestStop();
 			}
 
-			outChnlManager.stop(!this.reqDrainData);
+			outChnlManager.stop(drainType == DrainType.FINAL);
 			outChnlManager.waitToStop();
 
 			if (drainState > 3)
@@ -427,7 +419,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 			// System.out.println("Blob " + blobID + "is drained at mid");
 
-			if (GlobalConstants.useDrainData && this.reqDrainData) {
+			if (drainType == DrainType.INTERMEDIATE) {
 				SNMessageElement me;
 				if (crashed.get())
 					me = getEmptyDrainData();
@@ -698,7 +690,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		@Override
 		public void process(DoDrain drain) {
-			drain(drain.blobID, drain.reqDrainData);
+			drain(drain.blobID, drain.drainType);
 		}
 
 		@Override

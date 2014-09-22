@@ -11,6 +11,7 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.BlobThread;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 
 /**
@@ -45,7 +46,7 @@ public final class ConcurrentDrainer extends AbstractDrainer {
 	}
 
 	@Override
-	protected void drain(Token blobID, boolean isFinal) {
+	protected void drain(Token blobID, DrainType drainType) {
 		Blob blob = blobMap.get(blobID);
 		checkNotNull(blob);
 

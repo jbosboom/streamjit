@@ -2,10 +2,8 @@ package edu.mit.streamjit.impl.common;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -37,6 +35,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
@@ -290,6 +289,7 @@ public abstract class AbstractDrainer {
 		// }
 		return drainData;
 	}
+
 	/**
 	 * logs the size of the drain data on each channel for every draining and
 	 * writes down the statistics into a file.
@@ -390,13 +390,8 @@ public abstract class AbstractDrainer {
 	/**
 	 * Once a {@link BlobNode}'s all preconditions are satisfied for draining,
 	 * blob node will call this function drain the blob.
-	 * 
-	 * @param blobID
-	 * @param isFinal
-	 *            : whether the draining is the final draining or intermediate
-	 *            draining. Set to true for semi final case.
 	 */
-	protected abstract void drain(Token blobID, boolean isFinal);
+	protected abstract void drain(Token blobID, DrainType drainType);
 
 	/**
 	 * {@link AbstractDrainer} will call this function after the corresponding
@@ -734,7 +729,17 @@ public abstract class AbstractDrainer {
 				throw new IllegalStateException(
 						"Drain of this blobNode has already been called");
 			}
-			drainer.drain(blobID, drainer.state == DrainerState.FINAL);
+
+			DrainType drainType;
+			if (GlobalConstants.useDrainData)
+				if (drainer.state == DrainerState.FINAL)
+					drainType = DrainType.FINAL;
+				else
+					drainType = DrainType.INTERMEDIATE;
+			else
+				drainType = DrainType.DISCARD;
+
+			drainer.drain(blobID, drainType);
 
 			// TODO: Verify the waiting time is reasonable.
 			if (GlobalConstants.needDrainDeadlockHandler)

@@ -4,7 +4,7 @@ import java.util.Set;
 
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.blob.DrainData;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
@@ -60,12 +60,7 @@ public abstract class CTRLRDrainElement implements CTRLRMessageElement {
 	public static final class DoDrain extends CTRLRDrainElement {
 		private static final long serialVersionUID = 1L;
 
-		/**
-		 * Instead of sending another object to get the {@link DrainData},
-		 * {@link Controller} can set this flag to get the drain data once
-		 * draining is done.
-		 */
-		public final boolean reqDrainData;
+		public final DrainType drainType;
 
 		/**
 		 * Identifies the blob. Since {@link Blob}s do not have an unique
@@ -74,9 +69,9 @@ public abstract class CTRLRDrainElement implements CTRLRMessageElement {
 		 */
 		public final Token blobID;
 
-		public DoDrain(Token blobID, boolean reqDrainData) {
+		public DoDrain(Token blobID, DrainType drainType) {
 			this.blobID = blobID;
-			this.reqDrainData = reqDrainData;
+			this.drainType = drainType;
 		}
 
 		@Override
@@ -97,5 +92,34 @@ public abstract class CTRLRDrainElement implements CTRLRMessageElement {
 		public void process(DrainDataRequest drnDataReq);
 
 		public void process(DoDrain drain);
+	}
+
+	/**
+	 * Three types of draining are possible.
+	 * <ol>
+	 * <li>drainType = 1 : Final draining. No drain data. All {@link Blob}s are
+	 * expected to run and finish all data.
+	 * <li>drainType = 2 : Intermediate draining. Drain data is required in this
+	 * mode. {@link BoundaryInputChannel}s may create extra buffer and put all
+	 * unconsumed data, and finally send this drain data to the
+	 * {@link Controller} for reconfiguration.
+	 * <li>drainType = 3 : Discard all unconsumed data. This is useful, if we
+	 * don't care about the data while tuning for performance.
+	 * </ol>
+	 * 
+	 * See the same description at {@link BoundaryInputChannel#stop(int)}.
+	 * 
+	 */
+	public enum DrainType {
+		FINAL(1), INTERMEDIATE(2), DISCARD(3);
+		private final int code;
+
+		DrainType(int code) {
+			this.code = code;
+		}
+
+		public int toint() {
+			return code;
+		}
 	}
 }

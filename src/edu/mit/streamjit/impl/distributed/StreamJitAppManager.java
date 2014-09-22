@@ -23,6 +23,7 @@ import edu.mit.streamjit.impl.distributed.common.AsyncTCPConnection.AsyncTCPConn
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageElement;
 import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
@@ -118,14 +119,14 @@ public class StreamJitAppManager {
 		return apStsPro;
 	}
 
-	public void drain(Token blobID, boolean isFinal) {
+	public void drain(Token blobID, DrainType drainType) {
 		// System.out.println("Drain requested to blob " + blobID);
 		if (!app.blobtoMachineMap.containsKey(blobID))
 			throw new IllegalArgumentException(blobID
 					+ " not found in the blobtoMachineMap");
 		int nodeID = app.blobtoMachineMap.get(blobID);
-		controller
-				.send(nodeID, new CTRLRDrainElement.DoDrain(blobID, !isFinal));
+		controller.send(nodeID,
+				new CTRLRDrainElement.DoDrain(blobID, drainType));
 	}
 
 	public void drainingFinished(boolean isFinal) {

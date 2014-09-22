@@ -3,6 +3,7 @@ package edu.mit.streamjit.impl.distributed.runtimer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 
 /**
  * @author Sumanan sumanan@mit.edu
@@ -25,8 +26,8 @@ public class DistributedDrainer extends AbstractDrainer {
 	}
 
 	@Override
-	protected void drain(Token blobID, boolean isFinal) {
-		manager.drain(blobID, isFinal);
+	protected void drain(Token blobID, DrainType drainType) {
+		manager.drain(blobID, drainType);
 	}
 
 	@Override
