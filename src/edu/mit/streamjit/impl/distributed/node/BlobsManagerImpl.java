@@ -65,7 +65,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private final ConnectionProvider conProvider;
 
-	private volatile DrainDeadLockHandler drainDeadLockHandler;
+	private volatile BufferCleaner bufferCleaner;
 
 	private final CTRLRDrainProcessor drainProcessor;
 
@@ -74,11 +74,11 @@ public class BlobsManagerImpl implements BlobsManager {
 	private final StreamNode streamNode;
 
 	/**
-	 * if true {@link DrainDeadLockHandler} will be used to unlock the draining
+	 * if true {@link BufferCleaner} will be used to unlock the draining
 	 * time dead lock. Otherwise dynamic buffer will be used for local buffers
 	 * to handled drain time data growth.
 	 */
-	private final boolean useDrainDeadLockHandler;
+	private final boolean useBufferCleaner;
 
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
 			Map<Token, ConnectionInfo> conInfoMap, StreamNode streamNode,
@@ -89,8 +89,8 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		this.cmdProcessor = new CommandProcessorImpl();
 		this.drainProcessor = new CTRLRDrainProcessorImpl();
-		this.drainDeadLockHandler = null;
-		this.useDrainDeadLockHandler = false;
+		this.bufferCleaner = null;
+		this.useBufferCleaner = false;
 		this.bufferManager = new LocalBufferManager(blobSet);
 
 		bufferManager.initialise();
@@ -156,8 +156,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		if (monBufs != null)
 			monBufs.stopMonitoring();
 
-		if (drainDeadLockHandler != null)
-			drainDeadLockHandler.stopit();
+		if (bufferCleaner != null)
+			bufferCleaner.stopit();
 	}
 
 	private void createBEs(ImmutableSet<Blob> blobSet) {
@@ -384,7 +384,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			// System.out.println("Blob " + blobID +
 			// "this.blob.drain(dcb); passed");
 
-			if (useDrainDeadLockHandler) {
+			if (useBufferCleaner) {
 				boolean isLastBlob = true;
 				for (BlobExecuter be : blobExecuters.values()) {
 					if (be.drainState == 0) {
@@ -393,10 +393,10 @@ public class BlobsManagerImpl implements BlobsManager {
 					}
 				}
 
-				if (isLastBlob && drainDeadLockHandler == null) {
-					System.out.println("****Starting DrainDeadLockHandler***");
-					drainDeadLockHandler = new DrainDeadLockHandler();
-					drainDeadLockHandler.start();
+				if (isLastBlob && bufferCleaner == null) {
+					System.out.println("****Starting BufferCleaner***");
+					bufferCleaner = new BufferCleaner();
+					bufferCleaner.start();
 				}
 			}
 		}
@@ -458,8 +458,8 @@ public class BlobsManagerImpl implements BlobsManager {
 				if (monBufs != null)
 					monBufs.stopMonitoring();
 
-				if (drainDeadLockHandler != null)
-					drainDeadLockHandler.stopit();
+				if (bufferCleaner != null)
+					bufferCleaner.stopit();
 
 			}
 			// printDrainedStatus();
@@ -747,12 +747,12 @@ public class BlobsManagerImpl implements BlobsManager {
 	 * @author sumanan
 	 * 
 	 */
-	private class DrainDeadLockHandler extends Thread {
+	private class BufferCleaner extends Thread {
 
 		final AtomicBoolean run;
 
-		private DrainDeadLockHandler() {
-			super("DrainDeadLockHandler");
+		private BufferCleaner() {
+			super("BufferCleaner");
 			this.run = new AtomicBoolean(true);
 		}
 
@@ -764,7 +764,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 
 			System.out
-					.println("DrainDeadLockHandler is goint to clean buffers...");
+					.println("BufferCleaner is goint to clean buffers...");
 			boolean areAllDrained = false;
 
 			while (run.get()) {
