@@ -885,7 +885,9 @@ public class BlobsManagerImpl implements BlobsManager {
 			assert needToCopyDrainData : "BufferCleaner is not in buffer copy mode";
 			copy(bufferManager.localBufferMap().get(t), t);
 			List<Object[]> list = newlocalBufferMap.get(t);
-			if (list.size() == 0)
+			if (list == null)
+				return new Object[0];
+			else if (list.size() == 0)
 				return new Object[0];
 			else if (list.size() == 1)
 				return list.get(0);
