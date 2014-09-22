@@ -45,7 +45,7 @@ import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.Utils;
-import edu.mit.streamjit.impl.distributed.node.BufferManager.LocalBufferManager;
+import edu.mit.streamjit.impl.distributed.node.BufferManager.SNLocalBufferManager;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
@@ -93,7 +93,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		this.drainProcessor = new CTRLRDrainProcessorImpl();
 		this.bufferCleaner = null;
 		this.useBufferCleaner = false;
-		this.bufferManager = new LocalBufferManager(blobSet);
+		this.bufferManager = new SNLocalBufferManager(blobSet);
 
 		bufferManager.initialise();
 		if (bufferManager.isbufferSizesReady())

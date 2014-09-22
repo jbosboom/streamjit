@@ -147,8 +147,8 @@ public interface BufferManager {
 	 * Calculates buffer sizes locally at {@link StreamNode} side. No central
 	 * calculation involved.
 	 */
-	public static class LocalBufferManager extends AbstractBufferManager {
-		public LocalBufferManager(Set<Blob> blobSet) {
+	public static class SNLocalBufferManager extends AbstractBufferManager {
+		public SNLocalBufferManager(Set<Blob> blobSet) {
 			super(blobSet);
 		}
 
