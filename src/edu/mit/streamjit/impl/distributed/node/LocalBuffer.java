@@ -6,11 +6,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.util.ConstructorSupplier;
 import edu.mit.streamjit.util.ReflectionUtils;
 
 /**
- * {@link LocalBuffer} connects up blob and down blob where both are running to
+ * {@link LocalBuffer} connects up blob and down blob where both are running at
  * same StreamNode. In this case, we can simply use any {@link Buffer}
  * implementation to connect up blob and down blob. But at the draining time
  * blobs write large amount of data, which blobs buffered inside during the init
@@ -23,7 +24,7 @@ import edu.mit.streamjit.util.ReflectionUtils;
  */
 public interface LocalBuffer extends Buffer {
 
-	public void drainingStarted();
+	public void drainingStarted(DrainType drainType);
 
 	/**
 	 * Modified version of {@link DynamicBufferManager#DynamicBuffer}. Instead
@@ -109,7 +110,7 @@ public interface LocalBuffer extends Buffer {
 		}
 
 		@Override
-		public void drainingStarted() {
+		public void drainingStarted(DrainType drainType) {
 			hasDrainingStarted = true;
 		}
 
