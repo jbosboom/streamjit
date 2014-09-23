@@ -67,11 +67,11 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private final ConnectionProvider conProvider;
 
-	private volatile BufferCleaner bufferCleaner;
+	private volatile BufferCleaner bufferCleaner = null;
 
 	private final CTRLRDrainProcessor drainProcessor;
 
-	private MonitorBuffers monBufs;
+	private MonitorBuffers monBufs = null;
 
 	private final StreamNode streamNode;
 
@@ -80,7 +80,13 @@ public class BlobsManagerImpl implements BlobsManager {
 	 * dead lock. Otherwise dynamic buffer will be used for local buffers to
 	 * handled drain time data growth.
 	 */
-	private final boolean useBufferCleaner;
+	private final boolean useBufferCleaner = false;
+
+	/**
+	 * if true {@link MonitorBuffers} will be started to log the buffer sizes
+	 * periodically.
+	 */
+	private final boolean monitorBuffers = false;
 
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
 			Map<Token, ConnectionInfo> conInfoMap, StreamNode streamNode,
@@ -91,8 +97,6 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		this.cmdProcessor = new CommandProcessorImpl();
 		this.drainProcessor = new CTRLRDrainProcessorImpl();
-		this.bufferCleaner = null;
-		this.useBufferCleaner = false;
 		this.bufferManager = new SNLocalBufferManager(blobSet);
 
 		bufferManager.initialise();
@@ -138,13 +142,11 @@ public class BlobsManagerImpl implements BlobsManager {
 		for (BlobExecuter be : blobExecuters.values())
 			be.start();
 
-		// if (monBufs == null) {
-		// // System.out.println("Creating new MonitorBuffers");
-		// monBufs = new MonitorBuffers();
-		// monBufs.start();
-		// } else
-		// System.err
-		// .println("Mon buffer is not null. Check the logic for bug");
+		if (monitorBuffers && monBufs == null) {
+			// System.out.println("Creating new MonitorBuffers");
+			monBufs = new MonitorBuffers();
+			monBufs.start();
+		}
 	}
 
 	/**
