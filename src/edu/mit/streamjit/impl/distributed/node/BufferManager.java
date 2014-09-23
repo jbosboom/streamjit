@@ -1,7 +1,9 @@
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -11,8 +13,8 @@ import com.google.common.collect.Sets;
 
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
+import edu.mit.streamjit.impl.distributed.node.LocalBuffer.LocalBuffer1;
 
 /**
  * {@link BlobsManager} will use the services from {@link BufferManager}.
@@ -62,7 +64,7 @@ public interface BufferManager {
 	 * @return local buffers if buffer sizes are calculated. Otherwise returns
 	 *         null.
 	 */
-	ImmutableMap<Token, Buffer> localBufferMap();
+	ImmutableMap<Token, LocalBuffer> localBufferMap();
 
 	public static abstract class AbstractBufferManager implements BufferManager {
 
@@ -78,7 +80,7 @@ public interface BufferManager {
 
 		protected ImmutableMap<Token, Integer> bufferSizes;
 
-		ImmutableMap<Token, Buffer> localBufferMap;
+		ImmutableMap<Token, LocalBuffer> localBufferMap;
 
 		public AbstractBufferManager(Set<Blob> blobSet) {
 			this.blobSet = blobSet;
@@ -128,18 +130,26 @@ public interface BufferManager {
 		}
 
 		@Override
-		public ImmutableMap<Token, Buffer> localBufferMap() {
+		public ImmutableMap<Token, LocalBuffer> localBufferMap() {
 			return localBufferMap;
 		}
 
 		protected final void createLocalBuffers() {
-			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
-					.<Token, Buffer> builder();
+			ImmutableMap.Builder<Token, LocalBuffer> bufferMapBuilder = ImmutableMap
+					.<Token, LocalBuffer> builder();
 			for (Token t : localTokens) {
 				int bufSize = bufferSizes.get(t);
-				bufferMapBuilder.put(t, new ConcurrentArrayBuffer(bufSize));
+				bufferMapBuilder.put(t, concurrentArrayLocalBuffer(t, bufSize));
 			}
 			localBufferMap = bufferMapBuilder.build();
+		}
+
+		protected final LocalBuffer1 concurrentArrayLocalBuffer(Token t,
+				int bufSize) {
+			List<Object> args = new ArrayList<>(1);
+			args.add(bufSize);
+			return new LocalBuffer1(t.toString(), ConcurrentArrayBuffer.class,
+					args, bufSize, 0);
 		}
 	}
 

@@ -257,6 +257,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		 */
 		private ImmutableMap<Token, Buffer> bufferMap;
 
+		private ImmutableMap<Token, LocalBuffer> outputLocalBuffers;
+
 		/**
 		 * This flag will be set to true if an exception thrown by the core code
 		 * of the {@link Blob}. Any exception occurred in a blob's corecode will
@@ -321,7 +323,9 @@ public class BlobsManagerImpl implements BlobsManager {
 		private ImmutableMap<Token, Buffer> buildBufferMap() {
 			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
 					.builder();
-			ImmutableMap<Token, Buffer> localBufferMap = bufferManager
+			ImmutableMap.Builder<Token, LocalBuffer> outputLocalBufferBuilder = ImmutableMap
+					.builder();
+			ImmutableMap<Token, LocalBuffer> localBufferMap = bufferManager
 					.localBufferMap();
 			ImmutableMap<Token, BoundaryInputChannel> inputChannels = inChnlManager
 					.inputChannelsMap();
@@ -344,7 +348,9 @@ public class BlobsManagerImpl implements BlobsManager {
 			for (Token t : blob.getOutputs()) {
 				if (localBufferMap.containsKey(t)) {
 					assert !outputChannels.containsKey(t) : "Same channels is exists in both localBuffer and outputChannel";
-					bufferMapBuilder.put(t, localBufferMap.get(t));
+					LocalBuffer buf = localBufferMap.get(t);
+					bufferMapBuilder.put(t, buf);
+					outputLocalBufferBuilder.put(t, buf);
 				} else if (outputChannels.containsKey(t)) {
 					BoundaryOutputChannel chnl = outputChannels.get(t);
 					bufferMapBuilder.put(t, chnl.getBuffer());
@@ -353,6 +359,7 @@ public class BlobsManagerImpl implements BlobsManager {
 							"No Buffer for output channel %s ", t));
 				}
 			}
+			outputLocalBuffers = outputLocalBufferBuilder.build();
 			return bufferMapBuilder.build();
 		}
 
@@ -367,6 +374,10 @@ public class BlobsManagerImpl implements BlobsManager {
 			// [2014-09-17] Lets waitToStop() if drain data is required.
 			if (drainType != DrainType.DISCARD)
 				inChnlManager.waitToStop();
+
+			for (LocalBuffer buf : outputLocalBuffers.values()) {
+				buf.drainingStarted(drainType);
+			}
 
 			if (this.blob != null) {
 				DrainCallback dcb = new DrainCallback(this);
@@ -847,7 +858,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		 * controller as a drain data.
 		 */
 		private boolean copyLocalBuffers() {
-			ImmutableMap<Token, Buffer> localBufferMap = bufferManager
+			ImmutableMap<Token, LocalBuffer> localBufferMap = bufferManager
 					.localBufferMap();
 			boolean areAllDrained = true;
 			for (BlobExecuter be : blobExecuters.values()) {
