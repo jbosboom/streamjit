@@ -1014,7 +1014,7 @@ public class BlobsManagerImpl implements BlobsManager {
 				int availableResource = isIn ? b.size() : b.capacity()
 						- b.size();
 
-				String status = availableResource > min ? "Firable"
+				String status = availableResource >= min ? "Firable"
 						: "NOT firable";
 				writter.write(t.toString() + "\tMin - " + min
 						+ ",\tAvailableResource - " + availableResource + "\t"
