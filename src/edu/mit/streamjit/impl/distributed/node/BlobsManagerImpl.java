@@ -970,33 +970,10 @@ public class BlobsManagerImpl implements BlobsManager {
 							break;
 
 						writter.write("Input channel details\n");
-						for (Token t : be.inChnlManager.inputChannelsMap()
-								.keySet()) {
-							Buffer b = be.bufferMap.get(t);
-							if (b == null)
-								continue;
-							int min = be.blob.getMinimumBufferCapacity(t);
-							int size = b.size();
-							String status = size > min ? "Firable"
-									: "NOT firable";
-							writter.write(t.toString() + "\tMin - " + min
-									+ ",\tSize - " + size + "\t" + status
-									+ "\n");
-						}
+						write(be, writter, true);
 
 						writter.write("Output channel details\n");
-						for (Token t : be.outChnlManager.outputChannelsMap()
-								.keySet()) {
-							Buffer b = be.bufferMap.get(t);
-							if (b == null)
-								continue;
-							int min = be.blob.getMinimumBufferCapacity(t);
-							int size = b.size();
-							String status = size == 0 ? "Empty" : "NOT Empty";
-							writter.write(t.toString() + "\tMin - " + min
-									+ ",\tSize - " + size + "\t" + status
-									+ "\n");
-						}
+						write(be, writter, false);
 					}
 					writter.write("----------------------------------\n");
 					writter.flush();
@@ -1014,6 +991,34 @@ public class BlobsManagerImpl implements BlobsManager {
 					writter.close();
 			} catch (IOException e) {
 				e.printStackTrace();
+			}
+		}
+
+		public void write(BlobExecuter be, FileWriter writter, boolean isIn)
+				throws IOException {
+			ImmutableSet<Token> tokenSet;
+			if (isIn)
+				tokenSet = be.inChnlManager.inputChannelsMap().keySet();
+			else
+				tokenSet = be.outChnlManager.outputChannelsMap().keySet();
+
+			for (Token t : tokenSet) {
+				Buffer b = be.bufferMap.get(t);
+				if (b == null)
+					continue;
+				int min = Integer.MAX_VALUE;
+				// BE sets blob to null after the drained().
+				if (be.blob != null)
+					min = be.blob.getMinimumBufferCapacity(t);
+
+				int availableResource = isIn ? b.size() : b.capacity()
+						- b.size();
+
+				String status = availableResource > min ? "Firable"
+						: "NOT firable";
+				writter.write(t.toString() + "\tMin - " + min
+						+ ",\tAvailableResource - " + availableResource + "\t"
+						+ status + "\n");
 			}
 		}
 
