@@ -945,25 +945,57 @@ public class BlobsManagerImpl implements BlobsManager {
 					try {
 						Thread.sleep(sleepTime);
 					} catch (InterruptedException e) {
+						break;
 					}
+
+					if (stopFlag.get())
+						break;
+
 					if (blobExecuters == null) {
-						writter.write("Buffer map is null...\n");
+						writter.write("blobExecuters are null...\n");
 						continue;
 					}
+
 					writter.write("----------------------------------\n");
 					for (BlobExecuter be : blobExecuters.values()) {
+						writter.write("Status of blob " + be.blobID.toString()
+								+ "\n");
+
 						if (be.bufferMap == null) {
 							writter.write("Buffer map is null...\n");
 							continue;
 						}
+
 						if (stopFlag.get())
 							break;
 
-						for (Map.Entry<Token, Buffer> en : be.bufferMap
-								.entrySet()) {
-							writter.write(en.getKey() + " - "
-									+ en.getValue().size());
-							writter.write('\n');
+						writter.write("Input channel details\n");
+						for (Token t : be.inChnlManager.inputChannelsMap()
+								.keySet()) {
+							Buffer b = be.bufferMap.get(t);
+							if (b == null)
+								continue;
+							int min = be.blob.getMinimumBufferCapacity(t);
+							int size = b.size();
+							String status = size > min ? "Firable"
+									: "NOT firable";
+							writter.write(t.toString() + "\tMin - " + min
+									+ ",\tSize - " + size + "\t" + status
+									+ "\n");
+						}
+
+						writter.write("Output channel details\n");
+						for (Token t : be.outChnlManager.outputChannelsMap()
+								.keySet()) {
+							Buffer b = be.bufferMap.get(t);
+							if (b == null)
+								continue;
+							int min = be.blob.getMinimumBufferCapacity(t);
+							int size = b.size();
+							String status = size == 0 ? "Empty" : "NOT Empty";
+							writter.write(t.toString() + "\tMin - " + min
+									+ ",\tSize - " + size + "\t" + status
+									+ "\n");
 						}
 					}
 					writter.write("----------------------------------\n");
