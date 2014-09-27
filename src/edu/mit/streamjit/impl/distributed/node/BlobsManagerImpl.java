@@ -994,14 +994,9 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 		}
 
-		public void write(BlobExecuter be, FileWriter writter, boolean isIn)
+		private void write(BlobExecuter be, FileWriter writter, boolean isIn)
 				throws IOException {
-			ImmutableSet<Token> tokenSet;
-			if (isIn)
-				tokenSet = be.inChnlManager.inputChannelsMap().keySet();
-			else
-				tokenSet = be.outChnlManager.outputChannelsMap().keySet();
-
+			Set<Token> tokenSet = tokenSet(be, isIn);
 			for (Token t : tokenSet) {
 				Buffer b = be.bufferMap.get(t);
 				if (b == null)
@@ -1020,6 +1015,23 @@ public class BlobsManagerImpl implements BlobsManager {
 						+ ",\tAvailableResource - " + availableResource + "\t"
 						+ status + "\n");
 			}
+		}
+
+		private Set<Token> tokenSet(BlobExecuter be, boolean isIn) {
+			Set<Token> tokenSet;
+			// BE sets blob to null after the drained().
+			if (be.blob == null) {
+				if (isIn)
+					tokenSet = be.inChnlManager.inputChannelsMap().keySet();
+				else
+					tokenSet = be.outChnlManager.outputChannelsMap().keySet();
+			} else {
+				if (isIn)
+					tokenSet = be.blob.getInputs();
+				else
+					tokenSet = be.blob.getOutputs();
+			}
+			return tokenSet;
 		}
 
 		public void stopMonitoring() {
