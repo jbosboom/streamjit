@@ -461,16 +461,10 @@ public class BlobsManagerImpl implements BlobsManager {
 		private DrainedData getDrainData() {
 			if (this.blob == null)
 				return getEmptyDrainData();
-			// System.out.println("**********************************");
+
 			DrainData dd = blob.getDrainData();
 			drainState = 5;
-
-			if (dd != null) {
-				// for (Token t : dd.getData().keySet()) {
-				// System.out.println("From Blob: " + t.toString() + " - "
-				// + dd.getData().get(t).size());
-				// }
-			}
+			// printDrainDataStats(dd);
 
 			ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
 			ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
@@ -564,6 +558,16 @@ public class BlobsManagerImpl implements BlobsManager {
 					break;
 			}
 			return sb.toString();
+		}
+
+		private void printDrainDataStats(DrainData dd) {
+			System.out.println("**********printDrainDataStats*************");
+			if (dd != null) {
+				for (Token t : dd.getData().keySet()) {
+					System.out.println("From Blob: " + t.toString() + " - "
+							+ dd.getData().get(t).size());
+				}
+			}
 		}
 
 		private void start() {
