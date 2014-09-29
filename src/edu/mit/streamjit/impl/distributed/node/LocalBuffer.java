@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.util.ConstructorSupplier;
 import edu.mit.streamjit.util.ReflectionUtils;
@@ -25,6 +26,62 @@ import edu.mit.streamjit.util.ReflectionUtils;
 public interface LocalBuffer extends Buffer {
 
 	public void drainingStarted(DrainType drainType);
+
+	/**
+	 * Just a wrapper for {@link ConcurrentArrayBuffer}
+	 */
+	public class ConcurrentArrayLocalBuffer implements LocalBuffer {
+		private final ConcurrentArrayBuffer buffer;
+
+		public ConcurrentArrayLocalBuffer(int capacity) {
+			buffer = new ConcurrentArrayBuffer(capacity);
+		}
+
+		@Override
+		public Object read() {
+			return buffer.read();
+		}
+
+		@Override
+		public int read(Object[] data, int offset, int length) {
+			return buffer.read(data, offset, length);
+		}
+
+		@Override
+		public boolean readAll(Object[] data) {
+			return buffer.readAll(data);
+		}
+
+		@Override
+		public boolean readAll(Object[] data, int offset) {
+			return buffer.readAll(data, offset);
+		}
+
+		@Override
+		public boolean write(Object t) {
+			return buffer.write(t);
+		}
+
+		@Override
+		public int write(Object[] data, int offset, int length) {
+			return buffer.write(data, offset, length);
+		}
+
+		@Override
+		public int size() {
+			return buffer.size();
+		}
+
+		@Override
+		public int capacity() {
+			return buffer.capacity();
+		}
+
+		@Override
+		public void drainingStarted(DrainType drainType) {
+			System.out.println("drainingStarted: Not supported");
+		}
+	}
 
 	/**
 	 * Modified version of {@link DynamicBufferManager#DynamicBuffer}. Instead
