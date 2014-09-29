@@ -139,12 +139,12 @@ public interface BufferManager {
 					.<Token, LocalBuffer> builder();
 			for (Token t : localTokens) {
 				int bufSize = bufferSizes.get(t);
-				bufferMapBuilder.put(t, concurrentArrayLocalBuffer(t, bufSize));
+				bufferMapBuilder.put(t, concurrentArrayLocalBuffer1(t, bufSize));
 			}
 			localBufferMap = bufferMapBuilder.build();
 		}
 
-		protected final LocalBuffer1 concurrentArrayLocalBuffer(Token t,
+		protected final LocalBuffer1 concurrentArrayLocalBuffer1(Token t,
 				int bufSize) {
 			List<Object> args = new ArrayList<>(1);
 			args.add(bufSize);
