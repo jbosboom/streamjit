@@ -37,10 +37,30 @@ public class ConfigurationEditor {
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		generate1(new ChannelVocoder7.ChannelVocoder7Kernel(), 16);
-		edit1(name, noofwrks);
+		// generate1(new ChannelVocoder7.ChannelVocoder7Kernel(), 16);
+		// edit1(name, noofwrks);
 		// print("4366NestedSplitJoinCore.cfg");
 		// convert();
+		changeMultiplierVal();
+	}
+
+	/**
+	 * Reads a configuration and changes its multiplier value.
+	 */
+	private static void changeMultiplierVal() {
+		Configuration config = readConfiguration("final_NestedSplitJoinCore");
+		Configuration.Builder builder = Configuration.builder(config);
+		IntParameter mulParam = config.getParameter("multiplier",
+				IntParameter.class);
+		if (mulParam != null) {
+			System.out.println("Multiplier values is " + mulParam.getValue());
+			builder.removeParameter(mulParam.getName());
+		}
+
+		IntParameter newMulParam = new IntParameter("multiplier", 1, 100, 100);
+		builder.addParameter(newMulParam);
+		saveConfg(builder.build(), 444, "final_NestedSplitJoinCore");
+
 	}
 
 	private static void generate(OneToOneElement<?, ?> stream, int noOfnodes) {
