@@ -14,6 +14,7 @@ import com.google.common.collect.Sets;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
+import edu.mit.streamjit.impl.distributed.node.LocalBuffer.ConcurrentArrayLocalBuffer;
 import edu.mit.streamjit.impl.distributed.node.LocalBuffer.LocalBuffer1;
 
 /**
@@ -139,7 +140,8 @@ public interface BufferManager {
 					.<Token, LocalBuffer> builder();
 			for (Token t : localTokens) {
 				int bufSize = bufferSizes.get(t);
-				bufferMapBuilder.put(t, concurrentArrayLocalBuffer1(t, bufSize));
+				bufferMapBuilder
+						.put(t, concurrentArrayLocalBuffer1(t, bufSize));
 			}
 			localBufferMap = bufferMapBuilder.build();
 		}
@@ -150,6 +152,11 @@ public interface BufferManager {
 			args.add(bufSize);
 			return new LocalBuffer1(t.toString(), ConcurrentArrayBuffer.class,
 					args, bufSize, 0);
+		}
+
+		protected final LocalBuffer concurrentArrayLocalBuffer(Token t,
+				int bufSize) {
+			return new ConcurrentArrayLocalBuffer(bufSize);
 		}
 	}
 
