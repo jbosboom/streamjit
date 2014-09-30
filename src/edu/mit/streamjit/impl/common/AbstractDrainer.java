@@ -2,8 +2,10 @@ package edu.mit.streamjit.impl.common;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -258,6 +260,7 @@ public abstract class AbstractDrainer {
 		DrainData draindata1 = new DrainData(dataBuilder.build(), state);
 		drainData = drainData.merge(draindata1);
 		updateDrainDataStatistics(drainData, false);
+		// dumpDrainData(drainData);
 		return drainData;
 	}
 
@@ -279,6 +282,17 @@ public abstract class AbstractDrainer {
 				// }
 				System.out.print('\n');
 			}
+		}
+	}
+
+	private void dumpDrainData(DrainData drainData) {
+		try {
+			FileOutputStream fout = new FileOutputStream("DrainData");
+			ObjectOutputStream oos = new ObjectOutputStream(fout);
+			oos.writeObject(drainData);
+			oos.close();
+		} catch (Exception ex) {
+			ex.printStackTrace();
 		}
 	}
 
