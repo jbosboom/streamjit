@@ -156,13 +156,26 @@ public interface LocalBuffer extends Buffer {
 			this.writeBuffer = defaultBuffer;
 			this.gap = 10_000_000_000l; // 10s
 			hasDrainingStarted = false;
-			lastWrittenTime = 0;
 		}
 
+		/*
+		 * (non-Javadoc)
+		 * 
+		 * @see edu.mit.streamjit.impl.blob.Buffer#capacity()
+		 * 
+		 * if hasDrainingStarted == true sends defaultBuffer.capacity() * 2 as
+		 * capacity because if the room is 0 blobs never try to call write and
+		 * hence wirteFailed() will never be called. Check
+		 * Interpreter#pushOutputs().
+		 */
 		@Override
 		public int capacity() {
-			int cap = drainBuffer == null ? defaultBuffer.capacity()
-					: drainBuffer.capacity() + defaultBuffer.capacity();
+			int cap;
+			if (hasDrainingStarted) {
+				cap = drainBuffer == null ? defaultBuffer.capacity() * 2
+						: drainBuffer.capacity() + defaultBuffer.capacity();
+			} else
+				cap = defaultBuffer.capacity();
 			return cap;
 		}
 
@@ -173,25 +186,51 @@ public interface LocalBuffer extends Buffer {
 
 		@Override
 		public Object read() {
-			Object o = defaultBuffer.read();
+			Object o;
+			if (drainBuffer == null || defaultBuffer.size() > 0)
+				o = defaultBuffer.read();
+			else
+				o = drainBuffer.read();
 			return o;
 		}
 
 		@Override
 		public int read(Object[] data, int offset, int length) {
-			int ret = defaultBuffer.read(data, offset, length);
+			int ret;
+			if (drainBuffer == null)
+				ret = defaultBuffer.read(data, offset, length);
+			else if (defaultBuffer.size() == 0)
+				ret = drainBuffer.read(data, offset, length);
+			else {
+				ret = defaultBuffer.read(data, offset, length);
+				ret += drainBuffer.read(data, offset + ret, length - ret);
+			}
 			return ret;
 		}
 
 		@Override
 		public boolean readAll(Object[] data) {
-			boolean ret = defaultBuffer.readAll(data);
-			return ret;
+			return readAll(data, 0);
 		}
 
 		@Override
 		public boolean readAll(Object[] data, int offset) {
-			boolean ret = defaultBuffer.readAll(data, offset);
+			boolean ret;
+			int need = data.length - offset;
+			if (drainBuffer == null)
+				ret = defaultBuffer.readAll(data, offset);
+			else if (defaultBuffer.size() == 0)
+				ret = drainBuffer.readAll(data, offset);
+			else if (need > defaultBuffer.size() + drainBuffer.size())
+				ret = false;
+			else {
+				int read = defaultBuffer.read(data, offset, need);
+				read += drainBuffer.read(data, offset + read, need - read);
+				ret = true;
+				if (read != need)
+					throw new IllegalStateException(
+							"data buffer is not full. Check the logic");
+			}
 			return ret;
 		}
 
@@ -207,31 +246,29 @@ public interface LocalBuffer extends Buffer {
 			boolean ret = writeBuffer.write(t);
 			if (!ret)
 				writeFailed();
-			else if (lastWrittenTime != 0)
-				lastWrittenTime = 0;
 			return ret;
 		}
 
 		@Override
 		public int write(Object[] data, int offset, int length) {
 			int written = writeBuffer.write(data, offset, length);
-			if (written == 0)
+			if (written != length) {
 				writeFailed();
-			else if (lastWrittenTime != 0)
-				lastWrittenTime = 0;
+				written += writeBuffer.write(data, offset + written, length
+						- written);
+			}
 			return written;
 		}
 
 		private void createDrainBuffer() {
 			assert drainBuffer == null : "drainBuffer has already been created.";
-			int newCapacity = 2 * defaultBuffer.capacity();
+			int newCapacity = 4 * defaultBuffer.capacity();
 			System.out
 					.println(String
 							.format("%s : Creating drain buffer: defaultBufferCapacity - %d, drainBufferCapacity - %d",
 									name, initialCapacity, newCapacity));
 			drainBuffer = getNewBuffer(newCapacity);
 			this.writeBuffer = drainBuffer;
-			lastWrittenTime = 0;
 		}
 
 		private List<?> getArguments(int newCapacity) {
@@ -262,16 +299,12 @@ public interface LocalBuffer extends Buffer {
 				return;
 
 			if (drainBuffer != null)
-				throw new IllegalStateException("drainBuffer is full");
-
-			if (lastWrittenTime == 0) {
-				lastWrittenTime = System.nanoTime();
-				return;
-			}
-
-			if (System.nanoTime() - lastWrittenTime > gap) {
-				createDrainBuffer();
-			}
+				throw new IllegalStateException(
+						String.format(
+								"drainBuffer is full "
+										+ "drainBuffer.size() = %d, defaultBuffer.size() = %d  ",
+								drainBuffer.size(), defaultBuffer.size()));
+			createDrainBuffer();
 		}
 	}
 }
