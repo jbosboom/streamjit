@@ -246,12 +246,10 @@ public abstract class AbstractDrainer {
 				.builder();
 		for (Token t : Sets.union(boundaryInputData.keySet(),
 				boundaryOutputData.keySet())) {
-			ImmutableList<Object> in = boundaryInputData.get(t) != null
-					? boundaryInputData.get(t)
-					: ImmutableList.of();
-			ImmutableList<Object> out = boundaryOutputData.get(t) != null
-					? boundaryOutputData.get(t)
-					: ImmutableList.of();
+			ImmutableList<Object> in = boundaryInputData.get(t) != null ? boundaryInputData
+					.get(t) : ImmutableList.of();
+			ImmutableList<Object> out = boundaryOutputData.get(t) != null ? boundaryOutputData
+					.get(t) : ImmutableList.of();
 			dataBuilder.put(t, ImmutableList.builder().addAll(in).addAll(out)
 					.build());
 		}
@@ -259,7 +257,11 @@ public abstract class AbstractDrainer {
 		ImmutableTable<Integer, String, Object> state = ImmutableTable.of();
 		DrainData draindata1 = new DrainData(dataBuilder.build(), state);
 		drainData = drainData.merge(draindata1);
+		updateDrainDataStatistics(drainData, false);
+		return drainData;
+	}
 
+	private void updateDrainDataStatistics(DrainData drainData, boolean print) {
 		if (drainDataStatistics == null) {
 			drainDataStatistics = new HashMap<>();
 			for (Token t : drainData.getData().keySet()) {
@@ -268,26 +270,16 @@ public abstract class AbstractDrainer {
 		}
 
 		for (Token t : drainData.getData().keySet()) {
-			// System.out.print("Aggregated data: " + t.toString() + " - "
-			// + drainData.getData().get(t).size() + " - ");
-			// for (Object o : drainData.getData().get(t)) {
-			// System.out.print(o.toString() + ", ");
-			// }
-			// System.out.print('\n');
-
 			drainDataStatistics.get(t).add(drainData.getData().get(t).size());
+			if (print) {
+				System.out.print("Aggregated data: " + t.toString() + " - "
+						+ drainData.getData().get(t).size() + " - ");
+				// for (Object o : drainData.getData().get(t)) {
+				// System.out.print(o.toString() + ", ");
+				// }
+				System.out.print('\n');
+			}
 		}
-
-		// dumps the drain data into a file.
-		// try {
-		// FileOutputStream fout = new FileOutputStream("DrainData");
-		// ObjectOutputStream oos = new ObjectOutputStream(fout);
-		// oos.writeObject(drainData);
-		// oos.close();
-		// } catch (Exception ex) {
-		// ex.printStackTrace();
-		// }
-		return drainData;
 	}
 
 	/**
