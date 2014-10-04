@@ -2,6 +2,7 @@ package edu.mit.streamjit.test.apps;
 
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.UnmodifiableIterator;
 import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
@@ -47,14 +48,14 @@ public final class Vocoder {
 	@ServiceProvider(Benchmark.class)
 	public static final class VocoderBenchmark extends SuppliedBenchmark {
 		private static final int COPIES = 1;
-		private static final Iterable<Integer> INPUT = Iterables.concat(
+		private static final Iterable<Integer> INPUT = ImmutableList.copyOf(Iterables.concat(
 				//simulating a Delay filter's prework
 				Collections.nCopies(VocoderTopLevel.DFT_LENGTH_NOM, 0),
 				//limit based on VocoderExample.in, not relevant to
 				//VocoderTopLevel.str, which takes its input from a StepSource
 				//source filter
 				Iterables.limit(new StepSource(100), 10000)
-		);
+		));
 		public VocoderBenchmark() {
 			super("Vocoder", VocoderTopLevel.class, new Dataset("StepSource", (Input)Datasets.nCopies(COPIES, (Input)Input.fromIterable(INPUT))
 					//classic StreamIt runs forever here, so length will vary.

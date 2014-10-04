@@ -3,6 +3,7 @@ package edu.mit.streamjit.test.apps.des2;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.primitives.Ints;
+import com.jeffreybosboom.serviceproviderprocessor.ServiceProvider;
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Identity;
@@ -18,6 +19,7 @@ import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.impl.interp.DebugStreamCompiler;
 import edu.mit.streamjit.test.AbstractBenchmark;
+import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.Datasets;
 import java.nio.ByteOrder;
@@ -162,6 +164,7 @@ public final class DES2 {
 			{ 1, 15, 13, 8, 10, 3, 7, 4, 12, 5, 6, 11, 0, 14, 9, 2 }, { 7, 11, 4, 1, 9, 12, 14, 2, 0, 6, 10, 13, 15, 3, 5, 8 },
 			{ 2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11 } };
 
+	@ServiceProvider(Benchmark.class)
 	public static final class DES2Benchmark extends AbstractBenchmark {
 		public DES2Benchmark() {
 			super("DES2", new Dataset("des.in", (Input)Input.fromBinaryFile(Paths.get("data/des.in"), Integer.class, ByteOrder.LITTLE_ENDIAN)

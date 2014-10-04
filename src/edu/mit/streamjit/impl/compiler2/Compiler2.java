@@ -48,7 +48,6 @@ import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.DrainInstruction;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.ReadInstruction;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.WriteInstruction;
 import edu.mit.streamjit.test.Benchmark;
-import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
 import edu.mit.streamjit.util.CollectionUtils;
@@ -58,6 +57,9 @@ import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.bytecode.Module;
 import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Modifier;
@@ -70,7 +72,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
@@ -93,9 +94,9 @@ public class Compiler2 {
 	public static final RemovalStrategy REMOVAL_STRATEGY = new BitsetRemovalStrategy();
 	public static final FusionStrategy FUSION_STRATEGY = new BitsetFusionStrategy();
 	public static final UnboxingStrategy UNBOXING_STRATEGY = new BitsetUnboxingStrategy();
-	public static final AllocationStrategy ALLOCATION_STRATEGY = new CompositionAllocationStrategy(8);
-	public static final StorageStrategy INTERNAL_STORAGE_STRATEGY = new StandardInternalStorageStrategy();
-	public static final StorageStrategy EXTERNAL_STORAGE_STRATEGY = new StandardExternalStorageStrategy();
+	public static final AllocationStrategy ALLOCATION_STRATEGY = new SubsetBiasAllocationStrategy(8);
+	public static final StorageStrategy INTERNAL_STORAGE_STRATEGY = new TuneInternalStorageStrategy();
+	public static final StorageStrategy EXTERNAL_STORAGE_STRATEGY = new TuneExternalStorageStrategy();
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
@@ -915,19 +916,20 @@ public class Compiler2 {
 		ImmutableMap<Storage, ConcreteStorage> internalStorage = createStorage(true, INTERNAL_STORAGE_STRATEGY.asFactory(config));
 
 		List<Core> ssCores = new ArrayList<>(maxNumCores);
+		IndexFunctionTransformer ift = new IdentityIndexFunctionTransformer();
 		for (int i = 0; i < maxNumCores; ++i) {
 			ImmutableTable.Builder<Actor, Integer, IndexFunctionTransformer> inputTransformers = ImmutableTable.builder(),
 					outputTransformers = ImmutableTable.builder();
 			for (Actor a : Iterables.filter(actors, WorkerActor.class)) {
 				for (int j = 0; j < a.inputs().size(); ++j) {
-					String name = String.format("Core%dWorker%dInput%dIndexFxnTransformer", i, a.id(), j);
-					SwitchParameter<IndexFunctionTransformer> param = config.getParameter(name, SwitchParameter.class, IndexFunctionTransformer.class);
-					inputTransformers.put(a, j, param.getValue());
+//					String name = String.format("Core%dWorker%dInput%dIndexFxnTransformer", i, a.id(), j);
+//					SwitchParameter<IndexFunctionTransformer> param = config.getParameter(name, SwitchParameter.class, IndexFunctionTransformer.class);
+					inputTransformers.put(a, j, ift);
 				}
 				for (int j = 0; j < a.outputs().size(); ++j) {
-					String name = String.format("Core%dWorker%dOutput%dIndexFxnTransformer", i, a.id(), j);
-					SwitchParameter<IndexFunctionTransformer> param = config.getParameter(name, SwitchParameter.class, IndexFunctionTransformer.class);
-					outputTransformers.put(a, j, param.getValue());
+//					String name = String.format("Core%dWorker%dOutput%dIndexFxnTransformer", i, a.id(), j);
+//					SwitchParameter<IndexFunctionTransformer> param = config.getParameter(name, SwitchParameter.class, IndexFunctionTransformer.class);
+					outputTransformers.put(a, j, ift);
 				}
 			}
 
@@ -1633,5 +1635,37 @@ public class Compiler2 {
 			bm = new FMRadio.FMRadioBenchmarkProvider().iterator().next();
 		}
 		Benchmarker.runBenchmark(bm, sc).get(0).print(System.out);
+	}
+
+	private void printDot(String stage) {
+		try (FileWriter fw = new FileWriter(stage+".dot");
+				BufferedWriter bw = new BufferedWriter(fw)) {
+			bw.write("digraph {\n");
+			for (ActorGroup g : groups) {
+				bw.write("subgraph cluster_"+Integer.toString(g.id()).replace('-', '_')+" {\n");
+				for (Actor a : g.actors())
+					bw.write(String.format("\"%s\";\n", nodeName(a)));
+				bw.write("label = \"x"+externalSchedule.get(g)+"\";\n");
+				bw.write("}\n");
+			}
+			for (ActorGroup g : groups) {
+				for (Actor a : g.actors()) {
+					for (Storage s : a.outputs())
+						for (Actor b : s.downstream())
+							bw.write(String.format("\"%s\" -> \"%s\";\n", nodeName(a), nodeName(b)));
+				}
+			}
+			bw.write("}\n");
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		}
+	}
+
+	private String nodeName(Actor a) {
+		if (a instanceof TokenActor)
+			return (((TokenActor)a).isInput()) ? "input" : "output";
+		WorkerActor wa = (WorkerActor)a;
+		String workerClassName = wa.worker().getClass().getSimpleName();
+		return workerClassName.replaceAll("[a-z]", "") + "@" + Integer.toString(wa.id()).replace('-', '_');
 	}
 }

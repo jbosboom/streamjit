@@ -59,6 +59,6 @@ public final class RoundrobinSplitter<T> extends Splitter<T, T> {
 
 	@Override
 	public String toString() {
-		return String.format("RoundrobinSplitter(%d)", itemsPerExecution);
+		return String.format("RoundrobinSplitter(%d)@%d", itemsPerExecution, getIdentifier());
 	}
 }
