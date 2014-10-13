@@ -126,9 +126,11 @@ public final class GlobalConstants {
 	public static final boolean useCompilerBlob = true;
 
 	/**
-	 * Prints number of outputs generated.
+	 * Period to print output count periodically. This printing feature get
+	 * turned off if this value is less than 1. Time unit is ms. See
+	 * {@link TailChannel}.
 	 */
-	public static final boolean printOutputCount = false;
+	public static final int printOutputCountPeriod = 6000;
 
 	/**
 	 * Enables {@link DistributedStreamCompiler} to run on a single node. When

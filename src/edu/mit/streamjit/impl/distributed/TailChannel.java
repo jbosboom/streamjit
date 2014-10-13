@@ -3,6 +3,8 @@ package edu.mit.streamjit.impl.distributed;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -30,6 +32,18 @@ public class TailChannel extends BlockingInputChannel {
 	private PerformanceLogger pLogger = null;
 
 	private boolean skipLatchUp;
+
+	/**
+	 * Periodically prints no of outputs generated. See
+	 * {@link #printOutputCount()}.
+	 */
+	private ScheduledExecutorService scheduledExecutorService;
+
+	/**
+	 * The no of outputs generated at the end of last period. See
+	 * {@link #printOutputCount()}.
+	 */
+	private int lastCount;
 
 	/**
 	 * @param buffer
@@ -61,6 +75,7 @@ public class TailChannel extends BlockingInputChannel {
 			pLogger = new PerformanceLogger();
 			pLogger.start();
 		}
+		printOutputCount();
 	}
 
 	@Override
@@ -68,8 +83,8 @@ public class TailChannel extends BlockingInputChannel {
 		super.receiveData();
 		count++;
 
-		if (GlobalConstants.printOutputCount && count % 10000 == 0)
-			System.err.println(count);
+		// if (GlobalConstants.printOutputCount && count % 10000 == 0)
+		// System.err.println(count);
 
 		if (skipLatchUp && count > skipCount) {
 			skipLatch.countDown();
@@ -87,6 +102,8 @@ public class TailChannel extends BlockingInputChannel {
 			reset();
 			pLogger.stopLogging();
 		}
+		if (scheduledExecutorService != null)
+			scheduledExecutorService.shutdown();
 	}
 
 	/**
@@ -107,6 +124,30 @@ public class TailChannel extends BlockingInputChannel {
 		long normalizedTime = (GlobalConstants.outputCount * time)
 				/ (totalCount - skipCount);
 		return normalizedTime;
+	}
+
+	/**
+	 * Periodically prints no of outputs generated.
+	 */
+	private void printOutputCount() {
+		if (GlobalConstants.printOutputCountPeriod < 1)
+			return;
+
+		lastCount = 0;
+		scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+		scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+
+			@Override
+			public void run() {
+				int newOutputs = count - lastCount;
+				lastCount = count;
+				System.out.println(String.format(
+						"Outputs: Total - %d, During last period - %d", count,
+						newOutputs));
+
+			}
+		}, GlobalConstants.printOutputCountPeriod,
+				GlobalConstants.printOutputCountPeriod, TimeUnit.MILLISECONDS);
 	}
 
 	public void reset() {
