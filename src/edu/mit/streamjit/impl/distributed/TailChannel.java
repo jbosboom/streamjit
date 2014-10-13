@@ -83,9 +83,6 @@ public class TailChannel extends BlockingInputChannel {
 		super.receiveData();
 		count++;
 
-		// if (GlobalConstants.printOutputCount && count % 10000 == 0)
-		// System.err.println(count);
-
 		if (skipLatchUp && count > skipCount) {
 			skipLatch.countDown();
 			skipLatchUp = false;
