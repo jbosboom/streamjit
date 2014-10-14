@@ -139,7 +139,8 @@ public class TailChannel extends BlockingInputChannel {
 				int newOutputs = count - lastCount;
 				lastCount = count;
 				System.out.println(String.format(
-						"Outputs: Total - %d, During last period - %d", count,
+						"Outputs: since started - %d, during last %d ms - %d",
+						count, GlobalConstants.printOutputCountPeriod,
 						newOutputs));
 
 			}
