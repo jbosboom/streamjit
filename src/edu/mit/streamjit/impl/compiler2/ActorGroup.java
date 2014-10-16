@@ -18,6 +18,7 @@ import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
 import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findStatic;
+import edu.mit.streamjit.util.bytecode.methodhandles.ProxyFactory;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -253,7 +254,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			int unrollFactor,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers,
-			Bytecodifier.Function bytecodifier) {
+			ProxyFactory bytecodifier) {
 		//TokenActors are special.
 		assert !isTokenGroup() : actors();
 
@@ -354,7 +355,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * reinitialize the splitter/joiner index arrays to their initial
 	 * values.
 	 */
-	private MethodHandle makeGroupLoop(Range<Integer> iterations, int unrollFactor, Map<Actor, MethodHandle> withRWHandlesBound, Bytecodifier.Function bytecodifier) {
+	private MethodHandle makeGroupLoop(Range<Integer> iterations, int unrollFactor, Map<Actor, MethodHandle> withRWHandlesBound, ProxyFactory bytecodifier) {
 		if (iterations.isEmpty()) return Combinators.nop();
 		String groupLoopName = String.format("Group%dIter%dTo%dBy%d", id(), iterations.lowerEndpoint(), iterations.upperEndpoint(), unrollFactor);
 		List<MethodHandle> loopHandles = new ArrayList<>(actors().size());

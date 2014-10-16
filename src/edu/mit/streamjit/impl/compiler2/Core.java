@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Range;
 import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
 import edu.mit.streamjit.util.Pair;
+import edu.mit.streamjit.util.bytecode.methodhandles.ProxyFactory;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,13 +19,13 @@ public class Core {
 	private final ImmutableMap<Storage, ConcreteStorage> storage;
 	private final ImmutableMap<ActorGroup, Integer> unrollFactors;
 	private final ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers, outputTransformers;
-	private final Bytecodifier.Function bytecodifier;
+	private final ProxyFactory bytecodifier;
 	private final List<Pair<ActorGroup, Range<Integer>>> allocations = new ArrayList<>();
 	public Core(ImmutableMap<Storage, ConcreteStorage> storage,
 			ImmutableMap<ActorGroup, Integer> unrollFactors,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers,
-			Bytecodifier.Function bytecodifier) {
+			ProxyFactory bytecodifier) {
 		this.storage = storage;
 		this.unrollFactors = unrollFactors;
 		this.inputTransformers = inputTransformers;
