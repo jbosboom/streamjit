@@ -1,5 +1,8 @@
-nbproject/private/
-nbproject/configs/
+nbproject/
+# all of lib/ except lib/opentuner
+lib/*.jar
+lib/src/
+lib/doc/
 build/
 nbbuild/
 dist/

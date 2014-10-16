@@ -1,73 +1,135 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- You may freely edit this file. See commented blocks below for -->
-<!-- some examples of how to customize the build. -->
-<!-- (If you delete it and reopen the project it will be recreated.) -->
-<!-- By default, only the Clean and Build commands use this build script. -->
-<!-- Commands such as Run, Debug, and Test only use this build script if -->
-<!-- the Compile on Save feature is turned off for the project. -->
-<!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
-<!-- in the project's Project Properties dialog box.-->
-<project name="jstreamit" default="default" basedir=".">
-    <description>Builds, tests, and runs the project jstreamit.</description>
-    <import file="nbproject/build-impl.xml"/>
-    <!--
+<project name="streamjit" basedir="." default="jar"
+xmlns:if="ant:if" xmlns:unless="ant:unless"
+>
+	<target name="fetch">
+		<!-- <mkdir dir="lib"/> -->
+		<mkdir dir="lib/doc"/>
+		<mkdir dir="lib/src"/>
 
-    There exist several targets which are by default empty and which can be 
-    used for execution of your tasks. These targets are usually executed 
-    before and after some main targets. They are: 
+		<!-- use a local bytecodelib jar if available -->
+		<copy file="../bytecodelib/build/jar/bytecodelib.jar"
+			  tofile="lib/bytecodelib.jar"
+			  failonerror="false" quiet="true" />
 
-      -pre-init:                 called before initialization of project properties
-      -post-init:                called after initialization of project properties
-      -pre-compile:              called before javac compilation
-      -post-compile:             called after javac compilation
-      -pre-compile-single:       called before javac compilation of single file
-      -post-compile-single:      called after javac compilation of single file
-      -pre-compile-test:         called before javac compilation of JUnit tests
-      -post-compile-test:        called after javac compilation of JUnit tests
-      -pre-compile-test-single:  called before javac compilation of single JUnit test
-      -post-compile-test-single: called after javac compilation of single JUunit test
-      -pre-jar:                  called before JAR building
-      -post-jar:                 called after JAR building
-      -post-clean:               called after cleaning build products
+		<!-- the asm download needs to be unpacked, so skipexisting isn't
+			 enough to prevent executing it repeatedly -->
+		<condition property="getasm">
+			<not>
+				<and>
+					<available file="lib/asm.jar"/>
+					<available file="lib/doc/asm-doc.jar"/>
+					<available file="lib/src/asm-src.zip"/>
+				</and>
+			</not>
+		</condition>
+		<sequential if:true="${getasm}">
+			<get src="http://download.forge.ow2.org/asm/asm-5.0.3-bin.zip"
+				 dest="lib/asm-5.0.3-bin.zip"/>
+			<unzip src="lib/asm-5.0.3-bin.zip" dest="lib"/>
+			<copy file="lib/asm-5.0.3/lib/all/asm-debug-all-5.0.3.jar"
+				  tofile="lib/asm.jar"/>
+			<copy file="lib/asm-5.0.3/src.zip" tofile="lib/src/asm-src.zip"/>
+			<jar basedir="lib/asm-5.0.3/doc/javadoc/user" destfile="lib/doc/asm-doc.jar"/>
+			<delete dir="lib/asm-5.0.3"/>
+			<delete file="lib/asm-5.0.3-bin.zip"/>
+		</sequential>
 
-    (Targets beginning with '-' are not intended to be called on their own.)
+		<get src="http://search.maven.org/remotecontent?filepath=com/nativelibs4java/bridj/0.6.2/bridj-0.6.2-c-only.jar"
+			 dest="lib/bridj.jar"
+			 skipexisting="true"/>
+		<get src="http://search.maven.org/remotecontent?filepath=com/nativelibs4java/bridj/0.6.2/bridj-0.6.2-javadoc.jar"
+			 dest="lib/doc/bridj-doc.jar"
+			 skipexisting="true"/>
+		<get src="http://search.maven.org/remotecontent?filepath=com/nativelibs4java/bridj/0.6.2/bridj-0.6.2-sources.jar"
+			 dest="lib/src/bridj-src.jar"
+			 skipexisting="true"/>
 
-    Example of inserting an obfuscator after compilation could look like this:
+		<get src="http://search.maven.org/remotecontent?filepath=com/google/guava/guava/18.0/guava-18.0.jar"
+			 dest="lib/guava.jar"
+			 skipexisting="true"/>
+		<get src="http://search.maven.org/remotecontent?filepath=com/google/guava/guava/18.0/guava-18.0-javadoc.jar"
+			 dest="lib/doc/guava-doc.jar"
+			 skipexisting="true"/>
+		<get src="http://search.maven.org/remotecontent?filepath=com/google/guava/guava/18.0/guava-18.0-sources.jar"
+			 dest="lib/src/guava-src.jar"
+			 skipexisting="true"/>
 
-        <target name="-post-compile">
-            <obfuscate>
-                <fileset dir="${build.classes.dir}"/>
-            </obfuscate>
-        </target>
+		<get src="http://repo1.maven.org/maven2/net/sf/jopt-simple/jopt-simple/4.5/jopt-simple-4.5.jar"
+			 dest="lib/joptsimple.jar"
+			 skipexisting="true"/>
+		<get src="http://repo1.maven.org/maven2/net/sf/jopt-simple/jopt-simple/4.5/jopt-simple-4.5-javadoc.jar"
+			 dest="lib/doc/joptsimple-doc.jar"
+			 skipexisting="true"/>
+		<get src="http://repo1.maven.org/maven2/net/sf/jopt-simple/jopt-simple/4.5/jopt-simple-4.5-sources.jar"
+			 dest="lib/src/joptsimple-src.jar"
+			 skipexisting="true"/>
 
-    For list of available properties check the imported 
-    nbproject/build-impl.xml file. 
+		<get src="http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4.jar"
+			 dest="lib/javax.json.jar"
+			 skipexisting="true"/>
+		<get src="http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4-javadoc.jar"
+			 dest="lib/doc/javax.json-doc.jar"
+			 skipexisting="true"/>
+		<get src="http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4-sources.jar"
+			 dest="lib/src/javax.json-src.jar"
+			 skipexisting="true"/>
 
+		<get src="https://github.com/jbosboom/ServiceProviderProcessor/releases/download/r20141016/ServiceProviderProcessor.jar"
+			 dest="lib/ServiceProviderProcessor.jar"
+			 skipexisting="true"/>
 
-    Another way to customize the build is by overriding existing main targets.
-    The targets of interest are: 
+		<get src="http://search.maven.org/remotecontent?filepath=org/xerial/sqlite-jdbc/3.7.15-M1/sqlite-jdbc-3.7.15-M1.jar"
+			 dest="lib/sqlitejdbc.jar"
+			 skipexisting="true"/>
 
-      -init-macrodef-javac:     defines macro for javac compilation
-      -init-macrodef-junit:     defines macro for junit execution
-      -init-macrodef-debug:     defines macro for class debugging
-      -init-macrodef-java:      defines macro for class execution
-      -do-jar:                  JAR building
-      run:                      execution of project 
-      -javadoc-build:           Javadoc generation
-      test-report:              JUnit report generation
+		<!-- TODO: otherwise download
+		<get src=""
+			 dest="lib/bytecodelib.jar"
+			 skipexisting="true"/>
+		-->
+	</target>
 
-    An example of overriding the target for project execution could look like this:
+	<target name="clean">
+		<delete dir="build"/>
+	</target>
 
-        <target name="run" depends="jstreamit-impl.jar">
-            <exec dir="bin" executable="launcher.exe">
-                <arg file="${dist.jar}"/>
-            </exec>
-        </target>
+	<target name="build">
+		<mkdir dir="build/classes"/>
+		<javac srcdir="src" destdir="build/classes" debug="true" includeantruntime="false">
+			<classpath>
+				<fileset dir="lib">
+					<include name="*.jar"/>
+				</fileset>
+			</classpath>
+		</javac>
+		<copy todir="build/classes">
+			<fileset dir="src" excludes="**/*.java"/>
+		</copy>
+	</target>
 
-    Notice that the overridden target depends on the jar target and not only on 
-    the compile target as the regular run target does. Again, for a list of available 
-    properties which you can use, check the target you are overriding in the
-    nbproject/build-impl.xml file. 
+	<target name="jar" depends="build">
+		<mkdir dir="build/jar"/>
+		<jar destfile="build/jar/streamjit.jar" basedir="build/classes">
+		</jar>
+	</target>
 
-    -->
+	<target name="test" depends="jar">
+		<java classname="edu.mit.streamjit.test.Benchmarker" fork="true">
+			<arg value="--include-attribute=SANITY"/>
+			<arg value="--include-attribute=REGRESSION"/>
+			<classpath>
+				<fileset dir="lib">
+					<include name="*.jar"/>
+				</fileset>
+				<fileset dir="build/jar">
+					<include name="*.jar"/>
+				</fileset>
+			</classpath>
+			<assertions>
+				<enable/>
+			</assertions>
+		</java>
+	</target>
+
+	<target name="clean-build" depends="clean,jar"/>
 </project>
