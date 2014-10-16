@@ -41,24 +41,6 @@ public class CircularArrayConcreteStorage implements ConcreteStorage {
 	}
 
 	@Override
-	public Object read(int index) {
-		try {
-			return readHandle.invoke(index);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.read(%d, %s)", this, index), ex);
-		}
-	}
-
-	@Override
-	public void write(int index, Object data) {
-		try {
-			writeHandle.invoke(index, data);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.write(%d, %s)", this, index, data), ex);
-		}
-	}
-
-	@Override
 	public void adjust() {
 		//head + throughput >= 0 && capacity > 0, so % is mod.
 		head = (head + throughput) % capacity;

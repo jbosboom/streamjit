@@ -59,13 +59,26 @@ public interface ConcreteStorage {
 	 * @param index the index to read
 	 * @return the element at the given index
 	 */
-	public Object read(int index);
+	public default Object read(int index) {
+		try {
+			return readHandle().invoke(index);
+		} catch (Throwable ex) {
+			throw new AssertionError(String.format("%s.read(%d)", this, index), ex);
+		}
+	}
 	/**
 	 * Writes the given element at the given index, unboxing if necessary.
 	 * @param index the index to write
 	 * @param data the element to write
 	 */
-	public void write(int index, Object data);
+	public default void write(int index, Object data) {
+		try {
+			writeHandle().invoke(index, data);
+		} catch (Throwable ex) {
+			throw new AssertionError(String.format("%s.write(%d, %s)", this, index, data), ex);
+		}
+	}
+
 	/**
 	 * Shifts indices toward negative infinity and ensures that subsequent calls
 	 * to read will see items written by previous calls to write.  (These are

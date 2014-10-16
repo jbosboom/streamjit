@@ -56,24 +56,6 @@ public final class MapConcreteStorage implements ConcreteStorage {
 	}
 
 	@Override
-	public Object read(int index) {
-		try {
-			return readHandle().invoke(index);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.read(%d, %s)", this, index), ex);
-		}
-	}
-
-	@Override
-	public void write(int index, Object data) {
-		try {
-			writeHandle().invoke(index, data);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.write(%d, %s)", this, index, data), ex);
-		}
-	}
-
-	@Override
 	public void adjust() {
 		//This is pretty slow, but we need them in order so we don't overwrite.
 		ImmutableSortedSet<Integer> indices = ImmutableSortedSet.copyOf(map.keySet());

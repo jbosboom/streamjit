@@ -59,15 +59,6 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage {
 	}
 
 	@Override
-	public Object read(int index) {
-		try {
-			return readHandle.invoke(index);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.read(%d, %s)", this, index), ex);
-		}
-	}
-
-	@Override
 	public void write(int index, Object data) {
 		try {
 			//Pretend the read and write arrays are contiguous.

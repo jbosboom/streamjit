@@ -39,15 +39,6 @@ public final class PeekableBufferConcreteStorage implements ConcreteStorage {
 	}
 
 	@Override
-	public Object read(int index) {
-		try {
-			return readHandle.invoke(index);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.read(%d, %s)", this, index), ex);
-		}
-	}
-
-	@Override
 	public void write(int index, Object data) {
 		throw new AssertionError(String.format("read-only! %s.write(%d, %s)", this, index, data));
 	}
