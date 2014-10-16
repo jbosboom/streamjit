@@ -3,7 +3,7 @@ package edu.mit.streamjit.impl.compiler2;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
-import edu.mit.streamjit.util.Combinators;
+import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
 import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findGetter;
 import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
@@ -47,9 +47,9 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage {
 
 		MethodHandle stateGetter = STATE_GETTER.bindTo(this);
 		this.readHandle = MethodHandles.filterArguments(MethodHandles.guardWithTest(stateGetter, readArray.get(), writeArray.get()),
-				0, Combinators.sub(MethodHandles.identity(int.class), readOffset));
+				0, Combinators.adder(-readOffset));
 		this.writeHandle = MethodHandles.filterArguments(MethodHandles.guardWithTest(stateGetter, writeArray.set(), readArray.set()),
-				0, Combinators.sub(MethodHandles.identity(int.class), writeOffset));
+				0, Combinators.adder(-writeOffset));
 		this.adjustHandle = ADJUST.bindTo(this);
 	}
 

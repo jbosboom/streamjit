@@ -18,7 +18,7 @@ import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.CollectionUtils;
-import edu.mit.streamjit.util.Combinators;
+import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
 import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findConstructor;
 import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import edu.mit.streamjit.util.NothrowCallable;

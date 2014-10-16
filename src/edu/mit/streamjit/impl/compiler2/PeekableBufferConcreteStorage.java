@@ -6,7 +6,7 @@ import com.google.common.collect.Maps;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.PeekableBuffer;
-import edu.mit.streamjit.util.Combinators;
+import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
 import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -29,7 +29,7 @@ public final class PeekableBufferConcreteStorage implements ConcreteStorage {
 		this.throughput = throughput;
 		this.minReadIndex = minReadIndex;
 		this.buffer = buffer;
-		this.readHandle = MethodHandles.filterArguments(IRB_PEEK.bindTo(buffer), 0, Combinators.sub(MethodHandles.identity(int.class), minReadIndex));
+		this.readHandle = MethodHandles.filterArguments(IRB_PEEK.bindTo(buffer), 0, Combinators.adder(-minReadIndex));
 		this.adjustHandle = MethodHandles.insertArguments(IRB_CONSUME, 0, buffer, throughput);
 	}
 

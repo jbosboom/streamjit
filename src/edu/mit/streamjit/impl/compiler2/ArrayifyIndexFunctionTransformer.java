@@ -1,7 +1,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Supplier;
-import edu.mit.streamjit.util.Combinators;
+import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
 import java.io.Serializable;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -63,7 +63,7 @@ public class ArrayifyIndexFunctionTransformer implements IndexFunctionTransforme
 		}
 
 		return MethodHandles.filterArguments(MethodHandles.arrayElementGetter(arrayObj.getClass()).bindTo(arrayObj), 0,
-				Combinators.sub(MethodHandles.identity(int.class), domain.first()))
+				Combinators.adder(-domain.first()))
 				.asType(MethodType.methodType(int.class, int.class));
 	}
 

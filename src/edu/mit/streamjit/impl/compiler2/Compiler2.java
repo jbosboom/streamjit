@@ -51,7 +51,7 @@ import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
 import edu.mit.streamjit.util.CollectionUtils;
-import edu.mit.streamjit.util.Combinators;
+import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
 import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findStatic;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
@@ -899,14 +899,14 @@ public class Compiler2 {
 				if (s.isInternal()) continue;
 				int itemsWritten = a.push(i) * initSchedule.get(a.group()) * a.group().schedule().get(a);
 				a.outputIndexFunctions().set(i, MethodHandles.filterArguments(
-						a.outputIndexFunctions().get(i), 0, Combinators.add(MethodHandles.identity(int.class), itemsWritten)));
+						a.outputIndexFunctions().get(i), 0, Combinators.adder(itemsWritten)));
 			}
 			for (int i = 0; i < a.inputs().size(); ++i) {
 				Storage s = a.inputs().get(i);
 				if (s.isInternal()) continue;
 				int itemsRead = a.pop(i) * initSchedule.get(a.group()) * a.group().schedule().get(a);
 				a.inputIndexFunctions().set(i, MethodHandles.filterArguments(
-						a.inputIndexFunctions().get(i), 0, Combinators.add(MethodHandles.identity(int.class), itemsRead)));
+						a.inputIndexFunctions().get(i), 0, Combinators.adder(itemsRead)));
 			}
 		}
 
@@ -1112,7 +1112,7 @@ public class Compiler2 {
 				//alternating hole/not-hole).
 				for (int check = 0; check < 100; ++check)
 					assert !liveIndices.contains(a.translateOutputIndex(i, offset + check)) : check;
-				a.outputIndexFunctions().set(i, Combinators.add(a.outputIndexFunctions().get(i), offset));
+				a.outputIndexFunctions().set(i, Combinators.apply(a.outputIndexFunctions().get(i), Combinators.adder(offset)));
 			}
 		}
 		return backup.build();

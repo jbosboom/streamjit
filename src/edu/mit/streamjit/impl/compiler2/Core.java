@@ -3,7 +3,7 @@ package edu.mit.streamjit.impl.compiler2;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Range;
-import edu.mit.streamjit.util.Combinators;
+import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
 import edu.mit.streamjit.util.Pair;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
