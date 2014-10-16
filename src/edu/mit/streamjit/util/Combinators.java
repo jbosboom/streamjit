@@ -3,7 +3,8 @@ package edu.mit.streamjit.util;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.primitives.Primitives;
-import static edu.mit.streamjit.util.LookupUtils.findStatic;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findStatic;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.param;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
@@ -160,14 +161,14 @@ public final class Combinators {
 	private static int _arraylength(Object[] a) {
 		return a.length;
 	}
-	private static final MethodHandle REFERENCE_ARRAYLENGTH = findStatic(LOOKUP, Combinators.class, "_arraylength", int.class, Object[].class);
+	private static final MethodHandle REFERENCE_ARRAYLENGTH = findStatic(LOOKUP, Combinators.class, "_arraylength", param(0, Object[].class));
 	private static final ImmutableMap<Class<?>, MethodHandle> PRIMITIVE_ARRAYLENGTH;
 	static {
 		ImmutableMap.Builder<Class<?>, MethodHandle> builder = ImmutableMap.builder();
 		for (Class<?> c : Primitives.allPrimitiveTypes())
 			if (c != void.class) {
 				Class<?> arrayClass = ReflectionUtils.getArrayType(c);
-				builder.put(arrayClass, findStatic(LOOKUP, Combinators.class, "_arraylength", int.class, arrayClass));
+				builder.put(arrayClass, findStatic(LOOKUP, Combinators.class, "_arraylength", param(0, arrayClass)));
 			}
 		PRIMITIVE_ARRAYLENGTH = builder.build();
 	}

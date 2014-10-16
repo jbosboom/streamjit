@@ -1,8 +1,8 @@
 package edu.mit.streamjit.impl.compiler2;
 
-import static edu.mit.streamjit.util.LookupUtils.findGetter;
-import static edu.mit.streamjit.util.LookupUtils.findStatic;
-import static edu.mit.streamjit.util.LookupUtils.findVirtual;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findGetter;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findStatic;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
@@ -14,9 +14,9 @@ import java.lang.invoke.MethodHandles.Lookup;
  */
 public class CircularArrayConcreteStorage implements ConcreteStorage {
 	private static final Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle INDEX = findStatic(LOOKUP, CircularArrayConcreteStorage.class, "index", int.class, int.class, int.class, int.class);
-	private static final MethodHandle ADJUST = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "adjust", void.class);;
-	private static final MethodHandle HEAD_GETTER = findGetter(LOOKUP, CircularArrayConcreteStorage.class, "head", int.class);
+	private static final MethodHandle INDEX = findStatic(LOOKUP, "index");
+	private static final MethodHandle ADJUST = findVirtual(LOOKUP, "adjust");
+	private static final MethodHandle HEAD_GETTER = findGetter(LOOKUP, "head");
 	private final Arrayish array;
 	private final int capacity, throughput;
 	private int head;

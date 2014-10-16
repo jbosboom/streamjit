@@ -5,7 +5,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Maps;
 import edu.mit.streamjit.util.Combinators;
-import static edu.mit.streamjit.util.LookupUtils.findVirtual;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -19,11 +19,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class MapConcreteStorage implements ConcreteStorage {
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle MAP_GET = findVirtual(LOOKUP, Map.class, "get", Object.class, Object.class)
+	private static final MethodHandle MAP_GET = findVirtual(Map.class, "get")
 			.asType(MethodType.methodType(Object.class, Map.class, int.class));
-	private static final MethodHandle MAP_PUT = findVirtual(LOOKUP, Map.class, "put", Object.class, Object.class, Object.class)
+	private static final MethodHandle MAP_PUT = findVirtual(Map.class, "put")
 			.asType(MethodType.methodType(void.class, Map.class, int.class, Object.class));
-	private static final MethodHandle ADJUST = findVirtual(LOOKUP, MapConcreteStorage.class, "adjust", void.class);
+	private static final MethodHandle ADJUST = findVirtual(LOOKUP, "adjust");
 	private final Class<?> type;
 	private final Map<Integer, Object> map = new ConcurrentHashMap<>();
 	private final MethodHandle readHandle, writeHandle, adjustHandle;

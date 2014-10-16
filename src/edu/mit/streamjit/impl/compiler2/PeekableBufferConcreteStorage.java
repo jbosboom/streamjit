@@ -7,7 +7,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.PeekableBuffer;
 import edu.mit.streamjit.util.Combinators;
-import edu.mit.streamjit.util.LookupUtils;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.Map;
@@ -18,8 +18,8 @@ import java.util.Map;
  * @since 2/18/2014
  */
 public final class PeekableBufferConcreteStorage implements ConcreteStorage {
-	private static final MethodHandle IRB_PEEK = LookupUtils.findVirtual(MethodHandles.publicLookup(), PeekableBuffer.class, "peek", Object.class, int.class);
-	private static final MethodHandle IRB_CONSUME = LookupUtils.findVirtual(MethodHandles.publicLookup(), PeekableBuffer.class, "consume", void.class, int.class);
+	private static final MethodHandle IRB_PEEK = findVirtual(PeekableBuffer.class, "peek");
+	private static final MethodHandle IRB_CONSUME = findVirtual(PeekableBuffer.class, "consume");
 	private final Class<?> type;
 	private final int throughput, minReadIndex;
 	private final PeekableBuffer buffer;

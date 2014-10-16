@@ -1,6 +1,6 @@
 package edu.mit.streamjit.impl.compiler2;
 
-import edu.mit.streamjit.util.LookupUtils;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
@@ -35,9 +35,9 @@ public final class EmptyConcreteStorage implements ConcreteStorage {
 	public void sync() {
 	}
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle READ = LookupUtils.findVirtual(LOOKUP, EmptyConcreteStorage.class, "read", Object.class, int.class);
-	private static final MethodHandle WRITE = LookupUtils.findVirtual(LOOKUP, EmptyConcreteStorage.class, "write", void.class, int.class, Object.class);
-	private static final MethodHandle ADJUST = LookupUtils.findVirtual(LOOKUP, EmptyConcreteStorage.class, "adjust", void.class);
+	private static final MethodHandle READ = findVirtual(LOOKUP, "read");
+	private static final MethodHandle WRITE = findVirtual(LOOKUP, "write");
+	private static final MethodHandle ADJUST = findVirtual(LOOKUP, "adjust");
 	@Override
 	public MethodHandle readHandle() {
 		return READ.bindTo(this);

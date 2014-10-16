@@ -17,7 +17,6 @@ import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.util.LookupUtils;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.bytecode.Access;
@@ -44,6 +43,7 @@ import edu.mit.streamjit.util.bytecode.insts.JumpInst;
 import edu.mit.streamjit.util.bytecode.insts.LoadInst;
 import edu.mit.streamjit.util.bytecode.insts.ReturnInst;
 import edu.mit.streamjit.util.bytecode.insts.StoreInst;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findConstructor;
 import edu.mit.streamjit.util.bytecode.types.ArrayType;
 import edu.mit.streamjit.util.bytecode.types.MethodType;
 import edu.mit.streamjit.util.bytecode.types.PrimitiveType;
@@ -186,7 +186,7 @@ public class ActorArchetype {
 		ImmutableMap.Builder<Pair<Class<?>, Class<?>>, MethodHandle> workMethodsBuilder = ImmutableMap.builder();
 		try {
 			Class<?> stateHolderClass = loader.loadClass(stateHolderKlass.getName());
-			this.constructStateHolder = LookupUtils.findConstructor(MethodHandles.publicLookup(), stateHolderClass, workerClass);
+			this.constructStateHolder = findConstructor(stateHolderClass);
 			Class<?> archetypeClass = loader.loadClass(archetypeKlass.getName());
 			ImmutableListMultimap<String, java.lang.reflect.Method> methodsByName
 					= Multimaps.index(Arrays.asList(archetypeClass.getMethods()),

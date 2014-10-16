@@ -5,9 +5,10 @@ import com.google.common.reflect.Reflection;
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.impl.blob.Buffer;
-import static edu.mit.streamjit.util.LookupUtils.findConstructor;
-import static edu.mit.streamjit.util.LookupUtils.findGetter;
-import static edu.mit.streamjit.util.LookupUtils.findSetter;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findConstructor;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findGetter;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findSetter;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.params;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
@@ -56,8 +57,8 @@ public abstract class InputBufferFactory {
 		static {
 			Reflection.initialize(Input.class);
 			assert INPUT_LOOKUP != null;
-			getInputBufferFactory = findGetter(INPUT_LOOKUP, Input.class, "input", InputBufferFactory.class);
-			newInput = findConstructor(INPUT_LOOKUP, Input.class, InputBufferFactory.class);
+			getInputBufferFactory = findGetter(INPUT_LOOKUP, "input");
+			newInput = findConstructor(INPUT_LOOKUP, params(1));
 		}
 	}
 	private static final class ManualInputHolder {
@@ -65,7 +66,7 @@ public abstract class InputBufferFactory {
 		static {
 			Reflection.initialize(ManualInput.class);
 			assert MANUALINPUT_LOOKUP != null;
-			setManualInputDelegate = findSetter(MANUALINPUT_LOOKUP, ManualInput.class, "delegate", ManualInputDelegate.class);
+			setManualInputDelegate = findSetter(MANUALINPUT_LOOKUP, "delegate");
 		}
 	}
 

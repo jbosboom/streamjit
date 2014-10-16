@@ -2,7 +2,7 @@ package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.collect.BoundType;
 import com.google.common.collect.Range;
-import edu.mit.streamjit.util.LookupUtils;
+import edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.Map;
@@ -16,8 +16,8 @@ import java.util.Map;
  */
 public class InternalArrayConcreteStorage implements ConcreteStorage {
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle READ_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, InternalArrayConcreteStorage.class, "readExceptionHandler", void.class, String.class, IndexOutOfBoundsException.class, int.class);
-	private static final MethodHandle WRITE_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, InternalArrayConcreteStorage.class, "writeExceptionHandler", void.class, String.class, IndexOutOfBoundsException.class, int.class, Object.class);
+	private static final MethodHandle READ_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, "readExceptionHandler");
+	private static final MethodHandle WRITE_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, "writeExceptionHandler");
 	private final Arrayish array;
 	private final MethodHandle readHandle, writeHandle;
 	public InternalArrayConcreteStorage(Arrayish array, Storage s) {

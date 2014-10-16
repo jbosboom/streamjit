@@ -4,8 +4,8 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import edu.mit.streamjit.util.Combinators;
-import static edu.mit.streamjit.util.LookupUtils.findGetter;
-import static edu.mit.streamjit.util.LookupUtils.findVirtual;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findGetter;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
@@ -18,8 +18,8 @@ import java.util.Map;
  */
 public class DoubleArrayConcreteStorage implements ConcreteStorage {
 	private static final Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle ADJUST = findVirtual(LOOKUP, DoubleArrayConcreteStorage.class, "adjust", void.class);;
-	private static final MethodHandle STATE_GETTER = findGetter(LOOKUP, DoubleArrayConcreteStorage.class, "state", boolean.class);
+	private static final MethodHandle ADJUST = findVirtual(LOOKUP, "adjust");
+	private static final MethodHandle STATE_GETTER = findGetter(LOOKUP, "state");
 	private final Arrayish readArray, writeArray;
 	/**
 	 * If true, read from readArray, else writeArray, and resp. for writes.

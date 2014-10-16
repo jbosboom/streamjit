@@ -17,7 +17,7 @@ import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.util.Combinators;
-import static edu.mit.streamjit.util.LookupUtils.findStatic;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findStatic;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -429,11 +429,11 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	}
 
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle FILTER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_filterLoop", void.class, MethodHandle.class, int.class, int.class, int.class, int.class, int.class);
-	private static final MethodHandle SPLITTER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_splitterLoop", void.class, MethodHandle.class, int.class, int.class, int.class, int[].class, int.class);
-	private static final MethodHandle JOINER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_joinerLoop", void.class, MethodHandle.class, int.class, int.class, int[].class, int.class, int.class);
-	private static final MethodHandle REINITIALIZE_ARRAYS = findStatic(LOOKUP, ActorGroup.class, "_reinitializeArrays", void.class, int[][].class);
-	private static final MethodHandle OVERALL_GROUP_LOOP = findStatic(LOOKUP, ActorGroup.class, "_overallGroupLoop", void.class, MethodHandle.class, int.class, int.class, int.class);
+	private static final MethodHandle FILTER_LOOP = findStatic(LOOKUP, "_filterLoop");
+	private static final MethodHandle SPLITTER_LOOP = findStatic(LOOKUP, "_splitterLoop");
+	private static final MethodHandle JOINER_LOOP = findStatic(LOOKUP, "_joinerLoop");
+	private static final MethodHandle REINITIALIZE_ARRAYS = findStatic(LOOKUP, "_reinitializeArrays");
+	private static final MethodHandle OVERALL_GROUP_LOOP = findStatic(LOOKUP, "_overallGroupLoop");
 	private static void _filterLoop(MethodHandle work, int iterations, int subiterations, int pop, int push, int firstIteration) throws Throwable {
 		for (int i = firstIteration*subiterations; i < (firstIteration+iterations)*subiterations; ++i)
 			work.invokeExact(i * pop, i * push);
