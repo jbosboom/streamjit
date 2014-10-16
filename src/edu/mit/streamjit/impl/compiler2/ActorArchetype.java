@@ -68,7 +68,7 @@ import java.util.Map;
  * necessary to create common work functions for a particular worker class, with
  * method arguments for its channels and fields.  These methods may later be
  * specialized if desired through the usual inlining mechanisms.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/20/2013
  */
 public class ActorArchetype {

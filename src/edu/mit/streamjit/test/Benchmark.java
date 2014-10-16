@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * A benchmark stream graph.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/12/2013
  */
 public interface Benchmark {

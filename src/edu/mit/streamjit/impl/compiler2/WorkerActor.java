@@ -14,7 +14,7 @@ import java.util.Map;
 
 /**
  * An Actor encapsulating a Worker.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/24/2013
  */
 public final class WorkerActor extends Actor {

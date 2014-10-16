@@ -5,7 +5,7 @@ import java.util.concurrent.TimeoutException;
 
 /**
  * The interface to a compiled stream.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/20/2012
  */
 public interface CompiledStream {

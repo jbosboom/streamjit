@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
  * <p/>
  * This class uses StringBuffer (rather than the preferred StringBuilder)
  * because Matcher does as well. (Really, it could use an arbitrary Appendable.)
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/3/2013
  */
 

@@ -30,7 +30,7 @@ import java.util.List;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 2/10/2014
  */
 @ServiceProvider(BenchmarkProvider.class)

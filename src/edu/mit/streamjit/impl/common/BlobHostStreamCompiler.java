@@ -34,7 +34,7 @@ import java.util.concurrent.TimeoutException;
  * parts.
  *
  * TODO: should this be in the blob package?
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 7/27/2013
  */
 public class BlobHostStreamCompiler implements StreamCompiler {

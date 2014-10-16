@@ -10,7 +10,7 @@ package edu.mit.streamjit.impl.blob;
  * readers or writers use an instance at once, the bulk reads and writes may not
  * be atomic. If reading might fail due to interruption, readAll(Object[], int)
  * must be overridden to ignore interrupts.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 7/27/2013
  */
 public abstract class AbstractBuffer implements Buffer {

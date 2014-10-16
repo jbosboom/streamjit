@@ -19,7 +19,7 @@ import java.util.Set;
  *
  * The subset strategy was Jason Ansel's idea; the bias parameter was proposed
  * earlier by Saman Amarasinghe.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/5/2014
  */
 public class SubsetBiasAllocationStrategy implements AllocationStrategy {

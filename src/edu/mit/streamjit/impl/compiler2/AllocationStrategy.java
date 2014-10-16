@@ -9,7 +9,7 @@ import java.util.Set;
 /**
  * A strategy for allocating groups to cores.  Such a strategy involves making
  * parameters and interpreting them.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/31/2013
  */
 public interface AllocationStrategy {

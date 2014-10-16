@@ -13,7 +13,7 @@ import java.util.Arrays;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/18/2013
  */
 @ServiceProvider(Benchmark.class)

@@ -10,7 +10,7 @@ package edu.mit.streamjit.util.json;
  * Instances of this class should be thread-safe and reentrant; that is, methods
  * on this class may be called simultaneously by any number of threads,
  * including multiple times from a single thread (recursively).
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/25/2013
  */
 public interface JsonifierFactory {

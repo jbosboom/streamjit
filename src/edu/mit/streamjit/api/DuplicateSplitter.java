@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * DuplicateSplitter splits its input by duplicating input data items to each
  * of its outputs.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/7/2012
  */
 public final class DuplicateSplitter<T> extends Splitter<T, T>{

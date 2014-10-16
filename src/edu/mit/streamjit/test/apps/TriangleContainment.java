@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * This file also contains an implementation using threads, for
  * comparison purposes.  It simply computes a count of origin-containing
  * triangles, rather than a list of booleans.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/7/2014
  */
 public final class TriangleContainment {

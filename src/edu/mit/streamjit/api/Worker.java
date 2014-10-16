@@ -22,7 +22,7 @@ import java.util.List;
  * (classic StreamIt doesn't require this, for example). Thus, rates are instead
  * provided by abstract methods. Note that Filter, being
  * single-input-single-output, does manage its rates for you.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/19/2012
  */
 public abstract class Worker<I, O> implements StreamElement<I, O> {

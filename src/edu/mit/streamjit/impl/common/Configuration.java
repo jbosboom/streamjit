@@ -53,7 +53,7 @@ import javax.json.JsonValue;
  * Unless otherwise specified, passing null or an empty string to this class'
  * or any parameter class' methods will result in a NullPointerException being
  * thrown.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/23/2013
  */
 public final class Configuration {

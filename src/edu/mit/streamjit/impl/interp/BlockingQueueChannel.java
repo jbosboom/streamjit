@@ -10,7 +10,7 @@ import java.util.concurrent.BlockingQueue;
  * A thread-safe Channel implementation based on a BlockingQueue.  Calls to push
  * and pop block until data is available.  InterruptedExceptions are thrown
  * despite Channel's methods not allowing checked exceptions.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/22/2013
  */
 public class BlockingQueueChannel<E> implements Channel<E> {

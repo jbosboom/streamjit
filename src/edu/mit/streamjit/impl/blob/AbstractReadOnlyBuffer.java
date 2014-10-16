@@ -4,7 +4,7 @@ package edu.mit.streamjit.impl.blob;
  * A Buffer implementation whose write methods throw
  * UnsupportedOperationException.  Note that a read-only buffer is not immutable
  * because reading consumes elements from it, changes its size(), etc.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/21/2013
  */
 public abstract class AbstractReadOnlyBuffer extends AbstractBuffer {

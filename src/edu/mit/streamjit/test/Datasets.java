@@ -34,7 +34,7 @@ import java.util.List;
 
 /**
  * Factories for Benchmark.Dataset instances.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/14/2013
  */
 public final class Datasets {

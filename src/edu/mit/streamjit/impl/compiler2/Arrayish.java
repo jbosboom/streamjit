@@ -19,7 +19,7 @@ import java.util.Locale;
 /**
  * An array-ish object; that is, storage for items of a given type (and its
  * subtypes) in slots from 0 to size-1.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 2/28/2014
  */
 public interface Arrayish {

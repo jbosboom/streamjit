@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * A skeletal Benchmark implementation that manages the name and inputs but
  * leaves instantiate() abstract.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/27/2013
  */
 public abstract class AbstractBenchmark implements Benchmark {

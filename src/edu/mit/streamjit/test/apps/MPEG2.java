@@ -29,7 +29,7 @@ import java.nio.file.Paths;
  * See comments on InverseQuantization.
  *
  * BestSaturation ought to be autotuned.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 2/8/2014
  */
 public final class MPEG2 {

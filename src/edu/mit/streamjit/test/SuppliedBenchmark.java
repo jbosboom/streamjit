@@ -13,7 +13,7 @@ import edu.mit.streamjit.api.OneToOneElement;
  * This class is nonfinal to allow subclasses to specify constructor arguments.
  * The subclasses then have a no-arg constructor required for the ServiceLoader
  * mechanism. The Benchmark interface methods are final.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/13/2013
  */
 public class SuppliedBenchmark extends AbstractBenchmark {

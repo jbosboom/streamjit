@@ -11,7 +11,7 @@ import java.util.Set;
 
 /**
  * An allocation strategy that fully data-parallelizes over up to N cores.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/31/2013
  */
 public final class FullDataParallelAllocationStrategy implements AllocationStrategy {

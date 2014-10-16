@@ -5,7 +5,7 @@ package edu.mit.streamjit.impl.blob;
  * methods defined in Buffer, clients of PeekableBuffer may peek at items at
  * indices less than the buffer's size(), then consume them with the
  * consume(int) method.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 2/16/2014
  */
 public interface PeekableBuffer extends Buffer {

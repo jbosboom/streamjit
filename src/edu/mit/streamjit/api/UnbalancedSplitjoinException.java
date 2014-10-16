@@ -13,7 +13,7 @@ import java.util.List;
  * minimum number of output items per input item, and the upper bound is the
  * maximum number of output items per input item. If the branches have static
  * rates, the minimum and maximum will be the same.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/2/2013
  */
 public class UnbalancedSplitjoinException extends IllegalStreamGraphException {

@@ -63,7 +63,7 @@ import joptsimple.OptionSet;
 
 /**
  * A test harness for Benchmark instances.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/12/2013
  */
 public final class Benchmarker {

@@ -5,7 +5,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 /**
  * A StorageSlot represents a slot in a storage: whether it's live or not, and
  * if it is, where it should go when we drain.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/29/2013
  */
 public abstract class StorageSlot {

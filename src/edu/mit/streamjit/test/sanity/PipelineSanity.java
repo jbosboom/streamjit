@@ -14,7 +14,7 @@ import edu.mit.streamjit.test.Datasets;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/27/2013
  */
 public class PipelineSanity {

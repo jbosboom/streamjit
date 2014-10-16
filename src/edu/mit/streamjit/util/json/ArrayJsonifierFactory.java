@@ -12,7 +12,7 @@ import javax.json.JsonValue;
 /**
  * ArrayJsonifierFactory converts (possibly nested) arrays to and from JSON.
  * Primitive arrays are supported.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/27/2013
  */
 @ServiceProvider(value = JsonifierFactory.class, priority = Integer.MIN_VALUE+1)

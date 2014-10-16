@@ -7,7 +7,7 @@ import com.google.common.collect.ImmutableMap;
  * Provides utility methods on primitives not provided in wrapper classes, Guava
  * wrapper or primitive utilities, or
  * {@link com.google.common.primitives.Primitives}.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/1/2014
  */
 public final class PrimitiveUtils {

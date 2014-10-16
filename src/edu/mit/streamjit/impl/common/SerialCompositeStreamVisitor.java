@@ -17,7 +17,7 @@ import java.util.Set;
  * sequentially performing full visitations.
  *
  * @see ParallelCompositeStreamVisitor
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/9/2013
  */
 public class SerialCompositeStreamVisitor extends StreamVisitor {

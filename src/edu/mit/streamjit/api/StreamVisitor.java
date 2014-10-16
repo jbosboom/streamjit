@@ -2,7 +2,7 @@ package edu.mit.streamjit.api;
 
 /**
  * Visitor for StreamElements.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/22/2012
  */
 public abstract class StreamVisitor {

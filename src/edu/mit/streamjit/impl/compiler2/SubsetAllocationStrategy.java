@@ -16,7 +16,7 @@ import java.util.Set;
  * is then divided equally among those cores.
  *
  * This strategy was Jason Ansel's idea, briefly expressed in a conference call.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/2/2014
  */
 public class SubsetAllocationStrategy implements AllocationStrategy {

@@ -27,7 +27,7 @@ import java.util.List;
 
 /**
  * Ported from streamit/streams/apps/benchmarks/asplos06/serpent_full/streamit/Serpent_full.str
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 2/11/2014
  */
 public final class SerpentFull {

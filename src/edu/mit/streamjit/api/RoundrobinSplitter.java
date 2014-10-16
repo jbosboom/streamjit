@@ -9,7 +9,7 @@ import java.util.List;
  * turn.  RoundrobinSplitter supports any number of children, passing the same
  * number of data items to each during each execution.  To specify different
  * weights, use WeightedRoundrobinSplitter.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/7/2013
  */
 public final class RoundrobinSplitter<T> extends Splitter<T, T> {

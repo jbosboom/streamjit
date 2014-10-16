@@ -20,7 +20,7 @@ import javax.json.JsonValue;
 /**
  * A JsonifierFactory that supports types implementing Serializable by
  * serializing them to a base64-encoded string.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/29/2013
  */
 @ServiceProvider(value = JsonifierFactory.class, priority = Integer.MAX_VALUE)

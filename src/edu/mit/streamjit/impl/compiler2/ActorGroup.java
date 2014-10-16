@@ -32,7 +32,7 @@ import java.util.Set;
 
 /**
  * Compiler IR for a fused group of workers (what used to be called StreamNode).
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/22/2013
  */
 public class ActorGroup implements Comparable<ActorGroup> {

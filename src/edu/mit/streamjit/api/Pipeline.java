@@ -10,7 +10,7 @@ import java.util.List;
  * Programmers building a stream graph can either create instances of Pipeline
  * for one-off pipelines, or create subclasses of Pipeline that create and pass
  * OneToOneElement instances to the superclass constructor.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/7/2012
  */
 public class Pipeline<I, O> implements OneToOneElement<I, O> {

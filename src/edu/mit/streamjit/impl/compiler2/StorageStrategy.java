@@ -6,7 +6,7 @@ import java.util.Set;
 
 /**
  * A strategy for creating ConcreteStorage.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/1/2014
  */
 public interface StorageStrategy {

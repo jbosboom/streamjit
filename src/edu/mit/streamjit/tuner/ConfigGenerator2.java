@@ -11,7 +11,7 @@ import edu.mit.streamjit.test.Benchmarker;
  * Prints out default configurations given a blob factory class and benchmark.
  * TODO: if the factory needs arguments, pass them in a Configuration object's
  * third parameter?  pass everything in extra data?
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/21/2014
  */
 public final class ConfigGenerator2 {

@@ -20,7 +20,7 @@ import java.util.Set;
  *
  * This strategy favors space multiplexing.  Equal data-parallelization can only
  * occur if all N shares are approximately 1/N, as we do not normalize.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/31/2013
  */
 public class DescendingShareAllocationStrategy implements AllocationStrategy {

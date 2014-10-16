@@ -5,7 +5,7 @@ import edu.mit.streamjit.util.ConcurrentPeekableQueue;
 /**
  * A Buffer implementation based on a lock-free queue.  This implementation
  * does not block.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 7/18/2013
  */
 public class ConcurrentArrayBuffer extends AbstractBuffer {

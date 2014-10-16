@@ -8,7 +8,7 @@ import java.util.Set;
 
 /**
  * A fusion strategy using a set of boolean parameters.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/15/2014
  */
 public final class BitsetFusionStrategy implements FusionStrategy {

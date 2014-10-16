@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The actual blob produced by a Compiler2.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/1/2013
  */
 public class Compiler2BlobHost implements Blob {

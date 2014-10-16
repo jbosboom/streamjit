@@ -6,7 +6,7 @@ import java.util.Set;
 
 /**
  * The standard external storage factory, for when not tuning.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/1/2014
  */
 public final class StandardExternalStorageStrategy implements StorageStrategy {

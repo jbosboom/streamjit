@@ -2,7 +2,7 @@ package edu.mit.streamjit.util;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/3/2013
  */
 public final class SemicolonRunnable implements Runnable {

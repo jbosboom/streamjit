@@ -27,7 +27,7 @@ import java.util.Set;
 
 /**
  * Tests Input.fromBinaryFile().
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/23/2013
  */
 @ServiceProvider(BenchmarkProvider.class)

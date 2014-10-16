@@ -11,7 +11,7 @@ import edu.mit.streamjit.api.Worker;
 
 /**
  * Disconnects workers, including removing channels.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/9/2013
  */
 public final class DisconnectWorkersVisitor extends StreamVisitor {

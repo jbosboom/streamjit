@@ -24,7 +24,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 
 /**
  * A source of input to a stream graph.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/16/2013
  */
 public class Input<I> {

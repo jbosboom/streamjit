@@ -16,7 +16,7 @@ import java.util.Set;
  * occur if all N bits are set, and there are more ways to assign two groups to
  * N/2 cores each than both to all cores.  However, within each group's
  * assignment, cores receive equal allocations.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/31/2013
  */
 public class BitsetDataParallelAllocationStrategy implements AllocationStrategy {

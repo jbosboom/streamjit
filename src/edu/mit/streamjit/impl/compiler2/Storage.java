@@ -26,7 +26,7 @@ import java.util.Set;
  *
  * Rate information is only valid on an untransformed graph; Actor removal can
  * introduce ambiguity.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/27/2013
  */
 public final class Storage implements Comparable<Storage> {

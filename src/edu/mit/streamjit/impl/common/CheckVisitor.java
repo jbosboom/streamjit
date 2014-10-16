@@ -38,7 +38,7 @@ import java.util.Map;
  * TODO: CheckVisitor does not correctly reason about 0 rates, which can be used
  * to "inject" data into a graph with a splitjoin; even legal uses will be
  * reported as errors.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/8/2013
  */
 public final class CheckVisitor extends SerialCompositeStreamVisitor {

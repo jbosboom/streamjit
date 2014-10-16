@@ -4,7 +4,7 @@ import edu.mit.streamjit.impl.common.BlobHostStreamCompiler;
 
 /**
  * A stream compiler that interprets the stream graph.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/29/2013
  */
 public final class InterpreterStreamCompiler extends BlobHostStreamCompiler {

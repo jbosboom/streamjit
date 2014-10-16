@@ -12,7 +12,7 @@ import java.util.Objects;
 
 /**
  * Creates T instances by calling a constructor with the given set of arguments.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/20/2013
  */
 public class ConstructorSupplier<T> implements Supplier<T> {

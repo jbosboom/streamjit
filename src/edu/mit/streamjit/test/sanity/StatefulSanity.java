@@ -18,7 +18,7 @@ import edu.mit.streamjit.test.Datasets;
 
 /**
  * Tests stateful filters.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/29/2013
  */
 public class StatefulSanity {

@@ -7,7 +7,7 @@ import org.bridj.Platform;
 /**
  * Provides static methods for getting and setting thread or process CPU
  * affinity.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/29/2014
  */
 public final class Affinity {

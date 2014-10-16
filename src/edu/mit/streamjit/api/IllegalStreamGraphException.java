@@ -18,7 +18,7 @@ import java.util.Arrays;
  * serialized, any StreamElements that do not implement Serializable are
  * replaced with dummy StreamElement implementations that have the same
  * toString() but without any other data or behavior.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/20/2012
  */
 public class IllegalStreamGraphException extends RuntimeException {

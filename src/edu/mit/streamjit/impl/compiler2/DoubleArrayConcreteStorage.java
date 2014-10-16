@@ -13,7 +13,7 @@ import java.util.Map;
 
 /**
  * A ConcreteStorage backed by double-buffered storage.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/10/2013
  */
 public class DoubleArrayConcreteStorage implements ConcreteStorage {

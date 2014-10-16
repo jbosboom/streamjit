@@ -15,7 +15,7 @@ import java.nio.ShortBuffer;
 
 /**
  * Utility methods for working with NIO Buffers.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 2/28/2014
  */
 public final class NIOBufferUtils {

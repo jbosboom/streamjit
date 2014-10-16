@@ -13,7 +13,7 @@ import java.util.Queue;
  * This channel uses the add() and remove() methods on the wrapped queue, not
  * offer() and poll(), because they throw the correct exceptions on their own.
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/3/2013
  */
 public class QueueChannel<E> implements Channel<E> {

@@ -15,7 +15,7 @@ import java.util.Set;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/1/2013
  */
 public final class Schedule<T> {

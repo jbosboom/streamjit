@@ -34,7 +34,7 @@ import javax.json.JsonValue;
  * saved, as the object's toString or factory method/constructor may lose
  * information.
  * <p/>
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/29/2013
  */
 @ServiceProvider(value = JsonifierFactory.class, priority = Integer.MAX_VALUE-1)

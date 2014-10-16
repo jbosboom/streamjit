@@ -58,7 +58,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * offer() it to input channels. It's tempting to put the send/receive in the
  * channel implementations themselves, but this may block the interpreter on
  * I/O, and makes implementing peek() on the receiving side tricky.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/22/2013
  */
 public class Interpreter implements Blob {

@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 2/11/2014
  */
 @ServiceProvider(Benchmark.class)

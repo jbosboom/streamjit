@@ -2,7 +2,7 @@ package edu.mit.streamjit.util.ilpsolve;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/12/2013
  */
 public class SolverException extends RuntimeException {

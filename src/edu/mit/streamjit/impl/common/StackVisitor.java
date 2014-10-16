@@ -24,7 +24,7 @@ import java.util.Deque;
  * methods have the same contract as the corresponding StreamVisitor methods.
  * beginVisit() and endVisit() are not final and may be overridden, though the
  * subclass should call the superimplementation.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/8/2013
  */
 public abstract class StackVisitor extends StreamVisitor {

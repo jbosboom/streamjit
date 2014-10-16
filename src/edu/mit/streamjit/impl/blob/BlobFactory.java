@@ -10,7 +10,7 @@ import java.util.Set;
  * Instances of this class should be stateless and immutable; they must at least
  * be thread-safe and reentrant.  As instances of this class may be used in
  * configurations, they should implement equals() and hashCode().
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/26/2013
  */
 public interface BlobFactory {

@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * Tests that the different branches of a splitjoin perform their computation on
  * the correct elements.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/23/2013
  */
 public class SplitjoinComputeSanity {

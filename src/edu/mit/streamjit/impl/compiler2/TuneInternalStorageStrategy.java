@@ -8,7 +8,7 @@ import java.util.Set;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/1/2014
  */
 public final class TuneInternalStorageStrategy implements StorageStrategy {

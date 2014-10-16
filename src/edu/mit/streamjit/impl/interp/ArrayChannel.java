@@ -11,7 +11,7 @@ import java.util.NoSuchElementException;
  * analogous to ArrayList.  This implementation is not synchronized.
  *
  * @param <E> the type of elements in this channel
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/19/2012
  */
 public class ArrayChannel<E> implements Channel<E> {

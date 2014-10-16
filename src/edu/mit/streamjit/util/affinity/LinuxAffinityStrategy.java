@@ -10,7 +10,7 @@ import org.bridj.ann.Library;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/30/2014
  */
 @Library("c")

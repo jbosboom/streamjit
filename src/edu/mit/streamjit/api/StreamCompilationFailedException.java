@@ -4,7 +4,7 @@ package edu.mit.streamjit.api;
  * Thrown when a StreamCompiler fails to compile a valid, supported stream
  * graph.  For example, the stream graph may have many rate mismatches, causing
  * the steady-state schedule or buffering requirements to be too large.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/12/2013
  */
 public final class StreamCompilationFailedException extends RuntimeException {

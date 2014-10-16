@@ -31,7 +31,7 @@ import org.objectweb.asm.tree.VarInsnNode;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/29/2013
  */
 public final class MessageConstraint {

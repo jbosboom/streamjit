@@ -7,7 +7,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
  * the ConcreteStorage's point of view, a bulk read operation).  Because Blobs
  * must perform short writes to avoid deadlock in multi-Blob graphs,
  * implementations and users must cope with short writes.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/5/2013
  */
 public interface BulkReadableConcreteStorage extends ConcreteStorage {

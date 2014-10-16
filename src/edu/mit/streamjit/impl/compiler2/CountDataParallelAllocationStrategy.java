@@ -20,7 +20,7 @@ import java.util.Set;
  * TODO: we could have the parameter range from 1 to maxNumCores()*2-1 to give
  * us a 50% chance of picking the maximum when choosing at random (other weights
  * are obviously possible too).
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/12/2014
  */
 public class CountDataParallelAllocationStrategy implements AllocationStrategy {

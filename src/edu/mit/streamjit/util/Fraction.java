@@ -8,7 +8,7 @@ import static com.google.common.math.LongMath.checkedMultiply;
  * Represents a Fraction.
  *
  * Imported from Jeffrey's Project Euler project on 4/30/2013.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/1/2011
  */
 public final class Fraction extends Number implements Comparable<Fraction> {

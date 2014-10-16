@@ -8,7 +8,7 @@ import java.util.List;
  * A RoundrobinJoiner joins its input by reading data items from each child in
  * turn per execution.  RoundrobinJoiner reads the same number of items per
  * child; to use weights, see WeightedRoundrobinJoiner.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/7/2012
  */
 public final class RoundrobinJoiner<T> extends Joiner<T, T> {

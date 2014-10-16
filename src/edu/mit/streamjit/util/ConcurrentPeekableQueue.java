@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
  * Huang, and Chen.  We provide size() and peek(int) using the fact that only
  * consumers modify front, so if there's only one consumer, it can peek without
  * worrying about elements being removed from underneath it.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/2/2013
  */
 public class ConcurrentPeekableQueue<E> {

@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * Some filters for tests.  Some of these may graduate to the API package in a
  * more general form (e.g., the math filters need to generalize to other types).
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/20/2013
  */
 public final class TestFilters {

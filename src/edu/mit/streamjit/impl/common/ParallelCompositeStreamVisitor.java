@@ -26,7 +26,7 @@ import java.util.Set;
  * constructor, or by subclassing it and passing visitors to the superclass
  * constructor.
  * @see SerialCompositeStreamVisitor
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/8/2013
  */
 public class ParallelCompositeStreamVisitor extends StreamVisitor {

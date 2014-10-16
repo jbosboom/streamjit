@@ -6,7 +6,7 @@ import java.util.NavigableSet;
 
 /**
  * An IndexFunctionTransformer that simply returns the input function.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/8/2013
  */
 public class IdentityIndexFunctionTransformer implements IndexFunctionTransformer {

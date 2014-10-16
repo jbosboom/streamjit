@@ -5,7 +5,7 @@ import java.util.Collection;
 /**
  * A Channel implementation, based on ArrayChannel, with additional methods for
  * debugging.  This implementation is not synchronized.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/2/2013
  */
 public final class DebugChannel<E> extends ArrayChannel<E> {

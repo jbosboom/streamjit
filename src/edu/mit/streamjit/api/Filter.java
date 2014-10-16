@@ -5,7 +5,7 @@ import edu.mit.streamjit.impl.common.Workers;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/7/2012
  */
 public abstract class Filter<I, O> extends Worker<I, O> implements OneToOneElement<I, O> {

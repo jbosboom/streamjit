@@ -8,7 +8,7 @@ import java.util.Iterator;
  * channel.
  *
  * @param <E> the type of elements in this channel
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/2/2013
  */
 public interface Channel<E> extends Iterable<E> {

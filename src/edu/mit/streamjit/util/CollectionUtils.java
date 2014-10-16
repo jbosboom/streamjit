@@ -13,7 +13,7 @@ import java.util.Map;
 /**
  * Contains collection related utilities not in {@link java.util.Collections}
  * or the Guava collection utilities.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/22/2013
  */
 public final class CollectionUtils {

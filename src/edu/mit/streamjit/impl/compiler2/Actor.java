@@ -18,7 +18,7 @@ import java.util.Set;
 
 /**
  * The compiler IR for a Worker or Token.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/21/2013
  */
 public abstract class Actor implements Comparable<Actor> {

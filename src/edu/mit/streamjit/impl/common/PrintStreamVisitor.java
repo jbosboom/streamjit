@@ -15,7 +15,7 @@ import java.io.PrintWriter;
  *
  * TODO: this may belong in the api package, as end-users might find it helpful
  * for debugging graph-assembly code.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 7/26/2013
  */
 public final class PrintStreamVisitor extends StreamVisitor {

@@ -20,7 +20,7 @@ import java.util.Iterator;
  *
  * TODO: enable these tests when the compiler passes them or gracefully handles
  * its errors (i.e., without taking down the test harness)
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/29/2013
  */
 //@ServiceProvider(BenchmarkProvider.class)

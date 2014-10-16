@@ -37,7 +37,7 @@ import java.util.List;
  *
  * This class uses lots of raw types to avoid having to recapture the
  * unbounded wildcards all the time.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/23/2013 (originally internal to DebugStreamCompiler)
  */
 public final class ConnectWorkersVisitor extends StreamVisitor {

@@ -11,7 +11,7 @@ import java.util.concurrent.BlockingQueue;
 
 /**
  * Contains static methods related to Buffer instances.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 7/28/2013
  */
 public final class Buffers {

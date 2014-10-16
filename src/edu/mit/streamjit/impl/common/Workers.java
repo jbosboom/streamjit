@@ -22,7 +22,7 @@ import java.util.Set;
  *
  * For details on the "friend"-like pattern used here, see Practical API Design:
  * Confessions of a Java Framework Architect by Jaroslav Tulach, page 76.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 2/14/2013
  */
 public abstract class Workers {

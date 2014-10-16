@@ -11,7 +11,7 @@ import java.util.NavigableSet;
 /**
  * An IndexFunctionTransformer that evaluates the given function over its
  * domain, then returns a function that indexes into an array of the outputs.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/8/2013
  */
 public class ArrayifyIndexFunctionTransformer implements IndexFunctionTransformer, Serializable {

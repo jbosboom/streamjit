@@ -8,7 +8,7 @@ import java.util.List;
  * Programmers building a stream graph can either create instances of Splitjoin
  * for one-off pipelines, or create subclasses of Splitjoin that create and pass
  * SteamElement instances to the superclass constructor.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/7/2012
  */
 public class Splitjoin<I, O> implements OneToOneElement<I, O> {

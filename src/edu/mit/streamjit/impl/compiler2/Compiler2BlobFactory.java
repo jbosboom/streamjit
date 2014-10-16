@@ -13,7 +13,7 @@ import java.util.Set;
 
 /**
  * TODO: describe the restrictions on the worker set
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/22/2013 (from CompilerBlobFactory since 4/24/2013)
  */
 public final class Compiler2BlobFactory implements BlobFactory {

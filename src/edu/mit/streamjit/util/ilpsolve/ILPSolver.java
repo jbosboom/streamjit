@@ -18,7 +18,7 @@ import java.util.Map;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/5/2013
  */
 public final class ILPSolver {

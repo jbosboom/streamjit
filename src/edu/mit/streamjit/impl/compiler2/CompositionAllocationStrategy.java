@@ -15,7 +15,7 @@ import java.util.Set;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/21/2014
  */
 public class CompositionAllocationStrategy implements AllocationStrategy {

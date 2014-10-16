@@ -19,7 +19,7 @@ import java.nio.ShortBuffer;
  * <p/>
  * This class uses code generation to work around the fact that NIO provides
  * ByteBuffer, IntBuffer etc. rather than Buffer<Byte>, Buffer<Integer> etc.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/23/2013
  */
 public final class NIOBuffers {

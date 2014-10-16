@@ -8,7 +8,7 @@ import java.util.Set;
 
 /**
  * An AllocationStrategy that assigns all iterations of all groups to core 0.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/31/2013
  */
 public final class SerialAllocationStrategy implements AllocationStrategy {

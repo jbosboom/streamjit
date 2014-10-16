@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A ConcreteStorage implementation using a Map<Integer, T>.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/27/2013
  */
 public final class MapConcreteStorage implements ConcreteStorage {

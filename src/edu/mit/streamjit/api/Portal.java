@@ -14,7 +14,7 @@ import java.util.Map;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/8/2012
  */
 public final class Portal<I> {

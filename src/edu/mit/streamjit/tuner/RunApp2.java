@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * Runs a benchmark using a specified configuration.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/21/2014
  */
 public final class RunApp2 {

@@ -6,7 +6,7 @@ package edu.mit.streamjit.test;
  * <p/>
  * The APP, SANITY and REGRESSION attributes for benchmarks returned by a
  * BenchmarkProvider are based both the provider and benchmark classes.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/22/2013
  */
 public interface BenchmarkProvider extends Iterable<Benchmark> {

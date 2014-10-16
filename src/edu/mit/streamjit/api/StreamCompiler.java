@@ -2,7 +2,7 @@ package edu.mit.streamjit.api;
 
 /**
  * A StreamCompiler compiles a stream graph to a CompiledStream.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/20/2012
  */
 public interface StreamCompiler {

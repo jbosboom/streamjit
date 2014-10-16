@@ -7,7 +7,7 @@ import java.util.Iterator;
  * using a lock to synchronize all its methods.  Note that this class' iterator
  * is not itself synchronized (and may or may not throw
  * ConcurrentModificationException depending on the underlying implementation).
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/8/2013
  */
 public class SynchronizedChannel<E> implements Channel<E>{

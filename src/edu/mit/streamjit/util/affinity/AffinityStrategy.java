@@ -2,7 +2,7 @@ package edu.mit.streamjit.util.affinity;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/30/2014
  */
 interface AffinityStrategy {

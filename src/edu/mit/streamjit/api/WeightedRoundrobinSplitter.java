@@ -21,7 +21,7 @@ import java.util.List;
  * branch, we could merge this class with RoundrobinSplitter. (The interpreter
  * would still take the branch, but its performance isn't critical.) The
  * preceeding comments apply to WeightedRoundrobinJoiner as well.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/7/2013
  */
 public final class WeightedRoundrobinSplitter<T> extends Splitter<T, T> {

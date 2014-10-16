@@ -4,7 +4,7 @@ import com.google.common.math.LongMath;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/30/2014
  */
 final class NullAffinityStrategy implements AffinityStrategy {

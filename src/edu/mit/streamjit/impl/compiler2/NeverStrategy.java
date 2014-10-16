@@ -6,7 +6,7 @@ import java.util.Set;
 
 /**
  * A strategy that doesn't use parameters and never does whatever it does.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/15/2014
  */
 public final class NeverStrategy implements RemovalStrategy, FusionStrategy, UnboxingStrategy {

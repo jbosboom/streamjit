@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * See Workers for details.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/5/2013
  */
 public abstract class Portals {

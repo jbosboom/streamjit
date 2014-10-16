@@ -28,7 +28,7 @@ package edu.mit.streamjit.impl.blob;
  * flipping is often not possible because the buffers aren't entirely
  * full/empty; for inter-machine edges, flipping isn't possible over the
  * network. Thus flipping adds complexity for little benefit.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 7/17/2013
  */
 public interface Buffer {

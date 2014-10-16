@@ -7,7 +7,7 @@ import java.util.Set;
 /**
  * A strategy for replacing actors with index functions. Such a strategy
  * involves making parameters and interpreting them.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/15/2014
  */
 public interface RemovalStrategy {

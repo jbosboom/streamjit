@@ -29,7 +29,7 @@ import java.util.Set;
  * The subset strategy was Jason Ansel's idea; the bias parameter was proposed
  * earlier by Saman Amarasinghe; averaging was suggested by both Saman and
  * Vladimir Kiriansky, after which I finally agreed to try it.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/5/2014
  */
 public class SubsetBiasAverageAllocationStrategy implements AllocationStrategy {

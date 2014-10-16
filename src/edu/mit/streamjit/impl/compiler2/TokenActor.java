@@ -11,7 +11,7 @@ import java.lang.reflect.ParameterizedType;
 
 /**
  * An Actor encapsulating a Token, either input xor output.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/24/2013
  */
 public final class TokenActor extends Actor {

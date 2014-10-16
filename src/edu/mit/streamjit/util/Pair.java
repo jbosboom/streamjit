@@ -4,7 +4,7 @@ import java.util.Objects;
 
 /**
  * An immutable pair of references.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 4/30/2013
  */
 public final class Pair<A, B> {

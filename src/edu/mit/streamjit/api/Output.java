@@ -11,7 +11,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/17/2013
  */
 public class Output<O> {

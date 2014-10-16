@@ -15,7 +15,7 @@ import java.util.List;
 /**
  * Regression test I've entered by hand to serve as a template for
  * automatically generating them when the fuzzer finds a bug.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/4/2013
  */
 @ServiceProvider(Benchmark.class)

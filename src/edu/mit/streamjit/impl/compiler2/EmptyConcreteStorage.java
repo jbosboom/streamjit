@@ -6,7 +6,7 @@ import java.lang.invoke.MethodHandles;
 
 /**
  * An empty ConcreteStorage that cannot be read or written.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/15/2014
  */
 public final class EmptyConcreteStorage implements ConcreteStorage {

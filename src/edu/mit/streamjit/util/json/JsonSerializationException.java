@@ -4,7 +4,7 @@ import javax.json.JsonValue;
 
 /**
  * Thrown to indicate errors in JSON serialization or deserialization.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/25/2013
  */
 public final class JsonSerializationException extends RuntimeException {

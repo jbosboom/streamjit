@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * Subclasses of this class hold worker state.
  * TODO: base iteration count as pseudo-state
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/11/2013
  */
 public abstract class StateHolder implements DrainInstruction {

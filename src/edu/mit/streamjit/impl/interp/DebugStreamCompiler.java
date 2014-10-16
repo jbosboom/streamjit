@@ -48,7 +48,7 @@ import java.util.Set;
  * compiler is intended for debugging purposes; it is unlikely to provide good
  * performance.
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/20/2012
  */
 public class DebugStreamCompiler extends BlobHostStreamCompiler {

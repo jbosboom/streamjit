@@ -16,7 +16,7 @@ import java.util.Set;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/12/2013 (from CompilerStreamCompiler since 8/13/2013)
  */
 public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {

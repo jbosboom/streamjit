@@ -4,7 +4,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/5/2013
  */
 public interface BulkWritableConcreteStorage extends ConcreteStorage {

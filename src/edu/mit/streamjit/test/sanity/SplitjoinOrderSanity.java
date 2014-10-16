@@ -35,7 +35,7 @@ import java.util.Queue;
  * and joiner simulator, so we can plug any of the splitters with any of the
  * joiners.  Right now we have a copy for the duplicate splitter.
  * @see SplitjoinComputeSanity
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/20/2013
  */
 @ServiceProvider(BenchmarkProvider.class)

@@ -80,7 +80,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/22/2013
  */
 public class Compiler2 {

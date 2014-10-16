@@ -19,7 +19,7 @@ import java.util.NoSuchElementException;
  * succeed.
  *
  * Despite the name, this implementation is not related to ArrayChannel.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/3/2013
  */
 public class ConcurrentArrayChannel<E> implements Channel<E> {

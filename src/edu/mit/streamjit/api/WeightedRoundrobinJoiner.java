@@ -12,7 +12,7 @@ import java.util.List;
  * its second parent, and one item from its third parent per iteration.
  *
  * TODO: see WeightedRoundrobinSplitter for details about this class' necessity
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/7/2012
  */
 public final class WeightedRoundrobinJoiner<T> extends Joiner<T, T> {

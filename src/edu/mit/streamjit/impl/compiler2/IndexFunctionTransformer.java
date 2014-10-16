@@ -7,7 +7,7 @@ import java.util.NavigableSet;
 /**
  * Transforms index functions into equivalent (but possibly more performant)
  * handles.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/8/2013
  */
 public interface IndexFunctionTransformer {

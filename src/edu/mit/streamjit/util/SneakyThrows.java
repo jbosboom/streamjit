@@ -2,7 +2,7 @@ package edu.mit.streamjit.util;
 
 /**
  * Throws checked exceptions as if unchecked.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/13/2014
  */
 public final class SneakyThrows {

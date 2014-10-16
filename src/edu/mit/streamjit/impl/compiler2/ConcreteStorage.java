@@ -44,7 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * the initialization schedule are used only within a single thread, so they
  * need not worry about synchronization; normal happens-before ordering in a
  * single thread is enough to ensure readers see preceding writes.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/10/2013
  */
 public interface ConcreteStorage {

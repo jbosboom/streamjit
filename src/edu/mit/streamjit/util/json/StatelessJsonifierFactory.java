@@ -21,7 +21,7 @@ import javax.json.JsonValue;
  * TODO: support no-arg factory functions, as many stateless things will have
  * singleton instances accessed through a factory function.  Perhaps with an
  * annotation?
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/26/2013
  */
 @ServiceProvider(value = JsonifierFactory.class, priority = Integer.MAX_VALUE-2)

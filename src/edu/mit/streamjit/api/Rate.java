@@ -11,7 +11,7 @@ package edu.mit.streamjit.api;
  *
  * Instances of this class are immutable.
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/16/2012
  */
 public final class Rate {

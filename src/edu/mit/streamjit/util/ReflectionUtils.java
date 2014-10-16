@@ -19,7 +19,7 @@ import java.util.Map;
 
 /**
  * Contains reflection utilities.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/26/2013
  */
 public final class ReflectionUtils {

@@ -18,7 +18,7 @@ import edu.mit.streamjit.test.Datasets;
 /**
  * TODO: messaging is currently broken (something with Portal/constraint
  * registration?)
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/24/2013
  */
 public class DownstreamMessageTest {

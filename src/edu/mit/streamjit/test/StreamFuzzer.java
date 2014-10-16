@@ -68,7 +68,7 @@ import java.util.Set;
  *
  * TODO: this should verify DrainData, which seems to require working at the
  * blob level, or surfacing DrainData somewhere.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 7/26/2013
  */
 public final class StreamFuzzer {

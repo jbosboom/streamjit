@@ -9,7 +9,7 @@ import java.lang.invoke.MethodHandles.Lookup;
 
 /**
  * A ConcreteStorage using a circular buffer.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/10/2013
  */
 public class CircularArrayConcreteStorage implements ConcreteStorage {

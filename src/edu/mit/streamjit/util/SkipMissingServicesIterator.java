@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * annotation is removed.  This iterator simulates their removal by skipping
  * those errors (but only those errors -- if the provider isn't instantiable,
  * for example, the error will still be thrown).
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/22/2013
  */
 public class SkipMissingServicesIterator<T> extends AbstractIterator<T> {

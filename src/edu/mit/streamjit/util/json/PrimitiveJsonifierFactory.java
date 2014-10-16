@@ -15,7 +15,7 @@ import javax.json.JsonValue;
  * nested classes.
  *
  * This class is public only so that ServiceLoader can instantiate it.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/25/2013
  */
 @ServiceProvider(value = JsonifierFactory.class, priority = Integer.MIN_VALUE)

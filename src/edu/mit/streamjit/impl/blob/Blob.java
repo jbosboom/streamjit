@@ -15,7 +15,7 @@ import java.util.Set;
  * executed on cores. Blob is confined into a single machine boundary (i.e, A
  * single blob never executed across multiple machines)
  * 
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/22/2013
  */
 public interface Blob {

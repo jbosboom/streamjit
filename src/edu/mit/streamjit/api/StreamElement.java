@@ -2,7 +2,7 @@ package edu.mit.streamjit.api;
 
 /**
  * The base interface of anything that can be put in a stream graph.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/7/2012
  */
 public interface StreamElement<I, O> {

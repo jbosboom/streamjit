@@ -18,7 +18,7 @@ import java.util.Set;
 /**
  * DrainData represents the state of a Blob after it has drained: any data left
  * in the edges between workers and the state of any stateful workers.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 7/22/2013
  */
 public class DrainData implements Serializable {

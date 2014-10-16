@@ -11,7 +11,7 @@ import java.util.Map;
  * A ConcreteStorage implementation directly addressing its underlying storage
  * and that cannot be adjusted.  As its name suggests, this is most useful for
  * internal storage, where adjusts are not necessary.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/10/2013
  */
 public class InternalArrayConcreteStorage implements ConcreteStorage {

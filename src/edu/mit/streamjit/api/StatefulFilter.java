@@ -2,7 +2,7 @@ package edu.mit.streamjit.api;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/7/2012
  */
 public abstract class StatefulFilter<I, O> extends Filter<I, O> {

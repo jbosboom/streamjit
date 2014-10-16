@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * Represents one core during the compilation.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/17/2013
  */
 public class Core {

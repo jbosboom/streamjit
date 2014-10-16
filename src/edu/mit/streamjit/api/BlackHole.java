@@ -5,7 +5,7 @@ package edu.mit.streamjit.api;
  * terminating stream graphs whose output will not be retrieved, preventing it
  * from wasting memory in queues.
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/2/2013
  */
 public class BlackHole<T> extends Filter<T, Void> {

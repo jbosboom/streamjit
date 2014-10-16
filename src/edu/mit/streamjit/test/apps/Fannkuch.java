@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Note that this stream doesn't produce an output, but instead accumulates a
  * result in the Max filter.  Also note that we don't want to fuse the filters
  * because we can data-parallelize the first one.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 1/15/2014
  */
 public final class Fannkuch {

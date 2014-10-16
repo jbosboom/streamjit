@@ -6,7 +6,7 @@ import edu.mit.streamjit.impl.common.Workers;
  * TODO: splitters with multiple output types?  would sacrifice CTTS.
  * Splitter is an abstract class rather than an interface to allow the library
  * to handle rate info management.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/7/2012
  */
 public abstract class Splitter<I, O> extends Worker<I, O> {

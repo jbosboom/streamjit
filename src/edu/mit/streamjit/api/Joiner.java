@@ -4,7 +4,7 @@ import edu.mit.streamjit.impl.common.Workers;
 
 /**
  * see comments on Splitter
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/7/2012
  */
 public abstract class Joiner<I, O> extends Worker<I, O> {

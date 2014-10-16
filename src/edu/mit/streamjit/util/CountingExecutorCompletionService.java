@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * An ExecutorCompletionService that keeps a count of tasks submitted but not
  * yet removed from the completion service.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/2/2013
  */
 public class CountingExecutorCompletionService<V> extends ExecutorCompletionService<V> {

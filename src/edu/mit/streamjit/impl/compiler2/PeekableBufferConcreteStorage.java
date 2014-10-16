@@ -14,7 +14,7 @@ import java.util.Map;
 
 /**
  * A read-only ConcreteStorage implementation wrapping an PeekableBuffer.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 2/18/2014
  */
 public final class PeekableBufferConcreteStorage implements ConcreteStorage {

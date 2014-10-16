@@ -11,7 +11,7 @@ package edu.mit.streamjit.impl.blob;
  * probably throw an exception if that capacity is exceeded, rather than
  * advertising a fixed capacity, as the latter may lead to infinite loops or
  * blocking as the stream waits for space.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/21/2013
  */
 public abstract class AbstractWriteOnlyBuffer extends AbstractBuffer {

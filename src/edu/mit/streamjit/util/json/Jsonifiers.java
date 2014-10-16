@@ -18,7 +18,7 @@ import javax.json.stream.JsonGenerator;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/25/2013
  */
 public final class Jsonifiers {
