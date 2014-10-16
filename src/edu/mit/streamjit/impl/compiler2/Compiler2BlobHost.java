@@ -22,6 +22,9 @@ import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
 import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findConstructor;
 import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import edu.mit.streamjit.util.NothrowCallable;
+import edu.mit.streamjit.util.bytecode.Module;
+import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
+import edu.mit.streamjit.util.bytecode.methodhandles.ProxyFactory;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -149,15 +152,17 @@ public class Compiler2BlobHost implements Blob {
 				doInit = DO_INIT.bindTo(this),
 				doAdjust = DO_ADJUST.bindTo(this),
 				mainLoopNop = MAIN_LOOP_NOP.bindTo(this);
-		ImmutableList.Builder<MethodHandle> coreCodeHandles = ImmutableList.builder();
-		for (MethodHandle ssc : this.steadyStateCode) {
+		ProxyFactory pf = new ProxyFactory(new ModuleClassLoader(new Module()));
+		ImmutableList.Builder<Runnable> coreCodeRunnables = ImmutableList.builder();
+		for (int i = 0; i < this.steadyStateCode.size(); ++i) {
+			MethodHandle ssc = this.steadyStateCode.get(i);
 			MethodHandle code = sp1.guardWithTest(mainLoopNop, sp2.guardWithTest(mainLoop.bindTo(ssc), NOP));
-			coreCodeHandles.add(code);
+			coreCodeRunnables.add(pf.createProxy("Proxy"+i, ImmutableMap.of("run", code), Runnable.class));
 		}
-		this.coreCode = Bytecodifier.runnableProxies(coreCodeHandles.build());
+		this.coreCode = coreCodeRunnables.build();
 		MethodHandle throwAE = THROW_NEW_ASSERTION_ERROR.bindTo("Can't happen! Barrier action reached after draining?");
 		MethodHandle barrierAction = sp1.guardWithTest(doInit, sp2.guardWithTest(doAdjust, throwAE));
-		final Runnable onAdvanceRunnable = Bytecodifier.runnableProxies(ImmutableList.of(barrierAction)).get(0);
+		final Runnable onAdvanceRunnable = pf.createProxy("BarrierAction", ImmutableMap.of("run", barrierAction), Runnable.class);
 		this.barrier = new Phaser(coreCode.size()) {
 			@Override
 			protected boolean onAdvance(int phase, int registeredParties) {
