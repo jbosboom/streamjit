@@ -82,11 +82,9 @@ xmlns:if="ant:if" xmlns:unless="ant:unless"
 			 dest="lib/sqlitejdbc.jar"
 			 skipexisting="true"/>
 
-		<!-- TODO: otherwise download
-		<get src=""
+		<get src="https://github.com/jbosboom/bytecodelib/releases/download/20141017/bytecodelib.jar"
 			 dest="lib/bytecodelib.jar"
 			 skipexisting="true"/>
-		-->
 	</target>
 
 	<target name="clean">
