@@ -96,22 +96,24 @@ public abstract class CTRLRDrainElement implements CTRLRMessageElement {
 
 	/**
 	 * Three types of draining are possible.
-	 * <ol>
-	 * <li>drainType = 1 : Final draining. No drain data. All {@link Blob}s are
-	 * expected to run and finish all data.
-	 * <li>drainType = 2 : Intermediate draining. Drain data is required in this
-	 * mode. {@link BoundaryInputChannel}s may create extra buffer and put all
-	 * unconsumed data, and finally send this drain data to the
-	 * {@link Controller} for reconfiguration.
-	 * <li>drainType = 3 : Discard all unconsumed data. This is useful, if we
-	 * don't care about the data while tuning for performance.
-	 * </ol>
-	 * 
-	 * See the same description at {@link BoundaryInputChannel#stop(int)}.
-	 * 
 	 */
 	public enum DrainType {
-		FINAL(1), INTERMEDIATE(2), DISCARD(3);
+		/**
+		 * Final draining. No drain data. All {@link Blob}s are expected to run
+		 * and finish data in input buffers buffers.
+		 */
+		FINAL(1), /**
+		 * Intermediate draining. Drain data is required in this mode.
+		 * {@link BoundaryInputChannel}s may create extra buffer and put all
+		 * unconsumed data, and finally send this drain data to the
+		 * {@link Controller} for reconfiguration.
+		 */
+		INTERMEDIATE(2), /**
+		 * Discard all unconsumed data. This is useful, if we
+		 * don't care about the data while tuning for performance.
+		 * 
+		 */
+		DISCARD(3);
 		private final int code;
 
 		DrainType(int code) {
