@@ -161,19 +161,6 @@ public class BlockingOutputChannel implements BoundaryOutputChannel {
 		}
 	}
 
-	@Override
-	public final void stop(boolean isFinal) {
-		if (debugLevel > 0)
-			System.out.println(Thread.currentThread().getName()
-					+ " - stop request");
-		if (!this.stopFlag.get()) {
-			this.isFinal = isFinal;
-			this.stopFlag.set(true);
-		} else if (debugLevel > 0) {
-			System.err.println("Stop has already been called.");
-		}
-	}
-
 	/**
 	 * This can be called when running the application with the final scheduling
 	 * configurations. Shouldn't be called when autotuner tunes.
@@ -206,14 +193,26 @@ public class BlockingOutputChannel implements BoundaryOutputChannel {
 		}
 	}
 
+	@Override
+	public final void stop(boolean isFinal) {
+		if (debugLevel > 0)
+			System.out.println(Thread.currentThread().getName()
+					+ " - stop request");
+		if (!this.stopFlag.get()) {
+			this.isFinal = isFinal;
+			this.stopFlag.set(true);
+		} else if (debugLevel > 0) {
+			System.err.println("Stop has already been called.");
+		}
+	}
+
 	private void reConnect() {
 		try {
 			this.connection.closeConnection();
 			while (!stopFlag.get()) {
 				System.out.println("TCPOutputChannel : Reconnecting...");
 				try {
-					this.connection = conProvider.getConnection(conInfo,
-							1000);
+					this.connection = conProvider.getConnection(conInfo, 1000);
 					return;
 				} catch (SocketTimeoutException stex) {
 					// We make this exception to recheck the stopFlag. Otherwise
