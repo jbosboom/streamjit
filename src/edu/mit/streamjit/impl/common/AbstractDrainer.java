@@ -213,7 +213,8 @@ public abstract class AbstractDrainer {
 	}
 
 	public final void awaitDrainData() throws InterruptedException {
-		drainDataLatch.await();
+		if (GlobalConstants.useDrainData)
+			drainDataLatch.await();
 	}
 
 	public final void newDrainData(DrainedData drainedData) {
@@ -231,6 +232,8 @@ public abstract class AbstractDrainer {
 	 * @return Aggregated DrainData after the draining.
 	 */
 	public final DrainData getDrainData() {
+		if (!GlobalConstants.useDrainData)
+			return null;
 		DrainData drainData = null;
 		Map<Token, ImmutableList<Object>> boundaryInputData = new HashMap<>();
 		Map<Token, ImmutableList<Object>> boundaryOutputData = new HashMap<>();

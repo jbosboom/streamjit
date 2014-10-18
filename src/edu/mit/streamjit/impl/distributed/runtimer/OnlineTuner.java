@@ -164,12 +164,9 @@ public class OnlineTuner implements Runnable {
 				System.err.println("awaitDrainedIntrmdiate");
 				drainer.awaitDrainedIntrmdiate();
 
-				if (GlobalConstants.useDrainData) {
-					System.err.println("awaitDrainData...");
-					drainer.awaitDrainData();
-					DrainData drainData = drainer.getDrainData();
-					app.drainData = drainData;
-				}
+				drainer.awaitDrainData();
+				DrainData drainData = drainer.getDrainData();
+				app.drainData = drainData;
 			}
 
 			int multiplier = 1000;
