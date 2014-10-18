@@ -135,29 +135,7 @@ public class BlockingOutputChannel implements BoundaryOutputChannel {
 
 	public final void sendData() {
 		while (this.buffer.size() > 0 && !stopFlag.get()) {
-			try {
-				Object obj = buffer.read();
-				connection.writeObject(obj);
-				count++;
-
-				if (debugLevel == 3) {
-					System.out.println(Thread.currentThread().getName() + " - "
-							+ obj.toString());
-				}
-
-				if (writer != null) {
-					writer.write(obj.toString());
-					writer.write('\n');
-				}
-			} catch (IOException e) {
-				System.err
-						.println("TCP Output Channel. WriteObject exception.");
-				reConnect();
-			}
-			if (count % 1000 == 0 && debugLevel == 2) {
-				System.out.println(Thread.currentThread().getName() + " - "
-						+ count + " items have been sent");
-			}
+			send();
 		}
 	}
 
@@ -167,29 +145,7 @@ public class BlockingOutputChannel implements BoundaryOutputChannel {
 	 */
 	private void finalSend() {
 		while (this.buffer.size() > 0) {
-			try {
-				Object o = buffer.read();
-				connection.writeObject(o);
-				count++;
-
-				if (debugLevel == 3) {
-					System.out.println(Thread.currentThread().getName()
-							+ " FinalSend - " + o.toString());
-				}
-
-				if (writer != null) {
-					writer.write(o.toString());
-					writer.write('\n');
-				}
-
-			} catch (IOException e) {
-				System.err.println("TCP Output Channel. finalSend exception.");
-			}
-			if (count % 1000 == 0 && debugLevel == 2) {
-				System.out.println(Thread.currentThread().getName()
-						+ " FinalSend - " + count
-						+ " no of items have been sent");
-			}
+			send();
 		}
 	}
 
@@ -221,6 +177,33 @@ public class BlockingOutputChannel implements BoundaryOutputChannel {
 			}
 		} catch (IOException e1) {
 			e1.printStackTrace();
+		}
+	}
+
+	private void send() {
+		try {
+			Object o = buffer.read();
+			connection.writeObject(o);
+			count++;
+
+			if (debugLevel == 3) {
+				System.out.println(Thread.currentThread().getName()
+						+ " Send - " + o.toString());
+			}
+
+			if (writer != null) {
+				writer.write(o.toString());
+				writer.write('\n');
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.err.println("TCP Output Channel. Send exception.");
+			reConnect();
+		}
+		if (count % 1000 == 0 && debugLevel == 2) {
+			System.out.println(Thread.currentThread().getName() + " Send - "
+					+ count + " no of items have been sent");
 		}
 	}
 
