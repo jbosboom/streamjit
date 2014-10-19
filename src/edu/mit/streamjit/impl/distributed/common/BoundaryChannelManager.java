@@ -10,6 +10,7 @@ import com.google.common.collect.ImmutableMap;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.node.AsyncOutputChannel;
 
 /**
@@ -40,7 +41,7 @@ public interface BoundaryChannelManager {
 		 * @param stopType
 		 *            See {@link BoundaryInputChannel#stop(int)}
 		 */
-		void stop(int stopType);
+		void stop(DrainType stopType);
 	}
 
 	public interface BoundaryOutputChannelManager
@@ -101,7 +102,7 @@ public interface BoundaryChannelManager {
 		}
 
 		@Override
-		public void stop(int stopType) {
+		public void stop(DrainType stopType) {
 			for (BoundaryInputChannel bc : inputChannels.values()) {
 				bc.stop(stopType);
 			}

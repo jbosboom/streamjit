@@ -12,6 +12,7 @@ import com.google.common.base.Stopwatch;
 
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
@@ -93,7 +94,7 @@ public class TailChannel extends BlockingInputChannel {
 	}
 
 	@Override
-	public void stop(int type) {
+	public void stop(DrainType type) {
 		super.stop(type);
 		if (pLogger != null) {
 			reset();

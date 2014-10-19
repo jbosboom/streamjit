@@ -141,12 +141,14 @@ public class StreamJitAppManager {
 		}
 
 		if (tailChannel != null) {
-			if (isFinal)
-				tailChannel.stop(1);
-			else if (GlobalConstants.useDrainData)
-				tailChannel.stop(2);
+			if (GlobalConstants.useDrainData)
+				if (isFinal)
+					tailChannel.stop(DrainType.FINAL);
+				else
+					tailChannel.stop(DrainType.INTERMEDIATE);
 			else
-				tailChannel.stop(3);
+				tailChannel.stop(DrainType.DISCARD);
+
 			try {
 				tailThread.join();
 			} catch (InterruptedException e) {

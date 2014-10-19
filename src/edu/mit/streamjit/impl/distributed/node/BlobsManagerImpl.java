@@ -368,7 +368,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			this.drainType = drainType;
 			drainState = 1;
 
-			inChnlManager.stop(drainType.toint());
+			inChnlManager.stop(drainType);
 			// TODO: [2014-03-14] I commented following line to avoid one dead
 			// lock case when draining. Deadlock 5 and 6.
 			// [2014-09-17] Lets waitToStop() if drain data is required.
@@ -600,7 +600,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		private void stop() {
-			inChnlManager.stop(1);
+			inChnlManager.stop(DrainType.FINAL);
 			outChnlManager.stop(true);
 
 			for (Thread t : blobThreads) {

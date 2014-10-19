@@ -15,6 +15,7 @@ import edu.mit.streamjit.impl.blob.AbstractBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
@@ -345,10 +346,9 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 	}
 
 	@Override
-	public void stop(int type) {
-		assert 0 < type && type < 4 : "Undefined stop type";
+	public void stop(DrainType type) {
 		if (this.stopType.get() == 0) {
-			stopType.set(type);
+			stopType.set(type.toint());
 		} else if (debugLevel > 0) {
 			System.err.println("Stop has already been called.");
 		}
