@@ -15,6 +15,7 @@ public class DistributedDrainer extends AbstractDrainer {
 
 	public DistributedDrainer(StreamJitAppManager manager) {
 		this.manager = manager;
+		//TODO:
 		// Read this. Don't let the "this" reference escape during construction
 		// http://www.ibm.com/developerworks/java/library/j-jtp0618/
 		manager.setDrainer(this);
