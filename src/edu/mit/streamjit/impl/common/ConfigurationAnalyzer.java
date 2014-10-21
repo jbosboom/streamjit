@@ -117,12 +117,15 @@ public class ConfigurationAnalyzer {
 		assert type1 == type2;
 		T1 val1 = p1.getValue();
 		T2 val2 = p2.getValue();
-		System.out.println(p1.getUniverse());
+
 		if (val1.equals(val2))
-			System.out.println("Same value");
+			System.out.println(String.format(
+					"%s - same values - p1 = %s, p2 = %s. Universe:%s",
+					p1.getName(), val1, val2, p1.getUniverse()));
 		else
 			System.out.println(String.format(
-					"Different values p1 = %s, p2 = %s", val1, val2));
+					"%s - different values - p1 = %s, p2 = %s. Universe:%s",
+					p1.getName(), val1, val2, p1.getUniverse()));
 	}
 
 	private float getRunningTime() {
