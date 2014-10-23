@@ -13,7 +13,6 @@ import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
-import edu.mit.streamjit.tuner.ConfigGenerator.sqliteAdapter;
 
 /**
  * {@link RunApp} reads configuration, streamJit's app name and location
@@ -44,9 +43,9 @@ public class RunApp {
 				benchmarkName, round));
 
 		String sjDbPath = "sj" + benchmarkName + ".db";
-		sqliteAdapter sjDb;
+		SqliteAdapter sjDb;
 		try {
-			sjDb = new sqliteAdapter();
+			sjDb = new SqliteAdapter();
 		} catch (ClassNotFoundException e1) {
 			System.err
 					.println("Sqlite3 database not found...couldn't update the database with the configutaion.");
