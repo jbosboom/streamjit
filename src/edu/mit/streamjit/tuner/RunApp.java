@@ -44,15 +44,7 @@ public class RunApp {
 
 		String sjDbPath = "sj" + benchmarkName + ".db";
 		SqliteAdapter sjDb;
-		try {
-			sjDb = new SqliteAdapter();
-		} catch (ClassNotFoundException e1) {
-			System.err
-					.println("Sqlite3 database not found...couldn't update the database with the configutaion.");
-			e1.printStackTrace();
-			return;
-		}
-
+		sjDb = new SqliteAdapter();
 		sjDb.connectDB(sjDbPath);
 		ResultSet result = sjDb.executeQuery(String.format(
 				"SELECT * FROM results WHERE Round=%d", round));

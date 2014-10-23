@@ -44,15 +44,7 @@ public class ConfigGenerator {
 		checkNotNull(provider);
 
 		SqliteAdapter sqlite;
-		try {
-			sqlite = new SqliteAdapter();
-		} catch (ClassNotFoundException e) {
-			System.err
-					.println("Sqlite3 database not found...couldn't update the database with the configutaion.");
-			e.printStackTrace();
-			return;
-		}
-
+		sqlite = new SqliteAdapter();
 		String dbPath = "streamjit.db";
 		sqlite.connectDB(dbPath);
 		sqlite.createTable(

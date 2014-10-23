@@ -14,8 +14,17 @@ public class SqliteAdapter {
 	private Connection con = null;
 	private Statement statement;
 
-	public SqliteAdapter() throws ClassNotFoundException {
-		Class.forName("org.sqlite.JDBC");
+	/**
+	 * Checks if org.sqlite.JDBC class exists. Throws
+	 * {@link IllegalStateException} if sqlite does not exist.
+	 */
+	public SqliteAdapter() {
+		try {
+			Class.forName("org.sqlite.JDBC");
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+			throw new IllegalStateException("Sqlite3 database not found.");
+		}
 	}
 
 	public void connectDB(String path) {
