@@ -2,7 +2,6 @@ package edu.mit.streamjit.impl.common;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
@@ -23,10 +22,6 @@ import edu.mit.streamjit.impl.distributed.ConfigurationManager;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.impl.distributed.HotSpotTuning;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
-import edu.mit.streamjit.test.apps.channelvocoder7.ChannelVocoder7;
-import edu.mit.streamjit.test.apps.filterbank6.FilterBank6;
-import edu.mit.streamjit.test.apps.fmradio.FMRadio;
-import edu.mit.streamjit.test.sanity.nestedsplitjoinexample.NestedSplitJoin;
 import edu.mit.streamjit.util.ConfigurationUtils;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
@@ -379,16 +374,17 @@ public class ConfigurationEditor {
 
 	private static void printCfgValues(String fileName) {
 		Configuration cfg = ConfigurationUtils.readConfiguration(fileName);
-		File f = new File(fileName);
-		Map<String, Parameter> parameters = cfg.getParametersMap();
-		System.out.println(String.format("%s - %d", f.getName(), parameters
-				.entrySet().size()));
-		// int i = 0;
-		//
-		// for (Map.Entry<String, Parameter> en : parameters.entrySet()) {
-		// System.out.println(String.format("\t %d.%s", i++, en.getKey()));
-		// }
-
+		if (cfg != null) {
+			File f = new File(fileName);
+			Map<String, Parameter> parameters = cfg.getParametersMap();
+			System.out.println(String.format("%s - %d", f.getName(), parameters
+					.entrySet().size()));
+			// int i = 0;
+			//
+			// for (Map.Entry<String, Parameter> en : parameters.entrySet()) {
+			// System.out.println(String.format("\t %d.%s", i++, en.getKey()));
+			// }
+		}
 	}
 
 	private static void printAll(String folderPath) {
