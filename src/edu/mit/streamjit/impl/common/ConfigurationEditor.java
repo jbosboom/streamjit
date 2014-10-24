@@ -27,6 +27,7 @@ import edu.mit.streamjit.test.apps.channelvocoder7.ChannelVocoder7;
 import edu.mit.streamjit.test.apps.filterbank6.FilterBank6;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
 import edu.mit.streamjit.test.sanity.nestedsplitjoinexample.NestedSplitJoin;
+import edu.mit.streamjit.util.ConfigurationUtils;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 public class ConfigurationEditor {
@@ -45,14 +46,16 @@ public class ConfigurationEditor {
 		// convert();
 		// changeMultiplierVal();
 		// printCfgValues("1NestedSplitJoinCore.cfg");
-		 printAll("../Tuner layer/tuning-oopsla2014");
+		printAll("../Tuner layer/tuning-oopsla2014");
 	}
 
 	/**
 	 * Reads a configuration and changes its multiplier value.
 	 */
 	private static void changeMultiplierVal() {
-		Configuration config = readConfiguration("final_NestedSplitJoinCore");
+		String appName = "final_NestedSplitJoinCore";
+		Configuration config = ConfigurationUtils.readConfiguration(String
+				.format("%s.cfg", appName));
 		Configuration.Builder builder = Configuration.builder(config);
 		IntParameter mulParam = config.getParameter("multiplier",
 				IntParameter.class);
@@ -266,7 +269,8 @@ public class ConfigurationEditor {
 
 	private static void convert() {
 		String appName = "ChannelVocoder7Kernel";
-		Configuration cfg = readConfiguration(String.format("%d%s", 1, appName));
+		Configuration cfg = ConfigurationUtils.readConfiguration(String.format(
+				"%d%s.cfg", 1, appName));
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(
 					String.format("%d%s.cfg", 0, appName)));
@@ -385,21 +389,6 @@ public class ConfigurationEditor {
 		// System.out.println(String.format("\t %d.%s", i++, en.getKey()));
 		// }
 
-	}
-
-	private static Configuration readConfiguration(String simpeName) {
-		// String name = String.format("%s.cfg", simpeName);
-		String name = simpeName;
-		try {
-			BufferedReader reader = new BufferedReader(new FileReader(name));
-			String json = reader.readLine();
-			reader.close();
-			return Configuration.fromJson(json);
-		} catch (Exception ex) {
-			System.err.println(String.format(
-					"File reader error. No %s configuration file.", name));
-		}
-		return null;
 	}
 
 	private static void printAll(String folderPath) {
