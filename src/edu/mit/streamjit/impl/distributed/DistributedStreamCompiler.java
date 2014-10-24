@@ -1,7 +1,5 @@
 package edu.mit.streamjit.impl.distributed;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,6 +45,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.DistributedDrainer;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
+import edu.mit.streamjit.util.ConfigurationUtils;
 import edu.mit.streamjit.util.Pair;
 
 /**
@@ -154,8 +153,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 	private <I, O> Configuration cfgFromFile(OneToOneElement<I, O> stream,
 			Controller controller, Configuration defaultCfg) {
-		Configuration cfg1 = readConfiguration(stream.getClass()
-				.getSimpleName());
+		Configuration cfg1 = ConfigurationUtils.readConfiguration(String
+				.format("%s.cfg", stream.getClass().getSimpleName()));
 		if (cfg1 == null) {
 			controller.closeAll();
 			throw new IllegalConfigurationException();
@@ -241,20 +240,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
 				machineIds, stream, srcSink.first, srcSink.second);
 		app.newPartitionMap(partitionsMachineMap);
-	}
-
-	private Configuration readConfiguration(String simpeName) {
-		String name = String.format("%s.cfg", simpeName);
-		try {
-			BufferedReader reader = new BufferedReader(new FileReader(name));
-			String json = reader.readLine();
-			reader.close();
-			return Configuration.fromJson(json);
-		} catch (Exception ex) {
-			System.err.println(String.format(
-					"File reader error. No %s configuration file.", name));
-		}
-		return null;
 	}
 
 	/**
