@@ -3,6 +3,8 @@ package edu.mit.streamjit.impl.common;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -11,13 +13,16 @@ import edu.mit.streamjit.impl.common.Configuration.FloatParameter;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
+import edu.mit.streamjit.tuner.SqliteAdapter;
 
 public class ConfigurationAnalyzer {
 
 	public static void main(String[] args) {
 		ConfigurationAnalyzer ca = new ConfigurationAnalyzer(
 				"NestedSplitJoinCore");
-		ca.compare(3, 4);
+		// ca.compare(3, 4);
+
+		System.out.println(ca.getRunningTime("NestedSplitJoinCore", 3));
 	}
 
 	String appDir;
@@ -128,8 +133,24 @@ public class ConfigurationAnalyzer {
 					p1.getName(), val1, val2, p1.getUniverse()));
 	}
 
-	private float getRunningTime() {
-		return 1.0f;
+	private SqliteAdapter connectDB(String appName) {
+		SqliteAdapter sqlite = new SqliteAdapter();
+		sqlite.connectDB(appName);
+		return sqlite;
+	}
+
+	private double getRunningTime(String appName, int round) {
+		SqliteAdapter sqlite = connectDB(appName);
+		ResultSet result = sqlite.executeQuery(String.format(
+				"SELECT * FROM result WHERE id=%d", round));
+
+		String runtime = "1000000000";
+		try {
+			runtime = result.getString("time");
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return Double.parseDouble(runtime);
 	}
 
 	private Configuration readcoConfiguration(String appDir, String appName,
