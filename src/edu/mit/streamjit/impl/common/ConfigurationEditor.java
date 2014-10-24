@@ -378,7 +378,7 @@ public class ConfigurationEditor {
 	}
 
 	private static void printCfgValues(String fileName) {
-		Configuration cfg = readConfiguration(fileName);
+		Configuration cfg = ConfigurationUtils.readConfiguration(fileName);
 		File f = new File(fileName);
 		Map<String, Parameter> parameters = cfg.getParametersMap();
 		System.out.println(String.format("%s - %d", f.getName(), parameters
