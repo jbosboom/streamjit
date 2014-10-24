@@ -17,6 +17,7 @@ import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.tuner.OpenTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
+import edu.mit.streamjit.util.ConfigurationUtils;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
@@ -92,7 +93,8 @@ public class OnlineTuner implements Runnable {
 				Configuration config = Configuration.fromJson(cfgJson);
 
 				if (GlobalConstants.saveAllConfigurations)
-					saveConfg(cfgJson, round);
+					ConfigurationUtils.saveConfg(cfgJson,
+							new Integer(round).toString(), app.name);
 
 				ret = reconfigure(config);
 				if (ret.first) {
@@ -207,7 +209,7 @@ public class OnlineTuner implements Runnable {
 	private void handleTermination() throws IOException {
 		String finalConfg = tuner.readLine();
 		System.out.println("Tuning finished");
-		saveConfg(finalConfg, 0);
+		ConfigurationUtils.saveConfg(finalConfg, "final_", app.name);
 
 		Configuration finalcfg = Configuration.fromJson(finalConfg);
 		evaluateConfig(finalcfg, "Final configuration");
@@ -288,30 +290,5 @@ public class OnlineTuner implements Runnable {
 					"File reader error. No %s configuration file.", name));
 		}
 		return null;
-	}
-
-	/**
-	 * Save the configuration.
-	 */
-	private void saveConfg(String json, int round) {
-		try {
-
-			File dir = new File(String.format("configurations%s%s",
-					File.separator, app.name));
-			if (!dir.exists())
-				if (!dir.mkdirs()) {
-					System.err.println("Make directory failed");
-					return;
-				}
-
-			File file = new File(dir,
-					String.format("%d%s.cfg", round, app.name));
-			FileWriter writer = new FileWriter(file, false);
-			writer.write(json);
-			writer.flush();
-			writer.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 }
