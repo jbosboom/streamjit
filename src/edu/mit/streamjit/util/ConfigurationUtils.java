@@ -57,6 +57,24 @@ public class ConfigurationUtils {
 	public static void saveConfg(Configuration config, String namePrefix,
 			String appName) {
 		String json = config.toJson();
+		saveConfg(json, namePrefix, appName);
+	}
+
+	/**
+	 * Saves the configJson into configurations/appName directory. output _.cfg
+	 * file will be named as namePrefixappName.cfg.
+	 * 
+	 * @param configJson
+	 *            Json representation of the {@link Configuration} that need to
+	 *            be saved.
+	 * @param namePrefix
+	 *            prefix to add to the out put file name.
+	 * @param appName
+	 *            name of the streamJit app. output _.cfg file will be named as
+	 *            namePrefixappName.cfg.
+	 */
+	public static void saveConfg(String configJson, String namePrefix,
+			String appName) {
 		try {
 
 			File dir = new File(String.format("configurations%s%s",
@@ -70,7 +88,7 @@ public class ConfigurationUtils {
 			File file = new File(dir, String.format("%s%s.cfg", namePrefix,
 					appName));
 			FileWriter writer = new FileWriter(file, false);
-			writer.write(json);
+			writer.write(configJson);
 			writer.flush();
 			writer.close();
 		} catch (IOException e) {
