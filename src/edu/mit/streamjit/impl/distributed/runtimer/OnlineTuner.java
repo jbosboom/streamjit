@@ -121,12 +121,12 @@ public class OnlineTuner implements Runnable {
 	}
 
 	private void evaluate() {
-		Configuration finalCfg = readConfiguration(String.format(
-				"final_%s.cfg", app.name));
+		Configuration finalCfg = ConfigurationUtils.readConfiguration(String
+				.format("final_%s.cfg", app.name));
 		evaluateConfig(finalCfg, "Final configuration");
 
-		Configuration handCfg = readConfiguration(String.format("hand_%s.cfg",
-				app.name));
+		Configuration handCfg = ConfigurationUtils.readConfiguration(String
+				.format("hand_%s.cfg", app.name));
 		evaluateConfig(handCfg, "Handtuned configuration");
 
 		try {
@@ -214,8 +214,8 @@ public class OnlineTuner implements Runnable {
 		Configuration finalcfg = Configuration.fromJson(finalConfg);
 		evaluateConfig(finalcfg, "Final configuration");
 
-		Configuration handCfg = readConfiguration(String.format("hand_%s.cfg",
-				app.name));
+		Configuration handCfg = ConfigurationUtils.readConfiguration(String
+				.format("hand_%s.cfg", app.name));
 		evaluateConfig(handCfg, "Handtuned configuration");
 
 		if (needTermination) {
@@ -277,18 +277,5 @@ public class OnlineTuner implements Runnable {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-	}
-
-	private Configuration readConfiguration(String name) {
-		try {
-			BufferedReader reader = new BufferedReader(new FileReader(name));
-			String json = reader.readLine();
-			reader.close();
-			return Configuration.fromJson(json);
-		} catch (Exception ex) {
-			System.err.println(String.format(
-					"File reader error. No %s configuration file.", name));
-		}
-		return null;
 	}
 }
