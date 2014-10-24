@@ -61,7 +61,8 @@ public class ConfigurationEditor {
 
 		IntParameter newMulParam = new IntParameter("multiplier", 1, 100, 100);
 		builder.addParameter(newMulParam);
-		saveConfg(builder.build(), 444, "final_NestedSplitJoinCore");
+		ConfigurationUtils.saveConfg(builder.build(), "444",
+				"final_NestedSplitJoinCore");
 
 	}
 
@@ -167,8 +168,7 @@ public class ConfigurationEditor {
 
 		name = String.format("hand_%s.cfg", stream.getClass().getSimpleName());
 
-		saveConfg(cfg, 0, name);
-
+		ConfigurationUtils.saveConfg(cfg, "0", name);
 	}
 
 	private static void edit1(String name, int maxWor)
@@ -272,7 +272,7 @@ public class ConfigurationEditor {
 			String pythonDict = reader.readLine();
 
 			Configuration finalCfg = rebuildConfiguration(pythonDict, cfg);
-			saveConfg(finalCfg, 0, name);
+			ConfigurationUtils.saveConfg(finalCfg, "0", name);
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
@@ -344,32 +344,6 @@ public class ConfigurationEditor {
 		String s2 = s1.replaceAll("class", "javaClassPath");
 		String s3 = s2.replaceAll("ttttt", "__class__");
 		return s3;
-	}
-
-	/**
-	 * Save the configuration.
-	 */
-	private static void saveConfg(Configuration config, int round,
-			String appName) {
-		String json = config.toJson();
-		try {
-
-			File dir = new File(String.format("configurations%s%s",
-					File.separator, appName));
-			if (!dir.exists())
-				if (!dir.mkdirs()) {
-					System.err.println("Make directory failed");
-					return;
-				}
-
-			File file = new File(dir, String.format("%d%s.cfg", round, appName));
-			FileWriter writer = new FileWriter(file, false);
-			writer.write(json);
-			writer.flush();
-			writer.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 
 	private static void printCfgValues(String fileName) {
