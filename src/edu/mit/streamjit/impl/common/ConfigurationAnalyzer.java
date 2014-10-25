@@ -14,6 +14,7 @@ import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.tuner.SqliteAdapter;
+import edu.mit.streamjit.util.ConfigurationUtils;
 
 public class ConfigurationAnalyzer {
 
@@ -157,7 +158,7 @@ public class ConfigurationAnalyzer {
 			Integer cfgNo) {
 		String cfg = String.format("%s%s%d%s.cfg", appDir, File.separator,
 				cfgNo, appName);
-		return readConfiguration(cfg);
+		return ConfigurationUtils.readConfiguration(cfg);
 	}
 
 	private Configuration readConfiguration(String name) {
