@@ -1,8 +1,6 @@
 package edu.mit.streamjit.impl.common;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedList;
@@ -159,19 +157,6 @@ public class ConfigurationAnalyzer {
 		String cfg = String.format("%s%s%d%s.cfg", appDir, File.separator,
 				cfgNo, appName);
 		return ConfigurationUtils.readConfiguration(cfg);
-	}
-
-	private Configuration readConfiguration(String name) {
-		try {
-			BufferedReader reader = new BufferedReader(new FileReader(name));
-			String json = reader.readLine();
-			reader.close();
-			return Configuration.fromJson(json);
-		} catch (Exception ex) {
-			System.err.println(String.format(
-					"File reader error. No %s configuration file.", name));
-		}
-		return null;
 	}
 
 	private boolean verifyPath(String cfgDir, String appName) {
