@@ -69,6 +69,7 @@ public class TailChannel extends BlockingInputChannel {
 		this.skipCount = skipCount;
 		this.totalCount = steadyCount + skipCount;
 		count = 0;
+		lastCount = 0;
 		steadyLatch = new CountDownLatch(1);
 		skipLatch = new CountDownLatch(1);
 		this.skipLatchUp = true;
@@ -155,6 +156,7 @@ public class TailChannel extends BlockingInputChannel {
 		skipLatch.countDown();
 		skipLatch = new CountDownLatch(1);
 		count = 0;
+		lastCount = 0;
 		skipLatchUp = true;
 	}
 
@@ -169,6 +171,7 @@ public class TailChannel extends BlockingInputChannel {
 		steadyLatch.countDown();
 		skipLatch.countDown();
 		count = 0;
+		lastCount = 0;
 	}
 
 	private class PerformanceLogger extends Thread {
