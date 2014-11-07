@@ -58,20 +58,7 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 	@Override
 	public void process(String json, ConfigType type, DrainData drainData) {
 		if (type == ConfigType.STATIC) {
-			if (this.staticConfig == null) {
-				this.staticConfig = Jsonifiers.fromJson(json,
-						Configuration.class);
-
-				Map<Integer, InetAddress> iNetAddressMap = (Map<Integer, InetAddress>) staticConfig
-						.getExtraData(GlobalConstants.INETADDRESS_MAP);
-
-				NetworkInfo networkInfo = new NetworkInfo(iNetAddressMap);
-
-				this.conProvider = new ConnectionProvider(
-						streamNode.getNodeID(), networkInfo);
-			} else
-				System.err
-						.println("New static configuration received...But Ignored...");
+			processStaticCfg(json);
 		} else {
 			System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 			System.out.println("New Configuration.....");
@@ -109,6 +96,22 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 				System.out.println("Couldn't get the blobset....");
 			}
 		}
+	}
+
+	private void processStaticCfg(String json) {
+		if (this.staticConfig == null) {
+			this.staticConfig = Jsonifiers.fromJson(json, Configuration.class);
+
+			Map<Integer, InetAddress> iNetAddressMap = (Map<Integer, InetAddress>) staticConfig
+					.getExtraData(GlobalConstants.INETADDRESS_MAP);
+
+			NetworkInfo networkInfo = new NetworkInfo(iNetAddressMap);
+
+			this.conProvider = new ConnectionProvider(streamNode.getNodeID(),
+					networkInfo);
+		} else
+			System.err
+					.println("New static configuration received...But Ignored...");
 	}
 
 	private ImmutableSet<Blob> getBlobs(Configuration dyncfg,
