@@ -83,14 +83,7 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 	private void processDynamicCfg(String json, DrainData drainData) {
 		System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 		System.out.println("New Configuration.....");
-		// [2014-3-20] We need to release blobsmanager to release the
-		// memory. Otherwise, Blobthread2.corecode will hold the memory.
-		BlobsManager bm = streamNode.getBlobsManager();
-		if (bm != null) {
-			bm.stop();
-			streamNode.setBlobsManager(null);
-			bm = null;
-		}
+		releaseOldBM();
 		Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
 		ImmutableSet<Blob> blobSet = getBlobs(cfg, staticConfig, drainData);
 		if (blobSet != null) {
@@ -114,6 +107,20 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 			}
 
 			System.out.println("Couldn't get the blobset....");
+		}
+	}
+
+	/**
+	 * Un-references old BlobManager object before creating new one.
+	 */
+	private void releaseOldBM() {
+		// [2014-3-20] We need to release blobsmanager to release the
+		// memory. Otherwise, Blobthread2.corecode will occupy the memory.
+		BlobsManager bm = streamNode.getBlobsManager();
+		if (bm != null) {
+			bm.stop();
+			streamNode.setBlobsManager(null);
+			bm = null;
 		}
 	}
 
