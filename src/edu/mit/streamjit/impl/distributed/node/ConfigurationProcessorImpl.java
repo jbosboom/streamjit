@@ -60,41 +60,7 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 		if (type == ConfigType.STATIC) {
 			processStaticCfg(json);
 		} else {
-			System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
-			System.out.println("New Configuration.....");
-			// [2014-3-20] We need to release blobsmanager to release the
-			// memory. Otherwise, Blobthread2.corecode will hold the memory.
-			BlobsManager bm = streamNode.getBlobsManager();
-			if (bm != null) {
-				bm.stop();
-				streamNode.setBlobsManager(null);
-				bm = null;
-			}
-			Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
-			ImmutableSet<Blob> blobSet = getBlobs(cfg, staticConfig, drainData);
-			if (blobSet != null) {
-				try {
-					streamNode.controllerConnection
-							.writeObject(AppStatus.COMPILED);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-
-				Map<Token, ConnectionInfo> conInfoMap = (Map<Token, ConnectionInfo>) cfg
-						.getExtraData(GlobalConstants.CONINFOMAP);
-
-				streamNode.setBlobsManager(new BlobsManagerImpl(blobSet,
-						conInfoMap, streamNode, conProvider));
-			} else {
-				try {
-					streamNode.controllerConnection
-							.writeObject(AppStatus.COMPILATION_ERROR);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-
-				System.out.println("Couldn't get the blobset....");
-			}
+			processDynamicCfg(json, drainData);
 		}
 	}
 
@@ -112,6 +78,43 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 		} else
 			System.err
 					.println("New static configuration received...But Ignored...");
+	}
+
+	private void processDynamicCfg(String json, DrainData drainData) {
+		System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+		System.out.println("New Configuration.....");
+		// [2014-3-20] We need to release blobsmanager to release the
+		// memory. Otherwise, Blobthread2.corecode will hold the memory.
+		BlobsManager bm = streamNode.getBlobsManager();
+		if (bm != null) {
+			bm.stop();
+			streamNode.setBlobsManager(null);
+			bm = null;
+		}
+		Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
+		ImmutableSet<Blob> blobSet = getBlobs(cfg, staticConfig, drainData);
+		if (blobSet != null) {
+			try {
+				streamNode.controllerConnection.writeObject(AppStatus.COMPILED);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+			Map<Token, ConnectionInfo> conInfoMap = (Map<Token, ConnectionInfo>) cfg
+					.getExtraData(GlobalConstants.CONINFOMAP);
+
+			streamNode.setBlobsManager(new BlobsManagerImpl(blobSet,
+					conInfoMap, streamNode, conProvider));
+		} else {
+			try {
+				streamNode.controllerConnection
+						.writeObject(AppStatus.COMPILATION_ERROR);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+			System.out.println("Couldn't get the blobset....");
+		}
 	}
 
 	private ImmutableSet<Blob> getBlobs(Configuration dyncfg,
