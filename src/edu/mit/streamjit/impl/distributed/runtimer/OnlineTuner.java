@@ -151,24 +151,18 @@ public class OnlineTuner implements Runnable {
 			return new Pair<Boolean, Long>(false, 0l);
 
 		try {
-			if (!cfgManager.newConfiguration(config)) {
+			if (!cfgManager.newConfiguration(config))
 				return new Pair<Boolean, Long>(true, -1l);
-			}
 
-			boolean isDrained = intermediateDraining();
-			if (!isDrained)
+			if (!intermediateDraining())
 				return new Pair<Boolean, Long>(false, -1l);
 
 			drainer.setBlobGraph(app.blobGraph);
-
 			int multiplier = getMultiplier(config);
-
 			if (manager.reconfigure(multiplier)) {
-				// TODO: need to check the manager's status before
-				// passing
-				// the time. Exceptions, final drain, etc may causes app
-				// to
-				// stop executing.
+				// TODO: need to check the manager's status before passing the
+				// time. Exceptions, final drain, etc may causes app to stop
+				// executing.
 				time = manager.getFixedOutputTime();
 
 				System.out.println("Execution time is " + time
