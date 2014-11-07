@@ -159,14 +159,10 @@ public class OnlineTuner implements Runnable {
 			if (!isDrained)
 				return new Pair<Boolean, Long>(false, -1l);
 
-			int multiplier = 1000;
-			IntParameter mulParam = config.getParameter("multiplier",
-					IntParameter.class);
-			if (mulParam != null)
-				multiplier = mulParam.getValue();
-
 			drainer.setBlobGraph(app.blobGraph);
-			System.err.println("Reconfiguring...multiplier = " + multiplier);
+
+			int multiplier = getMultiplier(config);
+
 			if (manager.reconfigure(multiplier)) {
 				// TODO: need to check the manager's status before
 				// passing
@@ -214,6 +210,16 @@ public class OnlineTuner implements Runnable {
 			return true;
 		} else
 			return true;
+	}
+
+	private int getMultiplier(Configuration config) {
+		int multiplier = 1000;
+		IntParameter mulParam = config.getParameter("multiplier",
+				IntParameter.class);
+		if (mulParam != null)
+			multiplier = mulParam.getValue();
+		System.err.println("Reconfiguring...multiplier = " + multiplier);
+		return multiplier;
 	}
 
 	/**
