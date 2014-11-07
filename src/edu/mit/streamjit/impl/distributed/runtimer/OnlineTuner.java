@@ -155,21 +155,9 @@ public class OnlineTuner implements Runnable {
 				return new Pair<Boolean, Long>(true, -1l);
 			}
 
-			if (manager.isRunning()) {
-				boolean state = drainer.startDraining(0);
-				if (!state) {
-					System.err
-							.println("Final drain has already been called. no more tuning.");
-					return new Pair<Boolean, Long>(false, -1l);
-				}
-
-				System.err.println("awaitDrainedIntrmdiate");
-				drainer.awaitDrainedIntrmdiate();
-
-				drainer.awaitDrainData();
-				DrainData drainData = drainer.getDrainData();
-				app.drainData = drainData;
-			}
+			boolean isDrained = intermediateDraining();
+			if (!isDrained)
+				return new Pair<Boolean, Long>(false, -1l);
 
 			int multiplier = 1000;
 			IntParameter mulParam = config.getParameter("multiplier",
@@ -199,6 +187,33 @@ public class OnlineTuner implements Runnable {
 			time = -1l;
 		}
 		return new Pair<Boolean, Long>(true, time);
+	}
+
+	/**
+	 * Performs intermediate draining.
+	 * 
+	 * @return <code>true</code> iff the draining is success or the application
+	 *         is not running currently.
+	 * @throws InterruptedException
+	 */
+	private boolean intermediateDraining() throws InterruptedException {
+		if (manager.isRunning()) {
+			boolean state = drainer.startDraining(0);
+			if (!state) {
+				System.err
+						.println("Final drain has already been called. no more tuning.");
+				return false;
+			}
+
+			System.err.println("awaitDrainedIntrmdiate");
+			drainer.awaitDrainedIntrmdiate();
+
+			drainer.awaitDrainData();
+			DrainData drainData = drainer.getDrainData();
+			app.drainData = drainData;
+			return true;
+		} else
+			return true;
 	}
 
 	/**
