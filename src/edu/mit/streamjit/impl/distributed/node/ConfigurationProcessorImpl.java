@@ -4,9 +4,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryMXBean;
-import java.lang.management.MemoryUsage;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -35,6 +32,7 @@ import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.NetworkInfo;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
@@ -168,15 +166,7 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 					ex.printStackTrace();
 					return null;
 				} catch (OutOfMemoryError er) {
-					MemoryMXBean memoryBean = ManagementFactory
-							.getMemoryMXBean();
-					System.out.println("******OutOfMemoryError******");
-					MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
-					int MEGABYTE = 1024 * 1024;
-					long maxMemory = heapUsage.getMax() / MEGABYTE;
-					long usedMemory = heapUsage.getUsed() / MEGABYTE;
-					System.out.println("Memory Use :" + usedMemory + "M/"
-							+ maxMemory + "M");
+					Utils.printOutOfMemory();
 					return null;
 				}
 				// DEBUG MSG

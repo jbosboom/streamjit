@@ -1,5 +1,8 @@
 package edu.mit.streamjit.impl.distributed.common;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryUsage;
 import java.util.Collections;
 import java.util.Set;
 
@@ -42,5 +45,16 @@ public class Utils {
 		System.out.println("heapSize = " + heapSize / 1e6);
 		System.out.println("heapFreeSize = " + heapFreeSize / 1e6);
 		System.out.println("##############################################");
+	}
+
+	public static void printOutOfMemory() {
+		MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
+		System.out.println("******OutOfMemoryError******");
+		MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
+		int MEGABYTE = 1024 * 1024;
+		long maxMemory = heapUsage.getMax() / MEGABYTE;
+		long usedMemory = heapUsage.getUsed() / MEGABYTE;
+		System.out
+				.println("Memory Use :" + usedMemory + "M/" + maxMemory + "M");
 	}
 }

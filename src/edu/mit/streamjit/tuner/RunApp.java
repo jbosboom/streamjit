@@ -1,8 +1,5 @@
 package edu.mit.streamjit.tuner;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryMXBean;
-import java.lang.management.MemoryUsage;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
@@ -11,6 +8,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 
@@ -83,14 +81,7 @@ public class RunApp {
 			e.printStackTrace();
 			time = -2;
 		} catch (OutOfMemoryError er) {
-			MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
-			System.out.println("******OutOfMemoryError******");
-			MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
-			int MEGABYTE = 1024 * 1024;
-			long maxMemory = heapUsage.getMax() / MEGABYTE;
-			long usedMemory = heapUsage.getUsed() / MEGABYTE;
-			System.out.println("Memory Use :" + usedMemory + "M/" + maxMemory
-					+ "M");
+			Utils.printOutOfMemory();
 			time = -3;
 		}
 
