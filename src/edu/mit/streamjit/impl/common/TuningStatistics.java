@@ -12,7 +12,7 @@ import edu.mit.streamjit.util.ConfigurationUtils;
 
 public class TuningStatistics {
 
-	private static String[] params = { "remove", "fuse", "unboxStorage",
+	private static String[] boolParams = { "remove", "fuse", "unboxStorage",
 			"unboxInput", "unboxOutput" };
 
 	/**
@@ -25,7 +25,7 @@ public class TuningStatistics {
 
 	}
 
-	private static double getBoolParamStat(Map<String, Parameter> parameters,
+	private static Double getBoolParamStat(Map<String, Parameter> parameters,
 			String prefix) {
 		int totalParams = 0;
 		int noOfTRUE = 0;
@@ -61,31 +61,35 @@ public class TuningStatistics {
 		FileWriter writer = new FileWriter("paramStat.dat", false);
 		writeHeader(writer);
 		for (int i = 0; i < listOfFiles.length; i++) {
-			printCfgValues(listOfFiles[i].getAbsolutePath());
+			printCfgValues(listOfFiles[i].getAbsolutePath(), writer);
 		}
 	}
 
-	private static void printCfgValues(String fileName) {
+	private static void printCfgValues(String fileName, FileWriter writer)
+			throws IOException {
 		Configuration cfg = ConfigurationUtils.readConfiguration(fileName);
 		if (cfg != null) {
 			File f = new File(fileName);
 			Map<String, Parameter> parameters = cfg.getParametersMap();
+			writer.write("\n");
+			writer.write(f.getName());
 			System.out.println(String.format("%s - %d", f.getName(), parameters
 					.entrySet().size()));
-			// int i = 0;
-			//
-			// for (Map.Entry<String, Parameter> en : parameters.entrySet()) {
-			// System.out.println(String.format("\t %d.%s", i++, en.getKey()));
-			// }
-			getBoolParamStat(parameters, "unboxOutput");
+
+			for (int i = 0; i < boolParams.length; i++) {
+				writer.write("\t");
+				writer.write(getBoolParamStat(parameters, boolParams[i])
+						.toString());
+			}
+			writer.flush();
 		}
 	}
 
 	private static void writeHeader(FileWriter writer) throws IOException {
 		writer.write("\t\t");
-		for (int i = 0; i < params.length; i++) {
+		for (int i = 0; i < boolParams.length; i++) {
 			writer.write("\t");
-			writer.write(params[i]);
+			writer.write(boolParams[i]);
 		}
 		writer.flush();
 	}
