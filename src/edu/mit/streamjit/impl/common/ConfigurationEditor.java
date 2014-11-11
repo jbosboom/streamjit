@@ -40,8 +40,6 @@ public class ConfigurationEditor {
 		// print("4366NestedSplitJoinCore.cfg");
 		// convert();
 		// changeMultiplierVal();
-		// printCfgValues("1NestedSplitJoinCore.cfg");
-		printAll("../Tuner layer/tuning-oopsla2014");
 	}
 
 	/**
@@ -344,35 +342,5 @@ public class ConfigurationEditor {
 		String s2 = s1.replaceAll("class", "javaClassPath");
 		String s3 = s2.replaceAll("ttttt", "__class__");
 		return s3;
-	}
-
-	private static void printCfgValues(String fileName) {
-		Configuration cfg = ConfigurationUtils.readConfiguration(fileName);
-		if (cfg != null) {
-			File f = new File(fileName);
-			Map<String, Parameter> parameters = cfg.getParametersMap();
-			System.out.println(String.format("%s - %d", f.getName(), parameters
-					.entrySet().size()));
-			// int i = 0;
-			//
-			// for (Map.Entry<String, Parameter> en : parameters.entrySet()) {
-			// System.out.println(String.format("\t %d.%s", i++, en.getKey()));
-			// }
-		}
-	}
-
-	private static void printAll(String folderPath) {
-		File folder = new File(folderPath);
-		File[] listOfFiles = folder.listFiles(new FilenameFilter() {
-
-			@Override
-			public boolean accept(File dir, String name) {
-				return name.toLowerCase().endsWith(".cfg");
-			}
-		});
-		System.out.println(String.format("Parameters in configuration..."));
-		for (int i = 0; i < listOfFiles.length; i++) {
-			printCfgValues(listOfFiles[i].getAbsolutePath());
-		}
 	}
 }
