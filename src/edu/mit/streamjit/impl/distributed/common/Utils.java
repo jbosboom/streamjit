@@ -29,4 +29,18 @@ public class Utils {
 
 		return Collections.min(inputBuilder.build());
 	}
+
+	/**
+	 * Prints heapMaxSize, current heapSize and heapFreeSize.
+	 */
+	public static void printMemoryStatus() {
+		long heapMaxSize = Runtime.getRuntime().maxMemory();
+		long heapSize = Runtime.getRuntime().totalMemory();
+		long heapFreeSize = Runtime.getRuntime().freeMemory();
+		System.out.println("##############################################");
+		System.out.println("heapMaxSize = " + heapMaxSize / 1e6);
+		System.out.println("heapSize = " + heapSize / 1e6);
+		System.out.println("heapFreeSize = " + heapFreeSize / 1e6);
+		System.out.println("##############################################");
+	}
 }

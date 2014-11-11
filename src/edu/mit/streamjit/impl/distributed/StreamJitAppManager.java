@@ -39,6 +39,7 @@ import edu.mit.streamjit.impl.distributed.common.SNException;
 import edu.mit.streamjit.impl.distributed.common.SNException.AddressBindException;
 import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 public class StreamJitAppManager {
@@ -243,18 +244,8 @@ public class StreamJitAppManager {
 			isRunning = false;
 		}
 
-		long heapMaxSize = Runtime.getRuntime().maxMemory();
-		long heapSize = Runtime.getRuntime().totalMemory();
-		long heapFreeSize = Runtime.getRuntime().freeMemory();
-
-		System.out.println("##############Controller######################");
-
-		System.out.println("heapMaxSize = " + heapMaxSize / 1e6);
-		System.out.println("heapSize = " + heapSize / 1e6);
-		System.out.println("heapFreeSize = " + heapFreeSize / 1e6);
 		System.out.println("StraemJit app is running...");
-		System.out.println("##############################################");
-
+		Utils.printMemoryStatus();
 		return isRunning;
 	}
 

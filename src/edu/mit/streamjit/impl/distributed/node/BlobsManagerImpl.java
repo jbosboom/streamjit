@@ -678,20 +678,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		@Override
 		public void processSTART() {
 			start();
-			long heapMaxSize = Runtime.getRuntime().maxMemory();
-			long heapSize = Runtime.getRuntime().totalMemory();
-			long heapFreeSize = Runtime.getRuntime().freeMemory();
-
-			System.out
-					.println("##############################################");
-
-			System.out.println("heapMaxSize = " + heapMaxSize / 1e6);
-			System.out.println("heapSize = " + heapSize / 1e6);
-			System.out.println("heapFreeSize = " + heapFreeSize / 1e6);
 			System.out.println("StraemJit app is running...");
-			System.out
-					.println("##############################################");
-
+			Utils.printMemoryStatus();
 		}
 
 		@Override
