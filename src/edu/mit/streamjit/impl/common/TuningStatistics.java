@@ -6,14 +6,17 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.Map;
 
+import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.util.ConfigurationUtils;
 
 public class TuningStatistics {
 
-	private static String[] boolParams = { "remove", "fuse", "unboxStorage",
+	private static String[] boolParams = { "remove", "fuse", "unboxStor",
 			"unboxInput", "unboxOutput" };
+
+	private static String[] intParams = { "InitBuffer", "multipl", "UnrollCo" };
 
 	/**
 	 * @param args
@@ -41,10 +44,25 @@ public class TuningStatistics {
 			}
 		}
 		double per = 100 * (double) noOfTRUE / totalParams;
-		System.out.println("totalParams - " + totalParams);
-		System.out.println("noOfTRUE - " + noOfTRUE);
-		System.out.println("Percentage - " + per);
+		// System.out.println("totalParams - " + totalParams);
+		// System.out.println("noOfTRUE - " + noOfTRUE);
+		// System.out.println("Percentage - " + per);
 		return per;
+	}
+
+	private static Integer getIntParamStat(Map<String, Parameter> parameters,
+			String prefix) {
+		int totalParams = 0;
+		int totalVal = 0;
+
+		for (Map.Entry<String, Parameter> en : parameters.entrySet()) {
+			if (en.getKey().startsWith(prefix)) {
+				totalParams++;
+				IntParameter p = (IntParameter) en.getValue();
+				totalVal += p.getValue();
+			}
+		}
+		return totalVal / totalParams;
 	}
 
 	private static void printAll(String folderPath) throws IOException {
@@ -72,24 +90,33 @@ public class TuningStatistics {
 			File f = new File(fileName);
 			Map<String, Parameter> parameters = cfg.getParametersMap();
 			writer.write("\n");
-			writer.write(f.getName());
+			// writer.write(String.format("\n%.20s", f.getName()));
 			System.out.println(String.format("%s - %d", f.getName(), parameters
 					.entrySet().size()));
 
 			for (int i = 0; i < boolParams.length; i++) {
-				writer.write("\t");
-				writer.write(getBoolParamStat(parameters, boolParams[i])
-						.toString());
+				writer.write(String.format("%.2f\t\t",
+						getBoolParamStat(parameters, boolParams[i])));
 			}
+
+			for (int i = 0; i < intParams.length; i++) {
+				writer.write(String.format("%d\t\t",
+						getIntParamStat(parameters, intParams[i])));
+			}
+
 			writer.flush();
 		}
 	}
 
 	private static void writeHeader(FileWriter writer) throws IOException {
-		writer.write("\t\t");
+		// writer.write("\t\t");
 		for (int i = 0; i < boolParams.length; i++) {
-			writer.write("\t");
-			writer.write(boolParams[i]);
+			writer.write(String.format("%.7s", boolParams[i]));
+			writer.write("\t\t");
+		}
+		for (int i = 0; i < intParams.length; i++) {
+			writer.write(String.format("%.7s", intParams[i]));
+			writer.write("\t\t");
 		}
 		writer.flush();
 	}
