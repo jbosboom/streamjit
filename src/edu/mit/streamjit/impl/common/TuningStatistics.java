@@ -59,7 +59,10 @@ public class TuningStatistics {
 			if (en.getKey().startsWith(prefix)) {
 				totalParams++;
 				IntParameter p = (IntParameter) en.getValue();
-				totalVal += p.getValue();
+				int normalized = (100 * p.getValue())
+						/ (p.getMax() - p.getMax());
+				// totalVal += p.getValue();
+				totalVal += normalized;
 			}
 		}
 		return totalVal / totalParams;
