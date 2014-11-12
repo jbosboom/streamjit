@@ -83,7 +83,7 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 		System.out.println("New Configuration.....");
 		releaseOldBM();
 		Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);
-		ImmutableSet<Blob> blobSet = getBlobs(cfg, staticConfig, drainData);
+		ImmutableSet<Blob> blobSet = getBlobs(cfg, drainData);
 		if (blobSet != null) {
 			try {
 				streamNode.controllerConnection.writeObject(AppStatus.COMPILED);
@@ -123,7 +123,7 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 	}
 
 	private ImmutableSet<Blob> getBlobs(Configuration dyncfg,
-			Configuration stccfg, DrainData drainData) {
+			DrainData drainData) {
 
 		PartitionParameter partParam = dyncfg.getParameter(
 				GlobalConstants.PARTITION, PartitionParameter.class);
@@ -131,13 +131,7 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 			throw new IllegalArgumentException(
 					"Partition parameter is not available in the received configuraion");
 
-		String topLevelWorkerName = (String) stccfg
-				.getExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME);
-		String jarFilePath = (String) stccfg
-				.getExtraData(GlobalConstants.JARFILE_PATH);
-
-		OneToOneElement<?, ?> streamGraph = getStreamGraph(jarFilePath,
-				topLevelWorkerName);
+		OneToOneElement<?, ?> streamGraph = getStreamGraph();
 		if (streamGraph != null) {
 			ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
 			streamGraph.visit(primitiveConnector);
@@ -184,12 +178,14 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 	/**
 	 * Gets a Stream Graph from a jar file.
 	 * 
-	 * @param jarFilePath
-	 * @param topStreamClassName
 	 * @return : StreamGraph
 	 */
-	private OneToOneElement<?, ?> getStreamGraph(String jarFilePath,
-			String topStreamClassName) {
+	private OneToOneElement<?, ?> getStreamGraph() {
+		String topStreamClassName = (String) staticConfig
+				.getExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME);
+		String jarFilePath = (String) staticConfig
+				.getExtraData(GlobalConstants.JARFILE_PATH);
+
 		checkNotNull(jarFilePath);
 		checkNotNull(topStreamClassName);
 		jarFilePath = this.getClass().getProtectionDomain().getCodeSource()
