@@ -177,7 +177,7 @@ public class BlockingCommunicationManager implements CommunicationManager {
 	/**
 	 * IO thread that runs a {@link StreamNodeAgent}. Since this is blocking IO
 	 * context, each {@link StreamNodeAgent} agent will be running on individual
-	 * threaed.
+	 * thread.
 	 * 
 	 */
 	private static class SNAgentRunner extends Thread {
