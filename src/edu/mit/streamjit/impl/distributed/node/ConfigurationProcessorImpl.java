@@ -11,7 +11,9 @@ import java.net.URLClassLoader;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 
@@ -32,6 +34,7 @@ import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Error;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.NetworkInfo;
+import edu.mit.streamjit.impl.distributed.common.SNTimeInfo.CompilationTime;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
@@ -153,8 +156,14 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
 				try {
 					BlobFactory bf = bs.getBlobFactory();
+					Stopwatch sw = Stopwatch.createStarted();
 					Blob b = bf.makeBlob(workerset, blobConfigs,
 							GlobalConstants.maxNumCores, drainData);
+					sw.stop();
+					CompilationTime ct = new CompilationTime(
+							Utils.getblobID(workerset),
+							sw.elapsed(TimeUnit.MILLISECONDS));
+					streamNode.controllerConnection.writeObject(ct);
 					blobSet.add(b);
 				} catch (Exception ex) {
 					ex.printStackTrace();

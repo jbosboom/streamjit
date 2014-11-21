@@ -13,4 +13,6 @@ public interface SNMessageVisitor {
 	void visit(SNDrainElement snDrainElement);
 
 	void visit(SNException snException);
+
+	void visit(SNTimeInfo timeInfo);
 }
