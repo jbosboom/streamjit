@@ -1,9 +1,5 @@
 package edu.mit.streamjit.impl.distributed.common;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
@@ -49,34 +45,5 @@ public abstract class SNTimeInfo implements SNMessageElement {
 
 	public interface SNTimeInfoProcessor {
 		public void process(CompilationTime compilationTime);
-	}
-
-	public static class SNTimeInfoProcessorImpl implements SNTimeInfoProcessor {
-
-		private final OutputStreamWriter osw;
-
-		public SNTimeInfoProcessorImpl(OutputStream outputStream) {
-			this(new OutputStreamWriter(outputStream));
-		}
-
-		public SNTimeInfoProcessorImpl() {
-			this(System.out);
-		}
-
-		public SNTimeInfoProcessorImpl(OutputStreamWriter osw) {
-			this.osw = osw;
-		}
-
-		@Override
-		public void process(CompilationTime compilationTime) {
-			String msg = String.format("Compilation time: Blob-%s-%.0fms\n",
-					compilationTime.blobID, compilationTime.milliSec);
-			try {
-				osw.write(msg);
-				osw.flush();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
 	}
 }
