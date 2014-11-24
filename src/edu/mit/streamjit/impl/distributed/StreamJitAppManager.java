@@ -39,6 +39,8 @@ import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor
 import edu.mit.streamjit.impl.distributed.common.SNException;
 import edu.mit.streamjit.impl.distributed.common.SNException.AddressBindException;
 import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
+import edu.mit.streamjit.impl.distributed.common.SNTimeInfo.SNTimeInfoProcessor;
+import edu.mit.streamjit.impl.distributed.common.SNTimeInfoProcessorImpl;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
@@ -98,13 +100,17 @@ public class StreamJitAppManager {
 
 	private final TimeLogger logger;
 
+	private final SNTimeInfoProcessor timeInfoProcessor;
+
 	public StreamJitAppManager(Controller controller, StreamJitApp app,
-			ConfigurationManager cfgManager, ConnectionManager conManager, TimeLogger logger) {
+			ConfigurationManager cfgManager, ConnectionManager conManager,
+			TimeLogger logger) {
 		this.controller = controller;
 		this.app = app;
 		this.cfgManager = cfgManager;
 		this.conManager = conManager;
 		this.logger = logger;
+		this.timeInfoProcessor = new SNTimeInfoProcessorImpl(logger);
 		this.status = AppStatus.NOT_STARTED;
 		this.exP = new SNExceptionProcessorImpl();
 		this.ep = new ErrorProcessorImpl();
@@ -198,6 +204,10 @@ public class StreamJitAppManager {
 
 	public SNExceptionProcessor exceptionProcessor() {
 		return exP;
+	}
+
+	public SNTimeInfoProcessor timeInfoProcessor() {
+		return timeInfoProcessor;
 	}
 
 	public long getFixedOutputTime() throws InterruptedException {

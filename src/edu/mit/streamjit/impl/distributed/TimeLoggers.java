@@ -174,6 +174,5 @@ public class TimeLoggers {
 				}
 			}
 		}
-
 	}
 }

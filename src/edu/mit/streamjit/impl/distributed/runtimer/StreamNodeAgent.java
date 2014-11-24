@@ -18,6 +18,7 @@ import edu.mit.streamjit.impl.distributed.common.SNException;
 import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
 import edu.mit.streamjit.impl.distributed.common.SNMessageVisitor;
 import edu.mit.streamjit.impl.distributed.common.SNTimeInfo;
+import edu.mit.streamjit.impl.distributed.common.SNTimeInfo.SNTimeInfoProcessor;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo.SystemInfoProcessor;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
@@ -291,6 +292,9 @@ public abstract class StreamNodeAgent {
 
 		@Override
 		public void visit(SNTimeInfo timeInfo) {
+			assert manager != null : "StreamJitAppManager has not been set";
+			SNTimeInfoProcessor snTimeP = manager.timeInfoProcessor();
+			timeInfo.process(snTimeP);
 		}
 	}
 }
