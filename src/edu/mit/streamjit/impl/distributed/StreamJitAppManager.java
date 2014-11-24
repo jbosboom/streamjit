@@ -17,6 +17,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.TimeLogger;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 import edu.mit.streamjit.impl.distributed.common.AsyncTCPConnection.AsyncTCPConnectionInfo;
@@ -95,12 +96,15 @@ public class StreamJitAppManager {
 	 */
 	AtomicReference<Stopwatch> stopwatchRef = new AtomicReference<>();
 
+	private final TimeLogger logger;
+
 	public StreamJitAppManager(Controller controller, StreamJitApp app,
-			ConfigurationManager cfgManager, ConnectionManager conManager) {
+			ConfigurationManager cfgManager, ConnectionManager conManager, TimeLogger logger) {
 		this.controller = controller;
 		this.app = app;
 		this.cfgManager = cfgManager;
 		this.conManager = conManager;
+		this.logger = logger;
 		this.status = AppStatus.NOT_STARTED;
 		this.exP = new SNExceptionProcessorImpl();
 		this.ep = new ErrorProcessorImpl();

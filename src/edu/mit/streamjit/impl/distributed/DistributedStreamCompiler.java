@@ -33,6 +33,7 @@ import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.common.Portals;
+import edu.mit.streamjit.impl.common.TimeLogger;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
@@ -131,8 +132,9 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		setConfiguration(controller, srcSink, stream, app, cfgManager,
 				conManager);
 
+		TimeLogger logger = new TimeLoggers.FileTimeLogger();
 		StreamJitAppManager manager = new StreamJitAppManager(controller, app,
-				cfgManager, conManager);
+				cfgManager, conManager, logger);
 		final AbstractDrainer drainer = new DistributedDrainer(manager);
 		drainer.setBlobGraph(app.blobGraph);
 
@@ -145,7 +147,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		if (GlobalConstants.tune > 0 && this.cfg != null) {
 			OnlineTuner tuner = new OnlineTuner(drainer, manager, app,
-					cfgManager, needTermination);
+					cfgManager, logger, needTermination);
 			new Thread(tuner, "OnlineTuner").start();
 		}
 		return cs;

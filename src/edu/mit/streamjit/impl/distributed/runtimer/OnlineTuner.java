@@ -1,8 +1,6 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 
@@ -10,6 +8,7 @@ import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
+import edu.mit.streamjit.impl.common.TimeLogger;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
@@ -34,16 +33,18 @@ public class OnlineTuner implements Runnable {
 	private final StreamJitApp app;
 	private final ConfigurationManager cfgManager;
 	private final boolean needTermination;
+	private final TimeLogger logger;
 
 	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
 			StreamJitApp app, ConfigurationManager cfgManager,
-			boolean needTermination) {
+			TimeLogger logger, boolean needTermination) {
 		this.drainer = drainer;
 		this.manager = manager;
 		this.app = app;
 		this.cfgManager = cfgManager;
 		this.tuner = new TCPTuner();
 		this.needTermination = needTermination;
+		this.logger = logger;
 	}
 
 	@Override
@@ -157,6 +158,7 @@ public class OnlineTuner implements Runnable {
 			if (!intermediateDraining())
 				return new Pair<Boolean, Long>(false, -1l);
 
+			logger.newReconfiguration();
 			drainer.setBlobGraph(app.blobGraph);
 			int multiplier = getMultiplier(config);
 			if (manager.reconfigure(multiplier)) {
@@ -164,9 +166,7 @@ public class OnlineTuner implements Runnable {
 				// time. Exceptions, final drain, etc may causes app to stop
 				// executing.
 				time = manager.getFixedOutputTime();
-
-				System.out.println("Execution time is " + time
-						+ " milli seconds");
+				logger.logRunTime(time);
 			} else {
 				time = -1l;
 			}
