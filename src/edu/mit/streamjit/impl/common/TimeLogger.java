@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.impl.blob.DrainData;
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 
 /**
@@ -49,4 +50,30 @@ public interface TimeLogger {
 	 */
 	public void logDrainDataCollectionTime(long time);
 
+	/**
+	 * Writes additional messages to compileTime OutputStreamWriter.
+	 * SNTimeInfoProcessor may use this method to log additional compilation
+	 * messages those are collected from {@link StreamNode}s.
+	 * 
+	 * @param msg
+	 */
+	public void logCompileTime(String msg);
+
+	/**
+	 * Writes additional messages to drainTime OutputStreamWriter.
+	 * SNTimeInfoProcessor may use this method to log additional draining
+	 * messages those are collected from {@link StreamNode}s.
+	 * 
+	 * @param msg
+	 */
+	public void logDrainTime(String msg);
+
+	/**
+	 * Writes additional messages to runTime OutputStreamWriter.
+	 * SNTimeInfoProcessor may use this method to log additional runTime
+	 * messages those are collected from {@link StreamNode}s.
+	 * 
+	 * @param msg
+	 */
+	public void logRunTime(String msg);
 }

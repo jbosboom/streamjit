@@ -41,6 +41,18 @@ public class TimeLoggers {
 		public void logDrainDataCollectionTime(long time) {
 		}
 
+		@Override
+		public void logCompileTime(String msg) {
+		}
+
+		@Override
+		public void logDrainTime(String msg) {
+		}
+
+		@Override
+		public void logRunTime(String msg) {
+		}
+
 	}
 
 	private static class TimeLoggerImpl implements TimeLogger {
@@ -116,6 +128,21 @@ public class TimeLoggers {
 		public void logDrainDataCollectionTime(long time) {
 			write(drainTimeWriter,
 					String.format("Drain data collection time is %dms\n", time));
+		}
+
+		@Override
+		public void logCompileTime(String msg) {
+			write(compileTimeWriter, msg);
+		}
+
+		@Override
+		public void logDrainTime(String msg) {
+			write(drainTimeWriter, msg);
+		}
+
+		@Override
+		public void logRunTime(String msg) {
+			write(runTimeWriter, msg);
 		}
 
 	}
