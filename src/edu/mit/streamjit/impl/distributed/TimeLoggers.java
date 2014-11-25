@@ -151,7 +151,7 @@ public class TimeLoggers {
 		public void newReconfiguration() {
 			reconfigNo++;
 			String msg = String
-					.format("----------------------------%d----------------------------",
+					.format("----------------------------%d----------------------------\n",
 							reconfigNo);
 			write(compileTimeWriter, msg);
 			write(runTimeWriter, msg);
