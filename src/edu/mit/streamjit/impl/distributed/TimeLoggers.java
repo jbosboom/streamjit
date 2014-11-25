@@ -102,6 +102,14 @@ public class TimeLoggers {
 		@Override
 		public void newReconfiguration() {
 		}
+
+		@Override
+		public void drainDataCollectionStarted() {
+		}
+
+		@Override
+		public void drainDataCollectionFinished(String msg) {
+		}
 	}
 
 	/**
@@ -128,6 +136,8 @@ public class TimeLoggers {
 		private Stopwatch compileTimeSW = null;
 
 		private Stopwatch drainTimeSW = null;
+
+		private Stopwatch drainDataCollectionTimeSW = null;
 
 		TimeLoggerImpl(OutputStream compileOS, OutputStream runOs,
 				OutputStream drainOs) {
@@ -168,6 +178,21 @@ public class TimeLoggers {
 		@Override
 		public void drainingStarted() {
 			drainTimeSW = Stopwatch.createStarted();
+		}
+
+		@Override
+		public void drainDataCollectionStarted() {
+			drainDataCollectionTimeSW = Stopwatch.createStarted();
+		}
+
+		@Override
+		public void drainDataCollectionFinished(String msg) {
+			if (drainDataCollectionTimeSW != null) {
+				drainDataCollectionTimeSW.stop();
+				long time = drainDataCollectionTimeSW
+						.elapsed(TimeUnit.MILLISECONDS);
+				logDrainDataCollectionTime(time);
+			}
 		}
 
 		@Override

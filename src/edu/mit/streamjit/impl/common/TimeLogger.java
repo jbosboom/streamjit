@@ -6,8 +6,13 @@ import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 
 /**
  * Logs various time measurements for off line performance analysis. Controller
- * node can measure the time durations for different events and use this
- * interface to log those values.
+ * node may
+ * <ol>
+ * <li>Measure the time durations for different events and use this interface to
+ * log those values.
+ * <li>Call the appropriate event indicating methods and let the TimeLogger to
+ * measure and log the time values.
+ * </ol>
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Nov 22, 2014
@@ -32,19 +37,36 @@ public interface TimeLogger {
 	public void compilationFinished(boolean isCompiled, String msg);
 
 	/**
-	 * Drainer or Tuner may call this method to indicate the draining even has
-	 * started. TimeLogger may start a timer to measure the compilation time.
+	 * Drainer or Tuner may call this method to indicate the draining event has
+	 * started. TimeLogger may start a timer to measure the draining time.
 	 */
 	public void drainingStarted();
 
 	/**
-	 * Drainer or Tuner may call this method to indicate the draining even has
+	 * Drainer or Tuner may call this method to indicate the draining event has
 	 * finished. TimeLogger may stop the timer and log the draining time.
 	 * 
 	 * @param msg
 	 *            : Additional details that go with log.
 	 */
 	public void drainingFinished(String msg);
+
+	/**
+	 * Drainer or Tuner may call this method to indicate the {@link DrainData}
+	 * collection event has started. TimeLogger may start a timer to measure the
+	 * drain data collection time.
+	 */
+	public void drainDataCollectionStarted();
+
+	/**
+	 * Drainer or Tuner may call this method to indicate the drain data
+	 * collection event has finished. TimeLogger may stop the timer and log the
+	 * drain data collection time.
+	 * 
+	 * @param msg
+	 *            : Additional details that go with log.
+	 */
+	public void drainDataCollectionFinished(String msg);
 
 	/**
 	 * Log the total compilation time of a new configuration. (Controller node
