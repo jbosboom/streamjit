@@ -4,6 +4,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.util.concurrent.TimeUnit;
+
+import com.google.common.base.Stopwatch;
 
 import edu.mit.streamjit.impl.common.TimeLogger;
 
@@ -118,9 +121,13 @@ public class TimeLoggers {
 
 		private final OutputStreamWriter drainTimeWriter;
 
+		private final OutputStreamWriter runTimeWriter;
+
 		private int reconfigNo = 0;
 
-		private final OutputStreamWriter runTimeWriter;
+		private Stopwatch compileTimeSW = null;
+
+		private Stopwatch drainTimeSW = null;
 
 		TimeLoggerImpl(OutputStream compileOS, OutputStream runOs,
 				OutputStream drainOs) {
@@ -138,24 +145,30 @@ public class TimeLoggers {
 
 		@Override
 		public void compilationFinished(boolean isCompiled, String msg) {
-			// TODO Auto-generated method stub
-
+			if (compileTimeSW != null) {
+				compileTimeSW.stop();
+				long time = compileTimeSW.elapsed(TimeUnit.MILLISECONDS);
+				logCompileTime(time);
+			}
 		}
 
 		@Override
 		public void compilationStarted() {
+			compileTimeSW = Stopwatch.createStarted();
 		}
 
 		@Override
 		public void drainingFinished(String msg) {
-			// TODO Auto-generated method stub
-
+			if (drainTimeSW != null) {
+				drainTimeSW.stop();
+				long time = drainTimeSW.elapsed(TimeUnit.MILLISECONDS);
+				logDrainTime(time);
+			}
 		}
 
 		@Override
 		public void drainingStarted() {
-			// TODO Auto-generated method stub
-
+			drainTimeSW = Stopwatch.createStarted();
 		}
 
 		@Override
