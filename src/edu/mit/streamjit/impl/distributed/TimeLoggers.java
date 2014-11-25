@@ -131,9 +131,8 @@ public class TimeLoggers {
 
 		TimeLoggerImpl(OutputStream compileOS, OutputStream runOs,
 				OutputStream drainOs) {
-			compileTimeWriter = getOSWriter(compileOS);
-			runTimeWriter = getOSWriter(runOs);
-			drainTimeWriter = getOSWriter(drainOs);
+			this(getOSWriter(compileOS), getOSWriter(runOs),
+					getOSWriter(drainOs));
 		}
 
 		TimeLoggerImpl(OutputStreamWriter compileW, OutputStreamWriter runW,
@@ -220,7 +219,7 @@ public class TimeLoggers {
 			write(drainTimeWriter, msg);
 		}
 
-		private OutputStreamWriter getOSWriter(OutputStream os) {
+		private static OutputStreamWriter getOSWriter(OutputStream os) {
 			if (os == null)
 				return null;
 			return new OutputStreamWriter(os);
