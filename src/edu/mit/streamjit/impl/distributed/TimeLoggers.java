@@ -16,6 +16,13 @@ import edu.mit.streamjit.impl.common.TimeLogger;
  */
 public class TimeLoggers {
 
+	/**
+	 * Creates three files named prefix_compileTime.txt, prefix_runTime.txt and
+	 * prefix_drainTime.txt, and logs the time information.
+	 * 
+	 * @author sumanan
+	 * @since Nov 25, 2014
+	 */
 	public static class FileTimeLogger extends TimeLoggerImpl {
 
 		private static FileWriter getFileWriter(String name) {
@@ -28,10 +35,14 @@ public class TimeLoggers {
 			return fw;
 		}
 
-		FileTimeLogger() {
-			super(getFileWriter("compileTime.txt"),
-					getFileWriter("runTime.txt"),
-					getFileWriter("drainTime.txt"));
+		/**
+		 * @param prefix
+		 *            : prefix for the file names.
+		 */
+		public FileTimeLogger(String prefix) {
+			super(getFileWriter(String.format("%s_compileTime.txt", prefix)),
+					getFileWriter(String.format("%s_runTime.txt", prefix)),
+					getFileWriter(String.format("%s_drainTime.txt", prefix)));
 		}
 	}
 

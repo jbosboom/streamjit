@@ -132,7 +132,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		setConfiguration(controller, srcSink, stream, app, cfgManager,
 				conManager);
 
-		TimeLogger logger = new TimeLoggers.FileTimeLogger();
+		TimeLogger logger = new TimeLoggers.FileTimeLogger(app.name);
 		StreamJitAppManager manager = new StreamJitAppManager(controller, app,
 				cfgManager, conManager, logger);
 		final AbstractDrainer drainer = new DistributedDrainer(manager);
