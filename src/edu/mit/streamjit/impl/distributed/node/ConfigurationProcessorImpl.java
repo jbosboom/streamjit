@@ -159,11 +159,7 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 					Stopwatch sw = Stopwatch.createStarted();
 					Blob b = bf.makeBlob(workerset, blobConfigs,
 							GlobalConstants.maxNumCores, drainData);
-					sw.stop();
-					CompilationTime ct = new CompilationTime(
-							Utils.getblobID(workerset),
-							sw.elapsed(TimeUnit.MILLISECONDS));
-					streamNode.controllerConnection.writeObject(ct);
+					sendCompilationTime(sw, Utils.getblobID(workerset));
 					blobSet.add(b);
 				} catch (Exception ex) {
 					ex.printStackTrace();
@@ -182,6 +178,17 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 			return blobSet.build();
 		} else
 			return null;
+	}
+
+	private void sendCompilationTime(Stopwatch sw, Token blobID) {
+		sw.stop();
+		CompilationTime ct = new CompilationTime(blobID,
+				sw.elapsed(TimeUnit.MILLISECONDS));
+		try {
+			streamNode.controllerConnection.writeObject(ct);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
