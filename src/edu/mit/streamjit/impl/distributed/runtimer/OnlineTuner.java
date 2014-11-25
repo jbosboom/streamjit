@@ -201,9 +201,11 @@ public class OnlineTuner implements Runnable {
 			drainer.awaitDrainedIntrmdiate();
 			logger.drainingFinished("Intermediate");
 
+			logger.drainDataCollectionStarted();
 			drainer.awaitDrainData();
 			DrainData drainData = drainer.getDrainData();
 			app.drainData = drainData;
+			logger.drainDataCollectionFinished("");
 			return true;
 		} else
 			return true;
