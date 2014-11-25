@@ -52,6 +52,23 @@ public class TimeLoggers {
 	public static class NoTimeLogger implements TimeLogger {
 
 		@Override
+		public void compilationFinished(boolean isCompiled, String msg) {
+		}
+
+		@Override
+		public void compilationStarted() {
+
+		}
+
+		@Override
+		public void drainingFinished(String msg) {
+		}
+
+		@Override
+		public void drainingStarted() {
+		}
+
+		@Override
 		public void logCompileTime(long time) {
 		}
 
@@ -82,7 +99,6 @@ public class TimeLoggers {
 		@Override
 		public void newReconfiguration() {
 		}
-
 	}
 
 	/**
@@ -118,6 +134,28 @@ public class TimeLoggers {
 			compileTimeWriter = compileW;
 			runTimeWriter = runW;
 			drainTimeWriter = drainW;
+		}
+
+		@Override
+		public void compilationFinished(boolean isCompiled, String msg) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void compilationStarted() {
+		}
+
+		@Override
+		public void drainingFinished(String msg) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void drainingStarted() {
+			// TODO Auto-generated method stub
+
 		}
 
 		@Override

@@ -15,6 +15,38 @@ import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 public interface TimeLogger {
 
 	/**
+	 * Compiler may call this method to indicate the compilation event has
+	 * started. TimeLogger may start a timer to measure the compilation time.
+	 */
+	public void compilationStarted();
+
+	/**
+	 * Compiler can call this method to indicate the compilation event has
+	 * finished. TimeLogger may stop the timer and log the compilation time.
+	 * 
+	 * @param isCompiled
+	 *            : Additional detail that goes with log.
+	 * @param msg
+	 *            : Additional details that go with log.
+	 */
+	public void compilationFinished(boolean isCompiled, String msg);
+
+	/**
+	 * Drainer or Tuner may call this method to indicate the draining even has
+	 * started. TimeLogger may start a timer to measure the compilation time.
+	 */
+	public void drainingStarted();
+
+	/**
+	 * Drainer or Tuner may call this method to indicate the draining even has
+	 * finished. TimeLogger may stop the timer and log the draining time.
+	 * 
+	 * @param msg
+	 *            : Additional details that go with log.
+	 */
+	public void drainingFinished(String msg);
+
+	/**
 	 * Log the total compilation time of a new configuration. (Controller node
 	 * point of view).
 	 * 
