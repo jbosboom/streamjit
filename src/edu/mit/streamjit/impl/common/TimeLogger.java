@@ -129,5 +129,5 @@ public interface TimeLogger {
 	 * configuration has been received. Appropriate caller would be
 	 * {@link OnlineTuner}.
 	 */
-	public void newReconfiguration();
+	public void newConfiguration();
 }

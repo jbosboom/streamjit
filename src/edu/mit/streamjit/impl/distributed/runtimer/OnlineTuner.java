@@ -76,6 +76,7 @@ public class OnlineTuner implements Runnable {
 			System.out.println("New tune run.............");
 			while (manager.getStatus() != AppStatus.STOPPED) {
 				String cfgJson = tuner.readLine();
+				logger.newConfiguration();
 				if (cfgJson == null) {
 					System.err.println("OpenTuner closed unexpectly.");
 					break;
@@ -158,7 +159,6 @@ public class OnlineTuner implements Runnable {
 			if (!intermediateDraining())
 				return new Pair<Boolean, Long>(false, -1l);
 
-			logger.newReconfiguration();
 			drainer.setBlobGraph(app.blobGraph);
 			int multiplier = getMultiplier(config);
 			if (manager.reconfigure(multiplier)) {

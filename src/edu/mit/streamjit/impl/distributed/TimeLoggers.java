@@ -100,7 +100,7 @@ public class TimeLoggers {
 		}
 
 		@Override
-		public void newReconfiguration() {
+		public void newConfiguration() {
 		}
 
 		@Override
@@ -234,8 +234,9 @@ public class TimeLoggers {
 		}
 
 		@Override
-		public void newReconfiguration() {
+		public void newConfiguration() {
 			reconfigNo++;
+
 			String msg = String
 					.format("----------------------------%d----------------------------\n",
 							reconfigNo);
