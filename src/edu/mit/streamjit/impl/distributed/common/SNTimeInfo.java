@@ -43,7 +43,29 @@ public abstract class SNTimeInfo implements SNMessageElement {
 
 	}
 
+	public static final class DrainingTime extends SNTimeInfo {
+
+		private static final long serialVersionUID = 1L;
+
+		public final Token blobID;
+
+		public final double milliSec;
+
+		public DrainingTime(Token blobID, double milliSec) {
+			this.blobID = blobID;
+			this.milliSec = milliSec;
+		}
+
+		@Override
+		public void process(SNTimeInfoProcessor snTimeInfoProcessor) {
+			snTimeInfoProcessor.process(this);
+		}
+
+	}
+
 	public interface SNTimeInfoProcessor {
 		public void process(CompilationTime compilationTime);
+
+		public void process(DrainingTime drainingTime);
 	}
 }

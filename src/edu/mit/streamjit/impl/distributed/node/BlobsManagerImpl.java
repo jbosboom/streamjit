@@ -44,6 +44,7 @@ import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
+import edu.mit.streamjit.impl.distributed.common.SNTimeInfo;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.BufferManager.SNLocalBufferManager;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
@@ -716,7 +717,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 	}
 
-	private static class DrainCallback implements Runnable {
+	private class DrainCallback implements Runnable {
 
 		private final BlobExecuter blobExec;
 
@@ -732,8 +733,16 @@ public class BlobsManagerImpl implements BlobsManager {
 		@Override
 		public void run() {
 			sw.stop();
+			long time = sw.elapsed(TimeUnit.MILLISECONDS);
 			System.out.println("Time taken to drain " + blobExec.blobID
-					+ " is " + sw.elapsed(TimeUnit.MILLISECONDS) + " ms");
+					+ " is " + time + " ms");
+			try {
+				streamNode.controllerConnection
+						.writeObject(new SNTimeInfo.DrainingTime(
+								blobExec.blobID, time));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 			blobExec.drained();
 		}
 	}

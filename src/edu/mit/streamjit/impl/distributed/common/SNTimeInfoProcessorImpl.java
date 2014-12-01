@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.distributed.common;
 
 import edu.mit.streamjit.impl.common.TimeLogger;
 import edu.mit.streamjit.impl.distributed.common.SNTimeInfo.CompilationTime;
+import edu.mit.streamjit.impl.distributed.common.SNTimeInfo.DrainingTime;
 import edu.mit.streamjit.impl.distributed.common.SNTimeInfo.SNTimeInfoProcessor;
 
 /**
@@ -23,5 +24,12 @@ public class SNTimeInfoProcessorImpl implements SNTimeInfoProcessor {
 		String msg = String.format("Blob-%s-%.0fms\n", compilationTime.blobID,
 				compilationTime.milliSec);
 		logger.logCompileTime(msg);
+	}
+
+	@Override
+	public void process(DrainingTime drainingTime) {
+		String msg = String.format("Blob-%s-%.0fms\n", drainingTime.blobID,
+				drainingTime.milliSec);
+		logger.logDrainTime(msg);
 	}
 }
