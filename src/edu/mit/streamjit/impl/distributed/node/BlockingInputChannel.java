@@ -183,12 +183,8 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 					this.extraBuffer = new ExtraBuffer();
 					extraBuffer.write(obj);
 					System.err
-							.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-					System.err
 							.println(name
 									+ " receiveData:Writing extra data in to extra buffer");
-					System.err
-							.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 					break;
 				}
 			}
@@ -203,8 +199,8 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 			softClosed = true;
 		} catch (EOFException e) {
 			// Other side is closed.
-			System.out
-					.println("receiveData:Closing by EOFExp. Not by softClose");
+			System.out.println(name
+					+ " receiveData:Closing by EOFExp. Not by softClose");
 			stopType.set(2);
 		} catch (IOException e) {
 			// TODO: Verify the program quality. Try to reconnect until it
@@ -274,12 +270,8 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 						extraBuffer.write(obj);
 						buffer = extraBuffer;
 						System.err
-								.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-						System.err
 								.println(name
 										+ " finalReceive:Writing extra data in to extra buffer");
-						System.err
-								.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 					}
 				}
 
@@ -297,7 +289,8 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 			} catch (IOException e) {
 				e.printStackTrace();
 				System.out
-						.println("finalReceive:Closing by IOException. Not by softClose.");
+						.println(name
+								+ " finalReceive:Closing by IOException. Not by softClose.");
 				hasData = false;
 			}
 		} while (hasData);
@@ -308,7 +301,7 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 	 * care about the data and just tuning a app for performance.
 	 */
 	private void discardAll() {
-		System.out.println("Discarding input data...");
+		System.out.println(name + " Discarding input data...");
 		boolean hasData;
 		do {
 			try {
@@ -322,7 +315,8 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 				hasData = false;
 			} catch (IOException e) {
 				System.out
-						.println("finalReceive:Closing by IOException. Not by softClose.");
+						.println(name
+								+ " finalReceive:Closing by IOException. Not by softClose.");
 				hasData = false;
 			}
 		} while (hasData);
@@ -331,7 +325,7 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 	private void reConnect() {
 		while (stopType.get() == 0) {
 			try {
-				System.out.println("TCPInputChannel : Reconnecting...");
+				System.out.println(name + " Reconnecting...");
 				this.connection.closeConnection();
 				connection = conProvider.getConnection(conInfo);
 				return;
@@ -350,7 +344,7 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 		if (this.stopType.get() == 0) {
 			stopType.set(type.toint());
 		} else if (debugLevel > 0) {
-			System.err.println("Stop has already been called.");
+			System.err.println(name + " Stop has already been called.");
 		}
 	}
 
