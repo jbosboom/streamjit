@@ -82,7 +82,8 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 	}
 
 	private void processDynamicCfg(String json, DrainData drainData) {
-		System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+		System.out
+				.println("------------------------------------------------------------");
 		System.out.println("New Configuration.....");
 		releaseOldBM();
 		Configuration cfg = Jsonifiers.fromJson(json, Configuration.class);

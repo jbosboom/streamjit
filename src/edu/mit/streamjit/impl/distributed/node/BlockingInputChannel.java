@@ -301,7 +301,7 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 	 * care about the data and just tuning a app for performance.
 	 */
 	private void discardAll() {
-		System.out.println(name + " Discarding input data...");
+		// System.out.println(name + " Discarding input data...");
 		boolean hasData;
 		do {
 			try {
@@ -316,7 +316,7 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 			} catch (IOException e) {
 				System.out
 						.println(name
-								+ " finalReceive:Closing by IOException. Not by softClose.");
+								+ " discardAll:Closing by IOException. Not by softClose.");
 				hasData = false;
 			}
 		} while (hasData);

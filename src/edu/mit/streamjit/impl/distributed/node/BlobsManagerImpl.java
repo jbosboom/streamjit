@@ -734,8 +734,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		public void run() {
 			sw.stop();
 			long time = sw.elapsed(TimeUnit.MILLISECONDS);
-			System.out.println("Time taken to drain " + blobExec.blobID
-					+ " is " + time + " ms");
+			// System.out.println("Time taken to drain " + blobExec.blobID +
+			// " is " + time + " ms");
 			try {
 				streamNode.controllerConnection
 						.writeObject(new SNTimeInfo.DrainingTime(
