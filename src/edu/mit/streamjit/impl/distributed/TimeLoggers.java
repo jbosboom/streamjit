@@ -139,6 +139,8 @@ public class TimeLoggers {
 
 		private Stopwatch drainDataCollectionTimeSW = null;
 
+		private Stopwatch tuningRoundSW = null;
+
 		TimeLoggerImpl(OutputStream compileOS, OutputStream runOs,
 				OutputStream drainOs) {
 			this(getOSWriter(compileOS), getOSWriter(runOs),
@@ -235,6 +237,7 @@ public class TimeLoggers {
 
 		@Override
 		public void newConfiguration() {
+			updateTuningRoundTime();
 			reconfigNo++;
 
 			String msg = String
@@ -243,6 +246,20 @@ public class TimeLoggers {
 			write(compileTimeWriter, msg);
 			write(runTimeWriter, msg);
 			write(drainTimeWriter, msg);
+		}
+
+		private void updateTuningRoundTime() {
+			long time = 0;
+			if (tuningRoundSW == null)
+				tuningRoundSW = Stopwatch.createStarted();
+			else {
+				tuningRoundSW.stop();
+				time = tuningRoundSW.elapsed(TimeUnit.SECONDS);
+				tuningRoundSW.reset();
+				tuningRoundSW.start();
+			}
+			write(runTimeWriter,
+					String.format("Tuning round time - %dS\n", time));
 		}
 
 		private static OutputStreamWriter getOSWriter(OutputStream os) {
