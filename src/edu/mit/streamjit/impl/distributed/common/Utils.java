@@ -40,12 +40,14 @@ public class Utils {
 		long heapMaxSize = Runtime.getRuntime().maxMemory();
 		long heapSize = Runtime.getRuntime().totalMemory();
 		long heapFreeSize = Runtime.getRuntime().freeMemory();
+		int MEGABYTE = 1024 * 1024;
 		System.out.println("#########################");
-		System.out.println(String.format("heapMaxSize = %.2fMB",
-				heapMaxSize / 1e6));
-		System.out.println(String.format("heapSize = %.2fMB", heapSize / 1e6));
-		System.out.println(String.format("heapFreeSize = %.2fMB",
-				heapFreeSize / 1e6));
+		System.out.println(String.format("heapMaxSize = %dMB", heapMaxSize
+				/ MEGABYTE));
+		System.out.println(String
+				.format("heapSize = %dMB", heapSize / MEGABYTE));
+		System.out.println(String.format("heapFreeSize = %dMB", heapFreeSize
+				/ MEGABYTE));
 		System.out.println("#########################");
 	}
 
