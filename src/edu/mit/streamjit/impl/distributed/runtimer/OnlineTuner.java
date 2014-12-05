@@ -141,6 +141,26 @@ public class OnlineTuner implements Runnable {
 	}
 
 	/**
+	 * This method just picks a few configurations and re-run the app to ensure
+	 * the time we reported to the opentuner is correct.
+	 * 
+	 * This method can be called after the completion of the tuning.
+	 */
+	private void verifyTuningTimes() {
+		int[] cfgNos = { 10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500,
+				550, 600, 650, 700, 750, 800, 850, 900, 950, 1000 };
+		for (int n : cfgNos) {
+			String cfgName = String.format("%d%s.cfg", n, app.name);
+			Configuration cfg = ConfigurationUtils.readConfiguration(String
+					.format("configurations/%s/%s", app.name, cfgName));
+			if (cfg == null)
+				continue;
+			evaluateConfig(cfg, cfgName);
+		}
+		terminate();
+	}
+
+	/**
 	 * @param cfgJson
 	 * @param round
 	 * @return if ret.first == false, then no more tuning. ret.second = running
