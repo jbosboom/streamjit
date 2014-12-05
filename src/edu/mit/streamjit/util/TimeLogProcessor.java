@@ -19,21 +19,14 @@ public class TimeLogProcessor {
 		List<Integer> compileTime = processCompileTime();
 		List<Integer> runTime = processRunTime();
 		List<Integer> drainTime = processDrainTime();
-		List<Integer> sn1HeapMax = processSNHeap("st1.txt", true);
-		List<Integer> sn2HeapMax = processSNHeap("st2.txt", true);
-		List<Integer> sn1HeapSize = processSNHeap("st1.txt", false);
-		List<Integer> sn2HeapSize = processSNHeap("st2.txt", false);
 
 		FileWriter writer = new FileWriter("totalStats.txt");
 		int min = Integer.MAX_VALUE;
 
 		for (int i = 0; i < runTime.size(); i++) {
 			min = Math.min(min, runTime.get(i));
-			String msg = String.format(
-					"%-6d\t%-6d\t%-6d\t%-6d\t%-6d\t%-6d\t%-6d\t%-6d\t%-6d\t\n",
-					i + 1, compileTime.get(i), runTime.get(i),
-					drainTime.get(i), sn1HeapMax.get(i), sn1HeapSize.get(i),
-					sn2HeapMax.get(i), sn2HeapSize.get(i), min);
+			String msg = String.format("%-6d\t%-6d\t%-6d\t%-6d\t%-6d\n", i + 1,
+					compileTime.get(i), runTime.get(i), drainTime.get(i), min);
 
 			writer.write(msg);
 		}
