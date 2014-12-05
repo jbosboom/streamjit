@@ -290,7 +290,7 @@ public class OnlineTuner implements Runnable {
 		System.out.println("Evaluating " + cfgName);
 		FileWriter writer;
 		double total = 0;
-		int count = 8;
+		int count = 4;
 		try {
 			writer = new FileWriter(String.format("Eval_%s.txt", app.name),
 					true);
