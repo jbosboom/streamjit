@@ -272,6 +272,7 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 						System.err
 								.println(name
 										+ " finalReceive:Writing extra data in to extra buffer");
+						break;
 					}
 				}
 
