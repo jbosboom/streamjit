@@ -58,7 +58,7 @@ public abstract class SNDrainElement implements SNMessageElement {
 	 * the drain data of the blobs after the draining. See {@link DrainData} for
 	 * more information.
 	 */
-	public static final class DrainedData extends SNDrainElement {
+	public static final class SNDrainedData extends SNDrainElement {
 		private static final long serialVersionUID = 1L;
 
 		public final Token blobID;
@@ -66,7 +66,7 @@ public abstract class SNDrainElement implements SNMessageElement {
 		public final ImmutableMap<Token, ImmutableList<Object>> inputData;
 		public final ImmutableMap<Token, ImmutableList<Object>> outputData;
 
-		public DrainedData(Token blobID, DrainData drainData,
+		public SNDrainedData(Token blobID, DrainData drainData,
 				ImmutableMap<Token, ImmutableList<Object>> inputData,
 				ImmutableMap<Token, ImmutableList<Object>> outputData) {
 			this.blobID = blobID;
@@ -92,6 +92,6 @@ public abstract class SNDrainElement implements SNMessageElement {
 
 		public void process(Drained drained);
 
-		public void process(DrainedData drainedData);
+		public void process(SNDrainedData snDrainedData);
 	}
 }

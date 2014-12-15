@@ -39,7 +39,7 @@ import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 
 /**
@@ -217,8 +217,8 @@ public abstract class AbstractDrainer {
 			drainDataLatch.await();
 	}
 
-	public final void newDrainData(DrainedData drainedData) {
-		blobGraph.getBlobNode(drainedData.blobID).setDrainData(drainedData);
+	public final void newSNDrainData(SNDrainedData snDrainedData) {
+		blobGraph.getBlobNode(snDrainedData.blobID).setDrainData(snDrainedData);
 		if (noOfDrainData.decrementAndGet() == 0) {
 			assert state == DrainerState.NODRAINING;
 			drainDataLatch.countDown();
@@ -239,22 +239,24 @@ public abstract class AbstractDrainer {
 		Map<Token, ImmutableList<Object>> boundaryOutputData = new HashMap<>();
 
 		for (BlobNode node : blobGraph.blobNodes.values()) {
-			boundaryInputData.putAll(node.drainData.inputData);
-			boundaryOutputData.putAll(node.drainData.outputData);
+			boundaryInputData.putAll(node.snDrainData.inputData);
+			boundaryOutputData.putAll(node.snDrainData.outputData);
 			if (drainData == null)
-				drainData = node.drainData.drainData;
+				drainData = node.snDrainData.drainData;
 			else
-				drainData = drainData.merge(node.drainData.drainData);
+				drainData = drainData.merge(node.snDrainData.drainData);
 		}
 
 		ImmutableMap.Builder<Token, ImmutableList<Object>> dataBuilder = ImmutableMap
 				.builder();
 		for (Token t : Sets.union(boundaryInputData.keySet(),
 				boundaryOutputData.keySet())) {
-			ImmutableList<Object> in = boundaryInputData.get(t) != null ? boundaryInputData
-					.get(t) : ImmutableList.of();
-			ImmutableList<Object> out = boundaryOutputData.get(t) != null ? boundaryOutputData
-					.get(t) : ImmutableList.of();
+			ImmutableList<Object> in = boundaryInputData.get(t) != null
+					? boundaryInputData.get(t)
+					: ImmutableList.of();
+			ImmutableList<Object> out = boundaryOutputData.get(t) != null
+					? boundaryOutputData.get(t)
+					: ImmutableList.of();
 			dataBuilder.put(t, ImmutableList.builder().addAll(in).addAll(out)
 					.build());
 		}
@@ -575,7 +577,7 @@ public abstract class AbstractDrainer {
 
 		public void clearDrainData() {
 			for (BlobNode node : blobNodes.values()) {
-				node.drainData = null;
+				node.snDrainData = null;
 			}
 		}
 
@@ -663,7 +665,7 @@ public abstract class AbstractDrainer {
 		/**
 		 * Intermediate drain data.
 		 */
-		private DrainedData drainData;
+		private SNDrainedData snDrainData;
 
 		private AbstractDrainer drainer;
 		/**
@@ -756,9 +758,9 @@ public abstract class AbstractDrainer {
 						TimeUnit.MILLISECONDS);
 		}
 
-		private void setDrainData(DrainedData drainedData) {
-			if (this.drainData == null) {
-				this.drainData = drainedData;
+		private void setDrainData(SNDrainedData drainedData) {
+			if (this.snDrainData == null) {
+				this.snDrainData = drainedData;
 				drainState.set(4);
 			} else
 				throw new AssertionError(

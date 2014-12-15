@@ -34,7 +34,7 @@ import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements.NewConInfo;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.Drained;
-import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.SNException;
 import edu.mit.streamjit.impl.distributed.common.SNException.AddressBindException;
@@ -467,9 +467,9 @@ public class StreamJitAppManager {
 		}
 
 		@Override
-		public void process(DrainedData drainedData) {
+		public void process(SNDrainedData snDrainedData) {
 			if (GlobalConstants.useDrainData)
-				drainer.newDrainData(drainedData);
+				drainer.newSNDrainData(snDrainedData);
 		}
 	}
 

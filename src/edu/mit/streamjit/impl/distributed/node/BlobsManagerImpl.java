@@ -42,7 +42,7 @@ import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
-import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.SNTimeInfo;
 import edu.mit.streamjit.impl.distributed.common.Utils;
@@ -437,7 +437,7 @@ public class BlobsManagerImpl implements BlobsManager {
 				if (crashed.get())
 					me = getEmptyDrainData();
 				else
-					me = getDrainData();
+					me = getSNDrainData();
 
 				try {
 					streamNode.controllerConnection.writeObject(me);
@@ -470,7 +470,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			// printDrainedStatus();
 		}
 
-		private DrainedData getDrainData() {
+		private SNDrainedData getSNDrainData() {
 			if (this.blob == null)
 				return getEmptyDrainData();
 
@@ -519,7 +519,7 @@ public class BlobsManagerImpl implements BlobsManager {
 				}
 			}
 
-			return new SNDrainElement.DrainedData(blobID, dd,
+			return new SNDrainElement.SNDrainedData(blobID, dd,
 					inputDataBuilder.build(), outputDataBuilder.build());
 		}
 
@@ -540,7 +540,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			inputDataBuilder.put(t, ImmutableList.copyOf(bufArray));
 		}
 
-		private DrainedData getEmptyDrainData() {
+		private SNDrainedData getEmptyDrainData() {
 			drainState = 5;
 			ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
 			ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
@@ -550,7 +550,7 @@ public class BlobsManagerImpl implements BlobsManager {
 					.builder();
 			DrainData dd = new DrainData(dataBuilder.build(),
 					stateBuilder.build());
-			return new SNDrainElement.DrainedData(blobID, dd,
+			return new SNDrainElement.SNDrainedData(blobID, dd,
 					inputDataBuilder.build(), outputDataBuilder.build());
 		}
 
