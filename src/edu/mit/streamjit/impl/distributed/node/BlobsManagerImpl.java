@@ -494,8 +494,7 @@ public class BlobsManagerImpl implements BlobsManager {
 					BoundaryChannel chanl = inputChannels.get(t);
 					ImmutableList<Object> draindata = chanl
 							.getUnprocessedData();
-					// System.out.println(String.format(
-					// "No of unprocessed data of %s is %d",
+					// System.out.println(String.format("From %s - %d",
 					// chanl.name(), draindata.size()));
 					inputDataBuilder.put(t, draindata);
 				}
@@ -512,8 +511,7 @@ public class BlobsManagerImpl implements BlobsManager {
 					BoundaryChannel chanl = outputChannels.get(t);
 					ImmutableList<Object> draindata = chanl
 							.getUnprocessedData();
-					// System.out.println(String.format(
-					// "No of unprocessed data of %s is %d",
+					// System.out.println(String.format("From %s - %d",
 					// chanl.name(), draindata.size()));
 					outputDataBuilder.put(t, draindata);
 				}
@@ -537,6 +535,8 @@ public class BlobsManagerImpl implements BlobsManager {
 			} else {
 				bufArray = bufferCleaner.copiedBuffer(t);
 			}
+			// System.out.println(String.format("From LocalBuffer: %s - %d", t,
+			// bufArray.length));
 			inputDataBuilder.put(t, ImmutableList.copyOf(bufArray));
 		}
 
