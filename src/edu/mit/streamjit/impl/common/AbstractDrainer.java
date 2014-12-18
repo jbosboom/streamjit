@@ -252,11 +252,9 @@ public abstract class AbstractDrainer {
 		for (Token t : Sets.union(boundaryInputData.keySet(),
 				boundaryOutputData.keySet())) {
 			ImmutableList<Object> in = boundaryInputData.get(t) != null
-					? boundaryInputData.get(t)
-					: ImmutableList.of();
+					? boundaryInputData.get(t) : ImmutableList.of();
 			ImmutableList<Object> out = boundaryOutputData.get(t) != null
-					? boundaryOutputData.get(t)
-					: ImmutableList.of();
+					? boundaryOutputData.get(t) : ImmutableList.of();
 			dataBuilder.put(t, ImmutableList.builder().addAll(in).addAll(out)
 					.build());
 		}
@@ -344,9 +342,9 @@ public abstract class AbstractDrainer {
 	public final void awaitDrainedIntrmdiate() throws InterruptedException {
 		intermediateLatch.await();
 
-		// Just for debugging purpose. To make effect of this code snippet
-		// comment the above, intermediateLatch.await(), line. Otherwise no
-		// effect.
+		// The following while loop is added just for debugging purpose. To
+		// activate the following while loop code snippet, comment the above
+		// [intermediateLatch.await()] line.
 		while (intermediateLatch.getCount() != 0) {
 			Thread.sleep(3000);
 			System.out.println("****************************************");
