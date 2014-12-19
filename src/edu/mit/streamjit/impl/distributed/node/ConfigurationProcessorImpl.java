@@ -158,8 +158,10 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 				try {
 					BlobFactory bf = bs.getBlobFactory();
 					Stopwatch sw = Stopwatch.createStarted();
+					DrainData dd = drainData == null ? null : drainData
+							.subset(workIdentifiers);
 					Blob b = bf.makeBlob(workerset, blobConfigs,
-							GlobalConstants.maxNumCores, drainData);
+							GlobalConstants.maxNumCores, dd);
 					sendCompilationTime(sw, Utils.getblobID(workerset));
 					blobSet.add(b);
 				} catch (Exception ex) {
