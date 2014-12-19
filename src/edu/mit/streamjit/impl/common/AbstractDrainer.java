@@ -263,6 +263,7 @@ public abstract class AbstractDrainer {
 		DrainData draindata1 = new DrainData(dataBuilder.build(), state);
 		drainData = drainData.merge(draindata1);
 		updateDrainDataStatistics(drainData);
+		// printDrainDataStats(drainData);
 		// dumpDrainData(drainData);
 		return drainData;
 	}
@@ -278,6 +279,27 @@ public abstract class AbstractDrainer {
 			int size = drainData.getData().get(t).size();
 			drainDataStatistics.get(t).add(size);
 
+		}
+	}
+
+	private void printDrainDataStats(DrainData drainData) {
+		try {
+			FileWriter writer = new FileWriter("draindatasize.txt", true);
+			writer.write("-----------------------------------------------------------\n");
+			System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+
+			for (Token t : drainData.getData().keySet()) {
+				int size = drainData.getData().get(t).size();
+				if (size != 0) {
+					String msg = String.format("%s - %d\n", t.toString(), size);
+					System.out.print(msg);
+					writer.write(msg);
+				}
+			}
+			writer.flush();
+			writer.close();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
