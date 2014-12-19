@@ -5,12 +5,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.collect.ImmutableMap;
 
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
+import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Buffer;
@@ -22,6 +25,7 @@ import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
+import edu.mit.streamjit.impl.interp.Interpreter;
 
 /**
  * This class contains all information about the current streamJit application
@@ -181,6 +185,64 @@ public class StreamJitApp {
 			}
 		}
 		return builder.build();
+	}
+
+	/**
+	 * Uses an {@link Interpreter} blob to clear or minimize a {@link DrainData}
+	 * . This method can be called after a final draining to clear the data in
+	 * the intermediate buffers.
+	 * 
+	 * @param drainData
+	 *            : {@link DrainData} that is received after a draining.
+	 * @return : A {@link DrainData} that remains after running an
+	 *         {@link Interpreter} blob.
+	 */
+	public DrainData minimizeDrainData(DrainData drainData) {
+		Interpreter.InterpreterBlobFactory interpFactory = new Interpreter.InterpreterBlobFactory();
+		Blob interp = interpFactory.makeBlob(Workers
+				.getAllWorkersInGraph(source), interpFactory
+				.getDefaultConfiguration(Workers.getAllWorkersInGraph(source)),
+				1, drainData);
+		interp.installBuffers(bufferMapWithEmptyHead());
+		Runnable interpCode = interp.getCoreCode(0);
+		final AtomicBoolean interpFinished = new AtomicBoolean();
+		interp.drain(new Runnable() {
+			@Override
+			public void run() {
+				interpFinished.set(true);
+			}
+		});
+		while (!interpFinished.get())
+			interpCode.run();
+		return interp.getDrainData();
+	}
+
+	/**
+	 * Remove the original headbuffer and replace it with a new empty buffer.
+	 */
+	private ImmutableMap<Token, Buffer> bufferMapWithEmptyHead() {
+		ImmutableMap.Builder<Token, Buffer> bufMapBuilder = ImmutableMap
+				.builder();
+		Buffer head = new AbstractReadOnlyBuffer() {
+			@Override
+			public int size() {
+				return 0;
+			}
+
+			@Override
+			public Object read() {
+				return null;
+			}
+		};
+
+		Token headToken = Token.createOverallInputToken(source);
+		for (Map.Entry<Token, Buffer> en : bufferMap.entrySet()) {
+			if (en.getKey().equals(headToken))
+				bufMapBuilder.put(headToken, head);
+			else
+				bufMapBuilder.put(en);
+		}
+		return bufMapBuilder.build();
 	}
 
 	private Set<Integer> getWorkerIds(List<Set<Worker<?, ?>>> blobList) {
