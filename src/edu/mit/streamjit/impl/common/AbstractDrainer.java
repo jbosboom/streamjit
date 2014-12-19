@@ -262,29 +262,22 @@ public abstract class AbstractDrainer {
 		ImmutableTable<Integer, String, Object> state = ImmutableTable.of();
 		DrainData draindata1 = new DrainData(dataBuilder.build(), state);
 		drainData = drainData.merge(draindata1);
-		updateDrainDataStatistics(drainData, false);
+		updateDrainDataStatistics(drainData);
 		// dumpDrainData(drainData);
 		return drainData;
 	}
 
-	private void updateDrainDataStatistics(DrainData drainData, boolean print) {
+	private void updateDrainDataStatistics(DrainData drainData) {
 		if (drainDataStatistics == null) {
 			drainDataStatistics = new HashMap<>();
 			for (Token t : drainData.getData().keySet()) {
 				drainDataStatistics.put(t, new ArrayList<Integer>());
 			}
 		}
-
 		for (Token t : drainData.getData().keySet()) {
-			drainDataStatistics.get(t).add(drainData.getData().get(t).size());
-			if (print) {
-				System.out.print("Aggregated data: " + t.toString() + " - "
-						+ drainData.getData().get(t).size() + " - ");
-				// for (Object o : drainData.getData().get(t)) {
-				// System.out.print(o.toString() + ", ");
-				// }
-				System.out.print('\n');
-			}
+			int size = drainData.getData().get(t).size();
+			drainDataStatistics.get(t).add(size);
+
 		}
 	}
 
