@@ -115,12 +115,15 @@ public abstract class AbstractDrainer {
 	 */
 	private DrainerState state;
 
+	private final TimeLogger logger;
+
 	private final StreamJitApp app;
 
-	public AbstractDrainer(StreamJitApp app) {
+	public AbstractDrainer(StreamJitApp app, TimeLogger logger) {
 		state = DrainerState.NODRAINING;
 		finalLatch = new CountDownLatch(1);
 		this.app = app;
+		this.logger = logger;
 	}
 
 	/**
@@ -169,10 +172,7 @@ public abstract class AbstractDrainer {
 			boolean isFinal = false;
 			switch (type) {
 				case 0 :
-					this.blobGraph.clearDrainData();
 					this.state = DrainerState.INTERMEDIATE;
-					drainDataLatch = new CountDownLatch(1);
-					intermediateLatch = new CountDownLatch(1);
 					break;
 				case 1 :
 					this.state = DrainerState.FINAL;
@@ -185,6 +185,10 @@ public abstract class AbstractDrainer {
 					throw new IllegalArgumentException(
 							"Invalid draining type. type can be 0, 1, or 2.");
 			}
+
+			this.blobGraph.clearDrainData();
+			drainDataLatch = new CountDownLatch(1);
+			intermediateLatch = new CountDownLatch(1);
 
 			try {
 				prepareDraining(isFinal);
@@ -209,6 +213,51 @@ public abstract class AbstractDrainer {
 		}
 	}
 
+	public boolean drainIntermediate() throws InterruptedException {
+		logger.drainingStarted();
+		boolean state = startDraining(0);
+		if (!state) {
+			String msg = "Final drain has already been called. no more tuning.";
+			System.err.println(msg);
+			logger.drainingFinished(msg);
+			return false;
+		}
+
+		System.err.println("awaitDrainedIntrmdiate");
+		awaitDrainedIntrmdiate();
+		drainingDone(this.state == DrainerState.FINAL);
+		logger.drainingFinished("Intermediate");
+		logger.drainDataCollectionStarted();
+		awaitDrainData();
+		logger.drainDataCollectionFinished("");
+		return true;
+	}
+
+	public boolean drainFinal(Boolean isSemeFinal) throws InterruptedException {
+		int drainType = 2;
+		if (isSemeFinal)
+			drainType = 1;
+		logger.drainingStarted();
+		boolean state = startDraining(drainType);
+		if (!state) {
+			String msg = "Final drain has already been called.";
+			System.err.println(msg);
+			logger.drainingFinished(msg);
+			return false;
+		}
+
+		System.err.println("awaitDrainedIntrmdiate");
+		awaitDrainedIntrmdiate();
+		drainingDone(false);
+		logger.drainingFinished("Intermediate");
+		logger.drainDataCollectionStarted();
+		awaitDrainData();
+		logger.drainDataCollectionFinished("");
+		app.drainData = app.minimizeDrainData(app.drainData);
+		drainingDone(true);
+		stop();
+		return true;
+	}
 	/**
 	 * Once draining of a blob is done, it has to inform to the drainer by
 	 * calling this method.
@@ -476,12 +525,10 @@ public abstract class AbstractDrainer {
 		assert state != DrainerState.NODRAINING : "Illegal call. Drainer is not in draining mode.";
 		drainingDone(blobNode.blobID, state == DrainerState.FINAL);
 		if (unDrainedNodes.decrementAndGet() == 0) {
-			drainingDone(state == DrainerState.FINAL);
+			intermediateLatch.countDown();
 			if (state == DrainerState.FINAL) {
-				finalLatch.countDown();
 			} else {
 				state = DrainerState.NODRAINING;
-				intermediateLatch.countDown();
 			}
 
 			if (GlobalConstants.needDrainDeadlockHandler)

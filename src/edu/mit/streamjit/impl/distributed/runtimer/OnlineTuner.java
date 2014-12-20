@@ -207,23 +207,7 @@ public class OnlineTuner implements Runnable {
 	 */
 	private boolean intermediateDraining() throws InterruptedException {
 		if (manager.isRunning()) {
-			logger.drainingStarted();
-			boolean state = drainer.startDraining(0);
-			if (!state) {
-				String msg = "Final drain has already been called. no more tuning.";
-				System.err.println(msg);
-				logger.drainingFinished(msg);
-				return false;
-			}
-
-			System.err.println("awaitDrainedIntrmdiate");
-			drainer.awaitDrainedIntrmdiate();
-			logger.drainingFinished("Intermediate");
-
-			logger.drainDataCollectionStarted();
-			drainer.awaitDrainData();
-			logger.drainDataCollectionFinished("");
-			return true;
+			return drainer.drainIntermediate();
 		} else
 			return true;
 	}

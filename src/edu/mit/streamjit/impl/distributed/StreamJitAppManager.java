@@ -173,7 +173,7 @@ public class StreamJitAppManager {
 		isRunning = false;
 
 		Stopwatch sw = stopwatchRef.get();
-		if (sw != null) {
+		if (sw != null && sw.isRunning()) {
 			sw.stop();
 			long time = sw.elapsed(TimeUnit.MILLISECONDS);
 			System.out.println("Draining time is " + time + " milli seconds");
