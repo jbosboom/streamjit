@@ -432,7 +432,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 			// System.out.println("Blob " + blobID + "is drained at mid");
 
-			if (drainType == DrainType.INTERMEDIATE) {
+			if (drainType != DrainType.DISCARD) {
 				SNMessageElement me;
 				if (crashed.get())
 					me = getEmptyDrainData();
