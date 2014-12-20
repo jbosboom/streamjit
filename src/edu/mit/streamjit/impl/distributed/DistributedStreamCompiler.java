@@ -135,7 +135,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		TimeLogger logger = new TimeLoggers.FileTimeLogger(app.name);
 		StreamJitAppManager manager = new StreamJitAppManager(controller, app,
 				cfgManager, conManager, logger);
-		final AbstractDrainer drainer = new DistributedDrainer(manager);
+		final AbstractDrainer drainer = new DistributedDrainer(app, logger,
+				manager);
 		drainer.setBlobGraph(app.blobGraph);
 
 		boolean needTermination = setBufferMap(input, output, drainer, app,

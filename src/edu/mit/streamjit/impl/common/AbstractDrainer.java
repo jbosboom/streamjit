@@ -213,7 +213,7 @@ public abstract class AbstractDrainer {
 		}
 	}
 
-	public boolean drainIntermediate() throws InterruptedException {
+	public boolean drainIntermediate() {
 		logger.drainingStarted();
 		boolean state = startDraining(0);
 		if (!state) {
@@ -224,16 +224,24 @@ public abstract class AbstractDrainer {
 		}
 
 		System.err.println("awaitDrainedIntrmdiate");
-		awaitDrainedIntrmdiate();
+		try {
+			awaitDrainedIntrmdiate();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 		drainingDone(this.state == DrainerState.FINAL);
 		logger.drainingFinished("Intermediate");
 		logger.drainDataCollectionStarted();
-		awaitDrainData();
+		try {
+			awaitDrainData();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 		logger.drainDataCollectionFinished("");
 		return true;
 	}
 
-	public boolean drainFinal(Boolean isSemeFinal) throws InterruptedException {
+	public boolean drainFinal(Boolean isSemeFinal) {
 		int drainType = 2;
 		if (isSemeFinal)
 			drainType = 1;
@@ -247,17 +255,26 @@ public abstract class AbstractDrainer {
 		}
 
 		System.err.println("awaitDrainedIntrmdiate");
-		awaitDrainedIntrmdiate();
+		try {
+			awaitDrainedIntrmdiate();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 		drainingDone(false);
 		logger.drainingFinished("Intermediate");
 		logger.drainDataCollectionStarted();
-		awaitDrainData();
+		try {
+			awaitDrainData();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 		logger.drainDataCollectionFinished("");
 		app.drainData = app.minimizeDrainData(app.drainData);
 		drainingDone(true);
 		stop();
 		return true;
 	}
+
 	/**
 	 * Once draining of a blob is done, it has to inform to the drainer by
 	 * calling this method.
