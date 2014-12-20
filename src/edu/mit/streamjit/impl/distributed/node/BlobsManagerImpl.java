@@ -494,6 +494,7 @@ public class BlobsManagerImpl implements BlobsManager {
 					BoundaryChannel chanl = inputChannels.get(t);
 					ImmutableList<Object> draindata = chanl
 							.getUnprocessedData();
+					// if (draindata.size() > 0)
 					// System.out.println(String.format("From %s - %d",
 					// chanl.name(), draindata.size()));
 					inputDataBuilder.put(t, draindata);
@@ -511,6 +512,7 @@ public class BlobsManagerImpl implements BlobsManager {
 					BoundaryChannel chanl = outputChannels.get(t);
 					ImmutableList<Object> draindata = chanl
 							.getUnprocessedData();
+					// if (draindata.size() > 0)
 					// System.out.println(String.format("From %s - %d",
 					// chanl.name(), draindata.size()));
 					outputDataBuilder.put(t, draindata);
@@ -535,8 +537,9 @@ public class BlobsManagerImpl implements BlobsManager {
 			} else {
 				bufArray = bufferCleaner.copiedBuffer(t);
 			}
-			// System.out.println(String.format("From LocalBuffer: %s - %d", t,
-			// bufArray.length));
+			// if (bufArray.length > 0)
+			// System.out.println(String.format("From LocalBuffer: %s - %d",
+			// t, bufArray.length));
 			inputDataBuilder.put(t, ImmutableList.copyOf(bufArray));
 		}
 
@@ -576,8 +579,10 @@ public class BlobsManagerImpl implements BlobsManager {
 			System.out.println("**********printDrainDataStats*************");
 			if (dd != null) {
 				for (Token t : dd.getData().keySet()) {
-					System.out.println("From Blob: " + t.toString() + " - "
-							+ dd.getData().get(t).size());
+					int size = dd.getData().get(t).size();
+					if (size > 0)
+						System.out.println("From Blob: " + t.toString() + " - "
+								+ size);
 				}
 			}
 		}
