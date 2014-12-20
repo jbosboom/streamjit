@@ -37,9 +37,11 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
+import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 
 /**
@@ -113,9 +115,12 @@ public abstract class AbstractDrainer {
 	 */
 	private DrainerState state;
 
-	public AbstractDrainer() {
+	private final StreamJitApp app;
+
+	public AbstractDrainer(StreamJitApp app) {
 		state = DrainerState.NODRAINING;
 		finalLatch = new CountDownLatch(1);
+		this.app = app;
 	}
 
 	/**
@@ -212,9 +217,18 @@ public abstract class AbstractDrainer {
 		blobGraph.getBlobNode(blobID).drained();
 	}
 
+	/**
+	 * Awaits for {@link DrainData} from all {@link StreamNode}s, combines the
+	 * all received DrainData and set the combined DrainData to
+	 * {@link StreamJitApp#drainData}.
+	 * 
+	 * @throws InterruptedException
+	 */
 	public final void awaitDrainData() throws InterruptedException {
-		if (GlobalConstants.useDrainData)
+		if (GlobalConstants.useDrainData) {
 			drainDataLatch.await();
+			app.drainData = getDrainData();
+		}
 	}
 
 	public final void newSNDrainData(SNDrainedData snDrainedData) {
@@ -231,7 +245,7 @@ public abstract class AbstractDrainer {
 	/**
 	 * @return Aggregated DrainData after the draining.
 	 */
-	public final DrainData getDrainData() {
+	private final DrainData getDrainData() {
 		if (!GlobalConstants.useDrainData)
 			return null;
 		DrainData drainData = null;

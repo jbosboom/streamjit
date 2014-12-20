@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
@@ -223,8 +222,6 @@ public class OnlineTuner implements Runnable {
 
 			logger.drainDataCollectionStarted();
 			drainer.awaitDrainData();
-			DrainData drainData = drainer.getDrainData();
-			app.drainData = drainData;
 			logger.drainDataCollectionFinished("");
 			return true;
 		} else
