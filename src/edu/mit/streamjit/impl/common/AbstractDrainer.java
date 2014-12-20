@@ -269,7 +269,13 @@ public abstract class AbstractDrainer {
 			e.printStackTrace();
 		}
 		logger.drainDataCollectionFinished("");
-		app.drainData = app.minimizeDrainData(app.drainData);
+		// TODO : Even after the final draining, we can clear some more
+		// intermediate data by running an Interpreter blob.
+		// StreamJitApp.minimizeDrainData() does this job. Uncomment the
+		// following lines later.
+		// app.drainData = app.minimizeDrainData(app.drainData);
+		// printDrainDataStats(app.drainData);
+		// dumpDrainData(app.drainData);
 		drainingDone(true);
 		stop();
 		return true;
