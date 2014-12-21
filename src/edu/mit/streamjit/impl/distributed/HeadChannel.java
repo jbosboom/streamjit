@@ -37,9 +37,8 @@ public class HeadChannel {
 		private volatile boolean stopCalled;
 		private volatile boolean isFinal;
 
-		public AsyncHeadChannel(Buffer buffer,
-				ConnectionProvider conProvider, ConnectionInfo conInfo,
-				String bufferTokenName, int debugLevel) {
+		public AsyncHeadChannel(Buffer buffer, ConnectionProvider conProvider,
+				ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 			super(conProvider, conInfo, bufferTokenName, debugLevel);
 			readBuffer = buffer;
 			stopCalled = false;
@@ -153,7 +152,8 @@ public class HeadChannel {
 
 			public void run() {
 				System.out.println("Input data finished");
-				drainer.startDraining(2);
+				// drainer.startDraining(2);
+				drainer.drainFinal(false);
 			}
 		}
 	}

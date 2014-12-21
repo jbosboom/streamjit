@@ -253,7 +253,8 @@ public class OnlineTuner implements Runnable {
 
 	private void terminate() {
 		if (manager.isRunning()) {
-			drainer.startDraining(1);
+			// drainer.startDraining(1);
+			drainer.drainFinal(true);
 		} else {
 			manager.stop();
 		}
