@@ -217,7 +217,7 @@ public abstract class AbstractDrainer {
 		logger.drainingStarted();
 		boolean state = startDraining(0);
 		if (!state) {
-			String msg = "Final drain has already been called. no more tuning.";
+			String msg = "Final drain has already been called. No more intermediate draining.";
 			System.err.println(msg);
 			logger.drainingFinished(msg);
 			return false;
@@ -248,9 +248,6 @@ public abstract class AbstractDrainer {
 		logger.drainingStarted();
 		boolean state = startDraining(drainType);
 		if (!state) {
-			String msg = "Final drain has already been called.";
-			System.err.println(msg);
-			logger.drainingFinished(msg);
 			return false;
 		}
 
