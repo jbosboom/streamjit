@@ -283,10 +283,14 @@ public class OnlineTuner implements Runnable {
 															// noise.
 				for (int i = 0; i < count; i++) {
 					ret = reconfigure(cfg);
-					writer.write(ret.second.toString());
-					writer.write('\n');
-					writer.flush();
-					total += ret.second;
+					if (ret.first) {
+						writer.write(ret.second.toString());
+						writer.write('\n');
+						writer.flush();
+						total += ret.second;
+					} else {
+						break;
+					}
 				}
 				double avg = total / count;
 				writer.write(String.format("Average execution time = %f%n\n",
