@@ -179,7 +179,7 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				if (stopType.get() > 1 && ++bufFullCount > 5) {
+				if (stopType.get() > 0 && ++bufFullCount > 20) {
 					this.extraBuffer = new ExtraBuffer();
 					extraBuffer.write(obj);
 					System.err
@@ -263,7 +263,7 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 						e.printStackTrace();
 					}
 
-					if (stopType.get() == 2 && ++bufFullCount > 5) {
+					if (++bufFullCount > 20) {
 						assert buffer != this.extraBuffer : "ExtraBuffer is full. This shouldn't be the case.";
 						assert this.extraBuffer == null : "Extra buffer has already been created.";
 						this.extraBuffer = new ExtraBuffer();
