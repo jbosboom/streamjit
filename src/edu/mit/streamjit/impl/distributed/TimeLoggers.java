@@ -170,7 +170,7 @@ public class TimeLoggers {
 
 		@Override
 		public void drainingFinished(String msg) {
-			if (drainTimeSW != null) {
+			if (drainTimeSW != null && drainTimeSW.isRunning()) {
 				drainTimeSW.stop();
 				long time = drainTimeSW.elapsed(TimeUnit.MILLISECONDS);
 				logDrainTime(time);
