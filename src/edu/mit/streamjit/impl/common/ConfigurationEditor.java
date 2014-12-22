@@ -75,7 +75,10 @@ public class ConfigurationEditor {
 		Configuration cfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(source));
 
-		name = String.format("hand_%s.cfg", stream.getClass().getSimpleName());
+		String appName = stream.getClass().getSimpleName();
+
+		name = String.format("%s%sconfigurations%shand_%s.cfg", appName,
+				File.separator, File.separator, appName);
 
 		try {
 			FileWriter writer = new FileWriter(name, false);
@@ -136,7 +139,10 @@ public class ConfigurationEditor {
 		Configuration cfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(source));
 
-		name = String.format("hand_%s.cfg", stream.getClass().getSimpleName());
+		String appName = stream.getClass().getSimpleName();
+
+		name = String.format("%s%sconfigurations%shand_%s.cfg", appName,
+				File.separator, File.separator, appName);
 
 		try {
 			FileWriter writer = new FileWriter(name, false);
