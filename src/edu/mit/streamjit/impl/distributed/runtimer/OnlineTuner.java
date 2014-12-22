@@ -113,10 +113,15 @@ public class OnlineTuner implements Runnable {
 	}
 
 	private void startTuner() throws IOException {
-		tuner.startTuner(String.format(
+		String relativeTunerPath = String.format(
 				"lib%sopentuner%sstreamjit%sstreamjit2.py", File.separator,
-				File.separator, File.separator),
-				new File(System.getProperty("user.dir")));
+				File.separator, File.separator);
+
+		String absoluteTunerPath = String.format("%s%s%s",
+				System.getProperty("user.dir"), File.separator,
+				relativeTunerPath);
+
+		tuner.startTuner(absoluteTunerPath, new File(app.name));
 
 		tuner.writeLine("program");
 		tuner.writeLine(app.name);
