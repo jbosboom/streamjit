@@ -60,17 +60,7 @@ public class OnlineTuner implements Runnable {
 	private void tune() {
 		int round = 0;
 		try {
-			tuner.startTuner(String.format(
-					"lib%sopentuner%sstreamjit%sstreamjit2.py", File.separator,
-					File.separator, File.separator),
-					new File(System.getProperty("user.dir")));
-
-			tuner.writeLine("program");
-			tuner.writeLine(app.name);
-
-			tuner.writeLine("confg");
-			tuner.writeLine(Jsonifiers.toJson(app.blobConfiguration).toString());
-
+			startTuner();
 			Pair<Boolean, Long> ret;
 
 			System.out.println("New tune run.............");
@@ -120,6 +110,19 @@ public class OnlineTuner implements Runnable {
 
 		if (needTermination)
 			terminate();
+	}
+
+	private void startTuner() throws IOException {
+		tuner.startTuner(String.format(
+				"lib%sopentuner%sstreamjit%sstreamjit2.py", File.separator,
+				File.separator, File.separator),
+				new File(System.getProperty("user.dir")));
+
+		tuner.writeLine("program");
+		tuner.writeLine(app.name);
+
+		tuner.writeLine("confg");
+		tuner.writeLine(Jsonifiers.toJson(app.blobConfiguration).toString());
 	}
 
 	private void evaluate() {
