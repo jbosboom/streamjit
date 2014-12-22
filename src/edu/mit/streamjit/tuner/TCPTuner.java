@@ -55,7 +55,7 @@ public final class TCPTuner implements OpenTuner {
 		Random rand = new Random();
 		Integer port = rand.nextInt(65535 - min) + min;
 		if (GlobalConstants.tunerStartMode == 0) {
-			ProcessBuilder xtermPB = new ProcessBuilder("xterm", "-e",
+			ProcessBuilder xtermPB = new ProcessBuilder("xterm", "-hold", "-e",
 					"python", tunerPath, port.toString());
 			ProcessBuilder gnomePB = new ProcessBuilder("gnome-terminal", "-e",
 					String.format("python %s %s", tunerPath, port.toString()));
