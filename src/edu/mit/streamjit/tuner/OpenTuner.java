@@ -1,5 +1,6 @@
 package edu.mit.streamjit.tuner;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -37,7 +38,8 @@ public interface OpenTuner {
 	 * 
 	 * @throws IOException
 	 */
-	public void startTuner(String tunerPath) throws IOException;
+	public void startTuner(String tunerPath, File workingDir)
+			throws IOException;
 
 	/**
 	 * Stop the Autotuner instance.

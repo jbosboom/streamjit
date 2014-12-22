@@ -2,6 +2,7 @@ package edu.mit.streamjit.tuner;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -48,22 +49,26 @@ public final class TCPTuner implements OpenTuner {
 	}
 
 	@Override
-	public void startTuner(String tunerPath) throws IOException {
+	public void startTuner(String tunerPath, File workingDir)
+			throws IOException {
 		int min = 5000;
 		Random rand = new Random();
 		Integer port = rand.nextInt(65535 - min) + min;
 		if (GlobalConstants.tunerStartMode == 0) {
-			this.tuner = new ProcessBuilder("xterm", "-e", "python", tunerPath,
-					port.toString()).start();
+			ProcessBuilder pb = new ProcessBuilder("xterm", "-e", "python",
+					tunerPath, port.toString());
+			pb.directory(workingDir);
+			this.tuner = pb.start();
 		} else if (GlobalConstants.tunerStartMode == 1) {
-			this.tuner = new ProcessBuilder("python", tunerPath,
-					port.toString()).start();
+			ProcessBuilder pb = new ProcessBuilder("python", tunerPath,
+					port.toString());
+			pb.directory(workingDir);
+			this.tuner = pb.start();
 		} else
 			port = 12563;
 		this.connection = new TunerConnection();
 		connection.connect(port);
 	}
-
 	@Override
 	public void stopTuner() throws IOException {
 		if (tuner == null)
@@ -182,7 +187,8 @@ public final class TCPTuner implements OpenTuner {
 
 		OpenTuner tuner = new TCPTuner();
 		try {
-			tuner.startTuner("/lib/opentuner/streamjit/streamjit.py");
+			tuner.startTuner("/lib/opentuner/streamjit/streamjit.py", new File(
+					System.getProperty("user.dir")));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
