@@ -279,8 +279,8 @@ public class OnlineTuner implements Runnable {
 		double total = 0;
 		int count = 4;
 		try {
-			writer = new FileWriter(String.format("Eval_%s.txt", app.name),
-					true);
+			writer = new FileWriter(String.format("%s%sEval_%s.txt", app.name,
+					File.separator, app.name), true);
 			writer.write("\n----------------------------------------\n");
 			writer.write(String.format("Configuration name = %s\n", cfgName));
 			if (cfg != null) {
