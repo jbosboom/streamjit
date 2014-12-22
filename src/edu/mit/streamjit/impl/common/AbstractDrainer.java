@@ -2,6 +2,7 @@ package edu.mit.streamjit.impl.common;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -367,7 +368,9 @@ public abstract class AbstractDrainer {
 
 	private void printDrainDataStats(DrainData drainData) {
 		try {
-			FileWriter writer = new FileWriter("draindatasize.txt", true);
+			String fileName = String.format("%s%sdraindatasize.txt", app.name,
+					File.separator);
+			FileWriter writer = new FileWriter(fileName, true);
 			writer.write("-----------------------------------------------------------\n");
 			System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
 
@@ -385,10 +388,11 @@ public abstract class AbstractDrainer {
 			e.printStackTrace();
 		}
 	}
-
 	private void dumpDrainData(DrainData drainData) {
 		try {
-			FileOutputStream fout = new FileOutputStream("DrainData");
+			String fileName = String.format("%s%sDrainData", app.name,
+					File.separator);
+			FileOutputStream fout = new FileOutputStream(fileName);
 			ObjectOutputStream oos = new ObjectOutputStream(fout);
 			oos.writeObject(drainData);
 			oos.close();
@@ -409,7 +413,9 @@ public abstract class AbstractDrainer {
 			return;
 		}
 
-		FileWriter writer = new FileWriter("DrainDataStatistics.txt");
+		String fileName = String.format("%s%sDrainDataStatistics.txt",
+				app.name, File.separator);
+		FileWriter writer = new FileWriter(fileName);
 		for (Token t : drainDataStatistics.keySet()) {
 			writer.write(t.toString());
 			writer.write(" - ");
