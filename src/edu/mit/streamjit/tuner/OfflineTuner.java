@@ -90,7 +90,8 @@ public class OfflineTuner {
 		try {
 			autoTuner.startTuner(String.format(
 					"lib%sopentuner%sstreamjit%sstreamjit.py", File.separator,
-					File.separator, File.separator));
+					File.separator, File.separator),
+					new File(System.getProperty("user.dir")));
 
 			autoTuner.writeLine("program");
 			autoTuner.writeLine(app.toString());
