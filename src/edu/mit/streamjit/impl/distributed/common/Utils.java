@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.common;
 
+import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
@@ -60,5 +61,17 @@ public class Utils {
 		long usedMemory = heapUsage.getUsed() / MEGABYTE;
 		System.out
 				.println("Memory Use :" + usedMemory + "M/" + maxMemory + "M");
+	}
+
+	public static void createAppDir(String appName) {
+		File appDir = new File(appName);
+		if (appDir.exists()) {
+			if (appDir.isDirectory())
+				return;
+			else
+				System.err.println("A file exists in the name of appDir-"
+						+ appName);
+		} else
+			appDir.mkdir();
 	}
 }

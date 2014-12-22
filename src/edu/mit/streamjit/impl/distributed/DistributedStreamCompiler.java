@@ -40,6 +40,7 @@ import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.HeadChannel.HeadBuffer;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
@@ -133,6 +134,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		setConfiguration(controller, srcSink, stream, app, cfgManager,
 				conManager);
 
+		Utils.createAppDir(app.name);
 		TimeLogger logger = new TimeLoggers.FileTimeLogger(app.name);
 		StreamJitAppManager manager = new StreamJitAppManager(controller, app,
 				cfgManager, conManager, logger);
