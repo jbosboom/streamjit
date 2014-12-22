@@ -1,6 +1,7 @@
 package edu.mit.streamjit.util;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -16,11 +17,13 @@ import java.util.List;
 public class TimeLogProcessor {
 
 	public static void main(String[] args) throws IOException {
-		List<Integer> compileTime = processCompileTime();
-		List<Integer> runTime = processRunTime();
-		List<Integer> drainTime = processDrainTime();
+		String appName = "FMRadioCore";
+		List<Integer> compileTime = processCompileTime(appName);
+		List<Integer> runTime = processRunTime(appName);
+		List<Integer> drainTime = processDrainTime(appName);
 
-		FileWriter writer = new FileWriter("totalStats.txt");
+		FileWriter writer = new FileWriter(String.format("%s%stotalStats.txt",
+				appName, File.separator));
 		int min = Integer.MAX_VALUE;
 
 		for (int i = 0; i < runTime.size(); i++) {
@@ -32,14 +35,16 @@ public class TimeLogProcessor {
 		}
 		writer.close();
 
-		writeHeapStat("st1.txt");
-		writeHeapStat("st2.txt");
+		writeHeapStat(String.format("%s%sst1.txt", appName, File.separator));
+		writeHeapStat(String.format("%s%sst2.txt", appName, File.separator));
 	}
 
-	private static List<Integer> processCompileTime() throws IOException {
+	private static List<Integer> processCompileTime(String appName)
+			throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
-				"FMRadioCore_compileTime.txt"));
-		FileWriter writer = new FileWriter("CompileTime.txt");
+				String.format("%s%scompileTime.txt", appName, File.separator)));
+		FileWriter writer = new FileWriter(String.format(
+				"%s%sProcessedCompileTime.txt", appName, File.separator));
 		String line;
 		int i = 0;
 		List<Integer> ret = new ArrayList<Integer>(3000);
@@ -59,11 +64,13 @@ public class TimeLogProcessor {
 		writer.close();
 		return ret;
 	}
+	private static List<Integer> processRunTime(String appName)
+			throws IOException {
 
-	private static List<Integer> processRunTime() throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
-				"FMRadioCore_runTime.txt"));
-		FileWriter writer = new FileWriter("RunTime.txt");
+				String.format("%s%srunTime.txt", appName, File.separator)));
+		FileWriter writer = new FileWriter(String.format(
+				"%s%sProcessedRunTime.txt", appName, File.separator));
 		String line;
 		int i = 0;
 		List<Integer> ret = new ArrayList<Integer>(3000);
@@ -87,10 +94,12 @@ public class TimeLogProcessor {
 		return ret;
 	}
 
-	private static List<Integer> processDrainTime() throws IOException {
+	private static List<Integer> processDrainTime(String appName)
+			throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
-				"FMRadioCore_drainTime.txt"));
-		FileWriter writer = new FileWriter("DrainTime.txt");
+				String.format("%s%sDrainTime.txt", appName, File.separator)));
+		FileWriter writer = new FileWriter(String.format(
+				"%s%sProcessedDrainTime.txt", appName, File.separator));
 		String line;
 		int i = 0;
 		List<Integer> ret = new ArrayList<Integer>(3000);
