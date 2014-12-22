@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
@@ -89,9 +90,11 @@ public class BlobsManagerImpl implements BlobsManager {
 	 */
 	private final boolean monitorBuffers = false;
 
+	private final String appName;
+
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
 			Map<Token, ConnectionInfo> conInfoMap, StreamNode streamNode,
-			ConnectionProvider conProvider) {
+			ConnectionProvider conProvider, String appName) {
 		this.conInfoMap = conInfoMap;
 		this.streamNode = streamNode;
 		this.conProvider = conProvider;
@@ -100,6 +103,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		this.drainProcessor = new CTRLRDrainProcessorImpl();
 		this.bufferManager = new SNLocalBufferManager(blobSet);
 
+		this.appName = appName;
 		bufferManager.initialise();
 		if (bufferManager.isbufferSizesReady())
 			createBEs(blobSet);
@@ -953,8 +957,9 @@ public class BlobsManagerImpl implements BlobsManager {
 		public void run() {
 			FileWriter writter = null;
 			try {
-				writter = new FileWriter(String.format("BufferStatus%d.txt",
-						streamNode.getNodeID()), false);
+				String fileName = String.format("%s%sBufferStatus%d.txt",
+						appName, File.separator, streamNode.getNodeID());
+				writter = new FileWriter(fileName, false);
 
 				writter.write(String.format(
 						"********Started*************** - %d\n", id));
