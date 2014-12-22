@@ -97,7 +97,7 @@ public class TimeLogProcessor {
 	private static List<Integer> processDrainTime(String appName)
 			throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
-				String.format("%s%sDrainTime.txt", appName, File.separator)));
+				String.format("%s%sdrainTime.txt", appName, File.separator)));
 		FileWriter writer = new FileWriter(String.format(
 				"%s%sProcessedDrainTime.txt", appName, File.separator));
 		String line;
