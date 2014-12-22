@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -154,10 +155,11 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		return cs;
 	}
 
-	private <I, O> Configuration cfgFromFile(OneToOneElement<I, O> stream,
+	private <I, O> Configuration cfgFromFile(StreamJitApp app,
 			Controller controller, Configuration defaultCfg) {
 		Configuration cfg1 = ConfigurationUtils.readConfiguration(String
-				.format("%s.cfg", stream.getClass().getSimpleName()));
+				.format("%s%sconfigurations%s%s.cfg", app.name, File.separator,
+						File.separator, app.name));
 		if (cfg1 == null) {
 			controller.closeAll();
 			throw new IllegalConfigurationException();
@@ -307,7 +309,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 				throw new IllegalConfigurationException();
 			}
 		} else if (GlobalConstants.tune == 0) {
-			this.cfg = cfgFromFile(stream, controller, defaultCfg);
+			this.cfg = cfgFromFile(app, controller, defaultCfg);
 		} else
 			this.cfg = defaultCfg;
 

@@ -24,9 +24,9 @@ public class ConfigurationAnalyzer {
 		System.out.println(ca.getRunningTime("NestedSplitJoinCore", 3));
 	}
 
-	String appDir;
+	private final String cfgDir;
 
-	String appName;
+	private final String appName;
 
 	List<Integer> bestConfigurations;
 
@@ -45,14 +45,12 @@ public class ConfigurationAnalyzer {
 	 * </pre>
 	 */
 
-	private final String cfgDirectory = "configurations";
-
 	public ConfigurationAnalyzer(String appName) {
-		verifyPath(cfgDirectory, appName);
+		verifyPath("configurations", appName);
 		bestConfigurations = new LinkedList<>();
 		this.appName = appName;
-		this.appDir = String.format("%s%s%s", cfgDirectory, File.separator,
-				appName);
+		this.cfgDir = String.format("%s%s%s", appName, File.separator,
+				"configurations");
 	}
 
 	private void compare(FloatParameter p1, FloatParameter p2) {
@@ -70,8 +68,8 @@ public class ConfigurationAnalyzer {
 	}
 
 	private void compare(Integer first, Integer second) {
-		Configuration cfg1 = readcoConfiguration(appDir, appName, first);
-		Configuration cfg2 = readcoConfiguration(appDir, appName, second);
+		Configuration cfg1 = readcoConfiguration(first);
+		Configuration cfg2 = readcoConfiguration(second);
 		for (Entry<String, Parameter> en : cfg1.getParametersMap().entrySet()) {
 			Parameter p1 = en.getValue();
 			Parameter p2 = cfg2.getParameter(en.getKey());
@@ -139,7 +137,9 @@ public class ConfigurationAnalyzer {
 	}
 
 	private double getRunningTime(String appName, int round) {
-		SqliteAdapter sqlite = connectDB(appName);
+		String dbPath = String.format("%s%s%s", appName, File.separator,
+				appName);
+		SqliteAdapter sqlite = connectDB(dbPath);
 		ResultSet result = sqlite.executeQuery(String.format(
 				"SELECT * FROM result WHERE id=%d", round));
 
@@ -152,22 +152,22 @@ public class ConfigurationAnalyzer {
 		return Double.parseDouble(runtime);
 	}
 
-	private Configuration readcoConfiguration(String appDir, String appName,
-			Integer cfgNo) {
-		String cfg = String.format("%s%s%d%s.cfg", appDir, File.separator,
+	private Configuration readcoConfiguration(Integer cfgNo) {
+		String cfg = String.format("%s%s%d%s.cfg", cfgDir, File.separator,
 				cfgNo, appName);
 		return ConfigurationUtils.readConfiguration(cfg);
 	}
 
 	private boolean verifyPath(String cfgDir, String appName) {
-		String dbPath = appName;
+		String dbPath = String.format("%s%s%s", appName, File.separator,
+				appName);
 		File db = new File(dbPath);
 		if (!db.exists())
 			throw new IllegalStateException("No database file found in "
 					+ dbPath);
 
-		String dirPath = String.format("%s%s%s", cfgDir, File.separator,
-				appName);
+		String dirPath = String.format("%s%s%s", appName, File.separator,
+				cfgDir);
 		File dir = new File(dirPath);
 		if (!dir.exists())
 			throw new IllegalStateException("No directory found in " + dirPath);

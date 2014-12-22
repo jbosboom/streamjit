@@ -77,8 +77,8 @@ public class ConfigurationUtils {
 			String appName) {
 		try {
 
-			File dir = new File(String.format("configurations%s%s",
-					File.separator, appName));
+			File dir = new File(String.format("%s%sconfigurations", appName,
+					File.separator));
 			if (!dir.exists())
 				if (!dir.mkdirs()) {
 					System.err.println("Make directory failed");

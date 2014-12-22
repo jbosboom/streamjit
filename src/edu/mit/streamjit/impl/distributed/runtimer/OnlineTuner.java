@@ -123,11 +123,13 @@ public class OnlineTuner implements Runnable {
 
 	private void evaluate() {
 		Configuration finalCfg = ConfigurationUtils.readConfiguration(String
-				.format("final_%s.cfg", app.name));
+				.format("%s%sconfigurations%sfinal_%s.cfg", app.name,
+						File.separator, File.separator, app.name));
 		evaluateConfig(finalCfg, "Final configuration");
 
 		Configuration handCfg = ConfigurationUtils.readConfiguration(String
-				.format("hand_%s.cfg", app.name));
+				.format("%s%sconfigurations%shand_%s.cfg", app.name,
+						File.separator, File.separator, app.name));
 		evaluateConfig(handCfg, "Handtuned configuration");
 
 		try {
@@ -151,7 +153,9 @@ public class OnlineTuner implements Runnable {
 		for (int n : cfgNos) {
 			String cfgName = String.format("%d%s.cfg", n, app.name);
 			Configuration cfg = ConfigurationUtils.readConfiguration(String
-					.format("configurations/%s/%s", app.name, cfgName));
+					.format("%s%sconfigurations%s%s", app.name, File.separator,
+							File.separator, cfgName));
+
 			if (cfg == null)
 				continue;
 			evaluateConfig(cfg, cfgName);
@@ -236,7 +240,8 @@ public class OnlineTuner implements Runnable {
 		evaluateConfig(finalcfg, "Final configuration");
 
 		Configuration handCfg = ConfigurationUtils.readConfiguration(String
-				.format("hand_%s.cfg", app.name));
+				.format("%s%sconfigurations%shand_%s.cfg", app.name,
+						File.separator, File.separator, app.name));
 		evaluateConfig(handCfg, "Handtuned configuration");
 
 		if (needTermination) {

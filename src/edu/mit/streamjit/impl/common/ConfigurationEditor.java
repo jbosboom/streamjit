@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Map;
@@ -46,9 +45,11 @@ public class ConfigurationEditor {
 	 * Reads a configuration and changes its multiplier value.
 	 */
 	private static void changeMultiplierVal() {
-		String appName = "final_NestedSplitJoinCore";
+		String appName = "NestedSplitJoinCore";
+		String cfgFileName = "Final_NestedSplitJoinCore.cfg";
 		Configuration config = ConfigurationUtils.readConfiguration(String
-				.format("%s.cfg", appName));
+				.format("%s%sconfigurations%s%s", appName, File.separator,
+						File.separator, cfgFileName));
 		Configuration.Builder builder = Configuration.builder(config);
 		IntParameter mulParam = config.getParameter("multiplier",
 				IntParameter.class);
@@ -59,8 +60,7 @@ public class ConfigurationEditor {
 
 		IntParameter newMulParam = new IntParameter("multiplier", 1, 100, 100);
 		builder.addParameter(newMulParam);
-		ConfigurationUtils.saveConfg(builder.build(), "444",
-				"final_NestedSplitJoinCore");
+		ConfigurationUtils.saveConfg(builder.build(), "444", appName);
 
 	}
 
@@ -263,14 +263,16 @@ public class ConfigurationEditor {
 	private static void convert() {
 		String appName = "ChannelVocoder7Kernel";
 		Configuration cfg = ConfigurationUtils.readConfiguration(String.format(
-				"%d%s.cfg", 1, appName));
+				"%s%sconfigurations%s%d%s.cfg", appName, File.separator,
+				File.separator, 1, appName));
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(
 					String.format("%d%s.cfg", 0, appName)));
 			String pythonDict = reader.readLine();
+			reader.close();
 
 			Configuration finalCfg = rebuildConfiguration(pythonDict, cfg);
-			ConfigurationUtils.saveConfg(finalCfg, "0", name);
+			ConfigurationUtils.saveConfg(finalCfg, "0", appName);
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
