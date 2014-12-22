@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -20,8 +21,8 @@ import edu.mit.streamjit.impl.common.TimeLogger;
 public class TimeLoggers {
 
 	/**
-	 * Creates three files named prefix_compileTime.txt, prefix_runTime.txt and
-	 * prefix_drainTime.txt, and logs the time information.
+	 * Creates three files named compileTime.txt, runTime.txt and drainTime.txt
+	 * inside app.name directory, and logs the time information.
 	 * 
 	 * @author sumanan
 	 * @since Nov 25, 2014
@@ -42,10 +43,12 @@ public class TimeLoggers {
 		 * @param prefix
 		 *            : prefix for the file names.
 		 */
-		public FileTimeLogger(String prefix) {
-			super(getFileWriter(String.format("%s_compileTime.txt", prefix)),
-					getFileWriter(String.format("%s_runTime.txt", prefix)),
-					getFileWriter(String.format("%s_drainTime.txt", prefix)));
+		public FileTimeLogger(String appName) {
+			super(getFileWriter(String.format("%s%scompileTime.txt", appName,
+					File.separator)), getFileWriter(String.format(
+					"%s%srunTime.txt", appName, File.separator)),
+					getFileWriter(String.format("%s%sdrainTime.txt", appName,
+							File.separator)));
 		}
 	}
 
