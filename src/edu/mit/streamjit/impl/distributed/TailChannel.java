@@ -1,5 +1,6 @@
 package edu.mit.streamjit.impl.distributed;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
@@ -64,7 +65,7 @@ public class TailChannel extends BlockingInputChannel {
 	 */
 	public TailChannel(Buffer buffer, ConnectionProvider conProvider,
 			ConnectionInfo conInfo, String bufferTokenName, int debugLevel,
-			int skipCount, int steadyCount) {
+			int skipCount, int steadyCount, String appName) {
 		super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
 		this.skipCount = skipCount;
 		this.totalCount = steadyCount + skipCount;
@@ -74,7 +75,7 @@ public class TailChannel extends BlockingInputChannel {
 		skipLatch = new CountDownLatch(1);
 		this.skipLatchUp = true;
 		if (GlobalConstants.tune == 0) {
-			pLogger = new PerformanceLogger();
+			pLogger = new PerformanceLogger(appName);
 			pLogger.start();
 		}
 		printOutputCount();
@@ -178,15 +179,19 @@ public class TailChannel extends BlockingInputChannel {
 
 		private AtomicBoolean stopFlag;
 
-		private PerformanceLogger() {
+		private final String appName;
+
+		private PerformanceLogger(String appName) {
 			stopFlag = new AtomicBoolean(false);
+			this.appName = appName;
 		}
 
 		public void run() {
 			int i = 0;
 			FileWriter writer;
 			try {
-				writer = new FileWriter("FixedOutPut.txt");
+				writer = new FileWriter(String.format("%s%sFixedOutPut.txt",
+						appName, File.separator));
 			} catch (IOException e1) {
 				e1.printStackTrace();
 				return;
