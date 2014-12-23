@@ -50,8 +50,7 @@ public class AsyncOutputChannel implements BoundaryOutputChannel {
 				if (con == null || !con.isStillConnected()) {
 					try {
 						con = conProvider.getConnection(conInfo);
-						buffer = new AsyncTCPBuffer(
-								(AsyncTCPConnection) con);
+						buffer = new AsyncTCPBuffer((AsyncTCPConnection) con);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -62,13 +61,12 @@ public class AsyncOutputChannel implements BoundaryOutputChannel {
 
 	@Override
 	public ImmutableList<Object> getUnprocessedData() {
-		return null;
+		return ImmutableList.of();
 	}
 
 	@Override
 	public void stop(boolean isFinal) {
-		while (con == null)
-			;
+		while (con == null);
 		this.isFinal = isFinal;
 		if (!stopCalled) {
 			try {
