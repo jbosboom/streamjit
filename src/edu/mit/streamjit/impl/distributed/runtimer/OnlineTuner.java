@@ -127,7 +127,7 @@ public class OnlineTuner implements Runnable {
 		tuner.writeLine(app.name);
 
 		tuner.writeLine("confg");
-		tuner.writeLine(Jsonifiers.toJson(app.blobConfiguration).toString());
+		tuner.writeLine(Jsonifiers.toJson(app.getConfiguration()).toString());
 	}
 
 	private void evaluate() {

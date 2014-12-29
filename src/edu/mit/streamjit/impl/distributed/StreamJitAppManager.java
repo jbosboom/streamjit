@@ -231,7 +231,7 @@ public class StreamJitAppManager {
 		Configuration.Builder builder = Configuration.builder(cfgManager
 				.getDynamicConfiguration());
 
-		conInfoMap = conManager.conInfoMap(app.blobConfiguration,
+		conInfoMap = conManager.conInfoMap(app.getConfiguration(),
 				app.partitionsMachineMap, app.source, app.sink);
 
 		builder.putExtraData(GlobalConstants.CONINFOMAP, conInfoMap);

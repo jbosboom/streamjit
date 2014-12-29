@@ -60,7 +60,7 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 		} catch (StreamCompilationFailedException ex) {
 			return false;
 		}
-		app.blobConfiguration = config;
+		app.setConfiguration(config);
 		return true;
 	}
 

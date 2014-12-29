@@ -155,7 +155,7 @@ public interface ConfigurationManager {
 			builder.addParameter(partParam.build());
 			if (GlobalConstants.useCompilerBlob)
 				builder.addSubconfiguration("blobConfigs",
-						app.blobConfiguration);
+						app.getConfiguration());
 			else
 				builder.addSubconfiguration("blobConfigs",
 						getInterpreterConfg());
