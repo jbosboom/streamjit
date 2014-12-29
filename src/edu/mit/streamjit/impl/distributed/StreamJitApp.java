@@ -273,5 +273,7 @@ public class StreamJitApp {
 	 */
 	public void setConfiguration(Configuration configuration) {
 		this.configuration = configuration;
+		visualizer.newConfiguration(configuration);
+		visualizer.newPartitionMachineMap(partitionsMachineMap);
 	}
 }
