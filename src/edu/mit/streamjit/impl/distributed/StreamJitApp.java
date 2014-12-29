@@ -23,6 +23,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 import edu.mit.streamjit.impl.interp.Interpreter;
@@ -90,6 +91,7 @@ public class StreamJitApp {
 		this.sink = sink;
 		this.jarFilePath = this.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
+		Utils.createAppDir(name);
 	}
 
 	/**
