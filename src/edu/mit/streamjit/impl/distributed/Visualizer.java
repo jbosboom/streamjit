@@ -70,10 +70,12 @@ public interface Visualizer {
 
 		protected final OneToOneElement<?, ?> streamGraph;
 
+		private final String appName;
+
 		public DotVisualizer(OneToOneElement<?, ?> streamGraph) {
 			this.streamGraph = streamGraph;
-			String name = streamGraph.getClass().getSimpleName();
-			DOTstreamVisitor dotSV = new DOTstreamVisitor(name);
+			this.appName = streamGraph.getClass().getSimpleName();
+			DOTstreamVisitor dotSV = new DOTstreamVisitor();
 			streamGraph.visit(dotSV);
 		}
 
@@ -85,18 +87,16 @@ public interface Visualizer {
 		 */
 		private class DOTstreamVisitor extends StreamVisitor {
 
-			private final String streamJitAppname;
 			private final FileWriter writter;
 
-			DOTstreamVisitor(String streamJitAppname) {
-				this.streamJitAppname = streamJitAppname;
+			DOTstreamVisitor() {
 				writter = fileWriter();
 			}
 
 			private FileWriter fileWriter() {
 				FileWriter w = null;
-				String fileName = String.format("%s%sgraph.dot",
-						streamJitAppname, File.separator);
+				String fileName = String.format("%s%sgraph.dot", appName,
+						File.separator);
 				try {
 					w = new FileWriter(fileName, false);
 				} catch (IOException e) {
@@ -107,8 +107,7 @@ public interface Visualizer {
 
 			private void initilizeDot() {
 				try {
-					writter.write(String.format("digraph %s {\n",
-							streamJitAppname));
+					writter.write(String.format("digraph %s {\n", appName));
 					writter.write("\trankdir=TD;\n");
 					writter.write("\tnodesep=0.5;\n");
 					writter.write("\tranksep=equally;\n");
@@ -129,10 +128,10 @@ public interface Visualizer {
 			}
 
 			private void runDot() {
-				String fileName = String.format("./%s%sgraph.dot",
-						streamJitAppname, File.separator);
-				String outFileName = String.format("./%s%sgraph.png",
-						streamJitAppname, File.separator);
+				String fileName = String.format("./%s%sgraph.dot", appName,
+						File.separator);
+				String outFileName = String.format("./%s%sgraph.png", appName,
+						File.separator);
 				ProcessBuilder pb = new ProcessBuilder("dot", "-Tpng",
 						fileName, "-o", outFileName);
 				try {
