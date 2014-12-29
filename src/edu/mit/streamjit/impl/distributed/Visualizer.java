@@ -3,6 +3,9 @@ package edu.mit.streamjit.impl.distributed;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Joiner;
@@ -33,6 +36,16 @@ public interface Visualizer {
 	public void newConfiguration(Configuration cfg);
 
 	/**
+	 * Partitions Machine Map of the current configuration. Only the
+	 * {@link ConfigurationManager} has the information to generate this map.
+	 * Visualizer has no glue to generate this partitionsMachineMap.
+	 * 
+	 * @param partitionsMachineMap
+	 */
+	public void newPartitionMachineMap(
+			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap);
+
+	/**
 	 * Use this class to have no visualization.
 	 * 
 	 */
@@ -40,6 +53,12 @@ public interface Visualizer {
 
 		@Override
 		public void newConfiguration(Configuration cfg) {
+			return;
+		}
+
+		@Override
+		public void newPartitionMachineMap(
+				Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
 			return;
 		}
 	}
@@ -197,6 +216,11 @@ public interface Visualizer {
 		@Override
 		public void newConfiguration(Configuration cfg) {
 
+		}
+
+		@Override
+		public void newPartitionMachineMap(
+				Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
 		}
 	}
 }
