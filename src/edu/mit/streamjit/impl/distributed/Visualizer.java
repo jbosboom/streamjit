@@ -95,7 +95,7 @@ public interface Visualizer {
 
 			private FileWriter fileWriter() {
 				FileWriter w = null;
-				String fileName = String.format("%s%sgraph.dot", appName,
+				String fileName = String.format("%s%sstreamgraph.dot", appName,
 						File.separator);
 				try {
 					w = new FileWriter(fileName, false);
@@ -128,10 +128,10 @@ public interface Visualizer {
 			}
 
 			private void runDot() {
-				String fileName = String.format("./%s%sgraph.dot", appName,
-						File.separator);
-				String outFileName = String.format("./%s%sgraph.png", appName,
-						File.separator);
+				String fileName = String.format("./%s%sstreamgraph.dot",
+						appName, File.separator);
+				String outFileName = String.format("./%s%sstreamgraph.png",
+						appName, File.separator);
 				ProcessBuilder pb = new ProcessBuilder("dot", "-Tpng",
 						fileName, "-o", outFileName);
 				try {
