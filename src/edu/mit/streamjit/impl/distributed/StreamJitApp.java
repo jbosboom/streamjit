@@ -69,6 +69,8 @@ public class StreamJitApp {
 
 	public DrainData drainData = null;
 
+	public final Visualizer visualizer;
+
 	/**
 	 * Keeps track of assigned machine Ids of each blob. This information is
 	 * need for draining. TODO: If possible use a better solution.
@@ -92,6 +94,7 @@ public class StreamJitApp {
 		this.jarFilePath = this.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
 		Utils.createAppDir(name);
+		visualizer = new Visualizer.DotVisualizer(streamGraph);
 	}
 
 	/**
