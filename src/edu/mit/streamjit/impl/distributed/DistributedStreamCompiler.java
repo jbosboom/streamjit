@@ -125,8 +125,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		ConfigurationManager cfgManager = new HotSpotTuning(app);
 		ConnectionManager conManager = new ConnectionManager.BlockingTCPNoParams(
 				controller.controllerNodeID);
-		setConfiguration(controller, srcSink, stream, app, cfgManager,
-				conManager);
+		setConfiguration(controller, app, cfgManager, conManager);
 
 		TimeLogger logger = new TimeLoggers.FileTimeLogger(app.name);
 		StreamJitAppManager manager = new StreamJitAppManager(controller, app,
@@ -135,9 +134,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 				manager);
 		drainer.setBlobGraph(app.blobGraph);
 
-		boolean needTermination = setBufferMap(input, output, drainer, app,
-				srcSink);
-		setConstrains(srcSink, app);
+		boolean needTermination = setBufferMap(input, output, drainer, app);
+		setConstrains(app);
 
 		manager.reconfigure(1);
 		CompiledStream cs = new DistributedCompiledStream(drainer);
@@ -225,8 +223,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	 * Sets head and tail buffers.
 	 */
 	private <I, O> boolean setBufferMap(Input<I> input, Output<O> output,
-			final AbstractDrainer drainer, StreamJitApp app,
-			Pair<Worker<I, ?>, Worker<?, O>> srcSink) {
+			final AbstractDrainer drainer, StreamJitApp<I, O> app) {
 		// TODO: derive a algorithm to find good buffer size and use here.
 		Buffer head = InputBufferFactory.unwrap(input).createReadableBuffer(
 				10000);
@@ -256,22 +253,20 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
 				.<Token, Buffer> builder();
 
-		bufferMapBuilder
-				.put(Token.createOverallInputToken(srcSink.first), head);
-		bufferMapBuilder.put(Token.createOverallOutputToken(srcSink.second),
-				tail);
+		bufferMapBuilder.put(Token.createOverallInputToken(app.source), head);
+		bufferMapBuilder.put(Token.createOverallOutputToken(app.sink), tail);
 
 		app.bufferMap = bufferMapBuilder.build();
 		return needTermination;
 	}
 
 	private <I, O> void setConfiguration(Controller controller,
-			Pair<Worker<I, ?>, Worker<?, O>> srcSink, StreamJitApp<I, O> app,
-			ConfigurationManager cfgManager, ConnectionManager conManager) {
+			StreamJitApp<I, O> app, ConfigurationManager cfgManager,
+			ConnectionManager conManager) {
 		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManager,
 				Math.max(noOfnodes - 1, 1));
 		Configuration defaultCfg = bf.getDefaultConfiguration(Workers
-				.getAllWorkersInGraph(srcSink.first));
+				.getAllWorkersInGraph(app.source));
 
 		if (this.cfg != null) {
 			if (!verifyCfg(defaultCfg, this.cfg)) {
@@ -289,12 +284,11 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		cfgManager.newConfiguration(this.cfg);
 	}
 
-	private <I, O> void setConstrains(Pair<Worker<I, ?>, Worker<?, O>> srcSink,
-			StreamJitApp app) {
+	private <I, O> void setConstrains(StreamJitApp<I, O> app) {
 		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
 		// context.
 		List<MessageConstraint> constraints = MessageConstraint
-				.findConstraints(srcSink.first);
+				.findConstraints(app.source);
 		Set<Portal<?>> portals = new HashSet<>();
 		for (MessageConstraint mc : constraints)
 			portals.add(mc.getPortal());
