@@ -42,22 +42,22 @@ import edu.mit.streamjit.impl.interp.Interpreter;
  * @author Sumanan sumanan@mit.edu
  * @since Oct 8, 2013
  */
-public class StreamJitApp {
+public class StreamJitApp<I, O> {
 
 	/**
 	 * Since this is final, lets make public
 	 */
 	public final String topLevelClass;
 
-	public final Worker<?, ?> source;
+	public final Worker<I, ?> source;
 
-	public final Worker<?, ?> sink;
+	public final Worker<?, O> sink;
 
 	public final String jarFilePath;
 
 	public final String name;
 
-	final OneToOneElement<?, ?> streamGraph;
+	final OneToOneElement<I, O> streamGraph;
 
 	public BlobGraph blobGraph;
 
@@ -84,8 +84,8 @@ public class StreamJitApp {
 	 */
 	private Configuration configuration = null;
 
-	public StreamJitApp(OneToOneElement<?, ?> streamGraph, Worker<?, ?> source,
-			Worker<?, ?> sink) {
+	public StreamJitApp(OneToOneElement<I, O> streamGraph, Worker<I, ?> source,
+			Worker<?, O> sink) {
 		this.streamGraph = streamGraph;
 		this.name = streamGraph.getClass().getSimpleName();
 		this.topLevelClass = streamGraph.getClass().getName();
