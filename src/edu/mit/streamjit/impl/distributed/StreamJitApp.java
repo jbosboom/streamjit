@@ -286,8 +286,7 @@ public class StreamJitApp<I, O> {
 		visualizer.newPartitionMachineMap(partitionsMachineMap);
 	}
 
-	private <I, O> Pair<Worker<I, ?>, Worker<?, O>> visit(
-			OneToOneElement<I, O> stream) {
+	private Pair<Worker<I, ?>, Worker<?, O>> visit(OneToOneElement<I, O> stream) {
 		checkforDefaultOneToOneElement(stream);
 		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
 		stream.visit(primitiveConnector);
@@ -307,9 +306,7 @@ public class StreamJitApp<I, O> {
 	 * @throws StreamCompilationFailedException
 	 *             if stream is default subtype of OneToOneElement
 	 */
-	private <I, O> void checkforDefaultOneToOneElement(
-			OneToOneElement<I, O> stream) {
-
+	private void checkforDefaultOneToOneElement(OneToOneElement<I, O> stream) {
 		if (stream.getClass() == Pipeline.class
 				|| stream.getClass() == Splitjoin.class
 				|| stream.getClass() == Filter.class) {
