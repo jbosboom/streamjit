@@ -9,7 +9,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.collect.ImmutableMap;
 
+import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.OneToOneElement;
+import edu.mit.streamjit.api.Pipeline;
+import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
@@ -20,13 +23,16 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
+import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 import edu.mit.streamjit.impl.interp.Interpreter;
+import edu.mit.streamjit.util.Pair;
 
 /**
  * This class contains all information about the current streamJit application
@@ -84,13 +90,13 @@ public class StreamJitApp<I, O> {
 	 */
 	private Configuration configuration = null;
 
-	public StreamJitApp(OneToOneElement<I, O> streamGraph, Worker<I, ?> source,
-			Worker<?, O> sink) {
+	public StreamJitApp(OneToOneElement<I, O> streamGraph) {
 		this.streamGraph = streamGraph;
+		Pair<Worker<I, ?>, Worker<?, O>> srcSink = visit(streamGraph);
 		this.name = streamGraph.getClass().getSimpleName();
 		this.topLevelClass = streamGraph.getClass().getName();
-		this.source = source;
-		this.sink = sink;
+		this.source = srcSink.first;
+		this.sink = srcSink.second;
 		this.jarFilePath = this.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
 		Utils.createAppDir(name);
@@ -275,5 +281,39 @@ public class StreamJitApp<I, O> {
 		this.configuration = configuration;
 		visualizer.newConfiguration(configuration);
 		visualizer.newPartitionMachineMap(partitionsMachineMap);
+	}
+
+	private <I, O> Pair<Worker<I, ?>, Worker<?, O>> visit(
+			OneToOneElement<I, O> stream) {
+		checkforDefaultOneToOneElement(stream);
+		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
+		stream.visit(primitiveConnector);
+		Worker<I, ?> source = (Worker<I, ?>) primitiveConnector.getSource();
+		Worker<?, O> sink = (Worker<?, O>) primitiveConnector.getSink();
+
+		VerifyStreamGraph verifier = new VerifyStreamGraph();
+		stream.visit(verifier);
+		return new Pair<Worker<I, ?>, Worker<?, O>>(source, sink);
+	}
+
+	/**
+	 * TODO: Need to check for other default subtypes of {@link OneToOneElement}
+	 * s. Now only checks for first generation children.
+	 * 
+	 * @param stream
+	 * @throws StreamCompilationFailedException
+	 *             if stream is default subtype of OneToOneElement
+	 */
+	private <I, O> void checkforDefaultOneToOneElement(
+			OneToOneElement<I, O> stream) {
+
+		if (stream.getClass() == Pipeline.class
+				|| stream.getClass() == Splitjoin.class
+				|| stream.getClass() == Filter.class) {
+			throw new StreamCompilationFailedException(
+					"Default subtypes of OneToOneElement are not accepted for"
+							+ " compilation by this compiler. OneToOneElement"
+							+ " that passed should be unique");
+		}
 	}
 }

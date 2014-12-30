@@ -13,7 +13,6 @@ import java.util.concurrent.TimeoutException;
 import com.google.common.collect.ImmutableMap;
 
 import edu.mit.streamjit.api.CompiledStream;
-import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.api.OneToOneElement;
@@ -21,7 +20,6 @@ import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.Splitjoin;
-import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob.Token;
@@ -29,13 +27,11 @@ import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.TimeLogger;
-import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.HeadChannel.HeadBuffer;
@@ -123,10 +119,9 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 	public <I, O> CompiledStream compile(OneToOneElement<I, O> stream,
 			Input<I> input, Output<O> output) {
-		Pair<Worker<I, ?>, Worker<?, O>> srcSink = visit(stream);
+		StreamJitApp<I, O> app = new StreamJitApp<>(stream);
 		Controller controller = establishController();
-		StreamJitApp app = new StreamJitApp(stream, srcSink.first,
-				srcSink.second);
+
 		ConfigurationManager cfgManager = new HotSpotTuning(app);
 		ConnectionManager conManager = new ConnectionManager.BlockingTCPNoParams(
 				controller.controllerNodeID);
@@ -173,27 +168,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			throw new IllegalConfigurationException();
 		}
 		return cfg1;
-	}
-
-	/**
-	 * TODO: Need to check for other default subtypes of {@link OneToOneElement}
-	 * s. Now only checks for first generation children.
-	 * 
-	 * @param stream
-	 * @throws StreamCompilationFailedException
-	 *             if stream is default subtype of OneToOneElement
-	 */
-	private <I, O> void checkforDefaultOneToOneElement(
-			OneToOneElement<I, O> stream) {
-
-		if (stream.getClass() == Pipeline.class
-				|| stream.getClass() == Splitjoin.class
-				|| stream.getClass() == Filter.class) {
-			throw new StreamCompilationFailedException(
-					"Default subtypes of OneToOneElement are not accepted for"
-							+ " compilation by this compiler. OneToOneElement"
-							+ " that passed should be unique");
-		}
 	}
 
 	private Controller establishController() {
@@ -335,19 +309,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 				.equals(cfg.getParametersMap().keySet()))
 			return true;
 		return false;
-	}
-
-	private <I, O> Pair<Worker<I, ?>, Worker<?, O>> visit(
-			OneToOneElement<I, O> stream) {
-		checkforDefaultOneToOneElement(stream);
-		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
-		stream.visit(primitiveConnector);
-		Worker<I, ?> source = (Worker<I, ?>) primitiveConnector.getSource();
-		Worker<?, O> sink = (Worker<?, O>) primitiveConnector.getSink();
-
-		VerifyStreamGraph verifier = new VerifyStreamGraph();
-		stream.visit(verifier);
-		return new Pair<Worker<I, ?>, Worker<?, O>>(source, sink);
 	}
 
 	private static class DistributedCompiledStream implements CompiledStream {
