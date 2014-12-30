@@ -3,7 +3,6 @@ package edu.mit.streamjit.impl.distributed;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,7 +17,6 @@ import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.Pipeline;
-import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.api.Worker;
@@ -28,9 +26,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.InputBufferFactory;
-import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.OutputBufferFactory;
-import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.TimeLogger;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
@@ -135,7 +131,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		drainer.setBlobGraph(app.blobGraph);
 
 		boolean needTermination = setBufferMap(input, output, drainer, app);
-		setConstrains(app);
 
 		manager.reconfigure(1);
 		CompiledStream cs = new DistributedCompiledStream(drainer);
@@ -282,19 +277,6 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			this.cfg = defaultCfg;
 
 		cfgManager.newConfiguration(this.cfg);
-	}
-
-	private <I, O> void setConstrains(StreamJitApp<I, O> app) {
-		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
-		// context.
-		List<MessageConstraint> constraints = MessageConstraint
-				.findConstraints(app.source);
-		Set<Portal<?>> portals = new HashSet<>();
-		for (MessageConstraint mc : constraints)
-			portals.add(mc.getPortal());
-		for (Portal<?> portal : portals)
-			Portals.setConstraints(portal, constraints);
-		app.constraints = constraints;
 	}
 
 	private <I, O> boolean verifyCfg(Configuration defaultCfg, Configuration cfg) {

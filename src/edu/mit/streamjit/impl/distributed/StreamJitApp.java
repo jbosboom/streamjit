@@ -12,6 +12,7 @@ import com.google.common.collect.ImmutableMap;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
+import edu.mit.streamjit.api.Portal;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
@@ -25,6 +26,7 @@ import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
+import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
@@ -71,7 +73,7 @@ public class StreamJitApp<I, O> {
 
 	public ImmutableMap<Token, Buffer> bufferMap;
 
-	public List<MessageConstraint> constraints;
+	public final List<MessageConstraint> constraints;
 
 	public DrainData drainData = null;
 
@@ -99,6 +101,7 @@ public class StreamJitApp<I, O> {
 		this.sink = srcSink.second;
 		this.jarFilePath = this.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
+		this.constraints = getConstrains();
 		Utils.createAppDir(name);
 		visualizer = new Visualizer.DotVisualizer(streamGraph);
 	}
@@ -315,5 +318,18 @@ public class StreamJitApp<I, O> {
 							+ " compilation by this compiler. OneToOneElement"
 							+ " that passed should be unique");
 		}
+	}
+
+	private List<MessageConstraint> getConstrains() {
+		// TODO: Copied form DebugStreamCompiler. Need to be verified for this
+		// context.
+		List<MessageConstraint> constraints = MessageConstraint
+				.findConstraints(source);
+		Set<Portal<?>> portals = new HashSet<>();
+		for (MessageConstraint mc : constraints)
+			portals.add(mc.getPortal());
+		for (Portal<?> portal : portals)
+			Portals.setConstraints(portal, constraints);
+		return constraints;
 	}
 }
