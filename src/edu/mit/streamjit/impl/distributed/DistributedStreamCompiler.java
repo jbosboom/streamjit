@@ -40,7 +40,6 @@ import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
 import edu.mit.streamjit.util.ConfigurationUtils;
-import edu.mit.streamjit.util.Pair;
 
 /**
  * 
@@ -143,7 +142,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		return cs;
 	}
 
-	private <I, O> Configuration cfgFromFile(StreamJitApp app,
+	private <I, O> Configuration cfgFromFile(StreamJitApp<I, O> app,
 			Controller controller, Configuration defaultCfg) {
 		Configuration cfg1 = ConfigurationUtils.readConfiguration(String
 				.format("%s%sconfigurations%s%s.cfg", app.name, File.separator,
@@ -202,15 +201,13 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		return partitionsMachineMap;
 	}
 
-	private <I, O> void manualPartition(
-			Pair<Worker<I, ?>, Worker<?, O>> srcSink,
-			OneToOneElement<I, O> stream, StreamJitApp app) {
+	private <I, O> void manualPartition(StreamJitApp<I, O> app) {
 		Integer[] machineIds = new Integer[this.noOfnodes - 1];
 		for (int i = 0; i < machineIds.length; i++) {
 			machineIds[i] = i + 1;
 		}
 		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
-				machineIds, stream, srcSink.first, srcSink.second);
+				machineIds, app.streamGraph, app.source, app.sink);
 		app.newPartitionMap(partitionsMachineMap);
 	}
 
