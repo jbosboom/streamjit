@@ -266,8 +266,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	}
 
 	private <I, O> void setConfiguration(Controller controller,
-			Pair<Worker<I, ?>, Worker<?, O>> srcSink,
-			OneToOneElement<I, O> stream, StreamJitApp app,
+			Pair<Worker<I, ?>, Worker<?, O>> srcSink, StreamJitApp<I, O> app,
 			ConfigurationManager cfgManager, ConnectionManager conManager) {
 		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManager,
 				Math.max(noOfnodes - 1, 1));
