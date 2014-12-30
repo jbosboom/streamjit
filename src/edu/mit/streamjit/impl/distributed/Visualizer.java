@@ -1,8 +1,11 @@
 package edu.mit.streamjit.impl.distributed;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -15,8 +18,10 @@ import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StreamVisitor;
 import edu.mit.streamjit.api.Worker;
+import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 
 /**
  * Interface to visualize a stream graph and it's configurations. Use the
@@ -127,20 +132,6 @@ public interface Visualizer {
 				}
 			}
 
-			private void runDot() {
-				String fileName = String.format("./%s%sstreamgraph.dot",
-						appName, File.separator);
-				String outFileName = String.format("./%s%sstreamgraph.png",
-						appName, File.separator);
-				ProcessBuilder pb = new ProcessBuilder("dot", "-Tpng",
-						fileName, "-o", outFileName);
-				try {
-					Process p = pb.start();
-					p.waitFor();
-				} catch (IOException | InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
 			@Override
 			public void beginVisit() {
 				initilizeDot();
@@ -192,7 +183,7 @@ public interface Visualizer {
 			@Override
 			public void endVisit() {
 				closeDot();
-				runDot();
+				runDot("streamgraph");
 			}
 
 			private void updateDot(Worker<?, ?> w) {
@@ -217,9 +208,86 @@ public interface Visualizer {
 
 		}
 
+		private void runDot(String file) {
+			String fileName = String.format("./%s%s%s.dot", appName,
+					File.separator, file);
+			String outFileName = String.format("./%s%s%s.png", appName,
+					File.separator, file);
+			ProcessBuilder pb = new ProcessBuilder("dot", "-Tpng", fileName,
+					"-o", outFileName);
+			try {
+				Process p = pb.start();
+				p.waitFor();
+			} catch (IOException | InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+
 		@Override
 		public void newPartitionMachineMap(
 				Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
+			FileWriter writer;
+			try {
+				writer = blobGraphWriter();
+				for (int machine : partitionsMachineMap.keySet()) {
+					for (Set<Worker<?, ?>> blobworkers : partitionsMachineMap
+							.get(machine)) {
+						Token blobID = Utils.getblobID(blobworkers);
+						writer.write(String
+								.format("\tsubgraph \"cluster_%s\" { color="
+										+ "royalblue1; label = \"Blob-%s:Machine-%d\";",
+										blobID, blobID, machine));
+						Set<Integer> workerIDs = getWorkerIds(blobworkers);
+						for (Integer id : workerIDs)
+							writer.write(String.format(" %d;", id));
+						writer.write("}\n");
+					}
+				}
+				writer.write("}\n");
+				writer.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			runDot("blobgraph");
+		}
+
+		private Set<Integer> getWorkerIds(Set<Worker<?, ?>> blobworkers) {
+			Set<Integer> workerIds = new HashSet<>();
+			for (Worker<?, ?> w : blobworkers) {
+				workerIds.add(Workers.getIdentifier(w));
+			}
+			return workerIds;
+		}
+
+		/**
+		 * Copies all lines except the final closing bracket from
+		 * streamgraph.dot to blobgraph.dot.
+		 * 
+		 * @return
+		 * @throws IOException
+		 */
+		private FileWriter blobGraphWriter() throws IOException {
+			File streamGraph = new File(String.format("./%s%sstreamgraph.dot",
+					appName, File.separator));
+			File blobGraph = new File(String.format("./%s%sblobgraph.dot",
+					appName, File.separator));
+			BufferedReader reader = new BufferedReader(new FileReader(
+					streamGraph));
+			FileWriter writer = new FileWriter(blobGraph, false);
+			String line;
+			int unclosedParenthesis = 0;
+			while ((line = reader.readLine()) != null) {
+				if (line.contains("{"))
+					unclosedParenthesis++;
+				if (line.contains("}"))
+					unclosedParenthesis--;
+				if (unclosedParenthesis > 0) {
+					writer.write(line);
+					writer.write("\n");
+				}
+			}
+			reader.close();
+			return writer;
 		}
 	}
 }
