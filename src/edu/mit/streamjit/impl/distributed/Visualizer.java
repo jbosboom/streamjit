@@ -69,7 +69,9 @@ public interface Visualizer {
 	}
 
 	/**
-	 * Generates dot file and then from the dot file generates graph.
+	 * Generates dot file and then from the dot file generates graph. Before
+	 * using this class, ensure that Graphviz is properly installed in the
+	 * system.
 	 */
 	public static class DotVisualizer implements Visualizer {
 
@@ -77,9 +79,15 @@ public interface Visualizer {
 
 		private final String appName;
 
+		/**
+		 * Tells whether the dot tool is installed in the system or not.
+		 */
+		private boolean hasDot;
+
 		public DotVisualizer(OneToOneElement<?, ?> streamGraph) {
 			this.streamGraph = streamGraph;
 			this.appName = streamGraph.getClass().getSimpleName();
+			hasDot = true;
 			DOTstreamVisitor dotSV = new DOTstreamVisitor();
 			streamGraph.visit(dotSV);
 		}
@@ -219,13 +227,18 @@ public interface Visualizer {
 				Process p = pb.start();
 				p.waitFor();
 			} catch (IOException | InterruptedException e) {
-				e.printStackTrace();
+				System.err
+						.println("DotVisualizer: dot(Graphviz) tool is not properly installed in the system");
+				hasDot = false;
+				// e.printStackTrace();
 			}
 		}
 
 		@Override
 		public void newPartitionMachineMap(
 				Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
+			if (!hasDot)
+				return;
 			FileWriter writer;
 			try {
 				writer = blobGraphWriter();
@@ -250,7 +263,6 @@ public interface Visualizer {
 			}
 			runDot("blobgraph");
 		}
-
 		private Set<Integer> getWorkerIds(Set<Worker<?, ?>> blobworkers) {
 			Set<Integer> workerIds = new HashSet<>();
 			for (Worker<?, ?> w : blobworkers) {
