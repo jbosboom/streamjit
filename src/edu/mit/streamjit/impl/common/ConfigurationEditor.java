@@ -18,6 +18,8 @@ import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager;
+import edu.mit.streamjit.impl.distributed.ConnectionManager;
+import edu.mit.streamjit.impl.distributed.ConnectionManager.BlockingTCPNoParams;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.impl.distributed.HotSpotTuning;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
@@ -126,18 +128,15 @@ public class ConfigurationEditor {
 	}
 
 	private static void generate1(OneToOneElement<?, ?> stream, int noOfnodes) {
-		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
-		stream.visit(primitiveConnector);
-		Worker<?, ?> source = (Worker<?, ?>) primitiveConnector.getSource();
-		Worker<?, ?> sink = (Worker<?, ?>) primitiveConnector.getSink();
-		noofwrks = Workers.getIdentifier(sink) + 1;
-
-		StreamJitApp app = new StreamJitApp(stream, source, sink);
+		StreamJitApp<?, ?> app = new StreamJitApp<>(stream);
+		noofwrks = Workers.getIdentifier(app.sink) + 1;
 		ConfigurationManager cfgManager = new HotSpotTuning(app);
-		BlobFactory bf = new DistributedBlobFactory(cfgManager, noOfnodes);
+		ConnectionManager conManger = new BlockingTCPNoParams(0);
+		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManger,
+				noOfnodes);
 
 		Configuration cfg = bf.getDefaultConfiguration(Workers
-				.getAllWorkersInGraph(source));
+				.getAllWorkersInGraph(app.source));
 
 		String appName = stream.getClass().getSimpleName();
 
