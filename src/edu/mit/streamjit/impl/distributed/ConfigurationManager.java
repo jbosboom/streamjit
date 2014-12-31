@@ -40,8 +40,8 @@ import edu.mit.streamjit.partitioner.AbstractPartitioner;
  * accordingly.
  * </ol>
  * 
- * One can implement this interface to try different search space designs as
- * he want.
+ * One can implement this interface to try different search space designs as he
+ * want.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Jan 16, 2014
@@ -97,13 +97,12 @@ public interface ConfigurationManager {
 	 * @author Sumanan sumanan@mit.edu
 	 * @since Jan 17, 2014
 	 */
-	public static abstract class AbstractConfigurationManager
-			implements
-				ConfigurationManager {
+	public static abstract class AbstractConfigurationManager implements
+			ConfigurationManager {
 
-		protected final StreamJitApp app;
+		protected final StreamJitApp<?, ?> app;
 
-		AbstractConfigurationManager(StreamJitApp app) {
+		AbstractConfigurationManager(StreamJitApp<?, ?> app) {
 			this.app = app;
 		}
 
@@ -136,8 +135,7 @@ public interface ConfigurationManager {
 			partParam.addBlobFactory(comp2Factory);
 			app.blobtoMachineMap = new HashMap<>();
 
-			BlobFactory bf = GlobalConstants.useCompilerBlob
-					? comp2Factory
+			BlobFactory bf = GlobalConstants.useCompilerBlob ? comp2Factory
 					: intFactory;
 			for (Integer machineID : app.partitionsMachineMap.keySet()) {
 				List<Set<Worker<?, ?>>> blobList = app.partitionsMachineMap

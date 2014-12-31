@@ -47,7 +47,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 public class StreamJitAppManager {
 
-	private final StreamJitApp app;
+	private final StreamJitApp<?, ?> app;
 
 	private AppStatusProcessorImpl apStsPro = null;
 
@@ -102,7 +102,7 @@ public class StreamJitAppManager {
 
 	private final SNTimeInfoProcessor timeInfoProcessor;
 
-	public StreamJitAppManager(Controller controller, StreamJitApp app,
+	public StreamJitAppManager(Controller controller, StreamJitApp<?, ?> app,
 			ConfigurationManager cfgManager, ConnectionManager conManager,
 			TimeLogger logger) {
 		this.controller = controller;
