@@ -168,11 +168,10 @@ public class TailChannel extends BlockingInputChannel {
 	}
 
 	/**
-	 * This method is needed apart from {@link #reset()} because if a thread
-	 * calls (From {@link AppStatusProcessor#processERROR()} reset() method
-	 * instead of this method, the threads which are waiting on latches at
-	 * {@link #getFixedOutputTime()} will not be released properly because the
-	 * thread thread which is waiting on skipLatch will wait on steady latch.
+	 * We need this method apart from {@link #reset()}, because the
+	 * {@link #reset()} method creates the latches immediately after
+	 * countDown(). This causes the threads which are waiting on the latches at
+	 * {@link #getFixedOutputTime()} will not be released properly.
 	 */
 	public void releaseAll() {
 		steadyLatch.countDown();
@@ -188,6 +187,7 @@ public class TailChannel extends BlockingInputChannel {
 		private final String appName;
 
 		private PerformanceLogger(String appName) {
+			super("PerformanceLogger");
 			stopFlag = new AtomicBoolean(false);
 			this.appName = appName;
 		}
