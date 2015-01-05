@@ -345,7 +345,6 @@ public class StreamJitAppManager {
 		controller.sendToAll(Command.START);
 
 		if (tailChannel != null) {
-			tailChannel.reset();
 			tailThread = new Thread(tailChannel.getRunnable(),
 					tailChannel.name());
 			tailThread.start();

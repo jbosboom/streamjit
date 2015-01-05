@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.common.base.Stopwatch;
 
 import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.distributed.common.AppStatus.AppStatusProcessor;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
@@ -121,6 +120,7 @@ public class TailChannel extends BlockingInputChannel {
 	 * @throws InterruptedException
 	 */
 	public long getFixedOutputTime() throws InterruptedException {
+		reset();
 		skipLatch.await();
 		Stopwatch stopwatch = Stopwatch.createStarted();
 		steadyLatch.await();
@@ -218,9 +218,6 @@ public class TailChannel extends BlockingInputChannel {
 					writer.write(time.toString());
 					writer.write('\n');
 					writer.flush();
-
-					reset();
-
 				} catch (InterruptedException | IOException e) {
 					e.printStackTrace();
 				}
