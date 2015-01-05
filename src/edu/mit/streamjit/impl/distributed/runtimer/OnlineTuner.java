@@ -293,9 +293,7 @@ public class OnlineTuner implements Runnable {
 			writer.write("\n----------------------------------------\n");
 			writer.write(String.format("Configuration name = %s\n", cfgName));
 			if (cfg != null) {
-				Pair<Boolean, Long> ret = reconfigure(cfg); // often the first
-															// run shows huge
-															// noise.
+				Pair<Boolean, Long> ret;
 				for (int i = 0; i < count; i++) {
 					ret = reconfigure(cfg);
 					if (ret.first) {
