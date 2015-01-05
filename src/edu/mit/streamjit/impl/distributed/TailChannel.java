@@ -205,9 +205,13 @@ public class TailChannel extends BlockingInputChannel {
 
 			writeInitialInfo(writer);
 
+			Long sum = 0l;
+
 			while (++i < 10 && !stopFlag.get()) {
 				try {
 					Long time = getFixedOutputTime();
+
+					sum += time;
 					System.out.println("Execution time is " + time
 							+ " milli seconds");
 
@@ -222,6 +226,9 @@ public class TailChannel extends BlockingInputChannel {
 				}
 			}
 			try {
+				writer.write("Average = " + sum / (i - 1));
+				writer.write('\n');
+				writer.flush();
 				writer.close();
 			} catch (IOException e) {
 				e.printStackTrace();
