@@ -35,6 +35,8 @@ public class TailChannel extends BlockingInputChannel {
 
 	private boolean skipLatchUp;
 
+	private boolean steadyLatchUp;
+
 	/**
 	 * Periodically prints no of outputs generated. See
 	 * {@link #printOutputCount()}.
@@ -74,6 +76,7 @@ public class TailChannel extends BlockingInputChannel {
 		steadyLatch = new CountDownLatch(1);
 		skipLatch = new CountDownLatch(1);
 		this.skipLatchUp = true;
+		this.steadyLatchUp = true;
 		if (GlobalConstants.tune == 0) {
 			pLogger = new PerformanceLogger(appName);
 			pLogger.start();
@@ -91,8 +94,10 @@ public class TailChannel extends BlockingInputChannel {
 			skipLatchUp = false;
 		}
 
-		if (count > totalCount)
+		if (steadyLatchUp && count > totalCount) {
 			steadyLatch.countDown();
+			steadyLatchUp = false;
+		}
 	}
 
 	@Override
@@ -159,6 +164,7 @@ public class TailChannel extends BlockingInputChannel {
 		count = 0;
 		lastCount = 0;
 		skipLatchUp = true;
+		steadyLatchUp = true;
 	}
 
 	/**
