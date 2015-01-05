@@ -157,13 +157,13 @@ public class TailChannel extends BlockingInputChannel {
 	}
 
 	public void reset() {
-		steadyLatch.countDown();
-		steadyLatch = new CountDownLatch(1);
-		skipLatch.countDown();
-		skipLatch = new CountDownLatch(1);
 		count = 0;
 		lastCount = 0;
+		skipLatch.countDown();
+		skipLatch = new CountDownLatch(1);
 		skipLatchUp = true;
+		steadyLatch.countDown();
+		steadyLatch = new CountDownLatch(1);
 		steadyLatchUp = true;
 	}
 
