@@ -1,5 +1,7 @@
 package edu.mit.streamjit.util;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -17,6 +19,25 @@ import edu.mit.streamjit.impl.common.Configuration;
  *
  */
 public class ConfigurationUtils {
+
+	/**
+	 * Reads configuration from ./appName/configurations/namePrefixappName.cfg
+	 * and returns it.
+	 * 
+	 * @param appName
+	 *            name of the streamJit app.
+	 * 
+	 * @param namePrefix
+	 *            prefix to add to the cfg file name.
+	 */
+	public static Configuration readConfiguration(String appName,
+			String namePrefix) {
+		checkNotNull(appName);
+		namePrefix = namePrefix == null ? "" : namePrefix;
+		String cfgFilePath = String.format("%s%sconfigurations%s%s%s.cfg",
+				appName, File.separator, File.separator, namePrefix, appName);
+		return readConfiguration(cfgFilePath);
+	}
 
 	/**
 	 * @param cfgFilePath
