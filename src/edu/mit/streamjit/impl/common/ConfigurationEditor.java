@@ -30,9 +30,6 @@ import edu.mit.streamjit.util.json.Jsonifiers;
 
 public class ConfigurationEditor {
 
-	static String name;
-	static int noofwrks;
-
 	/**
 	 * @param args
 	 * @throws IOException
@@ -87,9 +84,10 @@ public class ConfigurationEditor {
 		return new Pair<String, Integer>(appName, noofwrks);
 	}
 
-	private static void edit(String cfgFilePath, int maxWor)
+	private static void edit(String appName, String namePrefix, int maxWor)
 			throws NumberFormatException, IOException {
-		Configuration cfg = ConfigurationUtils.readConfiguration(cfgFilePath);
+		Configuration cfg = ConfigurationUtils.readConfiguration(appName,
+				namePrefix);
 		if (cfg == null)
 			return;
 
@@ -109,9 +107,7 @@ public class ConfigurationEditor {
 		}
 
 		cfg = builder.build();
-		FileWriter writer = new FileWriter(name);
-		writer.write(cfg.toJson());
-		writer.close();
+		ConfigurationUtils.saveConfg(cfg, namePrefix, appName);
 		System.out.println("Successfully updated");
 	}
 
@@ -153,9 +149,10 @@ public class ConfigurationEditor {
 		ConfigurationUtils.saveConfg(cfg, namePrefix, appName);
 	}
 
-	private static void edit1(String cfgFilePath, int maxWor)
+	private static void edit1(String appName, String namePrefix, int maxWor)
 			throws NumberFormatException, IOException {
-		Configuration cfg = ConfigurationUtils.readConfiguration(cfgFilePath);
+		Configuration cfg = ConfigurationUtils.readConfiguration(appName,
+				namePrefix);
 		if (cfg == null)
 			return;
 
@@ -209,9 +206,7 @@ public class ConfigurationEditor {
 		}
 
 		cfg = builder.build();
-		FileWriter writer = new FileWriter(name);
-		writer.write(cfg.toJson());
-		writer.close();
+		ConfigurationUtils.saveConfg(cfg, namePrefix, appName);
 		System.out.println("Successfully updated");
 	}
 
