@@ -144,9 +144,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 	private <I, O> Configuration cfgFromFile(StreamJitApp<I, O> app,
 			Controller controller, Configuration defaultCfg) {
-		Configuration cfg1 = ConfigurationUtils.readConfiguration(String
-				.format("%s%sconfigurations%s%s.cfg", app.name, File.separator,
-						File.separator, app.name));
+		Configuration cfg1 = ConfigurationUtils.readConfiguration(app.name,
+				null);
 		if (cfg1 == null) {
 			controller.closeAll();
 			throw new IllegalConfigurationException();

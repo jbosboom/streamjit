@@ -51,6 +51,7 @@ public class OnlineTuner implements Runnable {
 		if (GlobalConstants.tune == 1)
 			tune();
 		else if (GlobalConstants.tune == 2)
+			// verifyTuningTimes();
 			evaluate();
 		else
 			System.err
@@ -131,14 +132,12 @@ public class OnlineTuner implements Runnable {
 	}
 
 	private void evaluate() {
-		Configuration finalCfg = ConfigurationUtils.readConfiguration(String
-				.format("%s%sconfigurations%sfinal_%s.cfg", app.name,
-						File.separator, File.separator, app.name));
+		Configuration finalCfg = ConfigurationUtils.readConfiguration(app.name,
+				"final_");
 		evaluateConfig(finalCfg, "Final configuration");
 
-		Configuration handCfg = ConfigurationUtils.readConfiguration(String
-				.format("%s%sconfigurations%shand_%s.cfg", app.name,
-						File.separator, File.separator, app.name));
+		Configuration handCfg = ConfigurationUtils.readConfiguration(app.name,
+				"hand_");
 		evaluateConfig(handCfg, "Handtuned configuration");
 
 		try {
@@ -161,9 +160,8 @@ public class OnlineTuner implements Runnable {
 				550, 600, 650, 700, 750, 800, 850, 900, 950, 1000 };
 		for (int n : cfgNos) {
 			String cfgName = String.format("%d%s.cfg", n, app.name);
-			Configuration cfg = ConfigurationUtils.readConfiguration(String
-					.format("%s%sconfigurations%s%s", app.name, File.separator,
-							File.separator, cfgName));
+			Configuration cfg = ConfigurationUtils.readConfiguration(app.name,
+					new Integer(n).toString());
 
 			if (cfg == null)
 				continue;
@@ -248,9 +246,8 @@ public class OnlineTuner implements Runnable {
 		Configuration finalcfg = Configuration.fromJson(finalConfg);
 		evaluateConfig(finalcfg, "Final configuration");
 
-		Configuration handCfg = ConfigurationUtils.readConfiguration(String
-				.format("%s%sconfigurations%shand_%s.cfg", app.name,
-						File.separator, File.separator, app.name));
+		Configuration handCfg = ConfigurationUtils.readConfiguration(app.name,
+				"hand_");
 		evaluateConfig(handCfg, "Handtuned configuration");
 
 		if (needTermination) {
