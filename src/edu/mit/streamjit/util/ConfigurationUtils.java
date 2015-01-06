@@ -64,8 +64,9 @@ public class ConfigurationUtils {
 	}
 
 	/**
-	 * Saves the config into configurations/appName directory. output _.cfg file
-	 * will be named as namePrefixappName.cfg.
+	 * Saves the configuration into
+	 * ./appName/configurations/namePrefixappName.cfg. output _.cfg file will be
+	 * named as namePrefixappName.cfg.
 	 * 
 	 * @param config
 	 *            {@link Configuration} that need to be saved.
@@ -82,8 +83,9 @@ public class ConfigurationUtils {
 	}
 
 	/**
-	 * Saves the configJson into configurations/appName directory. output _.cfg
-	 * file will be named as namePrefixappName.cfg.
+	 * Saves the configuration into
+	 * ./appName/configurations/namePrefixappName.cfg. output _.cfg file will be
+	 * named as namePrefixappName.cfg.
 	 * 
 	 * @param configJson
 	 *            Json representation of the {@link Configuration} that need to
