@@ -48,10 +48,11 @@ public class ConfigurationEditor {
 	 */
 	private static void changeMultiplierVal() {
 		String appName = "NestedSplitJoinCore";
-		String cfgFileName = "Final_NestedSplitJoinCore.cfg";
-		Configuration config = ConfigurationUtils.readConfiguration(String
-				.format("%s%sconfigurations%s%s", appName, File.separator,
-						File.separator, cfgFileName));
+		String namePrefix = "final_";
+		Configuration config = ConfigurationUtils.readConfiguration(appName,
+				namePrefix);
+		if (config == null)
+			return;
 		Configuration.Builder builder = Configuration.builder(config);
 		IntParameter mulParam = config.getParameter("multiplier",
 				IntParameter.class);
@@ -63,7 +64,6 @@ public class ConfigurationEditor {
 		IntParameter newMulParam = new IntParameter("multiplier", 1, 100, 100);
 		builder.addParameter(newMulParam);
 		ConfigurationUtils.saveConfg(builder.build(), "444", appName);
-
 	}
 
 	private static void generate(OneToOneElement<?, ?> stream, int noOfnodes) {
@@ -92,18 +92,11 @@ public class ConfigurationEditor {
 		}
 	}
 
-	private static void edit(String name, int maxWor)
+	private static void edit(String cfgFilePath, int maxWor)
 			throws NumberFormatException, IOException {
-		Configuration cfg;
-		try {
-			BufferedReader reader = new BufferedReader(new FileReader(name));
-			String json = reader.readLine();
-			cfg = Configuration.fromJson(json);
-			reader.close();
-		} catch (Exception ex) {
-			System.err.println("File reader error");
+		Configuration cfg = ConfigurationUtils.readConfiguration(cfgFilePath);
+		if (cfg == null)
 			return;
-		}
 
 		Configuration.Builder builder = Configuration.builder(cfg);
 		BufferedReader keyinreader = new BufferedReader(new InputStreamReader(
@@ -174,18 +167,11 @@ public class ConfigurationEditor {
 		ConfigurationUtils.saveConfg(cfg, "0", name);
 	}
 
-	private static void edit1(String name, int maxWor)
+	private static void edit1(String cfgFilePath, int maxWor)
 			throws NumberFormatException, IOException {
-		Configuration cfg;
-		try {
-			BufferedReader reader = new BufferedReader(new FileReader(name));
-			String json = reader.readLine();
-			cfg = Configuration.fromJson(json);
-			reader.close();
-		} catch (Exception ex) {
-			System.err.println("File reader error");
+		Configuration cfg = ConfigurationUtils.readConfiguration(cfgFilePath);
+		if (cfg == null)
 			return;
-		}
 
 		Configuration.Builder builder = Configuration.builder(cfg);
 		BufferedReader keyinreader = new BufferedReader(new InputStreamReader(
@@ -243,18 +229,10 @@ public class ConfigurationEditor {
 		System.out.println("Successfully updated");
 	}
 
-	private static void print(String name) {
-		Configuration cfg;
-		try {
-			BufferedReader reader = new BufferedReader(new FileReader(name));
-			String json = reader.readLine();
-			cfg = Configuration.fromJson(json);
-			reader.close();
-		} catch (Exception ex) {
-			System.err.println("File reader error");
+	private static void print(String cfgFilePath) {
+		Configuration cfg = ConfigurationUtils.readConfiguration(cfgFilePath);
+		if (cfg == null)
 			return;
-		}
-
 		for (Map.Entry<String, Parameter> en : cfg.getParametersMap()
 				.entrySet()) {
 			if (en.getValue() instanceof SwitchParameter<?>) {
