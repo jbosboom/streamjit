@@ -22,6 +22,7 @@ import edu.mit.streamjit.impl.distributed.ConnectionManager.BlockingTCPNoParams;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.impl.distributed.HotSpotTuning;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
+import edu.mit.streamjit.impl.distributed.WorkerMachine;
 import edu.mit.streamjit.test.apps.channelvocoder7.ChannelVocoder7;
 import edu.mit.streamjit.util.ConfigurationUtils;
 import edu.mit.streamjit.util.Pair;
@@ -83,6 +84,10 @@ public class ConfigurationEditor {
 		return new Pair<String, Integer>(appName, noofwrks);
 	}
 
+	/**
+	 * This edit is for the configurations which are generated using
+	 * {@link WorkerMachine} as {@link ConfigurationManager}.
+	 */
 	private static void edit(String appName, String namePrefix, int maxWor)
 			throws NumberFormatException, IOException {
 		Configuration cfg = ConfigurationUtils.readConfiguration(appName,
@@ -148,6 +153,10 @@ public class ConfigurationEditor {
 		ConfigurationUtils.saveConfg(cfg, namePrefix, appName);
 	}
 
+	/**
+	 * This edit is for the configurations which are generated using
+	 * {@link HotSpotTuning} as {@link ConfigurationManager}.
+	 */
 	private static void edit1(String appName, String namePrefix, int maxWor)
 			throws NumberFormatException, IOException {
 		Configuration cfg = ConfigurationUtils.readConfiguration(appName,
