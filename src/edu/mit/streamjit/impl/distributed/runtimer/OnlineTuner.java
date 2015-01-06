@@ -29,13 +29,13 @@ public class OnlineTuner implements Runnable {
 	private final AbstractDrainer drainer;
 	private final StreamJitAppManager manager;
 	private final OpenTuner tuner;
-	private final StreamJitApp app;
+	private final StreamJitApp<?, ?> app;
 	private final ConfigurationManager cfgManager;
 	private final boolean needTermination;
 	private final TimeLogger logger;
 
 	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
-			StreamJitApp app, ConfigurationManager cfgManager,
+			StreamJitApp<?, ?> app, ConfigurationManager cfgManager,
 			TimeLogger logger, boolean needTermination) {
 		this.drainer = drainer;
 		this.manager = manager;
