@@ -23,7 +23,9 @@ import edu.mit.streamjit.impl.distributed.ConnectionManager.BlockingTCPNoParams;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.impl.distributed.HotSpotTuning;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
+import edu.mit.streamjit.test.apps.channelvocoder7.ChannelVocoder7;
 import edu.mit.streamjit.util.ConfigurationUtils;
+import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 public class ConfigurationEditor {
@@ -36,7 +38,8 @@ public class ConfigurationEditor {
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		// generate1(new ChannelVocoder7.ChannelVocoder7Kernel(), 16);
+		Pair<String, Integer> ret = generate(
+				new ChannelVocoder7.ChannelVocoder7Kernel(), 16);
 		// edit1(name, noofwrks);
 		// print("4366NestedSplitJoinCore.cfg");
 		// convert();
@@ -66,30 +69,22 @@ public class ConfigurationEditor {
 		ConfigurationUtils.saveConfg(builder.build(), "444", appName);
 	}
 
-	private static void generate(OneToOneElement<?, ?> stream, int noOfnodes) {
+	private static Pair<String, Integer> generate(OneToOneElement<?, ?> stream,
+			int noOfnodes) {
 		ConnectWorkersVisitor primitiveConnector = new ConnectWorkersVisitor();
 		stream.visit(primitiveConnector);
 		Worker<?, ?> source = (Worker<?, ?>) primitiveConnector.getSource();
 		Worker<?, ?> sink = (Worker<?, ?>) primitiveConnector.getSink();
-		noofwrks = Workers.getIdentifier(sink) + 1;
+		int noofwrks = Workers.getIdentifier(sink) + 1;
 
 		BlobFactory bf = new DistributedBlobFactory(noOfnodes);
 		Configuration cfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(source));
 
 		String appName = stream.getClass().getSimpleName();
-
-		name = String.format("%s%sconfigurations%shand_%s.cfg", appName,
-				File.separator, File.separator, appName);
-
-		try {
-			FileWriter writer = new FileWriter(name, false);
-			writer.write(cfg.toJson());
-			writer.flush();
-			writer.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		String namePrefix = "hand_";
+		ConfigurationUtils.saveConfg(cfg, namePrefix, appName);
+		return new Pair<String, Integer>(appName, noofwrks);
 	}
 
 	private static void edit(String cfgFilePath, int maxWor)
@@ -120,9 +115,10 @@ public class ConfigurationEditor {
 		System.out.println("Successfully updated");
 	}
 
-	private static void generate1(OneToOneElement<?, ?> stream, int noOfnodes) {
+	private static Pair<String, Integer> generate1(
+			OneToOneElement<?, ?> stream, int noOfnodes) {
 		StreamJitApp<?, ?> app = new StreamJitApp<>(stream);
-		noofwrks = Workers.getIdentifier(app.sink) + 1;
+		int noofwrks = Workers.getIdentifier(app.sink) + 1;
 		ConfigurationManager cfgManager = new HotSpotTuning(app);
 		ConnectionManager conManger = new BlockingTCPNoParams(0);
 		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManger,
@@ -131,19 +127,9 @@ public class ConfigurationEditor {
 		Configuration cfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(app.source));
 
-		String appName = stream.getClass().getSimpleName();
-
-		name = String.format("%s%sconfigurations%shand_%s.cfg", appName,
-				File.separator, File.separator, appName);
-
-		try {
-			FileWriter writer = new FileWriter(name, false);
-			writer.write(cfg.toJson());
-			writer.flush();
-			writer.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		String namePrefix = "hand_";
+		ConfigurationUtils.saveConfg(cfg, namePrefix, app.name);
+		return new Pair<String, Integer>(app.name, noofwrks);
 	}
 
 	/**
@@ -162,9 +148,9 @@ public class ConfigurationEditor {
 		Configuration cfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(source));
 
-		name = String.format("hand_%s.cfg", stream.getClass().getSimpleName());
-
-		ConfigurationUtils.saveConfg(cfg, "0", name);
+		String appName = stream.getClass().getSimpleName();
+		String namePrefix = "hand_";
+		ConfigurationUtils.saveConfg(cfg, namePrefix, appName);
 	}
 
 	private static void edit1(String cfgFilePath, int maxWor)
