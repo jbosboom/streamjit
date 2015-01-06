@@ -265,6 +265,7 @@ public class ConfigurationEditor {
 		}
 	}
 
+	@Deprecated
 	private static void convert() {
 		String appName = "ChannelVocoder7Kernel";
 		Configuration cfg = ConfigurationUtils.readConfiguration(String.format(
@@ -299,6 +300,7 @@ public class ConfigurationEditor {
 	 *            Old configuration object.
 	 * @return New configuration object with updated values from the pythonDict.
 	 */
+	@Deprecated
 	private static Configuration rebuildConfiguration(String pythonDict,
 			Configuration config) {
 		// System.out.println(pythonDict);
@@ -343,6 +345,7 @@ public class ConfigurationEditor {
 	 * @param cfg
 	 * @return
 	 */
+	@Deprecated
 	private static String getConfigurationString(Configuration cfg) {
 		String s = Jsonifiers.toJson(cfg).toString();
 		String s1 = s.replaceAll("__class__", "ttttt");
