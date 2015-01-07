@@ -33,6 +33,7 @@ public class OnlineTuner implements Runnable {
 	private final ConfigurationManager cfgManager;
 	private final boolean needTermination;
 	private final TimeLogger logger;
+	private final ConfigurationPrognosticator prognosticator;
 
 	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
 			StreamJitApp<?, ?> app, ConfigurationManager cfgManager,
@@ -44,6 +45,7 @@ public class OnlineTuner implements Runnable {
 		this.tuner = new TCPTuner();
 		this.needTermination = needTermination;
 		this.logger = logger;
+		this.prognosticator = new GraphPropertyPrognosticator(app, cfgManager);
 	}
 
 	@Override
@@ -89,13 +91,17 @@ public class OnlineTuner implements Runnable {
 					ConfigurationUtils.saveConfg(cfgJson,
 							new Integer(round).toString(), app.name);
 
-				ret = reconfigure(config);
-				if (ret.first) {
-					tuner.writeLine(new Double(ret.second).toString());
-				} else {
-					tuner.writeLine("exit");
-					break;
-				}
+				boolean possibleBetter = prognosticator.prognosticate(config);
+				if (possibleBetter) {
+					ret = reconfigure(config);
+					if (ret.first) {
+						tuner.writeLine(new Double(ret.second).toString());
+					} else {
+						tuner.writeLine("exit");
+						break;
+					}
+				} else
+					tuner.writeLine(new Double(-1).toString());
 			}
 
 		} catch (IOException e) {
