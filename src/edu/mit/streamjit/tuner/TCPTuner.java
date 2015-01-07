@@ -100,7 +100,7 @@ public final class TCPTuner implements OpenTuner {
 	private final class TunerConnection {
 
 		private BufferedReader reader = null;
-		private BufferedWriter writter = null;
+		private BufferedWriter writer = null;
 		private Socket socket = null;
 		private boolean isconnected = false;
 
@@ -115,7 +115,7 @@ public final class TCPTuner implements OpenTuner {
 					InputStream is = socket.getInputStream();
 					OutputStream os = socket.getOutputStream();
 					this.reader = new BufferedReader(new InputStreamReader(is));
-					this.writter = new BufferedWriter(
+					this.writer = new BufferedWriter(
 							new OutputStreamWriter(os));
 					isconnected = true;
 					break;
@@ -139,10 +139,10 @@ public final class TCPTuner implements OpenTuner {
 		public void writeLine(String msg) throws IOException {
 			if (isStillConnected()) {
 				try {
-					writter.write(msg);
+					writer.write(msg);
 					if (msg.toCharArray()[msg.length() - 1] != '\n')
-						writter.write('\n');
-					writter.flush();
+						writer.write('\n');
+					writer.flush();
 				} catch (IOException ix) {
 					isconnected = false;
 					throw ix;
@@ -170,8 +170,8 @@ public final class TCPTuner implements OpenTuner {
 			try {
 				if (reader != null)
 					this.reader.close();
-				if (writter != null)
-					this.writter.close();
+				if (writer != null)
+					this.writer.close();
 				if (socket != null)
 					this.socket.close();
 			} catch (IOException ex) {

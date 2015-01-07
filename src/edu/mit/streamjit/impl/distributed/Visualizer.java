@@ -100,10 +100,10 @@ public interface Visualizer {
 		 */
 		private class DOTstreamVisitor extends StreamVisitor {
 
-			private final FileWriter writter;
+			private final FileWriter writer;
 
 			DOTstreamVisitor() {
-				writter = fileWriter();
+				writer = fileWriter();
 			}
 
 			private FileWriter fileWriter() {
@@ -120,11 +120,11 @@ public interface Visualizer {
 
 			private void initilizeDot() {
 				try {
-					writter.write(String.format("digraph %s {\n", appName));
-					writter.write("\trankdir=TD;\n");
-					writter.write("\tnodesep=0.5;\n");
-					writter.write("\tranksep=equally;\n");
-					// writter.write("\tnode [shape = circle];\n");
+					writer.write(String.format("digraph %s {\n", appName));
+					writer.write("\trankdir=TD;\n");
+					writer.write("\tnodesep=0.5;\n");
+					writer.write("\tranksep=equally;\n");
+					// writer.write("\tnode [shape = circle];\n");
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -132,9 +132,9 @@ public interface Visualizer {
 
 			private void closeDot() {
 				try {
-					writter.write("}");
-					writter.flush();
-					writter.close();
+					writer.write("}");
+					writer.flush();
+					writer.close();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -201,8 +201,8 @@ public interface Visualizer {
 					int id = Workers.getIdentifier(w);
 					int sucID = Workers.getIdentifier(suc);
 					try {
-						writter.write(String.format("\t%d -> %d;\n", id, sucID));
-						// writter.write(String.format("\t%s -> %s;\n", first,
+						writer.write(String.format("\t%d -> %d;\n", id, sucID));
+						// writer.write(String.format("\t%s -> %s;\n", first,
 						// second));
 					} catch (IOException e) {
 						e.printStackTrace();

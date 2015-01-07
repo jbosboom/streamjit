@@ -955,13 +955,13 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		public void run() {
-			FileWriter writter = null;
+			FileWriter writer = null;
 			try {
 				String fileName = String.format("%s%sBufferStatus%d.txt",
 						appName, File.separator, streamNode.getNodeID());
-				writter = new FileWriter(fileName, false);
+				writer = new FileWriter(fileName, false);
 
-				writter.write(String.format(
+				writer.write(String.format(
 						"********Started*************** - %d\n", id));
 				while (!stopFlag.get()) {
 					try {
@@ -974,34 +974,34 @@ public class BlobsManagerImpl implements BlobsManager {
 						break;
 
 					if (blobExecuters == null) {
-						writter.write("blobExecuters are null...\n");
+						writer.write("blobExecuters are null...\n");
 						continue;
 					}
 
-					writter.write("----------------------------------\n");
+					writer.write("----------------------------------\n");
 					for (BlobExecuter be : blobExecuters.values()) {
-						writter.write("Status of blob " + be.blobID.toString()
+						writer.write("Status of blob " + be.blobID.toString()
 								+ "\n");
 
 						if (be.bufferMap == null) {
-							writter.write("Buffer map is null...\n");
+							writer.write("Buffer map is null...\n");
 							continue;
 						}
 
 						if (stopFlag.get())
 							break;
 
-						writter.write("Input channel details\n");
-						write(be, writter, true);
+						writer.write("Input channel details\n");
+						write(be, writer, true);
 
-						writter.write("Output channel details\n");
-						write(be, writter, false);
+						writer.write("Output channel details\n");
+						write(be, writer, false);
 					}
-					writter.write("----------------------------------\n");
-					writter.flush();
+					writer.write("----------------------------------\n");
+					writer.flush();
 				}
 
-				writter.write(String.format(
+				writer.write(String.format(
 						"********Stopped*************** - %d\n", id));
 			} catch (IOException e1) {
 				e1.printStackTrace();
@@ -1009,14 +1009,14 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 
 			try {
-				if (writter != null)
-					writter.close();
+				if (writer != null)
+					writer.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
 
-		private void write(BlobExecuter be, FileWriter writter, boolean isIn)
+		private void write(BlobExecuter be, FileWriter writer, boolean isIn)
 				throws IOException {
 			Set<Token> tokenSet = tokenSet(be, isIn);
 			for (Token t : tokenSet) {
@@ -1033,7 +1033,7 @@ public class BlobsManagerImpl implements BlobsManager {
 
 				String status = availableResource >= min ? "Firable"
 						: "NOT firable";
-				writter.write(t.toString() + "\tMin - " + min
+				writer.write(t.toString() + "\tMin - " + min
 						+ ",\tAvailableResource - " + availableResource + "\t"
 						+ status + "\n");
 			}
