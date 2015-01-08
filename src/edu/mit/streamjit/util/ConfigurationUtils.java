@@ -65,8 +65,8 @@ public class ConfigurationUtils {
 
 	/**
 	 * Saves the configuration into
-	 * ./appName/configurations/namePrefix_appName.cfg. output _.cfg file will be
-	 * named as namePrefix_appName.cfg.
+	 * ./appName/configurations/namePrefix_appName.cfg. output _.cfg file will
+	 * be named as namePrefix_appName.cfg.
 	 * 
 	 * @param config
 	 *            {@link Configuration} that need to be saved.
@@ -84,8 +84,8 @@ public class ConfigurationUtils {
 
 	/**
 	 * Saves the configuration into
-	 * ./appName/configurations/namePrefix_appName.cfg. output _.cfg file will be
-	 * named as namePrefix_appName.cfg.
+	 * ./appName/configurations/namePrefix_appName.cfg. output _.cfg file will
+	 * be named as namePrefix_appName.cfg.
 	 * 
 	 * @param configJson
 	 *            Json representation of the {@link Configuration} that need to
@@ -117,5 +117,23 @@ public class ConfigurationUtils {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	/**
+	 * Adds @param prefix as an extra data to the @param config. Returned
+	 * configuration object will contain an extra data named "configPrefix".
+	 * 
+	 * @param config
+	 *            {@link Configuration} object in which the configuration prefix
+	 *            need to be added.
+	 * @param prefix
+	 *            prefix that need to be added to the configuration.
+	 * @return Same @param config with configPrefix as an extra data.
+	 */
+	public static Configuration addConfigPrefix(Configuration config,
+			String prefix) {
+		Configuration.Builder builder = Configuration.builder(config);
+		builder.putExtraData("configPrefix", prefix);
+		return builder.build();
 	}
 }

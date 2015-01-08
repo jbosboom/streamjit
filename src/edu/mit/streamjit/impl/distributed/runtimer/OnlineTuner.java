@@ -86,7 +86,8 @@ public class OnlineTuner implements Runnable {
 						"---------------------%d-------------------------",
 						++round));
 				Configuration config = Configuration.fromJson(cfgJson);
-				config = addConfigPrefix(config, new Integer(round).toString());
+				config = ConfigurationUtils.addConfigPrefix(config,
+						new Integer(round).toString());
 
 				if (GlobalConstants.saveAllConfigurations)
 					ConfigurationUtils.saveConfg(cfgJson,
@@ -250,12 +251,12 @@ public class OnlineTuner implements Runnable {
 		System.out.println("Tuning finished");
 		ConfigurationUtils.saveConfg(finalConfg, "final", app.name);
 		Configuration finalcfg = Configuration.fromJson(finalConfg);
-		finalcfg = addConfigPrefix(finalcfg, "final");
+		finalcfg = ConfigurationUtils.addConfigPrefix(finalcfg, "final");
 		evaluateConfig(finalcfg, "Final configuration");
 
 		Configuration handCfg = ConfigurationUtils.readConfiguration(app.name,
 				"hand");
-		handCfg = addConfigPrefix(handCfg, "hand");
+		handCfg = ConfigurationUtils.addConfigPrefix(handCfg, "hand");
 		evaluateConfig(handCfg, "Handtuned configuration");
 
 		if (needTermination) {
@@ -320,11 +321,5 @@ public class OnlineTuner implements Runnable {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-	}
-
-	private Configuration addConfigPrefix(Configuration config, String prefix) {
-		Configuration.Builder builder = Configuration.builder(config);
-		builder.putExtraData("configPrefix", prefix);
-		return builder.build();
 	}
 }
