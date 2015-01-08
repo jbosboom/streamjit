@@ -141,11 +141,11 @@ public class OnlineTuner implements Runnable {
 
 	private void evaluate() {
 		Configuration finalCfg = ConfigurationUtils.readConfiguration(app.name,
-				"final_");
+				"final");
 		evaluateConfig(finalCfg, "Final configuration");
 
 		Configuration handCfg = ConfigurationUtils.readConfiguration(app.name,
-				"hand_");
+				"hand");
 		evaluateConfig(handCfg, "Handtuned configuration");
 
 		try {
@@ -166,7 +166,7 @@ public class OnlineTuner implements Runnable {
 		int[] cfgNos = { 10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500,
 				550, 600, 650, 700, 750, 800, 850, 900, 950, 1000 };
 		for (int n : cfgNos) {
-			String cfgName = String.format("%d%s.cfg", n, app.name);
+			String cfgName = String.format("%d_%s.cfg", n, app.name);
 			Configuration cfg = ConfigurationUtils.readConfiguration(app.name,
 					new Integer(n).toString());
 
@@ -248,14 +248,14 @@ public class OnlineTuner implements Runnable {
 	private void handleTermination() throws IOException {
 		String finalConfg = tuner.readLine();
 		System.out.println("Tuning finished");
-		ConfigurationUtils.saveConfg(finalConfg, "final_", app.name);
+		ConfigurationUtils.saveConfg(finalConfg, "final", app.name);
 		Configuration finalcfg = Configuration.fromJson(finalConfg);
-		finalcfg = addConfigPrefix(finalcfg, "final_");
+		finalcfg = addConfigPrefix(finalcfg, "final");
 		evaluateConfig(finalcfg, "Final configuration");
 
 		Configuration handCfg = ConfigurationUtils.readConfiguration(app.name,
-				"hand_");
-		handCfg = addConfigPrefix(handCfg, "hand_");
+				"hand");
+		handCfg = addConfigPrefix(handCfg, "hand");
 		evaluateConfig(handCfg, "Handtuned configuration");
 
 		if (needTermination) {

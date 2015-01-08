@@ -21,7 +21,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 public class ConfigurationUtils {
 
 	/**
-	 * Reads configuration from ./appName/configurations/namePrefixappName.cfg
+	 * Reads configuration from ./appName/configurations/namePrefix_appName.cfg
 	 * and returns it.
 	 * 
 	 * @param appName
@@ -34,7 +34,7 @@ public class ConfigurationUtils {
 			String namePrefix) {
 		checkNotNull(appName);
 		namePrefix = namePrefix == null ? "" : namePrefix;
-		String cfgFilePath = String.format("%s%sconfigurations%s%s%s.cfg",
+		String cfgFilePath = String.format("%s%sconfigurations%s%s_%s.cfg",
 				appName, File.separator, File.separator, namePrefix, appName);
 		return readConfiguration(cfgFilePath);
 	}
@@ -65,8 +65,8 @@ public class ConfigurationUtils {
 
 	/**
 	 * Saves the configuration into
-	 * ./appName/configurations/namePrefixappName.cfg. output _.cfg file will be
-	 * named as namePrefixappName.cfg.
+	 * ./appName/configurations/namePrefix_appName.cfg. output _.cfg file will be
+	 * named as namePrefix_appName.cfg.
 	 * 
 	 * @param config
 	 *            {@link Configuration} that need to be saved.
@@ -74,7 +74,7 @@ public class ConfigurationUtils {
 	 *            prefix to add to the out put file name.
 	 * @param appName
 	 *            name of the streamJit app. output _.cfg file will be named as
-	 *            namePrefixappName.cfg.
+	 *            namePrefix_appName.cfg.
 	 */
 	public static void saveConfg(Configuration config, String namePrefix,
 			String appName) {
@@ -84,8 +84,8 @@ public class ConfigurationUtils {
 
 	/**
 	 * Saves the configuration into
-	 * ./appName/configurations/namePrefixappName.cfg. output _.cfg file will be
-	 * named as namePrefixappName.cfg.
+	 * ./appName/configurations/namePrefix_appName.cfg. output _.cfg file will be
+	 * named as namePrefix_appName.cfg.
 	 * 
 	 * @param configJson
 	 *            Json representation of the {@link Configuration} that need to
@@ -94,7 +94,7 @@ public class ConfigurationUtils {
 	 *            prefix to add to the out put file name.
 	 * @param appName
 	 *            name of the streamJit app. output _.cfg file will be named as
-	 *            namePrefixappName.cfg.
+	 *            namePrefix_appName.cfg.
 	 */
 	public static void saveConfg(String configJson, String namePrefix,
 			String appName) {
@@ -108,7 +108,7 @@ public class ConfigurationUtils {
 					return;
 				}
 
-			File file = new File(dir, String.format("%s%s.cfg", namePrefix,
+			File file = new File(dir, String.format("%s_%s.cfg", namePrefix,
 					appName));
 			FileWriter writer = new FileWriter(file, false);
 			writer.write(configJson);

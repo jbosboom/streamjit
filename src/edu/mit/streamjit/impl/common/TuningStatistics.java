@@ -23,7 +23,7 @@ public class TuningStatistics {
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		// printCfgValues("1NestedSplitJoinCore.cfg");
+		// printCfgValues("1_NestedSplitJoinCore.cfg");
 		printAll("../Tuner layer/tuning-oopsla2014");
 
 	}

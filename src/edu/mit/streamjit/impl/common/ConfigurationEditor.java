@@ -38,7 +38,7 @@ public class ConfigurationEditor {
 		Pair<String, Integer> ret = generate(
 				new ChannelVocoder7.ChannelVocoder7Kernel(), 16);
 		// edit1(name, noofwrks);
-		// print("4366NestedSplitJoinCore.cfg");
+		// print("4366_NestedSplitJoinCore.cfg");
 		// convert();
 		// changeMultiplierVal();
 	}
@@ -236,11 +236,11 @@ public class ConfigurationEditor {
 	private static void convert() {
 		String appName = "ChannelVocoder7Kernel";
 		Configuration cfg = ConfigurationUtils.readConfiguration(String.format(
-				"%s%sconfigurations%s%d%s.cfg", appName, File.separator,
+				"%s%sconfigurations%s%d_%s.cfg", appName, File.separator,
 				File.separator, 1, appName));
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(
-					String.format("%d%s.cfg", 0, appName)));
+					String.format("%d_%s.cfg", 0, appName)));
 			String pythonDict = reader.readLine();
 			reader.close();
 

@@ -153,7 +153,7 @@ public class ConfigurationAnalyzer {
 	}
 
 	private Configuration readcoConfiguration(Integer cfgNo) {
-		String cfg = String.format("%s%s%d%s.cfg", cfgDir, File.separator,
+		String cfg = String.format("%s%s%d_%s.cfg", cfgDir, File.separator,
 				cfgNo, appName);
 		return ConfigurationUtils.readConfiguration(cfg);
 	}
