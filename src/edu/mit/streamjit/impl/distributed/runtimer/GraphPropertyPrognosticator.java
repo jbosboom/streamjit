@@ -1,5 +1,8 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -23,20 +26,37 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 
 	private final ConfigurationManager cfgManager;
 
+	private final FileWriter writer;
+
+	private int count = 0;
+
 	public GraphPropertyPrognosticator(StreamJitApp<?, ?> app,
 			ConfigurationManager cfgManager) {
 		this.app = app;
 		this.cfgManager = cfgManager;
+		this.writer = fileWriter();
+		writeHeader(writer);
 	}
 
 	@Override
 	public boolean prognosticate(Configuration config) {
+		count++;
 		if (!cfgManager.newConfiguration(config))
 			return false;
-		if (bigToSmallBlobRatio() > 10)
-			return false;
-		if (loadRatio() > 5)
-			return false;
+		float bigToSmallBlobRatio = bigToSmallBlobRatio();
+		float loadRatio = loadRatio();
+		float blobToNodeRatio = blobToNodeRatio();
+		float BoundaryChannelRatio = totalToBoundaryChannelRatio();
+		try {
+			writer.write(String.format("\n%4d\t\t", count));
+			writer.write(String.format("%.2f\t\t", bigToSmallBlobRatio));
+			writer.write(String.format("%.2f\t\t", loadRatio));
+			writer.write(String.format("%.2f\t\t", blobToNodeRatio));
+			writer.write(String.format("%.2f\t\t", BoundaryChannelRatio));
+			writer.flush();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		return true;
 	}
 
@@ -123,5 +143,47 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 		}
 		float boundaryChannelRatio = ((float) totalChannels) / boundaryChannels;
 		return boundaryChannelRatio;
+	}
+
+	private FileWriter fileWriter() {
+		FileWriter w = null;
+		String fileName = String.format("%s%sGraphProperty.txt", app.name,
+				File.separator);
+		try {
+			w = new FileWriter(fileName, false);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return w;
+	}
+
+	private static void writeHeader(FileWriter writer) {
+		try {
+			writer.write(String.format("%.7s", "cfgID"));
+			writer.write("\t\t");
+			writer.write(String.format("%.7s", "bigToSmallBlobRatio"));
+			writer.write("\t\t");
+			writer.write(String.format("%.7s", "loadRatio"));
+			writer.write("\t\t");
+			writer.write(String.format("%.7s", "blobToNodeRatio"));
+			writer.write("\t\t");
+			writer.write(String.format("%.7s", "BoundaryChannelRatio"));
+			writer.write("\t\t");
+			writer.write(String.format("%.7s", "time"));
+			writer.write("\t\t");
+			writer.flush();
+		} catch (IOException e) {
+
+		}
+	}
+
+	@Override
+	public void time(double time) {
+		try {
+			writer.write(String.format("%.0f\t\t", time));
+			writer.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }
