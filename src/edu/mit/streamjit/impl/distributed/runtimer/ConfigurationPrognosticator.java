@@ -28,6 +28,14 @@ public interface ConfigurationPrognosticator {
 	public boolean prognosticate(Configuration config);
 
 	/**
+	 * An auxiliary method that can be used to update a configuration's running
+	 * time. Has been added for data analysis purpose.
+	 * 
+	 * @param time
+	 */
+	public void time(double time);
+
+	/**
 	 * No Prognostication. The method {@link #prognosticate(Configuration)}
 	 * always returns {@code true}
 	 */
@@ -37,6 +45,10 @@ public interface ConfigurationPrognosticator {
 		@Override
 		public boolean prognosticate(Configuration config) {
 			return true;
+		}
+
+		@Override
+		public void time(double time) {
 		}
 	}
 }
