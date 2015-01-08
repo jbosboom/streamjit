@@ -86,6 +86,8 @@ public class OnlineTuner implements Runnable {
 						"---------------------%d-------------------------",
 						++round));
 				Configuration config = Configuration.fromJson(cfgJson);
+				config = addConfigPrefix(config,
+						new Integer(round).toString());
 
 				if (GlobalConstants.saveAllConfigurations)
 					ConfigurationUtils.saveConfg(cfgJson,
@@ -319,5 +321,11 @@ public class OnlineTuner implements Runnable {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
+	}
+
+	private Configuration addConfigPrefix(Configuration config, String prefix) {
+		Configuration.Builder builder = Configuration.builder(config);
+		builder.putExtraData("configPrefix", prefix);
+		return builder.build();
 	}
 }
