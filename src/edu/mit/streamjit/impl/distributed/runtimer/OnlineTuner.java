@@ -232,7 +232,7 @@ public class OnlineTuner implements Runnable {
 	}
 
 	private int getMultiplier(Configuration config) {
-		int multiplier = 1000;
+		int multiplier = 50;
 		IntParameter mulParam = config.getParameter("multiplier",
 				IntParameter.class);
 		if (mulParam != null)
