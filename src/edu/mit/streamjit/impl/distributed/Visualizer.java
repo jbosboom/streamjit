@@ -22,6 +22,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.Utils;
+import edu.mit.streamjit.util.ConfigurationUtils;
 
 /**
  * Interface to visualize a stream graph and it's configurations. Use the
@@ -78,6 +79,11 @@ public interface Visualizer {
 		protected final OneToOneElement<?, ?> streamGraph;
 
 		private final String appName;
+
+		/**
+		 * namePrefix of the current configuration.
+		 */
+		private String namePrefix = "";
 
 		/**
 		 * Tells whether the dot tool is installed in the system or not.
@@ -213,14 +219,15 @@ public interface Visualizer {
 
 		@Override
 		public void newConfiguration(Configuration cfg) {
-
+			namePrefix = ConfigurationUtils.getConfigPrefix(cfg);
 		}
 
 		private void runDot(String file) {
 			String fileName = String.format("./%s%s%s.dot", appName,
 					File.separator, file);
-			String outFileName = String.format("./%s%s%s.png", appName,
-					File.separator, file);
+			String outFileName = String.format(
+					"./%s%sconfigurations%s%s_%s.png", appName, File.separator,
+					File.separator, namePrefix, file);
 			ProcessBuilder pb = new ProcessBuilder("dot", "-Tpng", fileName,
 					"-o", outFileName);
 			try {
