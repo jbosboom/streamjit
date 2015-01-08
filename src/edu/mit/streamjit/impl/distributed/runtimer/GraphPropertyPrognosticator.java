@@ -24,8 +24,6 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 
 	private final StreamJitApp<?, ?> app;
 
-	private final ConfigurationManager cfgManager;
-
 	private final FileWriter writer;
 
 	private int count = 0;
@@ -33,7 +31,6 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 	public GraphPropertyPrognosticator(StreamJitApp<?, ?> app,
 			ConfigurationManager cfgManager) {
 		this.app = app;
-		this.cfgManager = cfgManager;
 		this.writer = fileWriter();
 		writeHeader(writer);
 	}
@@ -41,8 +38,6 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 	@Override
 	public boolean prognosticate(Configuration config) {
 		count++;
-		if (!cfgManager.newConfiguration(config))
-			return false;
 		float bigToSmallBlobRatio = bigToSmallBlobRatio();
 		float loadRatio = loadRatio();
 		float blobToNodeRatio = blobToNodeRatio();
