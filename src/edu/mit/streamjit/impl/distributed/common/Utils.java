@@ -79,16 +79,23 @@ public class Utils {
 				return false;
 			}
 		} else
-			return dir.mkdir();
+			return dir.mkdirs();
 	}
 
 	/**
+	 * Creates app directory with the name of appName, and creates a sub
+	 * directory "configurations".
+	 * 
 	 * @param name
 	 *            name of the directory.
-	 * @return <code>true</code> if and only if the directory was created; false
-	 *         otherwise.
+	 * @return <code>true</code> if and only if the directories were created;
+	 *         false otherwise.
 	 */
 	public static boolean createAppDir(String appName) {
-		return createDir(appName);
+		if (createDir(appName))
+			return createDir(String.format("%s%sconfigurations", appName,
+					File.separator));
+		else
+			return false;
 	}
 }
