@@ -93,18 +93,14 @@ public class OnlineTuner implements Runnable {
 					ConfigurationUtils.saveConfg(cfgJson,
 							new Integer(round).toString(), app.name);
 
-				boolean possibleBetter = prognosticator.prognosticate(config);
-				if (possibleBetter) {
-					ret = reconfigure(config);
-					if (ret.first) {
-						prognosticator.time(ret.second);
-						tuner.writeLine(new Double(ret.second).toString());
-					} else {
-						tuner.writeLine("exit");
-						break;
-					}
-				} else
-					tuner.writeLine(new Double(-1).toString());
+				ret = reconfigure(config);
+				if (ret.first) {
+					prognosticator.time(ret.second);
+					tuner.writeLine(new Double(ret.second).toString());
+				} else {
+					tuner.writeLine("exit");
+					break;
+				}
 			}
 
 		} catch (IOException e) {
@@ -192,6 +188,9 @@ public class OnlineTuner implements Runnable {
 
 		try {
 			if (!cfgManager.newConfiguration(config))
+				return new Pair<Boolean, Long>(true, -1l);
+
+			if (!prognosticator.prognosticate(config))
 				return new Pair<Boolean, Long>(true, -1l);
 
 			if (!intermediateDraining())
