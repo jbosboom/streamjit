@@ -63,15 +63,32 @@ public class Utils {
 				.println("Memory Use :" + usedMemory + "M/" + maxMemory + "M");
 	}
 
-	public static void createAppDir(String appName) {
-		File appDir = new File(appName);
-		if (appDir.exists()) {
-			if (appDir.isDirectory())
-				return;
-			else
-				System.err.println("A file exists in the name of appDir-"
-						+ appName);
+	/**
+	 * @param name
+	 *            name of the directory.
+	 * @return <code>true</code> if and only if the directory was created; false
+	 *         otherwise.
+	 */
+	private static boolean createDir(String name) {
+		File dir = new File(name);
+		if (dir.exists()) {
+			if (dir.isDirectory())
+				return true;
+			else {
+				System.err.println("A file exists in the name of dir-" + name);
+				return false;
+			}
 		} else
-			appDir.mkdir();
+			return dir.mkdir();
+	}
+
+	/**
+	 * @param name
+	 *            name of the directory.
+	 * @return <code>true</code> if and only if the directory was created; false
+	 *         otherwise.
+	 */
+	public static boolean createAppDir(String appName) {
+		return createDir(appName);
 	}
 }
