@@ -95,6 +95,7 @@ public class OnlineTuner implements Runnable {
 				if (possibleBetter) {
 					ret = reconfigure(config);
 					if (ret.first) {
+						prognosticator.time(ret.second);
 						tuner.writeLine(new Double(ret.second).toString());
 					} else {
 						tuner.writeLine("exit");
