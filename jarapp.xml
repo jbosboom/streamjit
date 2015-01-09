@@ -57,7 +57,7 @@
 	<target name="buildAndRun" depends="buildApp, runAll">
 	</target>
 
-	<target name="runAll">
+	<target name="runAll" description="Runs app.jar and two instances of StreamNode.jar">
 		<exec dir="." executable="gnome-terminal" osfamily="unix">
 			<arg value="--tab" />
 			<arg value="-e" />
@@ -71,7 +71,7 @@
 		</exec>
 	</target>
 
-	<target name="runStreamNode">
+	<target name="runStreamNode" description="Runs two instances of StreamNode.jar">
 		<exec dir="." executable="gnome-terminal" osfamily="unix">
 			<arg value="--tab" />
 			<arg value="-e" />
