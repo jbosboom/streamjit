@@ -71,6 +71,17 @@
 		</exec>
 	</target>
 
+	<target name="runStreamNode">
+		<exec dir="." executable="gnome-terminal" osfamily="unix">
+			<arg value="--tab" />
+			<arg value="-e" />
+			<arg value="java -jar StreamNode.jar" />
+			<arg value="--tab" />
+			<arg value="-e" />
+			<arg value="java -jar StreamNode.jar" />
+		</exec>
+	</target>
+
 
 	<target name="getLogin">
 		<input message="Enter Username:" addproperty="username" />
