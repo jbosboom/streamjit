@@ -11,7 +11,7 @@
 	<!-- property name="username" value="sumanan" /-->
 	<!-- property name="password" value="" / -->
 
-	<target name="buildApp" depends="StreamNode" description="Exports ${app}.jar">
+	<target name="buildApp" depends="buildStreamNode" description="Exports ${app}.jar">
 		<jar destfile="${app}.jar" filesetmanifest="mergewithoutmain">
 			<manifest>
 				<attribute name="Main-Class" value="${mainclass}" />
@@ -29,7 +29,7 @@
 		</jar>
 	</target>
 
-	<target name="StreamNode" description="Exports StreamNode.jar">
+	<target name="buildStreamNode" description="Exports StreamNode.jar">
 		<jar destfile="StreamNode.jar" filesetmanifest="mergewithoutmain">
 			<manifest>
 				<attribute name="Main-Class" value="edu.mit.streamjit.impl.distributed.node.StreamNode" />
