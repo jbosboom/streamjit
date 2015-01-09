@@ -54,10 +54,10 @@
 		</scp>
 	</target>
 
-	<target name="buildAndRun" depends="buildApp, run">
+	<target name="buildAndRun" depends="buildApp, runAll">
 	</target>
 
-	<target name="run">
+	<target name="runAll">
 		<exec dir="." executable="gnome-terminal" osfamily="unix">
 			<arg value="--tab" />
 			<arg value="-e" />
