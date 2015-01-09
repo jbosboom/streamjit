@@ -11,7 +11,7 @@
 	<!-- property name="username" value="sumanan" /-->
 	<!-- property name="password" value="" / -->
 
-	<target name="buildApp" depends="buildStreamNode" description="Exports ${app}.jar">
+	<target name="buildApp" description="Exports ${app}.jar">
 		<jar destfile="${app}.jar" filesetmanifest="mergewithoutmain">
 			<manifest>
 				<attribute name="Main-Class" value="${mainclass}" />
@@ -55,6 +55,9 @@
 	</target>
 
 	<target name="buildAndRun" depends="buildApp, runAll">
+	</target>
+
+	<target name="buildAll" depends="buildApp, buildStreamNode">
 	</target>
 
 	<target name="runAll" description="Runs app.jar and two instances of StreamNode.jar">
