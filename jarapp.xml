@@ -47,17 +47,18 @@
 		</jar>
 	</target>
 
-	<target name="sendtoLanka" depends="buildAll, getLogin">
-		<scp trust="true" sftp="true" todir="${username}:${password}@lanka.csail.mit.edu:/data/scratch/${username}/${app}">
-			<fileset file="StreamNode.jar" />
-			<fileset file="${app}.jar" />
-		</scp>
-	</target>
-
-	<target name="buildAndRunAll" depends="buildAll, runAll">
-	</target>
-
 	<target name="buildAll" depends="buildApp, buildStreamNode">
+	</target>
+
+	<target name="runStreamNode" description="Runs two instances of StreamNode.jar">
+		<exec dir="." executable="gnome-terminal" osfamily="unix">
+			<arg value="--tab" />
+			<arg value="-e" />
+			<arg value="java -jar StreamNode.jar" />
+			<arg value="--tab" />
+			<arg value="-e" />
+			<arg value="java -jar StreamNode.jar" />
+		</exec>
 	</target>
 
 	<target name="runAll" description="Runs app.jar and two instances of StreamNode.jar">
@@ -74,17 +75,15 @@
 		</exec>
 	</target>
 
-	<target name="runStreamNode" description="Runs two instances of StreamNode.jar">
-		<exec dir="." executable="gnome-terminal" osfamily="unix">
-			<arg value="--tab" />
-			<arg value="-e" />
-			<arg value="java -jar StreamNode.jar" />
-			<arg value="--tab" />
-			<arg value="-e" />
-			<arg value="java -jar StreamNode.jar" />
-		</exec>
+	<target name="buildAndRunAll" depends="buildAll, runAll">
 	</target>
 
+	<target name="sendtoLanka" depends="buildAll, getLogin">
+		<scp trust="true" sftp="true" todir="${username}:${password}@lanka.csail.mit.edu:/data/scratch/${username}/${app}">
+			<fileset file="StreamNode.jar" />
+			<fileset file="${app}.jar" />
+		</scp>
+	</target>
 
 	<target name="getLogin">
 		<input message="Enter Username:" addproperty="username" />
