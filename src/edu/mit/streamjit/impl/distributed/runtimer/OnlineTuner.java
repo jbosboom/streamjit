@@ -300,6 +300,7 @@ public class OnlineTuner implements Runnable {
 				for (int i = 0; i < count; i++) {
 					ret = reconfigure(cfg);
 					if (ret.first) {
+						prognosticator.time(ret.second);
 						writer.write(ret.second.toString());
 						writer.write('\n');
 						writer.flush();
