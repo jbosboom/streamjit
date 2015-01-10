@@ -162,7 +162,7 @@ public class OnlineTuner implements Runnable {
 	private void verifyTuningTimes() {
 		String[] cfgPrefixes = { "10", "50", "100", "150", "200", "250", "300",
 				"350", "400", "450", "500", "550", "600", "650", "700", "750",
-				"800", "850", "900", "950", "1000" };
+				"800", "850", "900", "950", "1000", "hand", "final" };
 		for (String prefix : cfgPrefixes) {
 			String cfgName = String.format("%s_%s.cfg", prefix, app.name);
 			Configuration cfg = ConfigurationUtils.readConfiguration(app.name,
