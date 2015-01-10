@@ -47,14 +47,14 @@
 		</jar>
 	</target>
 
-	<target name="sendtoLanka" depends="buildApp, getLogin">
+	<target name="sendtoLanka" depends="buildAll, getLogin">
 		<scp trust="true" sftp="true" todir="${username}:${password}@lanka.csail.mit.edu:/data/scratch/${username}/${app}">
 			<fileset file="StreamNode.jar" />
 			<fileset file="${app}.jar" />
 		</scp>
 	</target>
 
-	<target name="buildAndRun" depends="buildApp, runAll">
+	<target name="buildAndRunAll" depends="buildAll, runAll">
 	</target>
 
 	<target name="buildAll" depends="buildApp, buildStreamNode">
