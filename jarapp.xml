@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!--Sumanan, sumanan@mit.edu, 15-12-2014 -->
-<project default="buildAll" name="StreamJIT" basedir="/media/sumanan/D/StreamJit11/streamjit">
+<project default="exportAll" name="StreamJIT" basedir="/media/sumanan/D/StreamJit11/streamjit">
 	<property file="jarapp.properties" />
 	<!--property name="app" value="NestedSplitJoin" /-->
 	<!--property name="mainclass" value="edu.mit.streamjit.test.sanity.nestedsplitjoinexample.NestedSplitJoin" /-->
@@ -11,7 +11,7 @@
 	<!-- property name="username" value="sumanan" /-->
 	<!-- property name="password" value="" / -->
 
-	<target name="buildApp" description="Exports ${app}.jar">
+	<target name="exportApp.jar" description="Exports ${app}.jar">
 		<jar destfile="${app}.jar" filesetmanifest="mergewithoutmain">
 			<manifest>
 				<attribute name="Main-Class" value="${mainclass}" />
@@ -29,7 +29,7 @@
 		</jar>
 	</target>
 
-	<target name="buildStreamNode" description="Exports StreamNode.jar">
+	<target name="exportStreamNode.jar" description="Exports StreamNode.jar">
 		<jar destfile="StreamNode.jar" filesetmanifest="mergewithoutmain">
 			<manifest>
 				<attribute name="Main-Class" value="edu.mit.streamjit.impl.distributed.node.StreamNode" />
@@ -47,7 +47,7 @@
 		</jar>
 	</target>
 
-	<target name="buildAll" depends="buildApp, buildStreamNode">
+	<target name="exportAll" depends="exportApp.jar, exportStreamNode.jar">
 	</target>
 
 	<target name="runStreamNode" description="Runs two instances of StreamNode.jar">
@@ -75,10 +75,10 @@
 		</exec>
 	</target>
 
-	<target name="buildAndRunAll" depends="buildAll, runAll">
+	<target name="exportAndRunAll" depends="exportAll, runAll">
 	</target>
 
-	<target name="sendtoLanka" depends="buildAll, getLogin">
+	<target name="sendtoLanka" depends="exportAll, getLogin">
 		<scp trust="true" sftp="true" todir="${username}:${password}@lanka.csail.mit.edu:/data/scratch/${username}/${app}">
 			<fileset file="StreamNode.jar" />
 			<fileset file="${app}.jar" />
