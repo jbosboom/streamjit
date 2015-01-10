@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!--Sumanan, sumanan@mit.edu, 15-12-2014 -->
-<project default="buildApp" name="StreamJIT" basedir="/media/sumanan/D/StreamJit11/streamjit">
+<project default="buildAll" name="StreamJIT" basedir="/media/sumanan/D/StreamJit11/streamjit">
 	<property file="jarapp.properties" />
 	<!--property name="app" value="NestedSplitJoin" /-->
 	<!--property name="mainclass" value="edu.mit.streamjit.test.sanity.nestedsplitjoinexample.NestedSplitJoin" /-->
