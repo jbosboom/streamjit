@@ -167,8 +167,6 @@ public class OnlineTuner implements Runnable {
 			Configuration cfg = ConfigurationUtils.readConfiguration(app.name,
 					new Integer(n).toString());
 
-			if (cfg == null)
-				continue;
 			evaluateConfig(cfg, cfgName);
 		}
 		terminate();
