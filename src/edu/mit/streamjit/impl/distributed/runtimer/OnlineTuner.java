@@ -160,13 +160,13 @@ public class OnlineTuner implements Runnable {
 	 * This method can be called after the completion of the tuning.
 	 */
 	private void verifyTuningTimes() {
-		int[] cfgNos = { 10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500,
-				550, 600, 650, 700, 750, 800, 850, 900, 950, 1000 };
-		for (int n : cfgNos) {
-			String cfgName = String.format("%d_%s.cfg", n, app.name);
+		String[] cfgPrefixes = { "10", "50", "100", "150", "200", "250", "300",
+				"350", "400", "450", "500", "550", "600", "650", "700", "750",
+				"800", "850", "900", "950", "1000" };
+		for (String prefix : cfgPrefixes) {
+			String cfgName = String.format("%s_%s.cfg", prefix, app.name);
 			Configuration cfg = ConfigurationUtils.readConfiguration(app.name,
-					new Integer(n).toString());
-
+					prefix);
 			evaluateConfig(cfg, cfgName);
 		}
 		terminate();
