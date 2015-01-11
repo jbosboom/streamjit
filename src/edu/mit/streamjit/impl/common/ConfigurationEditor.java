@@ -37,18 +37,15 @@ public class ConfigurationEditor {
 	public static void main(String[] args) throws IOException {
 		Pair<String, Integer> ret = generate(
 				new ChannelVocoder7.ChannelVocoder7Kernel(), 16);
-		// edit1(name, noofwrks);
+		// edit1("FilterBankPipeline", "463", 83);
 		// print("4366_NestedSplitJoinCore.cfg");
-		// convert();
-		// changeMultiplierVal();
+		// changeMultiplierVal("NestedSplitJoinCore","final");
 	}
 
 	/**
 	 * Reads a configuration and changes its multiplier value.
 	 */
-	private static void changeMultiplierVal() {
-		String appName = "NestedSplitJoinCore";
-		String namePrefix = "final_";
+	private static void changeMultiplierVal(String appName, String namePrefix) {
 		Configuration config = ConfigurationUtils.readConfiguration(appName,
 				namePrefix);
 		if (config == null)
