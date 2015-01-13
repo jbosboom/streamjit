@@ -14,6 +14,7 @@ import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
+import edu.mit.streamjit.util.ConfigurationUtils;
 
 /**
  * Assumes the cluster environment is homogeneous.
@@ -27,8 +28,6 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 
 	private final FileWriter writer;
 
-	private int count = 0;
-
 	private final Set<List<Integer>> paths;
 
 	public GraphPropertyPrognosticator(StreamJitApp<?, ?> app,
@@ -41,14 +40,14 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 
 	@Override
 	public boolean prognosticate(Configuration config) {
-		count++;
+		String cfgPrefix = ConfigurationUtils.getConfigPrefix(config);
 		float bigToSmallBlobRatio = bigToSmallBlobRatio();
 		float loadRatio = loadRatio();
 		float blobToNodeRatio = blobToNodeRatio();
 		float BoundaryChannelRatio = totalToBoundaryChannelRatio();
 		boolean hasCycle = hasCycle();
 		try {
-			writer.write(String.format("\n%4d\t\t", count));
+			writer.write(String.format("\n%6s\t\t", cfgPrefix));
 			writer.write(String.format("%.2f\t\t", bigToSmallBlobRatio));
 			writer.write(String.format("%.2f\t\t", loadRatio));
 			writer.write(String.format("%.2f\t\t", blobToNodeRatio));
