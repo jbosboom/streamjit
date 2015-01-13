@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -28,11 +29,14 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 
 	private int count = 0;
 
+	private final Set<List<Integer>> paths;
+
 	public GraphPropertyPrognosticator(StreamJitApp<?, ?> app,
 			ConfigurationManager cfgManager) {
 		this.app = app;
 		this.writer = fileWriter();
 		writeHeader(writer);
+		paths = app.paths();
 	}
 
 	@Override
@@ -42,13 +46,14 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 		float loadRatio = loadRatio();
 		float blobToNodeRatio = blobToNodeRatio();
 		float BoundaryChannelRatio = totalToBoundaryChannelRatio();
+		boolean hasCycle = hasCycle();
 		try {
 			writer.write(String.format("\n%4d\t\t", count));
 			writer.write(String.format("%.2f\t\t", bigToSmallBlobRatio));
 			writer.write(String.format("%.2f\t\t", loadRatio));
 			writer.write(String.format("%.2f\t\t", blobToNodeRatio));
 			writer.write(String.format("%.2f\t\t", BoundaryChannelRatio));
-			writer.flush();
+			writer.write(String.format("%s\t\t", hasCycle ? "True" : "False"));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -164,6 +169,8 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 			writer.write("\t\t");
 			writer.write(String.format("%.7s", "BoundaryChannelRatio"));
 			writer.write("\t\t");
+			writer.write(String.format("%.7s", "hasCycles"));
+			writer.write("\t\t");
 			writer.write(String.format("%.7s", "time"));
 			writer.write("\t\t");
 			writer.flush();
@@ -180,5 +187,53 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private boolean hasCycle() {
+		Set<List<Integer>> machinePaths = buildMachinePaths();
+		for (List<Integer> path : machinePaths) {
+			Set<Integer> machines = new HashSet<Integer>();
+			for (int i = 0; i < path.size() - 1; i++) {
+				int machine = path.get(i);
+				if (machines.contains(machine))
+					return true;
+				machines.add(machine);
+
+			}
+		}
+		return false;
+	}
+
+	private Set<List<Integer>> buildMachinePaths() {
+		Set<List<Integer>> machinePaths = new HashSet<List<Integer>>();
+		List<Integer> machinePath;
+		for (List<Integer> path : paths) {
+			machinePath = new LinkedList<Integer>();
+			int curMachine = -1;
+			for (Integer worker : path) {
+				int machine = getAssignedMachine(worker);
+				if (curMachine != machine) {
+					machinePath.add(machine);
+					curMachine = machine;
+				}
+			}
+			machinePaths.add(machinePath);
+		}
+		return machinePaths;
+	}
+
+	private int getAssignedMachine(int workerID) {
+		for (Integer machineID : app.partitionsMachineMap.keySet()) {
+			for (Set<Worker<?, ?>> blobWorkers : app.partitionsMachineMap
+					.get(machineID)) {
+				for (Worker<?, ?> w : blobWorkers) {
+					if (Workers.getIdentifier(w) == workerID)
+						return machineID;
+				}
+			}
+		}
+
+		throw new IllegalArgumentException(String.format(
+				"Worker-%d is not assigned to anyof the machines", workerID));
 	}
 }
