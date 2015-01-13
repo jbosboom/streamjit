@@ -45,7 +45,7 @@ public class OnlineTuner implements Runnable {
 		this.tuner = new TCPTuner();
 		this.needTermination = needTermination;
 		this.logger = logger;
-		this.prognosticator = new GraphPropertyPrognosticator(app, cfgManager);
+		this.prognosticator = new GraphPropertyPrognosticator(app);
 	}
 
 	@Override

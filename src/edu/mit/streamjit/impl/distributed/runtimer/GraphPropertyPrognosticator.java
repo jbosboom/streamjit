@@ -11,7 +11,6 @@ import java.util.Set;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.distributed.ConfigurationManager;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
 import edu.mit.streamjit.util.ConfigurationUtils;
@@ -30,8 +29,7 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 
 	private final Set<List<Integer>> paths;
 
-	public GraphPropertyPrognosticator(StreamJitApp<?, ?> app,
-			ConfigurationManager cfgManager) {
+	public GraphPropertyPrognosticator(StreamJitApp<?, ?> app) {
 		this.app = app;
 		this.writer = fileWriter();
 		writeHeader(writer);
