@@ -329,4 +329,15 @@ public class StreamJitApp<I, O> {
 			Portals.setConstraints(portal, constraints);
 		return constraints;
 	}
+
+	/**
+	 * Uses {@link StreamPathBuilder} to generate all paths in the streamGraph
+	 * of this {@link StreamJitApp}. Check {@link StreamPathBuilder} for more
+	 * information.
+	 * 
+	 * @return Set of all paths in the streamGraph of this {@link StreamJitApp}.
+	 */
+	public Set<List<Integer>> paths() {
+		return StreamPathBuilder.paths(streamGraph);
+	}
 }
