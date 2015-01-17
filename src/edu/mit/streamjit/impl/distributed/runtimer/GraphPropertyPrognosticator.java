@@ -74,7 +74,6 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 			}
 		}
 		float blobRatio = ((float) max) / min;
-		System.out.println("blobRatio - " + blobRatio);
 		return blobRatio;
 	}
 
@@ -96,7 +95,6 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 			max = Math.max(max, workersInCurrentNode);
 		}
 		float loadRatio = ((float) max) / min;
-		System.out.println("loadRatio - " + loadRatio);
 		return loadRatio;
 	}
 
