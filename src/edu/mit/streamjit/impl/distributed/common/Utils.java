@@ -1,9 +1,14 @@
 package edu.mit.streamjit.impl.distributed.common;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Set;
 
@@ -97,5 +102,47 @@ public class Utils {
 					File.separator));
 		else
 			return false;
+	}
+
+	/**
+	 * Writes README.txt. Mainly saves GlobalConstant values.
+	 * 
+	 * @param appName
+	 */
+	public static void writeReadMeTxt(String appName) {
+		try {
+			FileWriter writer = new FileWriter(String.format("%s%sREADME.txt",
+					appName, File.separator));
+			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+			Calendar cal = Calendar.getInstance();
+			writer.write(dateFormat.format(cal.getTime()) + "\n");
+			writer.write(appName + "\n");
+			update(writer, "tunerStartMode", GlobalConstants.tunerStartMode);
+			update(writer, "useDrainData", GlobalConstants.useDrainData);
+			update(writer, "needDrainDeadlockHandler",
+					GlobalConstants.needDrainDeadlockHandler);
+			update(writer, "tune", GlobalConstants.tune);
+			update(writer, "saveAllConfigurations",
+					GlobalConstants.saveAllConfigurations);
+			update(writer, "outputCount", GlobalConstants.outputCount);
+			update(writer, "useCompilerBlob", GlobalConstants.useCompilerBlob);
+			update(writer, "printOutputCountPeriod",
+					GlobalConstants.printOutputCountPeriod);
+			update(writer, "singleNodeOnline", GlobalConstants.singleNodeOnline);
+			update(writer, "maxNumCores", GlobalConstants.maxNumCores);
+			writer.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void update(FileWriter writer, String name, int val)
+			throws IOException {
+		writer.write(String.format("%s=%d\n", name, val));
+	}
+
+	private static void update(FileWriter writer, String name, boolean val)
+			throws IOException {
+		writer.write(String.format("%s=%s\n", name, val ? "True" : "False"));
 	}
 }

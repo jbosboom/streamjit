@@ -103,6 +103,7 @@ public class StreamJitApp<I, O> {
 				.getCodeSource().getLocation().getPath();
 		this.constraints = getConstrains();
 		Utils.createAppDir(name);
+		Utils.writeReadMeTxt(name);
 		visualizer = new Visualizer.DotVisualizer(streamGraph);
 	}
 
