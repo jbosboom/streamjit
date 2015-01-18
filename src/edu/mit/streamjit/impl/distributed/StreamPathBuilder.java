@@ -135,12 +135,7 @@ public class StreamPathBuilder {
 				throw new IllegalStateException("waitingForJoiner not empty");
 			if (!pathToSplitterStack.isEmpty())
 				throw new IllegalStateException("pathToSplitter not empty");
-			for (List<Integer> path : currentUnfinishedPathSet) {
-				for (Integer i : path) {
-					System.out.print(i.toString() + "->");
-				}
-				System.out.println();
-			}
+			// printPaths();
 		}
 
 		/**
@@ -152,6 +147,18 @@ public class StreamPathBuilder {
 			int id = Workers.getIdentifier(w);
 			for (List<Integer> path : currentUnfinishedPathSet)
 				path.add(id);
+		}
+
+		/**
+		 * Prints all paths in the stream graph.
+		 */
+		private void printPaths() {
+			for (List<Integer> path : currentUnfinishedPathSet) {
+				for (Integer i : path) {
+					System.out.print(i.toString() + "->");
+				}
+				System.out.println();
+			}
 		}
 	}
 
