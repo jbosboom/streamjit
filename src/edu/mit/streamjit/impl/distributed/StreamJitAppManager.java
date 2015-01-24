@@ -87,7 +87,7 @@ public class StreamJitAppManager {
 	 * we need to pull the sink's output in to the {@link Controller} in order
 	 * to make {@link CompiledStream} .pull() to work.
 	 */
-	private TailChannels tailChannel;
+	private TailChannel tailChannel;
 
 	private Thread tailThread;
 
@@ -323,7 +323,7 @@ public class StreamJitAppManager {
 					"No tail buffer in the passed bufferMap.");
 
 		int skipCount = Math.max(GlobalConstants.outputCount, multiplier * 5);
-		tailChannel = new TailChannels(bufferMap.get(tailToken),
+		tailChannel = new TailChannels.TailChannel1(bufferMap.get(tailToken),
 				controller.getConProvider(), tailconInfo, "tailChannel - "
 						+ tailToken.toString(), 0, skipCount,
 				GlobalConstants.outputCount, app.name);
