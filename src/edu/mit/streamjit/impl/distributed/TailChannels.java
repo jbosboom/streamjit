@@ -103,7 +103,7 @@ public class TailChannels extends BlockingInputChannel {
 	public void stop(DrainType type) {
 		super.stop(type);
 		if (pLogger != null) {
-			reset();
+			resetAll();
 			pLogger.stopLogging();
 		}
 		if (scheduledExecutorService != null)
@@ -120,7 +120,7 @@ public class TailChannels extends BlockingInputChannel {
 	 * @throws InterruptedException
 	 */
 	public long getFixedOutputTime() throws InterruptedException {
-		reset();
+		resetAll();
 		skipLatch.await();
 		Stopwatch stopwatch = Stopwatch.createStarted();
 		steadyLatch.await();
@@ -156,7 +156,7 @@ public class TailChannels extends BlockingInputChannel {
 				GlobalConstants.printOutputCountPeriod, TimeUnit.MILLISECONDS);
 	}
 
-	private void reset() {
+	private void resetAll() {
 		count = 0;
 		lastCount = 0;
 		skipLatch.countDown();
@@ -168,8 +168,8 @@ public class TailChannels extends BlockingInputChannel {
 	}
 
 	/**
-	 * We need this method apart from {@link #reset()}, because the
-	 * {@link #reset()} method creates the latches immediately after
+	 * We need this method apart from {@link #resetAll()}, because the
+	 * {@link #resetAll()} method creates the latches immediately after
 	 * countDown(). This causes the threads which are waiting on the latches at
 	 * {@link #getFixedOutputTime()} will not be released properly.
 	 */
