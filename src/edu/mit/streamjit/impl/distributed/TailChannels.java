@@ -20,6 +20,85 @@ import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
 
 public class TailChannels {
 
+	private static class PerformanceLogger extends Thread {
+
+		private AtomicBoolean stopFlag;
+
+		private final String appName;
+
+		private final TailChannel tailChannel;
+
+		private PerformanceLogger(TailChannel tailChannel, String appName) {
+			super("PerformanceLogger");
+			stopFlag = new AtomicBoolean(false);
+			this.appName = appName;
+			this.tailChannel = tailChannel;
+		}
+
+		public void run() {
+			int i = 0;
+			FileWriter writer;
+			try {
+				writer = new FileWriter(String.format("%s%sFixedOutPut.txt",
+						appName, File.separator));
+			} catch (IOException e1) {
+				e1.printStackTrace();
+				return;
+			}
+
+			writeInitialInfo(writer);
+
+			Long sum = 0l;
+
+			while (++i < 10 && !stopFlag.get()) {
+				try {
+					Long time = tailChannel.getFixedOutputTime();
+
+					sum += time;
+					System.out.println("Execution time is " + time
+							+ " milli seconds");
+
+					writer.write(time.toString());
+					writer.write('\n');
+					writer.flush();
+				} catch (InterruptedException | IOException e) {
+					e.printStackTrace();
+				}
+			}
+			try {
+				writer.write("Average = " + sum / (i - 1));
+				writer.write('\n');
+				writer.flush();
+				writer.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+			System.out.println("PerformanceLogger exits. App will run till "
+					+ "inputdata exhausted.");
+		}
+
+		private void writeInitialInfo(FileWriter writer) {
+			System.out.println(String.format(
+					"PerformanceLogger starts to log the time to"
+							+ " produce %d number of outputs",
+					GlobalConstants.outputCount));
+
+			try {
+				writer.write(String.format("GlobalConstants.outputCount = %d",
+						GlobalConstants.outputCount));
+				writer.write('\n');
+				writer.flush();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+		public void stopLogging() {
+			stopFlag.set(true);
+		}
+	}
+
 	public static class TailChannel1 extends BlockingInputChannel implements
 			TailChannel {
 
@@ -80,7 +159,9 @@ public class TailChannels {
 			this.skipLatchUp = true;
 			this.steadyLatchUp = true;
 			if (GlobalConstants.tune == 0) {
-				pLogger = new PerformanceLogger(appName);
+				// TODO: Leaks this object from the constructor. May cause
+				// subtle bugs. Re-factor it.
+				pLogger = new PerformanceLogger(this, appName);
 				pLogger.start();
 			}
 			printOutputCount();
@@ -182,84 +263,6 @@ public class TailChannels {
 			skipLatch.countDown();
 			count = 0;
 			lastCount = 0;
-		}
-
-		private class PerformanceLogger extends Thread {
-
-			private AtomicBoolean stopFlag;
-
-			private final String appName;
-
-			private PerformanceLogger(String appName) {
-				super("PerformanceLogger");
-				stopFlag = new AtomicBoolean(false);
-				this.appName = appName;
-			}
-
-			public void run() {
-				int i = 0;
-				FileWriter writer;
-				try {
-					writer = new FileWriter(String.format(
-							"%s%sFixedOutPut.txt", appName, File.separator));
-				} catch (IOException e1) {
-					e1.printStackTrace();
-					return;
-				}
-
-				writeInitialInfo(writer);
-
-				Long sum = 0l;
-
-				while (++i < 10 && !stopFlag.get()) {
-					try {
-						Long time = getFixedOutputTime();
-
-						sum += time;
-						System.out.println("Execution time is " + time
-								+ " milli seconds");
-
-						writer.write(time.toString());
-						writer.write('\n');
-						writer.flush();
-					} catch (InterruptedException | IOException e) {
-						e.printStackTrace();
-					}
-				}
-				try {
-					writer.write("Average = " + sum / (i - 1));
-					writer.write('\n');
-					writer.flush();
-					writer.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-
-				System.out
-						.println("PerformanceLogger exits. App will run till "
-								+ "inputdata exhausted.");
-			}
-
-			private void writeInitialInfo(FileWriter writer) {
-				System.out.println(String.format(
-						"PerformanceLogger starts to log the time to"
-								+ " produce %d number of outputs",
-						GlobalConstants.outputCount));
-
-				try {
-					writer.write(String.format(
-							"GlobalConstants.outputCount = %d",
-							GlobalConstants.outputCount));
-					writer.write('\n');
-					writer.flush();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-
-			public void stopLogging() {
-				stopFlag.set(true);
-			}
 		}
 
 		@Override
