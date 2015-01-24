@@ -272,7 +272,7 @@ public class StreamJitAppManager {
 
 	public void stop() {
 		this.status = AppStatus.STOPPED;
-		tailChannel.releaseAll();
+		tailChannel.reset();
 		controller.closeAll();
 		dp.drainer.stop();
 	}
@@ -388,7 +388,7 @@ public class StreamJitAppManager {
 			this.error = true;
 			// This will release the OpenTuner thread which is waiting for fixed
 			// output.
-			tailChannel.releaseAll();
+			tailChannel.reset();
 		}
 
 		@Override

@@ -173,7 +173,7 @@ public class TailChannels extends BlockingInputChannel {
 	 * countDown(). This causes the threads which are waiting on the latches at
 	 * {@link #getFixedOutputTime()} will not be released properly.
 	 */
-	public void releaseAll() {
+	public void reset() {
 		steadyLatch.countDown();
 		skipLatch.countDown();
 		count = 0;
