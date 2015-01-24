@@ -156,7 +156,7 @@ public class TailChannels extends BlockingInputChannel {
 				GlobalConstants.printOutputCountPeriod, TimeUnit.MILLISECONDS);
 	}
 
-	public void reset() {
+	private void reset() {
 		count = 0;
 		lastCount = 0;
 		skipLatch.countDown();
