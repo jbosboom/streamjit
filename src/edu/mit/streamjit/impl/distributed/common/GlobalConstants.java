@@ -2,7 +2,7 @@ package edu.mit.streamjit.impl.distributed.common;
 
 import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
-import edu.mit.streamjit.impl.distributed.TailChannel;
+import edu.mit.streamjit.impl.distributed.TailChannels;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.StreamNodeAgent;
 import edu.mit.streamjit.tuner.TCPTuner;
@@ -96,7 +96,7 @@ public final class GlobalConstants {
 	 * Otherwise, just use the fixed configuration file to run the program. No
 	 * tuning, no intermediate draining. In this mode (tune = false), time taken
 	 * to pass fixed number of input will be measured for 30 rounds and logged
-	 * into FixedOutPut.txt. See {@link TailChannel} for the file logging
+	 * into FixedOutPut.txt. See {@link TailChannels} for the file logging
 	 * details.
 	 * <ol>
 	 * 0 - No tuning, uses configuration file to run.
@@ -128,7 +128,7 @@ public final class GlobalConstants {
 	/**
 	 * Period to print output count periodically. This printing feature get
 	 * turned off if this value is less than 1. Time unit is ms. See
-	 * {@link TailChannel}.
+	 * {@link TailChannels}.
 	 */
 	public static final int printOutputCountPeriod = 6000;
 
