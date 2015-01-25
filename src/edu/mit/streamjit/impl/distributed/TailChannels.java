@@ -260,6 +260,9 @@ public class TailChannels {
 		@Override
 		public long getFixedOutputTime(long timeout)
 				throws InterruptedException {
+			if (timeout < 1)
+				return getFixedOutputTime();
+
 			timeout = unnormalizedTime(timeout);
 			releaseAndInitilize();
 			skipLatch.await();

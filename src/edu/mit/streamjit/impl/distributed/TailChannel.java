@@ -38,6 +38,11 @@ public interface TailChannel extends BoundaryInputChannel {
 	 * of output. Returns -1 if timeout occurred.
 	 * 
 	 * <p>
+	 * If timeout < 1, then the behavior this method is equivalent to calling
+	 * {@link #getFixedOutputTime()}.
+	 * </p>
+	 * 
+	 * <p>
 	 * The caller will be blocked until the fixed number of output is received
 	 * or timeout occurred, whatever happens early.
 	 * 
