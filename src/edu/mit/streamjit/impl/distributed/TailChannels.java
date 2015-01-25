@@ -99,6 +99,62 @@ public class TailChannels {
 		}
 	}
 
+	private static class OutputCountPrinter {
+
+		private final TailChannel tailChannel;
+
+		/**
+		 * The no of outputs generated at the end of last period. See
+		 * {@link #printOutputCount()}.
+		 */
+		private int lastCount;
+
+		/**
+		 * Periodically prints no of outputs generated. See
+		 * {@link #printOutputCount()}.
+		 */
+		private ScheduledExecutorService scheduledExecutorService;
+
+		OutputCountPrinter(TailChannel tailChannel) {
+			this.tailChannel = tailChannel;
+			printOutputCount();
+		}
+
+		/**
+		 * Periodically prints no of outputs generated.
+		 */
+		private void printOutputCount() {
+			if (GlobalConstants.printOutputCountPeriod < 1)
+				return;
+
+			lastCount = 0;
+			scheduledExecutorService = Executors
+					.newSingleThreadScheduledExecutor();
+			scheduledExecutorService.scheduleAtFixedRate(
+					new Runnable() {
+
+						@Override
+						public void run() {
+							int newOutputs = tailChannel.count() - lastCount;
+							lastCount = tailChannel.count();
+							System.out.println(String
+									.format("Outputs: since started - %d, during last %d ms - %d",
+											tailChannel.count(),
+											GlobalConstants.printOutputCountPeriod,
+											newOutputs));
+
+						}
+					}, GlobalConstants.printOutputCountPeriod,
+					GlobalConstants.printOutputCountPeriod,
+					TimeUnit.MILLISECONDS);
+		}
+
+		private void stop() {
+			if (scheduledExecutorService != null)
+				scheduledExecutorService.shutdown();
+		}
+	}
+
 	public static class TailChannel1 extends BlockingInputChannel implements
 			TailChannel {
 
@@ -114,21 +170,11 @@ public class TailChannels {
 
 		private PerformanceLogger pLogger = null;
 
+		private OutputCountPrinter outputCountPrinter;
+
 		private boolean skipLatchUp;
 
 		private boolean steadyLatchUp;
-
-		/**
-		 * Periodically prints no of outputs generated. See
-		 * {@link #printOutputCount()}.
-		 */
-		private ScheduledExecutorService scheduledExecutorService;
-
-		/**
-		 * The no of outputs generated at the end of last period. See
-		 * {@link #printOutputCount()}.
-		 */
-		private int lastCount;
 
 		/**
 		 * @param buffer
@@ -153,7 +199,6 @@ public class TailChannels {
 			this.skipCount = skipCount;
 			this.totalCount = steadyCount + skipCount;
 			count = 0;
-			lastCount = 0;
 			steadyLatch = new CountDownLatch(1);
 			skipLatch = new CountDownLatch(1);
 			this.skipLatchUp = true;
@@ -164,7 +209,7 @@ public class TailChannels {
 				pLogger = new PerformanceLogger(this, appName);
 				pLogger.start();
 			}
-			printOutputCount();
+			outputCountPrinter = new OutputCountPrinter(this);
 		}
 
 		@Override
@@ -190,8 +235,7 @@ public class TailChannels {
 				releaseAndInitilize();
 				pLogger.stopLogging();
 			}
-			if (scheduledExecutorService != null)
-				scheduledExecutorService.shutdown();
+			outputCountPrinter.stop();
 		}
 
 		/**
@@ -216,40 +260,10 @@ public class TailChannels {
 		}
 
 		/**
-		 * Periodically prints no of outputs generated.
-		 */
-		private void printOutputCount() {
-			if (GlobalConstants.printOutputCountPeriod < 1)
-				return;
-
-			lastCount = 0;
-			scheduledExecutorService = Executors
-					.newSingleThreadScheduledExecutor();
-			scheduledExecutorService.scheduleAtFixedRate(
-					new Runnable() {
-
-						@Override
-						public void run() {
-							int newOutputs = count - lastCount;
-							lastCount = count;
-							System.out.println(String
-									.format("Outputs: since started - %d, during last %d ms - %d",
-											count,
-											GlobalConstants.printOutputCountPeriod,
-											newOutputs));
-
-						}
-					}, GlobalConstants.printOutputCountPeriod,
-					GlobalConstants.printOutputCountPeriod,
-					TimeUnit.MILLISECONDS);
-		}
-
-		/**
 		 * Releases all latches, and re inilizes the latches and counters.
 		 */
 		private void releaseAndInitilize() {
 			count = 0;
-			lastCount = 0;
 			skipLatch.countDown();
 			skipLatch = new CountDownLatch(1);
 			skipLatchUp = true;
@@ -262,7 +276,6 @@ public class TailChannels {
 			steadyLatch.countDown();
 			skipLatch.countDown();
 			count = 0;
-			lastCount = 0;
 		}
 
 		@Override
