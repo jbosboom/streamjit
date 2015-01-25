@@ -292,5 +292,14 @@ public class TailChannels {
 			return (GlobalConstants.outputCount * time)
 					/ (totalCount - skipCount);
 		}
+
+		/**
+		 * Opposite to the {@link #normalizedTime(long)}'s equation.
+		 * <code>time=unnormalizedTime(normalizedTime(time))</code>
+		 */
+		private long unnormalizedTime(long time) {
+			return (time * (totalCount - skipCount))
+					/ GlobalConstants.outputCount;
+		}
 	}
 }
