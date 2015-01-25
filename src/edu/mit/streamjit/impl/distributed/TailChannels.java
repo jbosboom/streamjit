@@ -156,7 +156,7 @@ public class TailChannels {
 		}
 	}
 
-	public static class TailChannel1 extends BlockingInputChannel implements
+	public static class BlockingTailChannel1 extends BlockingInputChannel implements
 			TailChannel {
 
 		private final int skipCount;
@@ -193,7 +193,7 @@ public class TailChannels {
 		 *            to get this amount of outputs ( after skipping skipCount
 		 *            number of outputs at the beginning).
 		 */
-		public TailChannel1(Buffer buffer, ConnectionProvider conProvider,
+		public BlockingTailChannel1(Buffer buffer, ConnectionProvider conProvider,
 				ConnectionInfo conInfo, String bufferTokenName, int debugLevel,
 				int skipCount, int steadyCount, String appName) {
 			super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);

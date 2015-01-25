@@ -323,7 +323,7 @@ public class StreamJitAppManager {
 					"No tail buffer in the passed bufferMap.");
 
 		int skipCount = Math.max(GlobalConstants.outputCount, multiplier * 5);
-		tailChannel = new TailChannels.TailChannel1(bufferMap.get(tailToken),
+		tailChannel = new TailChannels.BlockingTailChannel1(bufferMap.get(tailToken),
 				controller.getConProvider(), tailconInfo, "tailChannel - "
 						+ tailToken.toString(), 0, skipCount,
 				GlobalConstants.outputCount, app.name);
