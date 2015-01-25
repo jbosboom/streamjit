@@ -93,7 +93,7 @@ public class OnlineTuner implements Runnable {
 					ConfigurationUtils.saveConfg(cfgJson,
 							new Integer(round).toString(), app.name);
 
-				ret = reconfigure(config);
+				ret = reconfigure(config, 0);
 				if (ret.first) {
 					prognosticator.time(ret.second);
 					tuner.writeLine(new Double(ret.second).toString());
@@ -173,12 +173,15 @@ public class OnlineTuner implements Runnable {
 	}
 
 	/**
+	 * TODO: Split this method into two methods, 1.reconfigure(),
+	 * 2.getFixedOutputTime().
+	 * 
 	 * @param cfgJson
 	 * @param round
 	 * @return if ret.first == false, then no more tuning. ret.second = running
 	 *         time in milliseconds.
 	 */
-	private Pair<Boolean, Long> reconfigure(Configuration config) {
+	private Pair<Boolean, Long> reconfigure(Configuration config, long timeout) {
 		long time;
 
 		if (manager.getStatus() == AppStatus.STOPPED)
@@ -200,7 +203,7 @@ public class OnlineTuner implements Runnable {
 				// TODO: need to check the manager's status before passing the
 				// time. Exceptions, final drain, etc may causes app to stop
 				// executing.
-				time = manager.getFixedOutputTime();
+				time = manager.getFixedOutputTime(timeout);
 				logger.logRunTime(time);
 			} else {
 				time = -1l;
@@ -259,7 +262,7 @@ public class OnlineTuner implements Runnable {
 		if (needTermination) {
 			terminate();
 		} else {
-			Pair<Boolean, Long> ret = reconfigure(finalcfg);
+			Pair<Boolean, Long> ret = reconfigure(finalcfg, 0);
 			if (ret.first && ret.second > 0)
 				System.out
 						.println("Application is running forever with the final configuration.");
@@ -298,7 +301,7 @@ public class OnlineTuner implements Runnable {
 			if (cfg != null) {
 				Pair<Boolean, Long> ret;
 				for (int i = 0; i < count; i++) {
-					ret = reconfigure(cfg);
+					ret = reconfigure(cfg, 0);
 					if (ret.first) {
 						prognosticator.time(ret.second);
 						writer.write(ret.second.toString());

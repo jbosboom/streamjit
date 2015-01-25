@@ -210,8 +210,8 @@ public class StreamJitAppManager {
 		return timeInfoProcessor;
 	}
 
-	public long getFixedOutputTime() throws InterruptedException {
-		long time = tailChannel.getFixedOutputTime();
+	public long getFixedOutputTime(long timeout) throws InterruptedException {
+		long time = tailChannel.getFixedOutputTime(timeout);
 		if (apStsPro.error) {
 			return -1l;
 		}
