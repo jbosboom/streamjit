@@ -254,9 +254,7 @@ public class TailChannels {
 			steadyLatch.await();
 			stopwatch.stop();
 			long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
-			long normalizedTime = (GlobalConstants.outputCount * time)
-					/ (totalCount - skipCount);
-			return normalizedTime;
+			return normalizedTime(time);
 		}
 
 		/**
@@ -288,6 +286,11 @@ public class TailChannels {
 				throws InterruptedException {
 			// TODO Auto-generated method stub
 			return 0;
+		}
+
+		private long normalizedTime(long time) {
+			return (GlobalConstants.outputCount * time)
+					/ (totalCount - skipCount);
 		}
 	}
 }
