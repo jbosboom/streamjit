@@ -62,6 +62,9 @@ public class OnlineTuner implements Runnable {
 
 	private void tune() {
 		int round = 0;
+		// Keeps track of the current best time. Uses this to discard bad cfgs
+		// early.
+		long currentBestTime = Long.MAX_VALUE;
 		try {
 			startTuner();
 			Pair<Boolean, Long> ret;
@@ -93,8 +96,11 @@ public class OnlineTuner implements Runnable {
 					ConfigurationUtils.saveConfg(cfgJson,
 							new Integer(round).toString(), app.name);
 
-				ret = reconfigure(config, 0);
+				ret = reconfigure(config, 2 * currentBestTime);
 				if (ret.first) {
+					long time = ret.second;
+					currentBestTime = (time > 1 && currentBestTime > time)
+							? time : currentBestTime;
 					prognosticator.time(ret.second);
 					tuner.writeLine(new Double(ret.second).toString());
 				} else {
