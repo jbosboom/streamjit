@@ -257,6 +257,12 @@ public class TailChannels {
 			return normalizedTime(time);
 		}
 
+		@Override
+		public long getFixedOutputTime(long timeout)
+				throws InterruptedException {
+			return 0;
+		}
+
 		/**
 		 * Releases all latches, and re-initializes the latches and counters.
 		 */
@@ -279,13 +285,6 @@ public class TailChannels {
 		@Override
 		public int count() {
 			return count;
-		}
-
-		@Override
-		public long getFixedOutputTime(long timeout)
-				throws InterruptedException {
-			// TODO Auto-generated method stub
-			return 0;
 		}
 
 		private long normalizedTime(long time) {
