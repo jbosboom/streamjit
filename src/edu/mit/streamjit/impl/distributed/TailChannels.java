@@ -99,20 +99,19 @@ public class TailChannels {
 		}
 	}
 
+	/**
+	 * Periodically prints the number of outputs received by a
+	 * {@link TailChannel}.
+	 */
 	private static class OutputCountPrinter {
 
 		private final TailChannel tailChannel;
 
 		/**
-		 * The no of outputs generated at the end of last period. See
-		 * {@link #printOutputCount()}.
+		 * The no of outputs received at the end of last period.
 		 */
 		private int lastCount;
 
-		/**
-		 * Periodically prints no of outputs generated. See
-		 * {@link #printOutputCount()}.
-		 */
 		private ScheduledExecutorService scheduledExecutorService;
 
 		OutputCountPrinter(TailChannel tailChannel) {
@@ -120,9 +119,6 @@ public class TailChannels {
 			printOutputCount();
 		}
 
-		/**
-		 * Periodically prints no of outputs generated.
-		 */
 		private void printOutputCount() {
 			if (GlobalConstants.printOutputCountPeriod < 1)
 				return;
@@ -264,7 +260,7 @@ public class TailChannels {
 		}
 
 		/**
-		 * Releases all latches, and re inilizes the latches and counters.
+		 * Releases all latches, and re-initializes the latches and counters.
 		 */
 		private void releaseAndInitilize() {
 			count = 0;
