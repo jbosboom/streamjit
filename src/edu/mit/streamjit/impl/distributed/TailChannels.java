@@ -156,8 +156,8 @@ public class TailChannels {
 		}
 	}
 
-	public static class BlockingTailChannel1 extends BlockingInputChannel implements
-			TailChannel {
+	public static class BlockingTailChannel1 extends BlockingInputChannel
+			implements TailChannel {
 
 		private final int skipCount;
 
@@ -171,7 +171,7 @@ public class TailChannels {
 
 		private PerformanceLogger pLogger = null;
 
-		private OutputCountPrinter outputCountPrinter;
+		private OutputCountPrinter outputCountPrinter = null;
 
 		private boolean skipLatchUp;
 
@@ -193,9 +193,10 @@ public class TailChannels {
 		 *            to get this amount of outputs ( after skipping skipCount
 		 *            number of outputs at the beginning).
 		 */
-		public BlockingTailChannel1(Buffer buffer, ConnectionProvider conProvider,
-				ConnectionInfo conInfo, String bufferTokenName, int debugLevel,
-				int skipCount, int steadyCount, String appName) {
+		public BlockingTailChannel1(Buffer buffer,
+				ConnectionProvider conProvider, ConnectionInfo conInfo,
+				String bufferTokenName, int debugLevel, int skipCount,
+				int steadyCount, String appName) {
 			super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
 			this.skipCount = skipCount;
 			this.totalCount = steadyCount + skipCount;
@@ -210,7 +211,8 @@ public class TailChannels {
 				pLogger = new PerformanceLogger(this, appName);
 				pLogger.start();
 			}
-			outputCountPrinter = new OutputCountPrinter(this);
+			if (GlobalConstants.printOutputCountPeriod > 0)
+				outputCountPrinter = new OutputCountPrinter(this);
 		}
 
 		@Override
@@ -236,7 +238,8 @@ public class TailChannels {
 				releaseAndInitilize();
 				pLogger.stopLogging();
 			}
-			outputCountPrinter.stop();
+			if (outputCountPrinter != null)
+				outputCountPrinter.stop();
 		}
 
 		/**
