@@ -135,11 +135,12 @@ public class TailChannels {
 
 						@Override
 						public void run() {
-							int newOutputs = tailChannel.count() - lastCount;
-							lastCount = tailChannel.count();
+							int currentCount = tailChannel.count();
+							int newOutputs = currentCount - lastCount;
+							lastCount = currentCount;
 							System.out.println(String
 									.format("Outputs: since started - %d, during last %d ms - %d",
-											tailChannel.count(),
+											currentCount,
 											GlobalConstants.printOutputCountPeriod,
 											newOutputs));
 
