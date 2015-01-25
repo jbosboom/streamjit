@@ -260,7 +260,21 @@ public class TailChannels {
 		@Override
 		public long getFixedOutputTime(long timeout)
 				throws InterruptedException {
-			return 0;
+			timeout = unnormalizedTime(timeout);
+			releaseAndInitilize();
+			skipLatch.await();
+			Stopwatch stopwatch = Stopwatch.createStarted();
+			while (steadyLatch.getCount() > 0
+					&& stopwatch.elapsed(TimeUnit.MILLISECONDS) < timeout) {
+				Thread.sleep(100);
+			}
+
+			if (stopwatch.elapsed(TimeUnit.MILLISECONDS) > timeout)
+				return -1;
+
+			stopwatch.stop();
+			long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+			return normalizedTime(time);
 		}
 
 		/**
