@@ -22,6 +22,7 @@ import edu.mit.streamjit.impl.distributed.common.SNTimeInfo.SNTimeInfoProcessor;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo.SystemInfoProcessor;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement;
 
 /**
  * StreamNodeAgent represents a {@link StreamNode} at {@link Controller} side.
@@ -295,6 +296,11 @@ public abstract class StreamNodeAgent {
 			assert manager != null : "StreamJitAppManager has not been set";
 			SNTimeInfoProcessor snTimeP = manager.timeInfoProcessor();
 			timeInfo.process(snTimeP);
+		}
+
+		@Override
+		public void visit(SNProfileElement snProfileElement) {
+
 		}
 	}
 }
