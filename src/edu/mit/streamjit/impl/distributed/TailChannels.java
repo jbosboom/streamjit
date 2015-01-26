@@ -156,30 +156,90 @@ public class TailChannels {
 			extends
 				BlockingInputChannel implements TailChannel {
 
-		public AbstractBlockingTailChannel(Buffer buffer,
-				ConnectionProvider conProvider, ConnectionInfo conInfo,
-				String bufferTokenName, int debugLevel) {
-			super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
-		}
+		protected final int skipCount;
 
-	}
+		protected final int totalCount;
 
-	public static class BlockingTailChannel1 extends BlockingInputChannel
-			implements TailChannel {
-
-		private final int skipCount;
-
-		private final int totalCount;
-
-		private int count;
-
-		private volatile CountDownLatch steadyLatch;
-
-		private volatile CountDownLatch skipLatch;
+		protected int count;
 
 		private PerformanceLogger pLogger = null;
 
 		private OutputCountPrinter outputCountPrinter = null;
+
+		protected abstract void releaseAndInitilize();
+
+		/**
+		 * @param buffer
+		 * @param conProvider
+		 * @param conInfo
+		 * @param bufferTokenName
+		 * @param debugLevel
+		 * @param skipCount
+		 *            : Skips this amount of output before evaluating the
+		 *            running time. This is added to avoid the noise from init
+		 *            schedule and the drain data. ( i.e., In order to get real
+		 *            steady state execution time)
+		 * @param steadyCount
+		 *            : {@link #getFixedOutputTime()} calculates the time taken
+		 *            to get this amount of outputs ( after skipping skipCount
+		 *            number of outputs at the beginning).
+		 */
+		public AbstractBlockingTailChannel(Buffer buffer,
+				ConnectionProvider conProvider, ConnectionInfo conInfo,
+				String bufferTokenName, int debugLevel, int skipCount,
+				int steadyCount, String appName) {
+			super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
+			this.skipCount = skipCount;
+			this.totalCount = steadyCount + skipCount;
+			count = 0;
+			if (GlobalConstants.tune == 0) {
+				// TODO: Leaks this object from the constructor. May cause
+				// subtle bugs. Re-factor it.
+				pLogger = new PerformanceLogger(this, appName);
+				pLogger.start();
+			}
+			if (GlobalConstants.printOutputCountPeriod > 0)
+				outputCountPrinter = new OutputCountPrinter(this);
+		}
+
+		@Override
+		public void stop(DrainType type) {
+			super.stop(type);
+			if (pLogger != null) {
+				releaseAndInitilize();
+				pLogger.stopLogging();
+			}
+			if (outputCountPrinter != null)
+				outputCountPrinter.stop();
+		}
+
+		@Override
+		public int count() {
+			return count;
+		}
+
+		protected long normalizedTime(long time) {
+			return (GlobalConstants.outputCount * time)
+					/ (totalCount - skipCount);
+		}
+
+		/**
+		 * Opposite to the {@link #normalizedTime(long)}'s equation.
+		 * <code>time=unnormalizedTime(normalizedTime(time))</code>
+		 */
+		protected long unnormalizedTime(long time) {
+			return (time * (totalCount - skipCount))
+					/ GlobalConstants.outputCount;
+		}
+	}
+
+	public static final class BlockingTailChannel1
+			extends
+				AbstractBlockingTailChannel {
+
+		private volatile CountDownLatch steadyLatch;
+
+		private volatile CountDownLatch skipLatch;
 
 		private boolean skipLatchUp;
 
@@ -205,22 +265,12 @@ public class TailChannels {
 				ConnectionProvider conProvider, ConnectionInfo conInfo,
 				String bufferTokenName, int debugLevel, int skipCount,
 				int steadyCount, String appName) {
-			super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
-			this.skipCount = skipCount;
-			this.totalCount = steadyCount + skipCount;
-			count = 0;
+			super(buffer, conProvider, conInfo, bufferTokenName, debugLevel,
+					skipCount, steadyCount, appName);
 			steadyLatch = new CountDownLatch(1);
 			skipLatch = new CountDownLatch(1);
 			this.skipLatchUp = true;
 			this.steadyLatchUp = true;
-			if (GlobalConstants.tune == 0) {
-				// TODO: Leaks this object from the constructor. May cause
-				// subtle bugs. Re-factor it.
-				pLogger = new PerformanceLogger(this, appName);
-				pLogger.start();
-			}
-			if (GlobalConstants.printOutputCountPeriod > 0)
-				outputCountPrinter = new OutputCountPrinter(this);
 		}
 
 		@Override
@@ -237,17 +287,6 @@ public class TailChannels {
 				steadyLatch.countDown();
 				steadyLatchUp = false;
 			}
-		}
-
-		@Override
-		public void stop(DrainType type) {
-			super.stop(type);
-			if (pLogger != null) {
-				releaseAndInitilize();
-				pLogger.stopLogging();
-			}
-			if (outputCountPrinter != null)
-				outputCountPrinter.stop();
 		}
 
 		/**
@@ -295,7 +334,7 @@ public class TailChannels {
 		/**
 		 * Releases all latches, and re-initializes the latches and counters.
 		 */
-		private void releaseAndInitilize() {
+		protected void releaseAndInitilize() {
 			count = 0;
 			skipLatch.countDown();
 			skipLatch = new CountDownLatch(1);
@@ -309,25 +348,6 @@ public class TailChannels {
 			steadyLatch.countDown();
 			skipLatch.countDown();
 			count = 0;
-		}
-
-		@Override
-		public int count() {
-			return count;
-		}
-
-		private long normalizedTime(long time) {
-			return (GlobalConstants.outputCount * time)
-					/ (totalCount - skipCount);
-		}
-
-		/**
-		 * Opposite to the {@link #normalizedTime(long)}'s equation.
-		 * <code>time=unnormalizedTime(normalizedTime(time))</code>
-		 */
-		private long unnormalizedTime(long time) {
-			return (time * (totalCount - skipCount))
-					/ GlobalConstants.outputCount;
 		}
 	}
 }
