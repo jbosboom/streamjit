@@ -352,4 +352,118 @@ public class TailChannels {
 			count = 0;
 		}
 	}
+
+	public static final class BlockingTailChannel2
+			extends
+				AbstractBlockingTailChannel {
+
+		private volatile CountDownLatch skipLatch;
+
+		private boolean skipLatchUp;
+
+		private Stopwatch stopWatch;
+
+		/**
+		 * @param buffer
+		 * @param conProvider
+		 * @param conInfo
+		 * @param bufferTokenName
+		 * @param debugLevel
+		 *            For all above 5 parameters, see
+		 *            {@link BlockingInputChannel#BlockingInputChannel(Buffer, ConnectionProvider, ConnectionInfo, String, int)}
+		 * @param skipCount
+		 *            : Skips this amount of output before evaluating the
+		 *            running time. This is added to avoid the noise from init
+		 *            schedule and the drain data. ( i.e., In order to get real
+		 *            steady state execution time)
+		 * @param steadyCount
+		 *            : {@link #getFixedOutputTime()} calculates the time taken
+		 *            to get this amount of outputs ( after skipping skipCount
+		 *            number of outputs at the beginning).
+		 */
+		public BlockingTailChannel2(Buffer buffer,
+				ConnectionProvider conProvider, ConnectionInfo conInfo,
+				String bufferTokenName, int debugLevel, int skipCount,
+				int steadyCount, String appName) {
+			super(buffer, conProvider, conInfo, bufferTokenName, debugLevel,
+					skipCount, steadyCount, appName);
+			stopWatch = Stopwatch.createUnstarted();
+			skipLatch = new CountDownLatch(1);
+			this.skipLatchUp = true;
+		}
+
+		@Override
+		public void receiveData() {
+			super.receiveData();
+			count++;
+
+			if (skipLatchUp && count > skipCount) {
+				skipLatch.countDown();
+				skipLatchUp = false;
+			}
+
+			if (stopWatch.isRunning() && count > totalCount) {
+				stopWatch.stop();
+			}
+		}
+
+		/**
+		 * Skips skipCount amount of output at the beginning and then calculates
+		 * the time taken to get steadyCount amount of outputs. skipCount is
+		 * added to avoid the noise from init schedule and the drain data. (
+		 * i.e., In order to get real steady state execution time).
+		 * 
+		 * @return time in MILLISECONDS.
+		 * @throws InterruptedException
+		 */
+		public long getFixedOutputTime() throws InterruptedException {
+			releaseAndInitilize();
+			skipLatch.await();
+			stopWatch.start();
+			while (stopWatch.isRunning())
+				Thread.sleep(250);
+			long time = stopWatch.elapsed(TimeUnit.MILLISECONDS);
+			return normalizedTime(time);
+		}
+
+		@Override
+		public long getFixedOutputTime(long timeout)
+				throws InterruptedException {
+			if (timeout < 1)
+				return getFixedOutputTime();
+
+			timeout = unnormalizedTime(timeout);
+			releaseAndInitilize();
+			skipLatch.await();
+			stopWatch.start();
+			while (stopWatch.isRunning()
+					&& stopWatch.elapsed(TimeUnit.MILLISECONDS) < timeout) {
+				Thread.sleep(250);
+			}
+
+			long time = stopWatch.elapsed(TimeUnit.MILLISECONDS);
+
+			if (time > timeout)
+				return -1;
+			else
+				return normalizedTime(time);
+		}
+
+		/**
+		 * Releases all latches, and re-initializes the latches and counters.
+		 */
+		protected void releaseAndInitilize() {
+			count = 0;
+			skipLatch.countDown();
+			skipLatch = new CountDownLatch(1);
+			skipLatchUp = true;
+			stopWatch.reset();
+		}
+
+		public void reset() {
+			stopWatch.reset();
+			skipLatch.countDown();
+			count = 0;
+		}
+	}
 }
