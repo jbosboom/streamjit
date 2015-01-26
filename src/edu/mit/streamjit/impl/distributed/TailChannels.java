@@ -152,6 +152,18 @@ public class TailChannels {
 		}
 	}
 
+	private static abstract class AbstractBlockingTailChannel
+			extends
+				BlockingInputChannel implements TailChannel {
+
+		public AbstractBlockingTailChannel(Buffer buffer,
+				ConnectionProvider conProvider, ConnectionInfo conInfo,
+				String bufferTokenName, int debugLevel) {
+			super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
+		}
+
+	}
+
 	public static class BlockingTailChannel1 extends BlockingInputChannel
 			implements TailChannel {
 
