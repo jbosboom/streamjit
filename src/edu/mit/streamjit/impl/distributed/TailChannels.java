@@ -251,6 +251,8 @@ public class TailChannels {
 		 * @param conInfo
 		 * @param bufferTokenName
 		 * @param debugLevel
+		 *            For all above 5 parameters, see
+		 *            {@link BlockingInputChannel#BlockingInputChannel(Buffer, ConnectionProvider, ConnectionInfo, String, int)}
 		 * @param skipCount
 		 *            : Skips this amount of output before evaluating the
 		 *            running time. This is added to avoid the noise from init
