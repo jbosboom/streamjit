@@ -968,15 +968,16 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 		private BufferStatus bufferStatus(Token bufferID, BlobExecuter be,
 				boolean isIn) {
-			Buffer b = be.bufferMap.get(bufferID);
-			if (b == null)
-				throw new IllegalStateException("Check this condition");
 			int min = Integer.MAX_VALUE;
 			// BE sets blob to null after the drained().
 			if (be.blob != null)
 				min = be.blob.getMinimumBufferCapacity(bufferID);
 
-			int availableResource = isIn ? b.size() : b.capacity() - b.size();
+			int availableResource = min;
+			Buffer b = be.bufferMap.get(bufferID);
+			if (b != null)
+				availableResource = isIn ? b.size() : b.capacity() - b.size();
+
 			return new BufferStatus(bufferID, min, availableResource);
 		}
 
