@@ -15,6 +15,7 @@ import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements.NewConInfo;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
 import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
+import edu.mit.streamjit.impl.distributed.profiler.ProfilerCommand;
 
 /**
  * @author Sumanan sumanan@mit.edu
@@ -128,5 +129,10 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 			System.out.println("StreamNode is Exiting...");
 			streamNode.exit();
 		}
+	}
+
+	@Override
+	public void visit(ProfilerCommand command) {
+		// TODO Auto-generated method stub
 	}
 }
