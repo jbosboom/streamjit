@@ -938,12 +938,11 @@ public class BlobsManagerImpl implements BlobsManager {
 	private class BufferProfiler {
 
 		private SNBufferStatusData snBufferStatusData() {
-			if (blobExecuters == null)
-				throw new IllegalStateException("Check this condition");
-
 			Set<BlobBufferStatus> blobBufferStatusSet = new HashSet<>();
-			for (BlobExecuter be : blobExecuters.values()) {
-				blobBufferStatusSet.add(blobBufferStatus(be));
+			if (blobExecuters == null) {
+				for (BlobExecuter be : blobExecuters.values()) {
+					blobBufferStatusSet.add(blobBufferStatus(be));
+				}
 			}
 
 			return new SNBufferStatusData(streamNode.getNodeID(),
