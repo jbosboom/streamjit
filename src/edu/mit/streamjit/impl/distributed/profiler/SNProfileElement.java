@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.SNMessageVisitor;
+import edu.mit.streamjit.impl.distributed.node.BlobsManager;
 
 public abstract class SNProfileElement implements SNMessageElement {
 
@@ -17,7 +18,10 @@ public abstract class SNProfileElement implements SNMessageElement {
 		visitor.visit(this);
 	}
 
-	public static final class BufferStatusData extends SNProfileElement {
+	/**
+	 * Status for all buffers from a {@link BlobsManager}.
+	 */
+	public static final class SNBufferStatusData extends SNProfileElement {
 		private static final long serialVersionUID = 1L;
 
 		public final Token blobID;
@@ -26,7 +30,7 @@ public abstract class SNProfileElement implements SNMessageElement {
 
 		public final ImmutableMap<Token, Integer> outputBufferSizes;
 
-		public BufferStatusData(Token blobID,
+		public SNBufferStatusData(Token blobID,
 				ImmutableMap<Token, Integer> inputBufferSizes,
 				ImmutableMap<Token, Integer> outputBufferSizes) {
 			this.blobID = blobID;
@@ -41,6 +45,6 @@ public abstract class SNProfileElement implements SNMessageElement {
 	}
 
 	public interface SNProfileElementProcessor {
-		public void process(BufferStatusData bufferStatusData);
+		public void process(SNBufferStatusData bufferStatusData);
 	}
 }

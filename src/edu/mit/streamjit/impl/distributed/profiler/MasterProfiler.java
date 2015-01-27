@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.BufferStatusData;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData;
 import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNProfileElementProcessor;
 
 /**
@@ -15,14 +15,14 @@ import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNProfileEle
  */
 public class MasterProfiler implements SNProfileElementProcessor {
 
-	private final Map<Token, BufferStatusData> BufferStatusDataMap;
+	private final Map<Token, SNBufferStatusData> BufferStatusDataMap;
 
 	public MasterProfiler() {
 		BufferStatusDataMap = new HashMap<>();
 	}
 
 	@Override
-	public void process(BufferStatusData bufferStatusData) {
+	public void process(SNBufferStatusData bufferStatusData) {
 		BufferStatusDataMap.put(bufferStatusData.blobID, bufferStatusData);
 	}
 }
