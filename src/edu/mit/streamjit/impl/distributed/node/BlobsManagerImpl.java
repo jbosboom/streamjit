@@ -48,6 +48,11 @@ import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.SNTimeInfo;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.BufferManager.SNLocalBufferManager;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData.BlobBufferStatus;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData.BufferStatus;
+import edu.mit.streamjit.impl.distributed.profiler.StreamNodeProfiler;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
@@ -927,6 +932,71 @@ public class BlobsManagerImpl implements BlobsManager {
 				destPos += array.length;
 			}
 			return mergedArray;
+		}
+	}
+
+	private class BufferProfiler {
+
+		private SNBufferStatusData snBufferStatusData() {
+			if (blobExecuters == null)
+				throw new IllegalStateException("Check this condition");
+
+			Set<BlobBufferStatus> blobBufferStatusSet = new HashSet<>();
+			for (BlobExecuter be : blobExecuters.values()) {
+				blobBufferStatusSet.add(blobBufferStatus(be));
+			}
+
+			return new SNBufferStatusData(streamNode.getNodeID(),
+					ImmutableSet.copyOf(blobBufferStatusSet));
+		}
+
+		private BlobBufferStatus blobBufferStatus(BlobExecuter be) {
+			if (be.bufferMap == null)
+				throw new IllegalStateException("Check this condition");
+
+			return new BlobBufferStatus(be.blobID, bufferStatusSet(be, true),
+					bufferStatusSet(be, false));
+		}
+
+		private ImmutableSet<BufferStatus> bufferStatusSet(BlobExecuter be,
+				boolean isIn) {
+			Set<Token> tokenSet = tokenSet(be, isIn);
+			Set<BufferStatus> bufferStatus = new HashSet<>();
+			for (Token t : tokenSet) {
+				bufferStatus.add(bufferStatus(t, be, isIn));
+			}
+			return ImmutableSet.copyOf(bufferStatus);
+		}
+
+		private BufferStatus bufferStatus(Token bufferID, BlobExecuter be,
+				boolean isIn) {
+			Buffer b = be.bufferMap.get(bufferID);
+			if (b == null)
+				throw new IllegalStateException("Check this condition");
+			int min = Integer.MAX_VALUE;
+			// BE sets blob to null after the drained().
+			if (be.blob != null)
+				min = be.blob.getMinimumBufferCapacity(bufferID);
+
+			int availableResource = isIn ? b.size() : b.capacity() - b.size();
+			return new BufferStatus(bufferID, min, availableResource);
+		}
+
+		private Set<Token> tokenSet(BlobExecuter be, boolean isIn) {
+			Set<Token> tokenSet;
+			// BE sets blob to null after the drained().
+			if (be.blob == null) {
+				if (isIn)
+					tokenSet = be.inChnlManager.inputChannelsMap().keySet();
+				else
+					tokenSet = be.outChnlManager.outputChannelsMap().keySet();
+			} else {
+				if (isIn)
+					tokenSet = be.blob.getInputs();
+				else
+					tokenSet = be.blob.getOutputs();
+			}
+			return tokenSet;
 		}
 	}
 
