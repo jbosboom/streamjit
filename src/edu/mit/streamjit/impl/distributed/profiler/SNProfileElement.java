@@ -67,6 +67,11 @@ public abstract class SNProfileElement implements SNMessageElement {
 				this.inputSet = inputSet;
 				this.outputSet = outputSet;
 			}
+
+			@Override
+			public String toString() {
+				return String.format("BlobBufferStatus:blob=%s", blobID);
+			}
 		}
 
 		/**
@@ -98,6 +103,12 @@ public abstract class SNProfileElement implements SNMessageElement {
 				this.ID = ID;
 				this.min = min;
 				this.availableResource = availableResource;
+			}
+
+			@Override
+			public String toString() {
+				return String.format("Buffer=%s, min=%d, available=%d", ID,
+						min, availableResource);
 			}
 		}
 
