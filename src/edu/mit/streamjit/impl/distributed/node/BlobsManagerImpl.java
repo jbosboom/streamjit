@@ -1002,6 +1002,9 @@ public class BlobsManagerImpl implements BlobsManager {
 	private static int count = 0;
 
 	/**
+	 * TODO: [27-01-2015] Use BufferProfiler to get buffer status and then write
+	 * the status in to the file.
+	 * <p>
 	 * Profiles the buffer sizes in a timely manner and log that information
 	 * into a text file. This information may be useful to analyse and find out
 	 * deadlock situations.
