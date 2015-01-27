@@ -950,15 +950,15 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 
 		private BlobBufferStatus blobBufferStatus(BlobExecuter be) {
-			if (be.bufferMap == null)
-				throw new IllegalStateException("Check this condition");
-
 			return new BlobBufferStatus(be.blobID, bufferStatusSet(be, true),
 					bufferStatusSet(be, false));
 		}
 
 		private ImmutableSet<BufferStatus> bufferStatusSet(BlobExecuter be,
 				boolean isIn) {
+			if (be.bufferMap == null)
+				return ImmutableSet.of();
+
 			Set<Token> tokenSet = tokenSet(be, isIn);
 			Set<BufferStatus> bufferStatus = new HashSet<>();
 			for (Token t : tokenSet) {
@@ -966,7 +966,6 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 			return ImmutableSet.copyOf(bufferStatus);
 		}
-
 		private BufferStatus bufferStatus(Token bufferID, BlobExecuter be,
 				boolean isIn) {
 			Buffer b = be.bufferMap.get(bufferID);
