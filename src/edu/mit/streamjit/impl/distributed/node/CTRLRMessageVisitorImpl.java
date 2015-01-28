@@ -79,6 +79,11 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 		miscCtrlElements.process(miscProcessor);
 	}
 
+	@Override
+	public void visit(ProfilerCommand command) {
+		command.process(pm);
+	}
+
 	public class MiscCtrlElementProcessorImpl implements
 			MiscCtrlElementProcessor {
 
@@ -134,10 +139,6 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 			System.out.println("StreamNode is Exiting...");
 			streamNode.exit();
 		}
-	}
-
-	@Override
-	public void visit(ProfilerCommand command) {
 	}
 
 	public class ProfilerManager implements ProfilerCommandProcessor {
