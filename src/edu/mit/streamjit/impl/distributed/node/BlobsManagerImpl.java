@@ -935,7 +935,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 	}
 
-	private class BufferProfiler {
+	private class BlobsBufferStatus {
 
 		/**
 		 * @return Status of all buffers of all blobs of this
