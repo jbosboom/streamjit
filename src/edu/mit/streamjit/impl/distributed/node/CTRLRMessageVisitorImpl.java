@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
+import java.util.HashSet;
 
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
@@ -18,6 +19,7 @@ import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
 import edu.mit.streamjit.impl.distributed.profiler.Profiler;
 import edu.mit.streamjit.impl.distributed.profiler.ProfilerCommand;
 import edu.mit.streamjit.impl.distributed.profiler.ProfilerCommand.ProfilerCommandProcessor;
+import edu.mit.streamjit.impl.distributed.profiler.StreamNodeProfiler;
 
 /**
  * @author Sumanan sumanan@mit.edu
@@ -143,31 +145,31 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 		private final Profiler profiler;
 
 		ProfilerManager() {
-			profiler = null;
+			profiler = new Profiler(new HashSet<StreamNodeProfiler>(),
+					streamNode.controllerConnection);
 		}
 
 		@Override
 		public void processSTART() {
-			// TODO Auto-generated method stub
-
+			if (profiler.getState() == Thread.State.NEW)
+				profiler.start();
+			else
+				System.err.println("Profiler has already been started.");
 		}
 
 		@Override
 		public void processSTOP() {
-			// TODO Auto-generated method stub
-
+			profiler.stopProfiling();
 		}
 
 		@Override
 		public void processPAUSE() {
-			// TODO Auto-generated method stub
-
+			profiler.pauseProfiling();
 		}
 
 		@Override
 		public void processRESUME() {
-			// TODO Auto-generated method stub
-
+			profiler.resumeProfiling();
 		}
 	}
 }
