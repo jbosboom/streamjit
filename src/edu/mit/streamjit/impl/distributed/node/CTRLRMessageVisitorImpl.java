@@ -15,7 +15,9 @@ import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements.NewConInfo;
 import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
 import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
+import edu.mit.streamjit.impl.distributed.profiler.Profiler;
 import edu.mit.streamjit.impl.distributed.profiler.ProfilerCommand;
+import edu.mit.streamjit.impl.distributed.profiler.ProfilerCommand.ProfilerCommandProcessor;
 
 /**
  * @author Sumanan sumanan@mit.edu
@@ -27,12 +29,14 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 	private final RequestProcessor rp;
 	private final ConfigurationProcessor jp;
 	private final MiscCtrlElementProcessor miscProcessor;
+	private final ProfilerManager pm;
 
 	public CTRLRMessageVisitorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 		this.rp = new RequestProcessorImpl();
 		this.jp = new ConfigurationProcessorImpl(streamNode);
 		this.miscProcessor = new MiscCtrlElementProcessorImpl();
+		this.pm = new ProfilerManager();
 	}
 
 	@Override
@@ -73,9 +77,8 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 		miscCtrlElements.process(miscProcessor);
 	}
 
-	public class MiscCtrlElementProcessorImpl
-			implements
-				MiscCtrlElementProcessor {
+	public class MiscCtrlElementProcessorImpl implements
+			MiscCtrlElementProcessor {
 
 		@Override
 		public void process(NewConInfo newConInfo) {
@@ -133,6 +136,38 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 
 	@Override
 	public void visit(ProfilerCommand command) {
-		// TODO Auto-generated method stub
+	}
+
+	public class ProfilerManager implements ProfilerCommandProcessor {
+
+		private final Profiler profiler;
+
+		ProfilerManager() {
+			profiler = null;
+		}
+
+		@Override
+		public void processSTART() {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void processSTOP() {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void processPAUSE() {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void processRESUME() {
+			// TODO Auto-generated method stub
+
+		}
 	}
 }
