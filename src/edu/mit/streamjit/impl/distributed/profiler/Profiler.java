@@ -20,7 +20,7 @@ public final class Profiler extends Thread {
 
 	private final AtomicBoolean stopFlag;
 
-	Profiler(ImmutableSet<StreamNodeProfiler> profilers,
+	public Profiler(ImmutableSet<StreamNodeProfiler> profilers,
 			Connection controllerConnection) {
 		super("Profiler");
 		this.profilers = profilers;
