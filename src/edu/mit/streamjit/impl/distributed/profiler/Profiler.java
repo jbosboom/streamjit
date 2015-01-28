@@ -76,7 +76,7 @@ public final class Profiler extends Thread {
 	public void resumeProfiling() {
 	}
 
-	public void addStreamNodeProfiler(StreamNodeProfiler p) {
+	public void add(StreamNodeProfiler p) {
 		checkNotNull(p, "StreamNodeProfiler is null");
 		profilers.add(p);
 	}
@@ -89,7 +89,7 @@ public final class Profiler extends Thread {
 	 * @return <code>true</code> iff p existed in the profiler set and has been
 	 *         removed successfully.
 	 */
-	public boolean removeStreamNodeProfiler(StreamNodeProfiler p) {
+	public boolean remove(StreamNodeProfiler p) {
 		return profilers.remove(p);
 	}
 }
