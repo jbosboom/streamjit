@@ -1163,4 +1163,14 @@ public class BlobsManagerImpl implements BlobsManager {
 			this.interrupt();
 		}
 	}
+
+	public class BufferProfiler implements StreamNodeProfiler {
+
+		BlobsBufferStatus bbs = new BlobsBufferStatus();
+
+		@Override
+		public SNProfileElement profile() {
+			return bbs.snBufferStatusData();
+		}
+	}
 }
