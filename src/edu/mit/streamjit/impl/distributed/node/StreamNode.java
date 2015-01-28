@@ -129,6 +129,12 @@ public class StreamNode extends Thread {
 	}
 
 	private void safelyCloseResources() {
+		if (blobsManager != null)
+			blobsManager.stop();
+
+		if (profiler != null)
+			profiler.stopProfiling();
+
 		try {
 			this.controllerConnection.closeConnection();
 		} catch (IOException e) {
