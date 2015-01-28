@@ -92,4 +92,24 @@ public final class Profiler extends Thread {
 	public boolean remove(StreamNodeProfiler p) {
 		return profilers.remove(p);
 	}
+
+	/**
+	 * Removes all profilers from profiling.
+	 * 
+	 * @param profilers
+	 */
+	public void removeAll(Set<StreamNodeProfiler> profilers) {
+		for (StreamNodeProfiler p : profilers)
+			remove(p);
+	}
+
+	/**
+	 * Add all profilers for profiling.
+	 * 
+	 * @param profilers
+	 */
+	public void addAll(Set<StreamNodeProfiler> profilers) {
+		for (StreamNodeProfiler p : profilers)
+			add(p);
+	}
 }
