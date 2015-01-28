@@ -97,6 +97,8 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private final String appName;
 
+	private ImmutableSet<StreamNodeProfiler> profilers;
+
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
 			Map<Token, ConnectionInfo> conInfoMap, StreamNode streamNode,
 			ConnectionProvider conProvider, String appName) {
@@ -172,6 +174,15 @@ public class BlobsManagerImpl implements BlobsManager {
 
 		if (bufferCleaner != null)
 			bufferCleaner.stopit();
+	}
+
+	@Override
+	public Set<StreamNodeProfiler> profilers() {
+		if (profilers == null) {
+			StreamNodeProfiler snp = new BufferProfiler();
+			profilers = ImmutableSet.of(snp);
+		}
+		return profilers;
 	}
 
 	private void createBEs(ImmutableSet<Blob> blobSet) {
