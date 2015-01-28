@@ -92,13 +92,7 @@ public class StreamNode extends Thread {
 				run = false;
 			}
 		}
-
-		try {
-			this.controllerConnection.closeConnection();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		safelyCloseResources();
 	}
 
 	public int getNodeID() {
@@ -132,6 +126,14 @@ public class StreamNode extends Thread {
 
 	public String tostString() {
 		return "StreamNode-" + myNodeID;
+	}
+
+	private void safelyCloseResources() {
+		try {
+			this.controllerConnection.closeConnection();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
