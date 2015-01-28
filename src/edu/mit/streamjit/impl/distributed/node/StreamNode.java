@@ -143,6 +143,20 @@ public class StreamNode extends Thread {
 	}
 
 	/**
+	 * Un-references old BlobManager object before creating new one.
+	 */
+	void releaseOldBM() {
+		// [2014-3-20] We need to release blobsmanager to release the
+		// memory. Otherwise, Blobthread2.corecode will occupy the memory.
+		BlobsManager bm = getBlobsManager();
+		if (bm != null) {
+			bm.stop();
+			setBlobsManager(null);
+			bm = null;
+		}
+	}
+
+	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
