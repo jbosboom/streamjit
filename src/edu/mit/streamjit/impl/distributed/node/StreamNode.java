@@ -117,7 +117,10 @@ public class StreamNode extends Thread {
 	 *            the blobsManager to set
 	 */
 	public void setBlobsManager(BlobsManager blobsManager) {
+		releaseOldBM();
 		this.blobsManager = blobsManager;
+		if (profiler != null && blobsManager != null)
+			profiler.addAll(blobsManager.profilers());
 	}
 
 	public void exit() {
