@@ -11,6 +11,7 @@ import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
+import edu.mit.streamjit.impl.distributed.profiler.Profiler;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
@@ -37,6 +38,8 @@ public class StreamNode extends Thread {
 	private CTRLRMessageVisitor mv;
 
 	private volatile BlobsManager blobsManager;
+
+	Profiler profiler;
 
 	private boolean run; // As we assume that all controller communication and
 							// the MessageElement processing is managed by

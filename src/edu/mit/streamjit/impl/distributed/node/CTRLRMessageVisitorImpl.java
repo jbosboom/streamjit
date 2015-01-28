@@ -141,36 +141,36 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 		}
 	}
 
-	public class ProfilerCommandProcessorImpl implements ProfilerCommandProcessor {
-
-		private final Profiler profiler;
+	public class ProfilerCommandProcessorImpl implements
+			ProfilerCommandProcessor {
 
 		ProfilerCommandProcessorImpl() {
-			profiler = new Profiler(new HashSet<StreamNodeProfiler>(),
+			streamNode.profiler = new Profiler(
+					new HashSet<StreamNodeProfiler>(),
 					streamNode.controllerConnection);
 		}
 
 		@Override
 		public void processSTART() {
-			if (profiler.getState() == Thread.State.NEW)
-				profiler.start();
+			if (streamNode.profiler.getState() == Thread.State.NEW)
+				streamNode.profiler.start();
 			else
 				System.err.println("Profiler has already been started.");
 		}
 
 		@Override
 		public void processSTOP() {
-			profiler.stopProfiling();
+			streamNode.profiler.stopProfiling();
 		}
 
 		@Override
 		public void processPAUSE() {
-			profiler.pauseProfiling();
+			streamNode.profiler.pauseProfiling();
 		}
 
 		@Override
 		public void processRESUME() {
-			profiler.resumeProfiling();
+			streamNode.profiler.resumeProfiling();
 		}
 	}
 }
