@@ -937,6 +937,10 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private class BufferProfiler {
 
+		/**
+		 * @return Status of all buffers of all blobs of this
+		 *         {@link BlobsManager}.
+		 */
 		private SNBufferStatusData snBufferStatusData() {
 			Set<BlobBufferStatus> blobBufferStatusSet = new HashSet<>();
 			if (blobExecuters == null) {
@@ -949,11 +953,25 @@ public class BlobsManagerImpl implements BlobsManager {
 					ImmutableSet.copyOf(blobBufferStatusSet));
 		}
 
+		/**
+		 * Status of the all buffers of the blob represented by the @param be.
+		 * 
+		 * @param be
+		 * @return
+		 */
 		private BlobBufferStatus blobBufferStatus(BlobExecuter be) {
 			return new BlobBufferStatus(be.blobID, bufferStatusSet(be, true),
 					bufferStatusSet(be, false));
 		}
 
+		/**
+		 * @param be
+		 * @param isIn
+		 *            Decides whether a blob's inputbuffer's status or
+		 *            outputbuffers's status should be returned.
+		 * @return Set of {@link BufferStatus} of a blob's set of input buffers
+		 *         or set of output buffers depends on isIn argument.
+		 */
 		private ImmutableSet<BufferStatus> bufferStatusSet(BlobExecuter be,
 				boolean isIn) {
 			if (be.bufferMap == null)
@@ -966,6 +984,7 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 			return ImmutableSet.copyOf(bufferStatus);
 		}
+
 		private BufferStatus bufferStatus(Token bufferID, BlobExecuter be,
 				boolean isIn) {
 			int min = Integer.MAX_VALUE;
@@ -981,6 +1000,15 @@ public class BlobsManagerImpl implements BlobsManager {
 			return new BufferStatus(bufferID, min, availableResource);
 		}
 
+		/**
+		 * Return a blob's either input or output buffer's token set.
+		 * 
+		 * @param be
+		 * @param isIn
+		 *            Decides whether a blob's inputbuffer's token set or
+		 *            outputbuffers's token set should be returned.
+		 * @return Blob's inputbuffer's token set or outputbuffers's token set.
+		 */
 		private Set<Token> tokenSet(BlobExecuter be, boolean isIn) {
 			Set<Token> tokenSet;
 			// BE sets blob to null after the drained().
@@ -1003,7 +1031,8 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	/**
 	 * TODO: [27-01-2015] Use BufferProfiler to get buffer status and then write
-	 * the status in to the file.
+	 * the status in to the file. I created BufferProfiler by copying most of
+	 * the code from this class.
 	 * <p>
 	 * Profiles the buffer sizes in a timely manner and log that information
 	 * into a text file. This information may be useful to analyse and find out
