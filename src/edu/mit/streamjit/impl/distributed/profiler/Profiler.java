@@ -1,9 +1,11 @@
 package edu.mit.streamjit.impl.distributed.profiler;
 
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
+import static com.google.common.base.Preconditions.checkNotNull;
 
-import com.google.common.collect.ImmutableSet;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import edu.mit.streamjit.impl.distributed.common.Connection;
 
@@ -14,17 +16,21 @@ public final class Profiler extends Thread {
 	 */
 	private final int sampleInterval = 2000;
 
-	private final ImmutableSet<StreamNodeProfiler> profilers;
+	private final Set<StreamNodeProfiler> profilers;
 
 	private final Connection controllerConnection;
 
 	private final AtomicBoolean stopFlag;
 
-	public Profiler(ImmutableSet<StreamNodeProfiler> profilers,
+	public Profiler(Set<StreamNodeProfiler> profilers,
 			Connection controllerConnection) {
 		super("Profiler");
-		this.profilers = profilers;
-		this.controllerConnection = controllerConnection;
+		this.profilers = new HashSet<>();
+		checkNotNull(profilers);
+		for (StreamNodeProfiler p : profilers)
+			if (p != null)
+				profilers.add(p);
+		this.controllerConnection = checkNotNull(controllerConnection);
 		stopFlag = new AtomicBoolean(false);
 	}
 
@@ -68,5 +74,22 @@ public final class Profiler extends Thread {
 	}
 
 	public void resumeProfiling() {
+	}
+
+	public void addStreamNodeProfiler(StreamNodeProfiler p) {
+		checkNotNull(p, "StreamNodeProfiler is null");
+		profilers.add(p);
+	}
+
+	/**
+	 * Removes the specified StreamNodeProfiler p from profiling.
+	 * 
+	 * @param p
+	 *            StreamNodeProfiler that need to be removed from profiling.
+	 * @return <code>true</code> iff p existed in the profiler set and has been
+	 *         removed successfully.
+	 */
+	public boolean removeStreamNodeProfiler(StreamNodeProfiler p) {
+		return profilers.remove(p);
 	}
 }
