@@ -31,14 +31,14 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 	private final RequestProcessor rp;
 	private final ConfigurationProcessor jp;
 	private final MiscCtrlElementProcessor miscProcessor;
-	private final ProfilerManager pm;
+	private final ProfilerCommandProcessorImpl pm;
 
 	public CTRLRMessageVisitorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 		this.rp = new RequestProcessorImpl();
 		this.jp = new ConfigurationProcessorImpl(streamNode);
 		this.miscProcessor = new MiscCtrlElementProcessorImpl();
-		this.pm = new ProfilerManager();
+		this.pm = new ProfilerCommandProcessorImpl();
 	}
 
 	@Override
@@ -141,11 +141,11 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 		}
 	}
 
-	public class ProfilerManager implements ProfilerCommandProcessor {
+	public class ProfilerCommandProcessorImpl implements ProfilerCommandProcessor {
 
 		private final Profiler profiler;
 
-		ProfilerManager() {
+		ProfilerCommandProcessorImpl() {
 			profiler = new Profiler(new HashSet<StreamNodeProfiler>(),
 					streamNode.controllerConnection);
 		}
