@@ -1,7 +1,6 @@
 package edu.mit.streamjit.impl.distributed;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -10,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.base.Stopwatch;
 
 import edu.mit.streamjit.impl.common.TimeLogger;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 
 /**
  * Collection of various {@link TimeLogger} implementations.
@@ -29,21 +29,11 @@ public class TimeLoggers {
 	 */
 	public static class FileTimeLogger extends TimeLoggerImpl {
 
-		private static FileWriter fileWriter(String name) {
-			FileWriter fw = null;
-			try {
-				fw = new FileWriter(name);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			return fw;
-		}
-
 		public FileTimeLogger(String appName) {
-			super(fileWriter(String.format("%s%scompileTime.txt", appName,
-					File.separator)), fileWriter(String.format(
-					"%s%srunTime.txt", appName, File.separator)),
-					fileWriter(String.format("%s%sdrainTime.txt", appName,
+			super(Utils.fileWriter(String.format("%s%scompileTime.txt",
+					appName, File.separator)), Utils.fileWriter(String.format(
+					"%s%srunTime.txt", appName, File.separator)), Utils
+					.fileWriter(String.format("%s%sdrainTime.txt", appName,
 							File.separator)));
 		}
 	}

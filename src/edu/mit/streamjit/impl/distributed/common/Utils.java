@@ -145,4 +145,22 @@ public class Utils {
 			throws IOException {
 		writer.write(String.format("%s=%s\n", name, val ? "True" : "False"));
 	}
+
+	/**
+	 * Creates and returns a {@link FileWriter} with append = false. Suppresses
+	 * {@link IOException} and returns null if exception occurred. This method
+	 * is added to keep other classes clean.
+	 * 
+	 * @param name
+	 * @return
+	 */
+	public static FileWriter fileWriter(String name) {
+		FileWriter fw = null;
+		try {
+			fw = new FileWriter(name);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return fw;
+	}
 }
