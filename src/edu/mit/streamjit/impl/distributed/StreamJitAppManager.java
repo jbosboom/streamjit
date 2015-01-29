@@ -43,6 +43,8 @@ import edu.mit.streamjit.impl.distributed.common.SNTimeInfo.SNTimeInfoProcessor;
 import edu.mit.streamjit.impl.distributed.common.SNTimeInfoProcessorImpl;
 import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Utils;
+import edu.mit.streamjit.impl.distributed.profiler.MasterProfiler;
+import edu.mit.streamjit.impl.distributed.profiler.ProfilerCommand;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 public class StreamJitAppManager {
@@ -64,6 +66,8 @@ public class StreamJitAppManager {
 	private ErrorProcessor ep = null;
 
 	private SNExceptionProcessorImpl exP = null;
+
+	private final MasterProfiler profiler;
 
 	/**
 	 * A {@link BoundaryOutputChannel} for the head of the stream graph. If the
@@ -124,6 +128,7 @@ public class StreamJitAppManager {
 
 		headToken = Token.createOverallInputToken(app.source);
 		tailToken = Token.createOverallOutputToken(app.sink);
+		profiler = new MasterProfiler();
 	}
 
 	public AppStatusProcessor appStatusProcessor() {
@@ -349,6 +354,11 @@ public class StreamJitAppManager {
 					tailChannel.name());
 			tailThread.start();
 		}
+		controller.sendToAll(ProfilerCommand.START);
+	}
+
+	public MasterProfiler getProfiler() {
+		return profiler;
 	}
 
 	/**

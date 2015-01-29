@@ -23,6 +23,7 @@ import edu.mit.streamjit.impl.distributed.common.SystemInfo;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo.SystemInfoProcessor;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNProfileElementProcessor;
 
 /**
  * StreamNodeAgent represents a {@link StreamNode} at {@link Controller} side.
@@ -300,7 +301,9 @@ public abstract class StreamNodeAgent {
 
 		@Override
 		public void visit(SNProfileElement snProfileElement) {
-
+			assert manager != null : "StreamJitAppManager has not been set";
+			SNProfileElementProcessor snProfileP = manager.getProfiler();
+			snProfileElement.process(snProfileP);
 		}
 	}
 }
