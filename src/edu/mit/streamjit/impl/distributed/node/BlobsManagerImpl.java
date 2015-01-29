@@ -954,7 +954,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		 */
 		private SNBufferStatusData snBufferStatusData() {
 			Set<BlobBufferStatus> blobBufferStatusSet = new HashSet<>();
-			if (blobExecuters == null) {
+			if (blobExecuters != null) {
 				for (BlobExecuter be : blobExecuters.values()) {
 					blobBufferStatusSet.add(blobBufferStatus(be));
 				}
