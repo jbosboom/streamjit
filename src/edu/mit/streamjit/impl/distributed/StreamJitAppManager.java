@@ -128,7 +128,7 @@ public class StreamJitAppManager {
 
 		headToken = Token.createOverallInputToken(app.source);
 		tailToken = Token.createOverallOutputToken(app.sink);
-		profiler = new MasterProfiler();
+		profiler = new MasterProfiler(app.name);
 	}
 
 	public AppStatusProcessor appStatusProcessor() {

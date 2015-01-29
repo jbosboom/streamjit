@@ -3,9 +3,8 @@ package edu.mit.streamjit.impl.distributed.profiler;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import edu.mit.streamjit.impl.distributed.profiler.ProfileElementLoggers.FileProfileElementLogger;
 import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData;
-import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData.BlobBufferStatus;
-import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData.BufferStatus;
 import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNProfileElementProcessor;
 
 /**
@@ -18,29 +17,16 @@ public class MasterProfiler implements SNProfileElementProcessor {
 
 	private final Map<Integer, SNBufferStatusData> BufferStatusDataMap;
 
-	private final Object lock = new Object();
+	private final ProfileElementLogger logger;
 
-	public MasterProfiler() {
+	public MasterProfiler(String appName) {
 		BufferStatusDataMap = new ConcurrentHashMap<>();
+		logger = new FileProfileElementLogger(appName);
 	}
 
 	@Override
 	public void process(SNBufferStatusData bufferStatusData) {
 		BufferStatusDataMap.put(bufferStatusData.machineID, bufferStatusData);
-		print(bufferStatusData);
-	}
-
-	private void print(SNBufferStatusData bufferStatusData) {
-		synchronized (lock) {
-			System.out.println("MachineID=" + bufferStatusData.machineID);
-			for (BlobBufferStatus bbs : bufferStatusData.blobsBufferStatusSet) {
-				System.out.println("Blob - " + bbs.blobID);
-				System.out.println("Input buffers...");
-				for (BufferStatus bs : bbs.inputSet)
-					System.out.println(bs);
-				for (BufferStatus bs : bbs.outputSet)
-					System.out.println(bs);
-			}
-		}
+		logger.process(bufferStatusData);
 	}
 }
