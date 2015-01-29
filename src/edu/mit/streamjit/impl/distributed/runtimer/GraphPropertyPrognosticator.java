@@ -13,6 +13,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.util.ConfigurationUtils;
 
 /**
@@ -31,7 +32,8 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 
 	public GraphPropertyPrognosticator(StreamJitApp<?, ?> app) {
 		this.app = app;
-		this.writer = fileWriter();
+		this.writer = Utils.fileWriter(String.format("%s%sGraphProperty.txt",
+				app.name, File.separator));
 		writeHeader(writer);
 		paths = app.paths();
 	}
@@ -138,18 +140,6 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 		}
 		float boundaryChannelRatio = ((float) totalChannels) / boundaryChannels;
 		return boundaryChannelRatio;
-	}
-
-	private FileWriter fileWriter() {
-		FileWriter w = null;
-		String fileName = String.format("%s%sGraphProperty.txt", app.name,
-				File.separator);
-		try {
-			w = new FileWriter(fileName, false);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return w;
 	}
 
 	private static void writeHeader(FileWriter writer) {
