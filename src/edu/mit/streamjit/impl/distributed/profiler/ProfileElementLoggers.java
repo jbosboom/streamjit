@@ -1,9 +1,11 @@
 package edu.mit.streamjit.impl.distributed.profiler;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 
+import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData;
 import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData.BlobBufferStatus;
 import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData.BufferStatus;
@@ -20,8 +22,9 @@ public class ProfileElementLoggers {
 			extends
 				ProfileElementLoggerImpl {
 
-		public FileProfileElementLogger(OutputStream writer) {
-			super(writer);
+		public FileProfileElementLogger(String appName) {
+			super(Utils.fileWriter(String.format("%s%sprofile.txt", appName,
+					File.separator)));
 		}
 	}
 
