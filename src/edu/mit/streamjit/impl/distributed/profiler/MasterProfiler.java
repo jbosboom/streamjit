@@ -18,7 +18,7 @@ public class MasterProfiler implements SNProfileElementProcessor {
 
 	private final Map<Integer, SNBufferStatusData> BufferStatusDataMap;
 
-	private Object lock = new Object();
+	private final Object lock = new Object();
 
 	public MasterProfiler() {
 		BufferStatusDataMap = new ConcurrentHashMap<>();
