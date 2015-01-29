@@ -65,7 +65,7 @@ public class ProfileElementLoggers {
 					writer.write(String.format("MachineID=%d\n",
 							bufferStatusData.machineID));
 					for (BlobBufferStatus bbs : bufferStatusData.blobsBufferStatusSet) {
-						writer.write(String.format("\tBlob=\n", bbs.blobID));
+						writer.write(String.format("\tBlob=%s\n", bbs.blobID));
 						writer.write("\tInput buffers...\n");
 						for (BufferStatus bs : bbs.inputSet)
 							writer.write(String.format("\t\t%s\n", bs));
