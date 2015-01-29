@@ -107,8 +107,10 @@ public abstract class SNProfileElement implements SNMessageElement {
 
 			@Override
 			public String toString() {
-				return String.format("Buffer=%s, min=%d, available=%d", ID,
-						min, availableResource);
+				String status = availableResource >= min ? "Firable"
+						: "Not firable";
+				return String.format("Buffer=%s, min=%d, available=%d, %s", ID,
+						min, availableResource, status);
 			}
 		}
 
