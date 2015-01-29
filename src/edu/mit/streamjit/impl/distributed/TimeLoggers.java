@@ -39,10 +39,6 @@ public class TimeLoggers {
 			return fw;
 		}
 
-		/**
-		 * @param prefix
-		 *            : prefix for the file names.
-		 */
 		public FileTimeLogger(String appName) {
 			super(getFileWriter(String.format("%s%scompileTime.txt", appName,
 					File.separator)), getFileWriter(String.format(
