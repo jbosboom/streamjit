@@ -109,19 +109,8 @@ public interface Visualizer {
 			private final FileWriter writer;
 
 			DOTstreamVisitor() {
-				writer = fileWriter();
-			}
-
-			private FileWriter fileWriter() {
-				FileWriter w = null;
-				String fileName = String.format("%s%sstreamgraph.dot", appName,
-						File.separator);
-				try {
-					w = new FileWriter(fileName, false);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				return w;
+				writer = Utils.fileWriter(String.format("%s%sstreamgraph.dot",
+						appName, File.separator));
 			}
 
 			private void initilizeDot() {
