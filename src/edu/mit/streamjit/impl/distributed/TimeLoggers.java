@@ -29,7 +29,7 @@ public class TimeLoggers {
 	 */
 	public static class FileTimeLogger extends TimeLoggerImpl {
 
-		private static FileWriter getFileWriter(String name) {
+		private static FileWriter fileWriter(String name) {
 			FileWriter fw = null;
 			try {
 				fw = new FileWriter(name);
@@ -40,10 +40,10 @@ public class TimeLoggers {
 		}
 
 		public FileTimeLogger(String appName) {
-			super(getFileWriter(String.format("%s%scompileTime.txt", appName,
-					File.separator)), getFileWriter(String.format(
+			super(fileWriter(String.format("%s%scompileTime.txt", appName,
+					File.separator)), fileWriter(String.format(
 					"%s%srunTime.txt", appName, File.separator)),
-					getFileWriter(String.format("%s%sdrainTime.txt", appName,
+					fileWriter(String.format("%s%sdrainTime.txt", appName,
 							File.separator)));
 		}
 	}
