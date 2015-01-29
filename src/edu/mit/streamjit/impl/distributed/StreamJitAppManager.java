@@ -34,8 +34,8 @@ import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements.NewConInfo;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.Drained;
-import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNException;
 import edu.mit.streamjit.impl.distributed.common.SNException.AddressBindException;
 import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
@@ -328,10 +328,10 @@ public class StreamJitAppManager {
 					"No tail buffer in the passed bufferMap.");
 
 		int skipCount = Math.max(GlobalConstants.outputCount, multiplier * 5);
-		tailChannel = new TailChannels.BlockingTailChannel1(bufferMap.get(tailToken),
-				controller.getConProvider(), tailconInfo, "tailChannel - "
-						+ tailToken.toString(), 0, skipCount,
-				GlobalConstants.outputCount, app.name);
+		tailChannel = new TailChannels.BlockingTailChannel1(
+				bufferMap.get(tailToken), controller.getConProvider(),
+				tailconInfo, "tailChannel - " + tailToken.toString(), 0,
+				skipCount, GlobalConstants.outputCount, app.name);
 	}
 
 	/**
