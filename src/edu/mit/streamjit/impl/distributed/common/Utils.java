@@ -155,13 +155,7 @@ public class Utils {
 	 * @return
 	 */
 	public static FileWriter fileWriter(String name) {
-		FileWriter fw = null;
-		try {
-			fw = new FileWriter(name);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return fw;
+		return fileWriter(name, false);
 	}
 
 	/**
