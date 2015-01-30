@@ -148,7 +148,8 @@ public final class GlobalConstants {
 	 */
 	public static final int maxNumCores = 24;
 
-	static {
-
-	}
+	/**
+	 * Turn On/Off the profiling.
+	 */
+	public static final boolean needProfiler = true;
 }
