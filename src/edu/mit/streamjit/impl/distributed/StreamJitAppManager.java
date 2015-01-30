@@ -128,7 +128,7 @@ public class StreamJitAppManager {
 
 		headToken = Token.createOverallInputToken(app.source);
 		tailToken = Token.createOverallOutputToken(app.sink);
-		profiler = new MasterProfiler(app.name);
+		profiler = setupProfiler();
 	}
 
 	public AppStatusProcessor appStatusProcessor() {
@@ -287,6 +287,15 @@ public class StreamJitAppManager {
 		apStsPro.reset();
 	}
 
+	private MasterProfiler setupProfiler() {
+		MasterProfiler p = null;
+		if (GlobalConstants.needProfiler) {
+			p = new MasterProfiler(app.name);
+			controller.sendToAll(ProfilerCommand.START);
+		}
+		return p;
+	}
+
 	/**
 	 * Setup the headchannel and tailchannel.
 	 * 
@@ -354,7 +363,6 @@ public class StreamJitAppManager {
 					tailChannel.name());
 			tailThread.start();
 		}
-		controller.sendToAll(ProfilerCommand.START);
 	}
 
 	public MasterProfiler getProfiler() {
