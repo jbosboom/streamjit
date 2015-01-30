@@ -145,17 +145,37 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 			ProfilerCommandProcessor {
 
 		ProfilerCommandProcessorImpl() {
-			streamNode.profiler = new Profiler(
-					new HashSet<StreamNodeProfiler>(),
-					streamNode.controllerConnection);
+
 		}
 
 		@Override
 		public void processSTART() {
+			createProfiler();
 			if (streamNode.profiler.getState() == Thread.State.NEW)
 				streamNode.profiler.start();
-			else
-				System.err.println("Profiler has already been started.");
+		}
+
+		/**
+		 * Creates a new profiler only if
+		 * <ol>
+		 * <li>no any profiler has already been created OR
+		 * <li>the previously created profiler has been terminated.
+		 * </ol>
+		 */
+		private void createProfiler() {
+			if (streamNode.profiler == null) {
+				streamNode.profiler = new Profiler(
+						new HashSet<StreamNodeProfiler>(),
+						streamNode.controllerConnection);
+			} else if (streamNode.profiler.getState() == Thread.State.TERMINATED) {
+				System.err
+						.println("A profiler has already been created and terminated. Creating another new profiler.");
+				streamNode.profiler = new Profiler(
+						new HashSet<StreamNodeProfiler>(),
+						streamNode.controllerConnection);
+
+			} else
+				System.err.println("A profiler has already been started.");
 		}
 
 		@Override
