@@ -85,5 +85,17 @@ public class ProfileElementLoggers {
 				return null;
 			return new OutputStreamWriter(os);
 		}
+
+		@Override
+		public void newConfiguration(String cfgName) {
+			synchronized (lock) {
+				try {
+					writer.write("-----------------------------------------------------------------------------------\n");
+					writer.write(String.format("Configuration %s\n", cfgName));
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 }
