@@ -265,6 +265,9 @@ public class StreamJitAppManager {
 			isRunning = false;
 		}
 
+		if (profiler != null)
+			profiler.logger().newConfiguration("");
+
 		System.out.println("StraemJit app is running...");
 		Utils.printMemoryStatus();
 		return isRunning;
