@@ -19,6 +19,10 @@ public class MasterProfiler implements SNProfileElementProcessor {
 
 	private final ProfileElementLogger logger;
 
+	public ProfileElementLogger logger() {
+		return logger;
+	}
+
 	public MasterProfiler(String appName) {
 		BufferStatusDataMap = new ConcurrentHashMap<>();
 		logger = new FileProfileElementLogger(appName);
