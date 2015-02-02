@@ -48,6 +48,7 @@ public class Utils {
 		long heapFreeSize = Runtime.getRuntime().freeMemory();
 		int MEGABYTE = 1024 * 1024;
 		System.out.println("#########################");
+		printCurrentDateTime();
 		System.out.println(String.format("heapMaxSize = %dMB", heapMaxSize
 				/ MEGABYTE));
 		System.out.println(String
@@ -55,6 +56,15 @@ public class Utils {
 		System.out.println(String.format("heapFreeSize = %dMB", heapFreeSize
 				/ MEGABYTE));
 		System.out.println("#########################");
+	}
+
+	/**
+	 * Prints current date and time in "yyyy/MM/dd HH:mm:ss" format.
+	 */
+	public static void printCurrentDateTime() {
+		DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+		Calendar cal = Calendar.getInstance();
+		System.out.println(dateFormat.format(cal.getTime()));
 	}
 
 	public static void printOutOfMemory() {
