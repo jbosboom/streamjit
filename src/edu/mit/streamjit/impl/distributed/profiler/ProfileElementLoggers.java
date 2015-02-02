@@ -90,8 +90,9 @@ public class ProfileElementLoggers {
 		public void newConfiguration(String cfgName) {
 			synchronized (lock) {
 				try {
-					writer.write("-----------------------------------------------------------------------------------\n");
-					writer.write(String.format("Configuration %s\n", cfgName));
+					writer.write(String
+							.format("--------------------------------%s--------------------------------\n",
+									cfgName));
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
