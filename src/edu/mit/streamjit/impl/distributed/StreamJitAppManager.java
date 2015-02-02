@@ -46,6 +46,7 @@ import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.profiler.MasterProfiler;
 import edu.mit.streamjit.impl.distributed.profiler.ProfilerCommand;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
+import edu.mit.streamjit.util.ConfigurationUtils;
 
 public class StreamJitAppManager {
 
@@ -265,8 +266,10 @@ public class StreamJitAppManager {
 			isRunning = false;
 		}
 
-		if (profiler != null)
-			profiler.logger().newConfiguration("");
+		if (profiler != null) {
+			String cfgPrefix = ConfigurationUtils.getConfigPrefix(cfg);
+			profiler.logger().newConfiguration(cfgPrefix);
+		}
 
 		System.out.println("StraemJit app is running...");
 		Utils.printMemoryStatus();
