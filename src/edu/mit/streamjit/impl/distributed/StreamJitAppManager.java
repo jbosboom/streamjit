@@ -267,7 +267,8 @@ public class StreamJitAppManager {
 		}
 
 		if (profiler != null) {
-			String cfgPrefix = ConfigurationUtils.getConfigPrefix(cfg);
+			String cfgPrefix = ConfigurationUtils.getConfigPrefix(app
+					.getConfiguration());
 			profiler.logger().newConfiguration(cfgPrefix);
 		}
 
