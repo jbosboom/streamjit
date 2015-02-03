@@ -66,12 +66,12 @@ public class ProfileElementLoggers {
 							bufferStatusData.machineID));
 					for (BlobBufferStatus bbs : bufferStatusData.blobsBufferStatusSet) {
 						writer.write(String.format("\tBlob=%s\n", bbs.blobID));
-						writer.write("\tInput buffers...\n");
+						writer.write("\t\tInput...\n");
 						for (BufferStatus bs : bbs.inputSet)
-							writer.write(String.format("\t\t%s\n", bs));
-						writer.write("\tOutput buffers...\n");
+							writer.write(String.format("\t\t\t%s\n", bs));
+						writer.write("\t\tOutput...\n");
 						for (BufferStatus bs : bbs.outputSet)
-							writer.write(String.format("\t\t%s\n", bs));
+							writer.write(String.format("\t\t\t%s\n", bs));
 						writer.flush();
 					}
 
