@@ -16,6 +16,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.Buffers;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
@@ -28,7 +29,6 @@ import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
-import edu.mit.streamjit.impl.distributed.node.BlobsManagerImpl.BlobThread2;
 import edu.mit.streamjit.impl.distributed.node.BlobsManagerImpl.DrainCallback;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
@@ -90,8 +90,7 @@ class BlobExecuter {
 		String baseName = getName(blob);
 		for (int i = 0; i < blob.getCoreCount(); i++) {
 			String name = String.format("%s - %d", baseName, i);
-			blobThreads.add(this.blobsManagerImpl.new BlobThread2(blob
-					.getCoreCode(i), this, name));
+			blobThreads.add(new BlobThread2(blob.getCoreCode(i), this, name));
 		}
 
 		if (blobThreads.size() < 1)
@@ -421,5 +420,53 @@ class BlobExecuter {
 
 		if (this.blobsManagerImpl.monBufs != null)
 			this.blobsManagerImpl.monBufs.stopMonitoring();
+	}
+
+	final class BlobThread2 extends Thread {
+
+		private final BlobExecuter be;
+
+		private final Runnable coreCode;
+
+		private volatile boolean stopping = false;
+
+		BlobThread2(Runnable coreCode, BlobExecuter be) {
+			this.coreCode = coreCode;
+			this.be = be;
+		}
+
+		BlobThread2(Runnable coreCode, BlobExecuter be, String name) {
+			super(name);
+			this.coreCode = coreCode;
+			this.be = be;
+		}
+
+		public void requestStop() {
+			stopping = true;
+		}
+
+		@Override
+		public void run() {
+			try {
+				while (!stopping)
+					coreCode.run();
+			} catch (Error | Exception e) {
+				System.out.println(Thread.currentThread().getName()
+						+ " crashed...");
+				if (be.crashed.compareAndSet(false, true)) {
+					e.printStackTrace();
+					if (be.drainState == 1 || be.drainState == 2)
+						be.drained();
+					else if (be.drainState == 0) {
+						try {
+							blobsManagerImpl.streamNode.controllerConnection
+									.writeObject(AppStatus.ERROR);
+						} catch (IOException e1) {
+							e1.printStackTrace();
+						}
+					}
+				}
+			}
+		}
 	}
 }

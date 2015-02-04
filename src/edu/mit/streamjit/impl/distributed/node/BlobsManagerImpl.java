@@ -249,54 +249,6 @@ public class BlobsManagerImpl implements BlobsManager {
 		System.out.println("****************************************");
 	}
 
-	final class BlobThread2 extends Thread {
-
-		private final BlobExecuter be;
-
-		private final Runnable coreCode;
-
-		private volatile boolean stopping = false;
-
-		BlobThread2(Runnable coreCode, BlobExecuter be) {
-			this.coreCode = coreCode;
-			this.be = be;
-		}
-
-		BlobThread2(Runnable coreCode, BlobExecuter be, String name) {
-			super(name);
-			this.coreCode = coreCode;
-			this.be = be;
-		}
-
-		public void requestStop() {
-			stopping = true;
-		}
-
-		@Override
-		public void run() {
-			try {
-				while (!stopping)
-					coreCode.run();
-			} catch (Error | Exception e) {
-				System.out.println(Thread.currentThread().getName()
-						+ " crashed...");
-				if (be.crashed.compareAndSet(false, true)) {
-					e.printStackTrace();
-					if (be.drainState == 1 || be.drainState == 2)
-						be.drained();
-					else if (be.drainState == 0) {
-						try {
-							streamNode.controllerConnection
-									.writeObject(AppStatus.ERROR);
-						} catch (IOException e1) {
-							e1.printStackTrace();
-						}
-					}
-				}
-			}
-		}
-	}
-
 	/**
 	 * {@link CommandProcessor} at {@link StreamNode} side.
 	 * 
