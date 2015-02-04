@@ -33,6 +33,7 @@ import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
 import edu.mit.streamjit.impl.distributed.common.SNTimeInfo;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
+import edu.mit.streamjit.util.affinity.Affinity;
 
 /**
  * This class was an inner class of {@link BlobsManagerImpl}. I have re factored
@@ -92,7 +93,8 @@ class BlobExecuter {
 		String baseName = getName(blob);
 		for (int i = 0; i < blob.getCoreCount(); i++) {
 			String name = String.format("%s - %d", baseName, i);
-			blobThreads.add(new BlobThread2(blob.getCoreCode(i), this, name));
+			blobThreads.add(new BlobThread2(blob.getCoreCode(i), this, name,
+					null));
 		}
 
 		if (blobThreads.size() < 1)
@@ -426,16 +428,20 @@ class BlobExecuter {
 
 	final class BlobThread2 extends Thread {
 
+		private final Set<Integer> cores;
+
 		private final BlobExecuter be;
 
 		private final Runnable coreCode;
 
 		private volatile boolean stopping = false;
 
-		BlobThread2(Runnable coreCode, BlobExecuter be, String name) {
+		BlobThread2(Runnable coreCode, BlobExecuter be, String name,
+				Set<Integer> cores) {
 			super(name);
 			this.coreCode = coreCode;
 			this.be = be;
+			this.cores = cores;
 		}
 
 		public void requestStop() {
@@ -444,6 +450,9 @@ class BlobExecuter {
 
 		@Override
 		public void run() {
+			if (cores != null && cores.size() > 0)
+				Affinity.setThreadAffinity(cores);
+
 			try {
 				while (!stopping)
 					coreCode.run();
