@@ -52,7 +52,7 @@ class BlobExecuter {
 
 	final Token blobID;
 
-	private Set<BlobThread2> blobThreads;
+	final private Set<BlobThread2> blobThreads;
 
 	/**
 	 * Buffers for all input and output edges of the {@link #blob}.
