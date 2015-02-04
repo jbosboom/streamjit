@@ -3,8 +3,10 @@ package edu.mit.streamjit.impl.distributed.node;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableTable;
@@ -29,7 +31,7 @@ import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
 import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
-import edu.mit.streamjit.impl.distributed.node.BlobsManagerImpl.DrainCallback;
+import edu.mit.streamjit.impl.distributed.common.SNTimeInfo;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
@@ -179,7 +181,7 @@ class BlobExecuter {
 		}
 
 		if (this.blob != null) {
-			DrainCallback dcb = this.blobsManagerImpl.new DrainCallback(this);
+			DrainCallback dcb = new DrainCallback(this);
 			drainState = 2;
 			this.blob.drain(dcb);
 		}
@@ -467,6 +469,36 @@ class BlobExecuter {
 					}
 				}
 			}
+		}
+	}
+
+	class DrainCallback implements Runnable {
+
+		private final BlobExecuter blobExec;
+
+		// TODO: [2014-03-17] Just to added for checking the drain time. Remove
+		// it later.
+		private final Stopwatch sw;
+
+		DrainCallback(BlobExecuter be) {
+			this.blobExec = be;
+			sw = Stopwatch.createStarted();
+		}
+
+		@Override
+		public void run() {
+			sw.stop();
+			long time = sw.elapsed(TimeUnit.MILLISECONDS);
+			// System.out.println("Time taken to drain " + blobExec.blobID +
+			// " is " + time + " ms");
+			try {
+				blobsManagerImpl.streamNode.controllerConnection
+						.writeObject(new SNTimeInfo.DrainingTime(
+								blobExec.blobID, time));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			blobExec.drained();
 		}
 	}
 }
