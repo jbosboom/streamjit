@@ -80,6 +80,8 @@ public class BlobsManagerImpl implements BlobsManager {
 
 	private ImmutableSet<StreamNodeProfiler> profilers;
 
+	final AffinityManager affinityManager;
+
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
 			Map<Token, ConnectionInfo> conInfoMap, StreamNode streamNode,
 			ConnectionProvider conProvider, String appName) {
@@ -90,6 +92,7 @@ public class BlobsManagerImpl implements BlobsManager {
 		this.cmdProcessor = new CommandProcessorImpl();
 		this.drainProcessor = new CTRLRDrainProcessorImpl();
 		this.bufferManager = new SNLocalBufferManager(blobSet);
+		this.affinityManager = new AffinityManagers.EmptyAffinityManager();
 
 		this.appName = appName;
 		bufferManager.initialise();
