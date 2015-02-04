@@ -432,11 +432,6 @@ class BlobExecuter {
 
 		private volatile boolean stopping = false;
 
-		BlobThread2(Runnable coreCode, BlobExecuter be) {
-			this.coreCode = coreCode;
-			this.be = be;
-		}
-
 		BlobThread2(Runnable coreCode, BlobExecuter be, String name) {
 			super(name);
 			this.coreCode = coreCode;
