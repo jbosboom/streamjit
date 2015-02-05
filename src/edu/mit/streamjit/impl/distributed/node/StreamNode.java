@@ -139,6 +139,12 @@ public class StreamNode extends Thread {
 			profiler.stopProfiling();
 
 		try {
+			profiler.join();
+		} catch (InterruptedException e1) {
+			e1.printStackTrace();
+		}
+
+		try {
 			this.controllerConnection.closeConnection();
 		} catch (IOException e) {
 			e.printStackTrace();
