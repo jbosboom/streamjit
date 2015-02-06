@@ -158,6 +158,18 @@ public interface BufferManager {
 				int bufSize) {
 			return new ConcurrentArrayLocalBuffer(bufSize);
 		}
+
+		/**
+		 * Just introduced to avoid code duplication.
+		 */
+		protected void addBufferSize(Token t, int minSize,
+				ImmutableMap.Builder<Token, Integer> bufferSizeMapBuilder) {
+			// TODO: Just to increase the performance. Change it later
+			int bufSize = Math.max(1000, minSize);
+			// System.out.println("Buffer size of " + t.toString() + " is " +
+			// bufSize);
+			bufferSizeMapBuilder.put(t, bufSize);
+		}
 	}
 
 	/**
@@ -227,18 +239,6 @@ public interface BufferManager {
 				addBufferSize(t, bufSize, bufferSizeMapBuilder);
 			}
 			return bufferSizeMapBuilder.build();
-		}
-
-		/**
-		 * Just introduced to avoid code duplication.
-		 */
-		private void addBufferSize(Token t, int minSize,
-				ImmutableMap.Builder<Token, Integer> bufferSizeMapBuilder) {
-			// TODO: Just to increase the performance. Change it later
-			int bufSize = Math.max(1000, minSize);
-			// System.out.println("Buffer size of " + t.toString() + " is " +
-			// bufSize);
-			bufferSizeMapBuilder.put(t, bufSize);
 		}
 	}
 }
