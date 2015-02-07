@@ -173,6 +173,10 @@ public class OnlineTuner implements Runnable {
 			String cfgName = String.format("%s_%s.cfg", prefix, app.name);
 			Configuration cfg = ConfigurationUtils.readConfiguration(app.name,
 					prefix);
+			if (cfg == null) {
+				System.err.println(String.format("No %s file exists", cfgName));
+				continue;
+			}
 			evaluateConfig(cfg, cfgName);
 		}
 		terminate();

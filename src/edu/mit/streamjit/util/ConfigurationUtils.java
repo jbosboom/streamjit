@@ -29,6 +29,9 @@ public class ConfigurationUtils {
 	 * 
 	 * @param namePrefix
 	 *            prefix to add to the cfg file name.
+	 * 
+	 * @return {@link Configuration} object if valid file exists. Otherwise
+	 *         returns null.
 	 */
 	public static Configuration readConfiguration(String appName,
 			String namePrefix) {
