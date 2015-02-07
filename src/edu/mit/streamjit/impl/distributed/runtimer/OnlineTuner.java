@@ -177,6 +177,7 @@ public class OnlineTuner implements Runnable {
 				System.err.println(String.format("No %s file exists", cfgName));
 				continue;
 			}
+			cfg = ConfigurationUtils.addConfigPrefix(cfg, prefix);
 			evaluateConfig(cfg, cfgName);
 		}
 		terminate();
