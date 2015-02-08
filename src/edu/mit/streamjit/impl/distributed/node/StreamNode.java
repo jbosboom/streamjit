@@ -145,11 +145,12 @@ public class StreamNode extends Thread {
 			}
 		}
 
-		try {
-			this.controllerConnection.closeConnection();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		if (controllerConnection.isStillConnected())
+			try {
+				this.controllerConnection.closeConnection();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 	}
 
 	/**
