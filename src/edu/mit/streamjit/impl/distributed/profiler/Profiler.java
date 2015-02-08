@@ -46,9 +46,11 @@ public final class Profiler extends Thread {
 					controllerConnection.writeObject(p.profile());
 				} catch (IOException e) {
 					e.printStackTrace();
+					stopFlag.set(true);
 				}
 			}
 		}
+		System.err.println("Profiler is exiting");
 	}
 
 	/**
