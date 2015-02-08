@@ -511,7 +511,11 @@ public class BlobsManagerImpl implements BlobsManager {
 		 */
 		private ImmutableSet<BufferStatus> bufferStatusSet(BlobExecuter be,
 				boolean isIn) {
-			if (be.bufferMap == null)
+			// TODO: [Feb 8, 2015] "be.blob == null" condition is added to
+			// avoid sending profile data after the blob has been drained. But
+			// we may need the "after draining buffer status" when analyzing
+			// dead lock situations. Remove "be.blob == null" at that time.
+			if (be.bufferMap == null || be.blob == null)
 				return ImmutableSet.of();
 
 			Set<Token> tokenSet = tokenSet(be, isIn);
