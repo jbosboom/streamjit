@@ -45,7 +45,7 @@ public final class Profiler extends Thread {
 				try {
 					controllerConnection.writeObject(p.profile());
 				} catch (IOException e) {
-					e.printStackTrace();
+					// e.printStackTrace();
 					stopFlag.set(true);
 				}
 			}
