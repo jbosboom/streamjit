@@ -135,6 +135,8 @@ public class ConfigurationUtils {
 	 */
 	public static Configuration addConfigPrefix(Configuration config,
 			String prefix) {
+		if (config == null)
+			return config;
 		Configuration.Builder builder = Configuration.builder(config);
 		builder.putExtraData("configPrefix", prefix);
 		return builder.build();
@@ -148,6 +150,8 @@ public class ConfigurationUtils {
 	 *         otherwise.
 	 */
 	public static String getConfigPrefix(Configuration config) {
+		if (config == null)
+			return null;
 		String prefix = (String) config.getExtraData("configPrefix");
 		return prefix == null ? "" : prefix;
 	}
