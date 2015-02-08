@@ -135,13 +135,14 @@ public class StreamNode extends Thread {
 		if (blobsManager != null)
 			blobsManager.stop();
 
-		if (profiler != null)
+		if (profiler != null) {
 			profiler.stopProfiling();
 
-		try {
-			profiler.join();
-		} catch (InterruptedException e1) {
-			e1.printStackTrace();
+			try {
+				profiler.join();
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
 		}
 
 		try {
