@@ -49,7 +49,7 @@ public class ProfileLogProcessor {
 	}
 
 	private static List<Integer> process2(String appName) throws IOException {
-		Map<String, Integer> countMap = new HashMap<>();
+		Map<String, Integer> inputNotFirable = new HashMap<>();
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%sprofile.txt", appName, File.separator)));
 		FileWriter writer = new FileWriter(String.format(
@@ -61,20 +61,20 @@ public class ProfileLogProcessor {
 			if (line.startsWith("--------------------------------")) {
 				writer.write(line);
 				writer.write("\n");
-				printStats(countMap);
+				printStats(inputNotFirable);
 				System.out.println(line);
 			}
 			if (line.contains("Not firable")) {
 				String t = token(line);
-				if (!countMap.containsKey(t))
-					countMap.put(t, 0);
-				int val = countMap.get(t);
-				countMap.put(t, ++val);
+				if (!inputNotFirable.containsKey(t))
+					inputNotFirable.put(t, 0);
+				int val = inputNotFirable.get(t);
+				inputNotFirable.put(t, ++val);
 				writer.write(line);
 				writer.write("\n");
 			}
 		}
-		printStats(countMap);
+		printStats(inputNotFirable);
 		writer.flush();
 		reader.close();
 		writer.close();
