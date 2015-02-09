@@ -210,13 +210,13 @@ public class OnlineTuner implements Runnable {
 		if (manager.getStatus() == AppStatus.STOPPED)
 			return new Pair<Boolean, Long>(false, 0l);
 
+		if (!cfgManager.newConfiguration(config))
+			return new Pair<Boolean, Long>(true, -2l);
+
+		if (!prognosticator.prognosticate(config))
+			return new Pair<Boolean, Long>(true, -3l);
+
 		try {
-			if (!cfgManager.newConfiguration(config))
-				return new Pair<Boolean, Long>(true, -2l);
-
-			if (!prognosticator.prognosticate(config))
-				return new Pair<Boolean, Long>(true, -3l);
-
 			if (!intermediateDraining())
 				return new Pair<Boolean, Long>(false, -4l);
 
