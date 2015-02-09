@@ -13,6 +13,7 @@ import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.tuner.OpenTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
 import edu.mit.streamjit.util.ConfigurationUtils;
@@ -190,7 +191,18 @@ public class OnlineTuner implements Runnable {
 	 * @param cfgJson
 	 * @param round
 	 * @return if ret.first == false, then no more tuning. ret.second = running
-	 *         time in milliseconds.
+	 *         time in milliseconds. ret.second may be a negative value if the
+	 *         reconfiguration is unsuccessful or a timeout is occurred.
+	 *         Meanings of the negative values are follows
+	 *         <ol>
+	 *         <li>-1: Timeout has occurred.
+	 *         <li>-2: Invalid configuration.
+	 *         <li>-3: {@link ConfigurationPrognosticator} has rejected the
+	 *         configuration.
+	 *         <li>-4: Draining failed. Another draining is in progress.
+	 *         <li>-5: Reconfiguration has failed at {@link StreamNode} side.
+	 *         E.g., Compilation error.
+	 *         <li>-6: Misc problems.
 	 */
 	private Pair<Boolean, Long> reconfigure(Configuration config, long timeout) {
 		long time;
@@ -200,13 +212,13 @@ public class OnlineTuner implements Runnable {
 
 		try {
 			if (!cfgManager.newConfiguration(config))
-				return new Pair<Boolean, Long>(true, -1l);
+				return new Pair<Boolean, Long>(true, -2l);
 
 			if (!prognosticator.prognosticate(config))
-				return new Pair<Boolean, Long>(true, -1l);
+				return new Pair<Boolean, Long>(true, -3l);
 
 			if (!intermediateDraining())
-				return new Pair<Boolean, Long>(false, -1l);
+				return new Pair<Boolean, Long>(false, -4l);
 
 			drainer.setBlobGraph(app.blobGraph);
 			int multiplier = getMultiplier(config);
@@ -217,13 +229,13 @@ public class OnlineTuner implements Runnable {
 				time = manager.getFixedOutputTime(timeout);
 				logger.logRunTime(time);
 			} else {
-				time = -1l;
+				time = -5l;
 			}
 		} catch (Exception ex) {
 			ex.printStackTrace();
 			System.err
 					.println("Couldn't compile the stream graph with this configuration");
-			time = -1l;
+			time = -6l;
 		}
 		return new Pair<Boolean, Long>(true, time);
 	}
