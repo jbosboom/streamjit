@@ -99,7 +99,7 @@
 		<!--echo message="Password: ${password}" /-->
 	</target>
 
-	<target name="remotesetup" depends="getLogin">
+	<target name="remotesetup" depends="sendtoLanka">
 		<sshexec trust="true" host="lanka.csail.mit.edu" username="${username}" password="${password}" command="/data/scratch/${username}/setup.sh ${app} ${mainclass} ${numOfSNs}" />
 	</target>
 
