@@ -100,7 +100,7 @@
 	</target>
 
 	<target name="remotesetup" depends="getLogin">
-		<sshexec trust="true" host="lanka.csail.mit.edu" username="${username}" password="${password}" command="/data/scratch/${username}/helloworld.sh" input="kkkk" />
+		<sshexec trust="true" host="lanka.csail.mit.edu" username="${username}" password="${password}" command="/data/scratch/${username}/setup.sh ${app} ${mainclass} ${numOfSNs}" />
 	</target>
 
 </project>
