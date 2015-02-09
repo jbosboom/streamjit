@@ -50,6 +50,8 @@ public class ProfileLogProcessor {
 
 	private static List<Integer> process2(String appName) throws IOException {
 		Map<String, Integer> inputNotFirable = new HashMap<>();
+		Map<String, Integer> outputNotFirable = new HashMap<>();
+		Map<String, Integer> notFirable = inputNotFirable;
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%sprofile.txt", appName, File.separator)));
 		FileWriter writer = new FileWriter(String.format(
@@ -61,32 +63,47 @@ public class ProfileLogProcessor {
 			if (line.startsWith("--------------------------------")) {
 				writer.write(line);
 				writer.write("\n");
-				printStats(inputNotFirable);
+				printStats(inputNotFirable, outputNotFirable);
 				System.out.println(line);
-			}
+			} else if (line.contains("Input..."))
+				notFirable = inputNotFirable;
+			else if (line.contains("Output..."))
+				notFirable = outputNotFirable;
 			if (line.contains("Not firable")) {
 				String t = token(line);
-				if (!inputNotFirable.containsKey(t))
-					inputNotFirable.put(t, 0);
-				int val = inputNotFirable.get(t);
-				inputNotFirable.put(t, ++val);
+				add(notFirable, t);
 				writer.write(line);
 				writer.write("\n");
 			}
 		}
-		printStats(inputNotFirable);
+		printStats(inputNotFirable, outputNotFirable);
 		writer.flush();
 		reader.close();
 		writer.close();
 		return ret;
 	}
 
-	private static void printStats(Map<String, Integer> countMap) {
-		for (Map.Entry<String, Integer> en : countMap.entrySet()) {
-			System.out.println(String.format("%s-%d", en.getKey(),
+	private static void add(Map<String, Integer> notFirable, String t) {
+		if (!notFirable.containsKey(t))
+			notFirable.put(t, 0);
+		int val = notFirable.get(t);
+		notFirable.put(t, ++val);
+	}
+
+	private static void printStats(Map<String, Integer> inputNotFirable,
+			Map<String, Integer> outputNotFirable) {
+		System.out.println("Input...");
+		printStats(inputNotFirable);
+		System.out.println("Output...");
+		printStats(outputNotFirable);
+	}
+
+	private static void printStats(Map<String, Integer> notFirable) {
+		for (Map.Entry<String, Integer> en : notFirable.entrySet()) {
+			System.out.println(String.format("\t%s-%d", en.getKey(),
 					en.getValue()));
 		}
-		countMap.clear();
+		notFirable.clear();
 	}
 
 	private static String token(String line) {
