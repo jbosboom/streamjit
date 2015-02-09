@@ -3,7 +3,7 @@
 <project default="exportAll" name="StreamJIT" basedir="/media/sumanan/D/StreamJit11/streamjit">
 	<property file="jarapp.properties" />
 	<!--property name="app" value="NestedSplitJoin" /-->
-	<!--property name="mainclass" value="edu.mit.streamjit.test.sanity.nestedsplitjoinexample.NestedSplitJoin" /-->
+	<!--property name="mainclasspath" value="edu.mit.streamjit.test.sanity.nestedsplitjoinexample.NestedSplitJoin" /-->
 	<!-- If you want, you can hard code your username and the password as plain 
 		text here. Comment these properties (username or password or both) if you 
 		don't want to keep it as a plain text. If these properties are not set (commented), 
@@ -14,7 +14,7 @@
 	<target name="exportApp.jar" description="Exports ${app}.jar">
 		<jar destfile="${app}.jar" filesetmanifest="mergewithoutmain">
 			<manifest>
-				<attribute name="Main-Class" value="${mainclass}" />
+				<attribute name="Main-Class" value="${mainclasspath}" />
 				<attribute name="Class-Path" value="." />
 			</manifest>
 			<fileset dir="bin" />
