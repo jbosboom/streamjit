@@ -11,6 +11,11 @@
 	<!-- property name="username" value="sumanan" /-->
 	<!-- property name="password" value="" / -->
 
+	<script language="javascript">
+		arr = project.getProperty('mainclasspath').split('.');
+		project.setProperty('mainclass', arr[arr.length -1]);
+	 </script>
+
 	<target name="exportApp.jar" description="Exports ${app}.jar">
 		<jar destfile="${app}.jar" filesetmanifest="mergewithoutmain">
 			<manifest>
