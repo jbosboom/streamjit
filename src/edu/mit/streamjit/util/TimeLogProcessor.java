@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -147,9 +149,11 @@ public class TimeLogProcessor {
 		List<Integer> drainTime = processDrainTime(appName);
 		String dataFile = "totalStats.txt";
 
-		String summaryDir = String.format("%s%ssummary", appName,
-				File.separator);
-		Utils.createDir(summaryDir);
+		// String summaryDir = String.format("%s%ssummary", appName,
+		// File.separator);
+		File summaryDir = new File(String.format("%s%ssummary", appName,
+				File.separator));
+		Utils.createDir(summaryDir.getPath());
 
 		FileWriter writer = new FileWriter(String.format("%s%s%s", summaryDir,
 				File.separator, dataFile));
@@ -164,7 +168,8 @@ public class TimeLogProcessor {
 		}
 		writer.close();
 
-		makePlotFile(new File(summaryDir), appName, dataFile);
+		makePlotFile(summaryDir, appName, dataFile);
+		plot(summaryDir);
 
 		// writeHeapStat(String.format("%s%sst1.txt", appName, File.separator));
 		// writeHeapStat(String.format("%s%sst2.txt", appName, File.separator));
@@ -194,5 +199,28 @@ public class TimeLogProcessor {
 				.format("plot \"%s\" using 1:4 with linespoints title \"Drain time\"\n",
 						dataFile));
 		writer.close();
+	}
+
+	private static void plot(File dir) throws IOException {
+		String[] s = { "/usr/bin/gnuplot", "plot.plt" };
+		try {
+			ProcessBuilder pb = new ProcessBuilder(s);
+			pb.directory(dir);
+			Process proc = pb.start();
+			InputStream stdin = (InputStream) proc.getErrorStream();
+			InputStreamReader isr = new InputStreamReader(stdin);
+			BufferedReader br = new BufferedReader(isr);
+			String line = null;
+			while ((line = br.readLine()) != null)
+				System.err.println("gnuplot:" + line);
+			int exitVal = proc.waitFor();
+			if (exitVal != 0)
+				System.out.println("gnuplot Process exitValue: " + exitVal);
+			proc.getInputStream().close();
+			proc.getOutputStream().close();
+			proc.getErrorStream().close();
+		} catch (Exception e) {
+			System.err.println("Fail: " + e);
+		}
 	}
 }
