@@ -163,6 +163,8 @@ public class TimeLogProcessor {
 		}
 		writer.close();
 
+		makePlotFile(new File(summaryDir), appName, "totalStats.txt");
+
 		// writeHeapStat(String.format("%s%sst1.txt", appName, File.separator));
 		// writeHeapStat(String.format("%s%sst2.txt", appName, File.separator));
 	}
@@ -179,7 +181,16 @@ public class TimeLogProcessor {
 		writer.write("set grid\n");
 		writer.write("#set yrange [0:*]\n");
 		writer.write(String
-				.format("plot \"%s\" using 1:3 with linespoints title \"Current best running time\"",
+				.format("plot \"%s\" using 1:5 with linespoints title \"Current best running time\"\n",
+						dataFile));
+		writer.write(String
+				.format("plot \"%s\" using 1:2 with linespoints title \"Compile time\"\n",
+						dataFile));
+		writer.write(String.format(
+				"plot \"%s\" using 1:3 with linespoints title \"Run time\"\n",
+				dataFile));
+		writer.write(String
+				.format("plot \"%s\" using 1:4 with linespoints title \"Drain time\"\n",
 						dataFile));
 		writer.close();
 	}
