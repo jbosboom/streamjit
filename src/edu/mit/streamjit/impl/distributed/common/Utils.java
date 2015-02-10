@@ -84,7 +84,7 @@ public class Utils {
 	 * @return <code>true</code> if and only if the directory was created; false
 	 *         otherwise.
 	 */
-	private static boolean createDir(String name) {
+	public static boolean createDir(String name) {
 		File dir = new File(name);
 		if (dir.exists()) {
 			if (dir.isDirectory())
