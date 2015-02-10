@@ -81,6 +81,8 @@ public class TimeLogProcessor {
 				String time = arr[3].trim();
 				time = time.substring(0, time.length() - 2);
 				int val = Integer.parseInt(time);
+				if (val < 1)
+					val = 2 * min;
 				min = Math.min(min, val);
 				ret.add(val);
 				String data = String
