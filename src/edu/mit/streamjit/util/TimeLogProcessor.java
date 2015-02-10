@@ -166,4 +166,21 @@ public class TimeLogProcessor {
 		// writeHeapStat(String.format("%s%sst1.txt", appName, File.separator));
 		// writeHeapStat(String.format("%s%sst2.txt", appName, File.separator));
 	}
+
+	private static void makePlotFile(File dir, String name, String dataFile)
+			throws IOException {
+		File plotfile = new File(dir, "plot.plt");
+		FileWriter writer = new FileWriter(plotfile, false);
+		writer.write("set terminal postscript eps enhanced color\n");
+		writer.write(String.format("set output \"%s.eps\"\n", name));
+		writer.write("set ylabel \"Time(ms)\"\n");
+		writer.write("set xlabel \"Tuning Rounds\"\n");
+		writer.write(String.format("set title \"%s\"\n", name));
+		writer.write("set grid\n");
+		writer.write("#set yrange [0:*]\n");
+		writer.write(String
+				.format("plot \"%s\" using 1:3 with linespoints title \"Current best running time\"",
+						dataFile));
+		writer.close();
+	}
 }
