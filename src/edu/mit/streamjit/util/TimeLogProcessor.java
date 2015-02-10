@@ -145,13 +145,14 @@ public class TimeLogProcessor {
 		List<Integer> compileTime = processCompileTime(appName);
 		List<Integer> runTime = processRunTime(appName);
 		List<Integer> drainTime = processDrainTime(appName);
+		String dataFile = "totalStats.txt";
 
 		String summaryDir = String.format("%s%ssummary", appName,
 				File.separator);
 		Utils.createDir(summaryDir);
 
-		FileWriter writer = new FileWriter(String.format("%s%stotalStats.txt",
-				summaryDir, File.separator));
+		FileWriter writer = new FileWriter(String.format("%s%s%s", summaryDir,
+				File.separator, dataFile));
 		int min = Integer.MAX_VALUE;
 
 		for (int i = 0; i < runTime.size(); i++) {
@@ -163,7 +164,7 @@ public class TimeLogProcessor {
 		}
 		writer.close();
 
-		makePlotFile(new File(summaryDir), appName, "totalStats.txt");
+		makePlotFile(new File(summaryDir), appName, dataFile);
 
 		// writeHeapStat(String.format("%s%sst1.txt", appName, File.separator));
 		// writeHeapStat(String.format("%s%sst2.txt", appName, File.separator));
