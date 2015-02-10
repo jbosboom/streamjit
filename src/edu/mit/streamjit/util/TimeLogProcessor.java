@@ -143,7 +143,7 @@ public class TimeLogProcessor {
 		return ret;
 	}
 
-	private static void summarize(String appName) throws IOException {
+	public static void summarize(String appName) throws IOException {
 		List<Integer> compileTime = processCompileTime(appName);
 		List<Integer> runTime = processRunTime(appName);
 		List<Integer> drainTime = processDrainTime(appName);
