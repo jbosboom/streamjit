@@ -35,8 +35,8 @@ public class TimeLogProcessor {
 		}
 		writer.close();
 
-		writeHeapStat(String.format("%s%sst1.txt", appName, File.separator));
-		writeHeapStat(String.format("%s%sst2.txt", appName, File.separator));
+		// writeHeapStat(String.format("%s%sst1.txt", appName, File.separator));
+		// writeHeapStat(String.format("%s%sst2.txt", appName, File.separator));
 	}
 
 	private static List<Integer> processCompileTime(String appName)
