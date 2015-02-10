@@ -18,6 +18,7 @@ import edu.mit.streamjit.tuner.OpenTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
 import edu.mit.streamjit.util.ConfigurationUtils;
 import edu.mit.streamjit.util.Pair;
+import edu.mit.streamjit.util.TimeLogProcessor;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
@@ -123,6 +124,12 @@ public class OnlineTuner implements Runnable {
 
 		if (needTermination)
 			terminate();
+
+		try {
+			TimeLogProcessor.summarize(app.name);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private void startTuner() throws IOException {
