@@ -189,7 +189,7 @@ public final class TCPTuner implements OpenTuner {
 
 		OpenTuner tuner = new TCPTuner();
 		try {
-			tuner.startTuner("/lib/opentuner/streamjit/streamjit.py", new File(
+			tuner.startTuner("./lib/opentuner/streamjit/streamjit.py", new File(
 					System.getProperty("user.dir")));
 		} catch (IOException e) {
 			e.printStackTrace();
