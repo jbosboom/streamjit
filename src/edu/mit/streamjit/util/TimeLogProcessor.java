@@ -17,26 +17,7 @@ import java.util.List;
 public class TimeLogProcessor {
 
 	public static void main(String[] args) throws IOException {
-		String appName = "FMRadioCore";
-		List<Integer> compileTime = processCompileTime(appName);
-		List<Integer> runTime = processRunTime(appName);
-		List<Integer> drainTime = processDrainTime(appName);
-
-		FileWriter writer = new FileWriter(String.format("%s%stotalStats.txt",
-				appName, File.separator));
-		int min = Integer.MAX_VALUE;
-
-		for (int i = 0; i < runTime.size(); i++) {
-			min = Math.min(min, runTime.get(i));
-			String msg = String.format("%-6d\t%-6d\t%-6d\t%-6d\t%-6d\n", i + 1,
-					compileTime.get(i), runTime.get(i), drainTime.get(i), min);
-
-			writer.write(msg);
-		}
-		writer.close();
-
-		// writeHeapStat(String.format("%s%sst1.txt", appName, File.separator));
-		// writeHeapStat(String.format("%s%sst2.txt", appName, File.separator));
+		summarize("FMRadioCore");
 	}
 
 	private static List<Integer> processCompileTime(String appName)
@@ -64,6 +45,7 @@ public class TimeLogProcessor {
 		writer.close();
 		return ret;
 	}
+
 	private static List<Integer> processRunTime(String appName)
 			throws IOException {
 
@@ -155,5 +137,27 @@ public class TimeLogProcessor {
 		}
 		reader.close();
 		return ret;
+	}
+
+	private static void summarize(String appName) throws IOException {
+		List<Integer> compileTime = processCompileTime(appName);
+		List<Integer> runTime = processRunTime(appName);
+		List<Integer> drainTime = processDrainTime(appName);
+
+		FileWriter writer = new FileWriter(String.format("%s%stotalStats.txt",
+				appName, File.separator));
+		int min = Integer.MAX_VALUE;
+
+		for (int i = 0; i < runTime.size(); i++) {
+			min = Math.min(min, runTime.get(i));
+			String msg = String.format("%-6d\t%-6d\t%-6d\t%-6d\t%-6d\n", i + 1,
+					compileTime.get(i), runTime.get(i), drainTime.get(i), min);
+
+			writer.write(msg);
+		}
+		writer.close();
+
+		// writeHeapStat(String.format("%s%sst1.txt", appName, File.separator));
+		// writeHeapStat(String.format("%s%sst2.txt", appName, File.separator));
 	}
 }
