@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.mit.streamjit.impl.distributed.common.Utils;
+
 /**
  * Processes the Distributed StreamJit's time log files and generate summary.
  * 
@@ -144,8 +146,12 @@ public class TimeLogProcessor {
 		List<Integer> runTime = processRunTime(appName);
 		List<Integer> drainTime = processDrainTime(appName);
 
+		String summaryDir = String.format("%s%ssummary", appName,
+				File.separator);
+		Utils.createDir(summaryDir);
+
 		FileWriter writer = new FileWriter(String.format("%s%stotalStats.txt",
-				appName, File.separator));
+				summaryDir, File.separator));
 		int min = Integer.MAX_VALUE;
 
 		for (int i = 0; i < runTime.size(); i++) {
