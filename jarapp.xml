@@ -103,4 +103,31 @@
 		<sshexec trust="true" host="lanka.csail.mit.edu" username="${username}" password="${password}" command="/data/scratch/${username}/setup.sh ${app} ${streamGraphName} ${numOfSNs}" />
 	</target>
 
+	<!--http://www.vogella.com/tutorials/ApacheAnt/article.html-->
+	<!-- The value of a property is accessed via ${} -->
+	<property name="src.dir" location="src" />
+	<property name="lib.dir" location="lib" />
+	<property name="build.dir" location="bin" />
+
+	<!--Create a classpath container which can be later used in the ant task-->
+	<path id="build.classpath">
+		<fileset dir="${lib.dir}">
+			<include name="**/*.jar" />
+		</fileset>
+	</path>
+
+	<!-- Deletes the existing build directory-->
+	<target name="clean">
+		<delete dir="${build.dir}" />
+	</target>
+
+	<!-- Creates the  build  directory-->
+	<target name="makedir">
+		<mkdir dir="${build.dir}" />
+	</target>
+
+	<!-- Compiles the java code -->
+	<target name="compile" depends="clean, makedir">
+		<javac srcdir="${src.dir}" destdir="${build.dir}" classpathref="build.classpath" />
+	</target>
 </project>
