@@ -31,17 +31,15 @@ import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.AbstractPartitioner;
 
 /**
- * ConfigurationManager deals with {@link Configuration}. Mainly, It does
- * following two tasks.
+ * PartitionManager is responsible to partition a stream graph for a cluster.
+ * Partitioning process can be tuned. Implementations of this interface must
+ * provide the following two tasks.
  * <ol>
- * <li>Generates configuration with appropriate tuning parameters (Based on the
+ * <li>Generate configuration with appropriate tuning parameters (Based on the
  * search space design strategy) for tuning.
- * <li>Dispatch the configuration given by the open tuner and make blobs
- * accordingly.
+ * <li>Dispatch a new configuration given by the open tuner and generate
+ * partition machine map.
  * </ol>
- * 
- * One can implement this interface to try different search space designs as he
- * want.
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Jan 16, 2014
