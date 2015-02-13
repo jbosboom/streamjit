@@ -116,10 +116,10 @@ public class ConfigurationEditor {
 			OneToOneElement<?, ?> stream, int noOfnodes) {
 		StreamJitApp<?, ?> app = new StreamJitApp<>(stream);
 		int noofwrks = Workers.getIdentifier(app.sink) + 1;
-		PartitionManager cfgManager = new HotSpotTuning(app);
+		PartitionManager partitionManager = new HotSpotTuning(app);
 		ConnectionManager conManger = new BlockingTCPNoParams(0);
-		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManger,
-				noOfnodes);
+		BlobFactory bf = new DistributedBlobFactory(partitionManager,
+				conManger, noOfnodes);
 
 		Configuration cfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(app.source));

@@ -117,14 +117,14 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		StreamJitApp<I, O> app = new StreamJitApp<>(stream);
 		Controller controller = establishController();
 
-		PartitionManager cfgManager = new HotSpotTuning(app);
+		PartitionManager partitionManager = new HotSpotTuning(app);
 		ConnectionManager conManager = new ConnectionManager.BlockingTCPNoParams(
 				controller.controllerNodeID);
-		setConfiguration(controller, app, cfgManager, conManager);
+		setConfiguration(controller, app, partitionManager, conManager);
 
 		TimeLogger logger = new TimeLoggers.FileTimeLogger(app.name);
 		StreamJitAppManager manager = new StreamJitAppManager(controller, app,
-				cfgManager, conManager, logger);
+				partitionManager, conManager, logger);
 		final AbstractDrainer drainer = new DistributedDrainer(app, logger,
 				manager);
 		drainer.setBlobGraph(app.blobGraph);
@@ -136,7 +136,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 
 		if (GlobalConstants.tune > 0 && this.cfg != null) {
 			OnlineTuner tuner = new OnlineTuner(drainer, manager, app,
-					cfgManager, logger, needTermination);
+					partitionManager, logger, needTermination);
 			new Thread(tuner, "OnlineTuner").start();
 		}
 		return cs;
@@ -252,9 +252,9 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	}
 
 	private <I, O> void setConfiguration(Controller controller,
-			StreamJitApp<I, O> app, PartitionManager cfgManager,
+			StreamJitApp<I, O> app, PartitionManager partitionManager,
 			ConnectionManager conManager) {
-		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManager,
+		BlobFactory bf = new DistributedBlobFactory(partitionManager, conManager,
 				Math.max(noOfnodes - 1, 1));
 		Configuration defaultCfg = bf.getDefaultConfiguration(Workers
 				.getAllWorkersInGraph(app.source));
@@ -272,7 +272,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		} else
 			this.cfg = defaultCfg;
 
-		cfgManager.newConfiguration(this.cfg);
+		partitionManager.newConfiguration(this.cfg);
 	}
 
 	private <I, O> boolean verifyCfg(Configuration defaultCfg, Configuration cfg) {

@@ -35,20 +35,20 @@ public class DistributedBlobFactory implements BlobFactory {
 
 	private int noOfMachines;
 
-	private final PartitionManager cfgManager;
+	private final PartitionManager partitionManager;
 
 	private final ConnectionManager connectionManager;
 
-	public DistributedBlobFactory(PartitionManager cfgManager,
+	public DistributedBlobFactory(PartitionManager partitionManager,
 			ConnectionManager connectionManager, int noOfMachines) {
-		this.cfgManager = cfgManager;
+		this.partitionManager = partitionManager;
 		this.noOfMachines = noOfMachines;
 		this.connectionManager = connectionManager;
 	}
 
 	/**
-	 * If {@link PartitionManager} is not passed as a constructor argument
-	 * then {@link WorkerMachine} will be used as default one.
+	 * If {@link PartitionManager} is not passed as a constructor argument then
+	 * {@link WorkerMachine} will be used as default one.
 	 * 
 	 * @param noOfMachines
 	 */
@@ -66,8 +66,8 @@ public class DistributedBlobFactory implements BlobFactory {
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
 
-		Configuration distCfg = cfgManager.getDefaultConfiguration(workers,
-				noOfMachines);
+		Configuration distCfg = partitionManager.getDefaultConfiguration(
+				workers, noOfMachines);
 		if (!GlobalConstants.useCompilerBlob)
 			return distCfg;
 

@@ -32,18 +32,18 @@ public class OnlineTuner implements Runnable {
 	private final StreamJitAppManager manager;
 	private final OpenTuner tuner;
 	private final StreamJitApp<?, ?> app;
-	private final PartitionManager cfgManager;
+	private final PartitionManager partitionManager;
 	private final boolean needTermination;
 	private final TimeLogger logger;
 	private final ConfigurationPrognosticator prognosticator;
 
 	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
-			StreamJitApp<?, ?> app, PartitionManager cfgManager,
+			StreamJitApp<?, ?> app, PartitionManager partitionManager,
 			TimeLogger logger, boolean needTermination) {
 		this.drainer = drainer;
 		this.manager = manager;
 		this.app = app;
-		this.cfgManager = cfgManager;
+		this.partitionManager = partitionManager;
 		this.tuner = new TCPTuner();
 		this.needTermination = needTermination;
 		this.logger = logger;
@@ -217,7 +217,7 @@ public class OnlineTuner implements Runnable {
 		if (manager.getStatus() == AppStatus.STOPPED)
 			return new Pair<Boolean, Long>(false, 0l);
 
-		if (!cfgManager.newConfiguration(config))
+		if (!partitionManager.newConfiguration(config))
 			return new Pair<Boolean, Long>(true, -2l);
 
 		if (!prognosticator.prognosticate(config))
