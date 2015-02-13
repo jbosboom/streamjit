@@ -71,15 +71,6 @@ public interface PartitionManager {
 	public boolean newConfiguration(Configuration config);
 
 	/**
-	 * Generates static information of the app that is needed by steramnodes.
-	 * This configuration will be sent to streamnodes when setting up a new app
-	 * for execution (Only once).
-	 * 
-	 * @return static information of the app that is needed by steramnodes.
-	 */
-	public Configuration getStaticConfiguration();
-
-	/**
 	 * For every reconfiguration, this method may be called by the appropriate
 	 * class to get new configuration information that can be sent to all
 	 * participating {@link StreamNode}s.
@@ -102,15 +93,6 @@ public interface PartitionManager {
 
 		AbstractPartitionManager(StreamJitApp<?, ?> app) {
 			this.app = app;
-		}
-
-		@Override
-		public Configuration getStaticConfiguration() {
-			Configuration.Builder builder = Configuration.builder();
-			builder.putExtraData(GlobalConstants.JARFILE_PATH, app.jarFilePath)
-					.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME,
-							app.topLevelClass);
-			return builder.build();
 		}
 
 		@Override

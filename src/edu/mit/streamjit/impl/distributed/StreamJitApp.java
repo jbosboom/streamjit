@@ -31,6 +31,7 @@ import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Utils;
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 import edu.mit.streamjit.impl.interp.Interpreter;
@@ -340,5 +341,20 @@ public class StreamJitApp<I, O> {
 	 */
 	public Set<List<Integer>> paths() {
 		return StreamPathBuilder.paths(streamGraph);
+	}
+
+	/**
+	 * Static information of the {@link StreamJitApp} that is essential for
+	 * {@link StreamNode}s to set up. This configuration will be sent to
+	 * {@link StreamNode}s when setting up a new app (Only once).
+	 * 
+	 * @return static information of the app that is needed by steramnodes.
+	 */
+	public Configuration getStaticConfiguration() {
+		Configuration.Builder builder = Configuration.builder();
+		builder.putExtraData(GlobalConstants.JARFILE_PATH, jarFilePath)
+				.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME,
+						topLevelClass);
+		return builder.build();
 	}
 }

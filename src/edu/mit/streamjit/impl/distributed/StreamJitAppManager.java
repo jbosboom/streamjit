@@ -122,9 +122,9 @@ public class StreamJitAppManager {
 		this.apStsPro = new AppStatusProcessorImpl(controller.getAllNodeIDs()
 				.size());
 		controller.registerManager(this);
-		controller.newApp(cfgManager.getStaticConfiguration()); // TODO: Find a
-																// good calling
-																// place.
+		controller.newApp(app.getStaticConfiguration()); // TODO: Find a
+															// good calling
+															// place.
 		isRunning = false;
 
 		headToken = Token.createOverallInputToken(app.source);
