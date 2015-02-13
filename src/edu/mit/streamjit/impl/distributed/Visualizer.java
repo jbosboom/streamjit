@@ -43,7 +43,7 @@ public interface Visualizer {
 
 	/**
 	 * Partitions Machine Map of the current configuration. Only the
-	 * {@link ConfigurationManager} has the information to generate this map.
+	 * {@link PartitionManager} has the information to generate this map.
 	 * Visualizer has no glue to generate this partitionsMachineMap.
 	 * 
 	 * @param partitionsMachineMap

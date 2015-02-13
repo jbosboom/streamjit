@@ -35,11 +35,11 @@ public class DistributedBlobFactory implements BlobFactory {
 
 	private int noOfMachines;
 
-	private final ConfigurationManager cfgManager;
+	private final PartitionManager cfgManager;
 
 	private final ConnectionManager connectionManager;
 
-	public DistributedBlobFactory(ConfigurationManager cfgManager,
+	public DistributedBlobFactory(PartitionManager cfgManager,
 			ConnectionManager connectionManager, int noOfMachines) {
 		this.cfgManager = cfgManager;
 		this.noOfMachines = noOfMachines;
@@ -47,7 +47,7 @@ public class DistributedBlobFactory implements BlobFactory {
 	}
 
 	/**
-	 * If {@link ConfigurationManager} is not passed as a constructor argument
+	 * If {@link PartitionManager} is not passed as a constructor argument
 	 * then {@link WorkerMachine} will be used as default one.
 	 * 
 	 * @param noOfMachines

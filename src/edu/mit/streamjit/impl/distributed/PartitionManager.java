@@ -47,7 +47,7 @@ import edu.mit.streamjit.partitioner.AbstractPartitioner;
  * @since Jan 16, 2014
  * 
  */
-public interface ConfigurationManager {
+public interface PartitionManager {
 
 	/**
 	 * Generates default configuration with all tuning parameters for tuning.
@@ -98,7 +98,7 @@ public interface ConfigurationManager {
 	 * @since Jan 17, 2014
 	 */
 	public static abstract class AbstractConfigurationManager implements
-			ConfigurationManager {
+			PartitionManager {
 
 		protected final StreamJitApp<?, ?> app;
 

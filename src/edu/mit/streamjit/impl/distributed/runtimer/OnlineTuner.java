@@ -8,7 +8,7 @@ import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.TimeLogger;
-import edu.mit.streamjit.impl.distributed.ConfigurationManager;
+import edu.mit.streamjit.impl.distributed.PartitionManager;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
@@ -32,13 +32,13 @@ public class OnlineTuner implements Runnable {
 	private final StreamJitAppManager manager;
 	private final OpenTuner tuner;
 	private final StreamJitApp<?, ?> app;
-	private final ConfigurationManager cfgManager;
+	private final PartitionManager cfgManager;
 	private final boolean needTermination;
 	private final TimeLogger logger;
 	private final ConfigurationPrognosticator prognosticator;
 
 	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
-			StreamJitApp<?, ?> app, ConfigurationManager cfgManager,
+			StreamJitApp<?, ?> app, PartitionManager cfgManager,
 			TimeLogger logger, boolean needTermination) {
 		this.drainer = drainer;
 		this.manager = manager;

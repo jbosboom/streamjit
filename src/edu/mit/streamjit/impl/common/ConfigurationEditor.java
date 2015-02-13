@@ -16,7 +16,7 @@ import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
-import edu.mit.streamjit.impl.distributed.ConfigurationManager;
+import edu.mit.streamjit.impl.distributed.PartitionManager;
 import edu.mit.streamjit.impl.distributed.ConnectionManager;
 import edu.mit.streamjit.impl.distributed.ConnectionManager.BlockingTCPNoParams;
 import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
@@ -83,7 +83,7 @@ public class ConfigurationEditor {
 
 	/**
 	 * This edit is for the configurations which are generated using
-	 * {@link WorkerMachine} as {@link ConfigurationManager}.
+	 * {@link WorkerMachine} as {@link PartitionManager}.
 	 */
 	private static void edit(String appName, String namePrefix, int maxWor)
 			throws NumberFormatException, IOException {
@@ -116,7 +116,7 @@ public class ConfigurationEditor {
 			OneToOneElement<?, ?> stream, int noOfnodes) {
 		StreamJitApp<?, ?> app = new StreamJitApp<>(stream);
 		int noofwrks = Workers.getIdentifier(app.sink) + 1;
-		ConfigurationManager cfgManager = new HotSpotTuning(app);
+		PartitionManager cfgManager = new HotSpotTuning(app);
 		ConnectionManager conManger = new BlockingTCPNoParams(0);
 		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManger,
 				noOfnodes);
@@ -152,7 +152,7 @@ public class ConfigurationEditor {
 
 	/**
 	 * This edit is for the configurations which are generated using
-	 * {@link HotSpotTuning} as {@link ConfigurationManager}.
+	 * {@link HotSpotTuning} as {@link PartitionManager}.
 	 */
 	private static void edit1(String appName, String namePrefix, int maxWor)
 			throws NumberFormatException, IOException {

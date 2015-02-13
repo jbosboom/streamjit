@@ -117,7 +117,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		StreamJitApp<I, O> app = new StreamJitApp<>(stream);
 		Controller controller = establishController();
 
-		ConfigurationManager cfgManager = new HotSpotTuning(app);
+		PartitionManager cfgManager = new HotSpotTuning(app);
 		ConnectionManager conManager = new ConnectionManager.BlockingTCPNoParams(
 				controller.controllerNodeID);
 		setConfiguration(controller, app, cfgManager, conManager);
@@ -252,7 +252,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	}
 
 	private <I, O> void setConfiguration(Controller controller,
-			StreamJitApp<I, O> app, ConfigurationManager cfgManager,
+			StreamJitApp<I, O> app, PartitionManager cfgManager,
 			ConnectionManager conManager) {
 		BlobFactory bf = new DistributedBlobFactory(cfgManager, conManager,
 				Math.max(noOfnodes - 1, 1));
