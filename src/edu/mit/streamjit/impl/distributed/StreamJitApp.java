@@ -1,9 +1,12 @@
 package edu.mit.streamjit.impl.distributed;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -24,16 +27,21 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
+import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
 import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
+import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
+import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.Pair;
 
@@ -355,6 +363,67 @@ public class StreamJitApp<I, O> {
 		builder.putExtraData(GlobalConstants.JARFILE_PATH, jarFilePath)
 				.putExtraData(GlobalConstants.TOPLEVEL_WORKER_NAME,
 						topLevelClass);
+		return builder.build();
+	}
+
+	/**
+	 * For every reconfiguration, this method may be called by an appropriate
+	 * class to get new configuration information that can be sent to all
+	 * participating {@link StreamNode}s. Mainly this configuration contains
+	 * partition information.
+	 * 
+	 * @return new partition information
+	 */
+	public Configuration getDynamicConfiguration() {
+		Configuration.Builder builder = Configuration.builder();
+
+		Map<Integer, Integer> coresPerMachine = new HashMap<>();
+		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine : partitionsMachineMap
+				.entrySet()) {
+			coresPerMachine.put(machine.getKey(), machine.getValue().size());
+		}
+
+		PartitionParameter.Builder partParam = PartitionParameter.builder(
+				GlobalConstants.PARTITION, coresPerMachine);
+
+		BlobFactory intFactory = new Interpreter.InterpreterBlobFactory();
+		BlobFactory comp2Factory = new Compiler2BlobFactory();
+		partParam.addBlobFactory(intFactory);
+		partParam.addBlobFactory(comp2Factory);
+		blobtoMachineMap = new HashMap<>();
+
+		BlobFactory bf = GlobalConstants.useCompilerBlob ? comp2Factory
+				: intFactory;
+		for (Integer machineID : partitionsMachineMap.keySet()) {
+			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap
+					.get(machineID);
+			for (Set<Worker<?, ?>> blobWorkers : blobList) {
+				// TODO: One core per blob. Need to change this.
+				partParam.addBlob(machineID, 1, bf, blobWorkers);
+
+				// TODO: Temp fix to build.
+				Token t = Utils.getblobID(blobWorkers);
+				blobtoMachineMap.put(t, machineID);
+			}
+		}
+
+		builder.addParameter(partParam.build());
+		if (GlobalConstants.useCompilerBlob)
+			builder.addSubconfiguration("blobConfigs", getConfiguration());
+		else
+			builder.addSubconfiguration("blobConfigs", getInterpreterConfg());
+		return builder.build();
+	}
+
+	private Configuration getInterpreterConfg() {
+		Configuration.Builder builder = Configuration.builder();
+		List<ChannelFactory> universe = Arrays
+				.<ChannelFactory> asList(new ConcurrentChannelFactory());
+		SwitchParameter<ChannelFactory> cfParameter = new SwitchParameter<ChannelFactory>(
+				"channelFactory", ChannelFactory.class, universe.get(0),
+				universe);
+
+		builder.addParameter(cfParameter);
 		return builder.build();
 	}
 }

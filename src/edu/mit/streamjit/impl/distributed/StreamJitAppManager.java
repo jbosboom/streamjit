@@ -234,7 +234,7 @@ public class StreamJitAppManager {
 
 	public boolean reconfigure(int multiplier) {
 		reset();
-		Configuration.Builder builder = Configuration.builder(cfgManager
+		Configuration.Builder builder = Configuration.builder(app
 				.getDynamicConfiguration());
 
 		conInfoMap = conManager.conInfoMap(app.getConfiguration(),
@@ -276,7 +276,6 @@ public class StreamJitAppManager {
 		Utils.printMemoryStatus();
 		return isRunning;
 	}
-
 	public void setDrainer(AbstractDrainer drainer) {
 		assert dp == null : "SNDrainProcessor has already been set";
 		this.dp = new SNDrainProcessorImpl(drainer);

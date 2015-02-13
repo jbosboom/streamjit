@@ -2,7 +2,6 @@ package edu.mit.streamjit.impl.distributed;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,19 +14,8 @@ import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
-import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
-import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.Utils;
-import edu.mit.streamjit.impl.distributed.node.StreamNode;
-import edu.mit.streamjit.impl.interp.ChannelFactory;
-import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.AbstractPartitioner;
 
 /**
@@ -71,15 +59,6 @@ public interface PartitionManager {
 	public boolean newConfiguration(Configuration config);
 
 	/**
-	 * For every reconfiguration, this method may be called by the appropriate
-	 * class to get new configuration information that can be sent to all
-	 * participating {@link StreamNode}s.
-	 * 
-	 * @return new partition information
-	 */
-	public Configuration getDynamicConfiguration();
-
-	/**
 	 * Implements the functions those can be called by runtimer to send
 	 * configuration information to streamnodes.
 	 * 
@@ -93,63 +72,6 @@ public interface PartitionManager {
 
 		AbstractPartitionManager(StreamJitApp<?, ?> app) {
 			this.app = app;
-		}
-
-		@Override
-		public Configuration getDynamicConfiguration() {
-			Configuration.Builder builder = Configuration.builder();
-
-			Map<Integer, Integer> coresPerMachine = new HashMap<>();
-			for (Entry<Integer, List<Set<Worker<?, ?>>>> machine : app.partitionsMachineMap
-					.entrySet()) {
-				coresPerMachine
-						.put(machine.getKey(), machine.getValue().size());
-			}
-
-			PartitionParameter.Builder partParam = PartitionParameter.builder(
-					GlobalConstants.PARTITION, coresPerMachine);
-
-			BlobFactory intFactory = new Interpreter.InterpreterBlobFactory();
-			BlobFactory comp2Factory = new Compiler2BlobFactory();
-			partParam.addBlobFactory(intFactory);
-			partParam.addBlobFactory(comp2Factory);
-			app.blobtoMachineMap = new HashMap<>();
-
-			BlobFactory bf = GlobalConstants.useCompilerBlob ? comp2Factory
-					: intFactory;
-			for (Integer machineID : app.partitionsMachineMap.keySet()) {
-				List<Set<Worker<?, ?>>> blobList = app.partitionsMachineMap
-						.get(machineID);
-				for (Set<Worker<?, ?>> blobWorkers : blobList) {
-					// TODO: One core per blob. Need to change this.
-					partParam.addBlob(machineID, 1, bf, blobWorkers);
-
-					// TODO: Temp fix to build.
-					Token t = Utils.getblobID(blobWorkers);
-					app.blobtoMachineMap.put(t, machineID);
-				}
-			}
-
-			builder.addParameter(partParam.build());
-			if (GlobalConstants.useCompilerBlob)
-				builder.addSubconfiguration("blobConfigs",
-						app.getConfiguration());
-			else
-				builder.addSubconfiguration("blobConfigs",
-						getInterpreterConfg());
-			return builder.build();
-		}
-
-		private Configuration getInterpreterConfg() {
-			Configuration.Builder builder = Configuration.builder();
-			List<ChannelFactory> universe = Arrays
-					.<ChannelFactory> asList(new ConcurrentChannelFactory());
-			SwitchParameter<ChannelFactory> cfParameter = new SwitchParameter<ChannelFactory>(
-					"channelFactory", ChannelFactory.class, universe.get(0),
-					universe);
-
-			builder.addParameter(cfParameter);
-			return builder.build();
 		}
 
 		/**
