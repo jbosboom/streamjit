@@ -21,9 +21,9 @@ import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.distributed.PartitionManager.AbstractConfigurationManager;
+import edu.mit.streamjit.impl.distributed.PartitionManager.AbstractPartitionManager;
 
-public final class HotSpotTuning extends AbstractConfigurationManager {
+public final class HotSpotTuning extends AbstractPartitionManager {
 
 	Map<Integer, List<Worker<?, ?>>> partitionGroup;
 	Map<Splitter<?, ?>, Set<Worker<?, ?>>> skippedSplitters;

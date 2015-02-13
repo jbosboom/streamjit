@@ -17,7 +17,7 @@ import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.distributed.PartitionManager.AbstractConfigurationManager;
+import edu.mit.streamjit.impl.distributed.PartitionManager.AbstractPartitionManager;
 
 /**
  * This class implements one type of search space. Adds "worker to machine"
@@ -37,7 +37,7 @@ import edu.mit.streamjit.impl.distributed.PartitionManager.AbstractConfiguration
  * @since Jan 16, 2014
  * 
  */
-public final class WorkerMachine extends AbstractConfigurationManager {
+public final class WorkerMachine extends AbstractPartitionManager {
 
 	WorkerMachine(StreamJitApp app) {
 		super(app);

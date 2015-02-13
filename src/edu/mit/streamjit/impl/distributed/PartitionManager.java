@@ -97,12 +97,12 @@ public interface PartitionManager {
 	 * @author Sumanan sumanan@mit.edu
 	 * @since Jan 17, 2014
 	 */
-	public static abstract class AbstractConfigurationManager implements
+	public static abstract class AbstractPartitionManager implements
 			PartitionManager {
 
 		protected final StreamJitApp<?, ?> app;
 
-		AbstractConfigurationManager(StreamJitApp<?, ?> app) {
+		AbstractPartitionManager(StreamJitApp<?, ?> app) {
 			this.app = app;
 		}
 
