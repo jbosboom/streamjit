@@ -210,7 +210,7 @@ public abstract class AbstractDrainer {
 		} else if (state == DrainerState.FINAL) {
 			return false;
 		} else {
-			throw new RuntimeException("Drainer is in draing mode.");
+			throw new RuntimeException("Drainer is in draining mode.");
 		}
 	}
 
