@@ -26,6 +26,7 @@ import edu.mit.streamjit.impl.blob.BlobFactory;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
+import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.PartitionParameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.ConnectWorkersVisitor;
@@ -431,6 +432,10 @@ public class StreamJitApp<I, O> {
 	}
 
 	private int maxCores() {
+		IntParameter maxCoreParam = configuration.getParameter("maxNumCores",
+				IntParameter.class);
+		if (maxCoreParam != null)
+			return maxCoreParam.getValue();
 		return GlobalConstants.maxNumCores;
 	}
 }

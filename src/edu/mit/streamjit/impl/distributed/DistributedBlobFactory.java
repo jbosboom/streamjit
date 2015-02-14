@@ -78,7 +78,17 @@ public class DistributedBlobFactory implements BlobFactory {
 			builder.addParameter(p);
 
 		connectionManager.addConnectionParameters(builder, workers);
+		addMaxCoreParam(builder);
 		return builder.build();
+	}
+
+	private void addMaxCoreParam(Configuration.Builder builder) {
+		int min = 1;
+		int val = GlobalConstants.maxNumCores / 2;
+		val = min > val ? min : val;
+		Parameter p = new Configuration.IntParameter("maxNumCores", min,
+				GlobalConstants.maxNumCores, val);
+		builder.addParameter(p);
 	}
 
 	@Override
