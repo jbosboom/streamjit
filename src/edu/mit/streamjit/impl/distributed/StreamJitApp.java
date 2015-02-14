@@ -377,14 +377,14 @@ public class StreamJitApp<I, O> {
 	public Configuration getDynamicConfiguration() {
 		Configuration.Builder builder = Configuration.builder();
 
-		Map<Integer, Integer> coresPerMachine = new HashMap<>();
+		Map<Integer, Integer> machineCoreMap = new HashMap<>();
 		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine : partitionsMachineMap
 				.entrySet()) {
-			coresPerMachine.put(machine.getKey(), machine.getValue().size());
+			machineCoreMap.put(machine.getKey(), machine.getValue().size());
 		}
 
 		PartitionParameter.Builder partParam = PartitionParameter.builder(
-				GlobalConstants.PARTITION, coresPerMachine);
+				GlobalConstants.PARTITION, machineCoreMap);
 
 		BlobFactory intFactory = new Interpreter.InterpreterBlobFactory();
 		BlobFactory comp2Factory = new Compiler2BlobFactory();
