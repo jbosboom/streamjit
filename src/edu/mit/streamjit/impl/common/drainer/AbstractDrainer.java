@@ -120,9 +120,9 @@ public abstract class AbstractDrainer {
 
 	private final TimeLogger logger;
 
-	private final StreamJitApp app;
+	private final StreamJitApp<?, ?> app;
 
-	public AbstractDrainer(StreamJitApp app, TimeLogger logger) {
+	public AbstractDrainer(StreamJitApp<?, ?> app, TimeLogger logger) {
 		state = DrainerState.NODRAINING;
 		finalLatch = new CountDownLatch(1);
 		this.app = app;
@@ -390,6 +390,7 @@ public abstract class AbstractDrainer {
 			e.printStackTrace();
 		}
 	}
+
 	private void dumpDrainData(DrainData drainData) {
 		try {
 			String fileName = String.format("%s%sDrainData", app.name,
