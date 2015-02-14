@@ -59,6 +59,18 @@ public interface PartitionManager {
 	public boolean newConfiguration(Configuration config);
 
 	/**
+	 * Reads the configuration and returns a map of nodeID to list of set of
+	 * workers (list of blob workers). Value of the returned map is list of
+	 * worker set where each worker set is an individual blob.
+	 * 
+	 * @param config
+	 * @return map of nodeID to list of set of workers which are assigned to the
+	 *         node.
+	 */
+	public Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
+			Configuration config);
+
+	/**
 	 * Implements the functions those can be called by runtimer to send
 	 * configuration information to streamnodes.
 	 * 

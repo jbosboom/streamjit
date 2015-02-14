@@ -39,8 +39,11 @@ import edu.mit.streamjit.impl.distributed.PartitionManager.AbstractPartitionMana
  */
 public final class WorkerMachine extends AbstractPartitionManager {
 
+	private final Set<Worker<?, ?>> workerset;
+
 	WorkerMachine(StreamJitApp app) {
 		super(app);
+		this.workerset = Workers.getAllWorkersInGraph(app.source);
 	}
 
 	@Override
@@ -85,8 +88,7 @@ public final class WorkerMachine extends AbstractPartitionManager {
 	@Override
 	public boolean newConfiguration(Configuration config) {
 
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
-				config, app.source);
+		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(config);
 		try {
 			app.verifyConfiguration(partitionsMachineMap);
 		} catch (StreamCompilationFailedException ex) {
@@ -96,22 +98,8 @@ public final class WorkerMachine extends AbstractPartitionManager {
 		return true;
 	}
 
-	/**
-	 * Reads the configuration and returns a map of nodeID to list of set of
-	 * workers (list of blob workers) which are assigned to the node. Value of
-	 * the returned map is list of worker set where each worker set is an
-	 * individual blob.
-	 * 
-	 * @param config
-	 * @param workerset
-	 * @return map of nodeID to list of set of workers which are assigned to the
-	 *         node.
-	 */
-	private Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
-			Configuration config, Worker<?, ?> source) {
-
-		ImmutableSet<Worker<?, ?>> workerset = Workers
-				.getAllWorkersInGraph(source);
+	public Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
+			Configuration config) {
 
 		Map<Integer, Set<Worker<?, ?>>> partition = new HashMap<>();
 		for (Worker<?, ?> w : workerset) {

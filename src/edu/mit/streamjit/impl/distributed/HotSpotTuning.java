@@ -64,7 +64,7 @@ public final class HotSpotTuning extends AbstractPartitionManager {
 		return true;
 	}
 
-	private Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
+	public Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
 			Configuration config) {
 		Map<Integer, Set<Worker<?, ?>>> partition = new HashMap<>();
 
