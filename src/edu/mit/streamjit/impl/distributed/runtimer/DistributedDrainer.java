@@ -1,8 +1,8 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.TimeLogger;
+import edu.mit.streamjit.impl.common.drainer.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;

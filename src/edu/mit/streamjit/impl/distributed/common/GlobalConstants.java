@@ -1,6 +1,6 @@
 package edu.mit.streamjit.impl.distributed.common;
 
-import edu.mit.streamjit.impl.common.AbstractDrainer;
+import edu.mit.streamjit.impl.common.drainer.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.distributed.TailChannels;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;

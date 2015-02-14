@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.common;
+package edu.mit.streamjit.impl.common.drainer;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -36,6 +36,8 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
+import edu.mit.streamjit.impl.common.IOInfo;
+import edu.mit.streamjit.impl.common.TimeLogger;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;

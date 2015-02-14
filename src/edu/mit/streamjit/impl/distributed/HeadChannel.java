@@ -4,7 +4,7 @@ import com.google.common.collect.ImmutableList;
 
 import edu.mit.streamjit.impl.blob.AbstractReadOnlyBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.common.AbstractDrainer;
+import edu.mit.streamjit.impl.common.drainer.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.node.AsyncOutputChannel;
