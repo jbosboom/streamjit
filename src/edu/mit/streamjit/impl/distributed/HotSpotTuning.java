@@ -13,7 +13,6 @@ import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
-import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamVisitor;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.Configuration;
@@ -38,30 +37,6 @@ public final class HotSpotTuning extends AbstractPartitionManager {
 		PickHotSpots visitor = new PickHotSpots(noOfMachines);
 		app.streamGraph.visit(visitor);
 		return visitor.builder.build();
-	}
-
-	@Override
-	public boolean newConfiguration(Configuration config) {
-
-		// for (Parameter p : config.getParametersMap().values()) {
-		// if (p instanceof IntParameter) {
-		// IntParameter ip = (IntParameter) p;
-		// System.out.println(ip.getName() + " - " + ip.getValue());
-		// } else if (p instanceof SwitchParameter<?>) {
-		// SwitchParameter<?> sp = (SwitchParameter<?>) p;
-		// System.out.println(sp.getName() + " - " + sp.getValue());
-		// } else
-		// System.out.println(p.getName() + " - Unknown type");
-		// }
-
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = partitionMap(config);
-		try {
-			app.verifyConfiguration(partitionsMachineMap);
-		} catch (StreamCompilationFailedException ex) {
-			return false;
-		}
-		app.setConfiguration(config);
-		return true;
 	}
 
 	public Map<Integer, List<Set<Worker<?, ?>>>> partitionMap(

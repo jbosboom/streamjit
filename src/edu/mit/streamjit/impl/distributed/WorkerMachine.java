@@ -7,11 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.ImmutableSet;
-
-import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
@@ -70,32 +66,6 @@ public final class WorkerMachine extends AbstractPartitionManager {
 
 		builder.addParameter(noOfMachinesParam);
 		return builder.build();
-	}
-
-	/**
-	 * Builds partitionsMachineMap and {@link BlobGraph} from the new
-	 * Configuration, and verifies for any cycles among blobs. If it is a valid
-	 * configuration, (i.e., no cycles among the blobs), then {@link #app}
-	 * object's member variables {@link StreamJitApp#blobConfiguration},
-	 * {@link StreamJitApp#blobGraph} and
-	 * {@link StreamJitApp#partitionsMachineMap} will be assigned according to
-	 * reflect the new configuration, no changes otherwise.
-	 * 
-	 * @param config
-	 *            New configuration form Opentuer.
-	 * @return true iff no cycles among blobs
-	 */
-	@Override
-	public boolean newConfiguration(Configuration config) {
-
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = partitionMap(config);
-		try {
-			app.verifyConfiguration(partitionsMachineMap);
-		} catch (StreamCompilationFailedException ex) {
-			return false;
-		}
-		app.setConfiguration(config);
-		return true;
 	}
 
 	public Map<Integer, List<Set<Worker<?, ?>>>> partitionMap(

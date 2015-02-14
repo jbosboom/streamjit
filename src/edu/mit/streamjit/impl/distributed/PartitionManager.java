@@ -48,17 +48,6 @@ public interface PartitionManager {
 			int noOfMachines);
 
 	/**
-	 * When opentuner gives a new configuration, this method may be called to
-	 * interpret the configuration and execute the steramjit app with the new
-	 * configuration.
-	 * 
-	 * @param config
-	 *            configuration from opentuner.
-	 * @return true iff valid configuration is passed.
-	 */
-	public boolean newConfiguration(Configuration config);
-
-	/**
 	 * Reads the configuration and returns a map of nodeID to list of set of
 	 * workers (list of blob workers). Value of the returned map is list of
 	 * worker set where each worker set is an individual blob.
