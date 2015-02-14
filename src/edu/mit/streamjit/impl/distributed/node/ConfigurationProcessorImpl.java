@@ -145,11 +145,11 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
 				try {
 					BlobFactory bf = bs.getBlobFactory();
+					int maxCores = bs.getCores();
 					Stopwatch sw = Stopwatch.createStarted();
 					DrainData dd = drainData == null ? null : drainData
 							.subset(workIdentifiers);
-					Blob b = bf.makeBlob(workerset, blobConfigs,
-							GlobalConstants.maxNumCores, dd);
+					Blob b = bf.makeBlob(workerset, blobConfigs, maxCores, dd);
 					sendCompilationTime(sw, Utils.getblobID(workerset));
 					blobSet.add(b);
 				} catch (Exception ex) {

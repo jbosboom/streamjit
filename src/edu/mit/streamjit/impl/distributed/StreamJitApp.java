@@ -377,10 +377,13 @@ public class StreamJitApp<I, O> {
 	public Configuration getDynamicConfiguration() {
 		Configuration.Builder builder = Configuration.builder();
 
+		int maxCores = maxCores();
+
 		Map<Integer, Integer> machineCoreMap = new HashMap<>();
 		for (Entry<Integer, List<Set<Worker<?, ?>>>> machine : partitionsMachineMap
 				.entrySet()) {
-			machineCoreMap.put(machine.getKey(), machine.getValue().size());
+			machineCoreMap.put(machine.getKey(), machine.getValue().size()
+					* maxCores);
 		}
 
 		PartitionParameter.Builder partParam = PartitionParameter.builder(
@@ -399,7 +402,7 @@ public class StreamJitApp<I, O> {
 					.get(machineID);
 			for (Set<Worker<?, ?>> blobWorkers : blobList) {
 				// TODO: One core per blob. Need to change this.
-				partParam.addBlob(machineID, 1, bf, blobWorkers);
+				partParam.addBlob(machineID, maxCores, bf, blobWorkers);
 
 				// TODO: Temp fix to build.
 				Token t = Utils.getblobID(blobWorkers);
@@ -425,5 +428,9 @@ public class StreamJitApp<I, O> {
 
 		builder.addParameter(cfParameter);
 		return builder.build();
+	}
+
+	private int maxCores() {
+		return GlobalConstants.maxNumCores;
 	}
 }
