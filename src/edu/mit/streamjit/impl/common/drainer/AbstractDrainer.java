@@ -101,12 +101,12 @@ public abstract class AbstractDrainer {
 
 	private AtomicInteger unDrainedNodes;
 
-	private ScheduledExecutorService schExecutorService;
+	ScheduledExecutorService schExecutorService;
 
 	/**
 	 * State of the drainer.
 	 */
-	private DrainerState state;
+	DrainerState state;
 
 	private final TimeLogger logger;
 
@@ -540,7 +540,7 @@ public abstract class AbstractDrainer {
 	 * 
 	 * @param blobNode
 	 */
-	private void drainingDone(BlobNode blobNode) {
+	void drainingDone(BlobNode blobNode) {
 		assert state != DrainerState.NODRAINING : "Illegal call. Drainer is not in draining mode.";
 		drainingDone(blobNode.blobID, state == DrainerState.FINAL);
 		if (unDrainedNodes.decrementAndGet() == 0) {
@@ -558,7 +558,7 @@ public abstract class AbstractDrainer {
 	/**
 	 * Reflects {@link AbstractDrainer}'s state.
 	 */
-	private enum DrainerState {
+	enum DrainerState {
 		NODRAINING, /**
 		 * Draining in middle of the stream graph's execution. This
 		 * type of draining will be triggered by the open tuner for

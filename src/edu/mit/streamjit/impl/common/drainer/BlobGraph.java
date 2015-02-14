@@ -23,6 +23,7 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.IOInfo;
+import edu.mit.streamjit.impl.common.drainer.AbstractDrainer.DrainerState;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
@@ -225,6 +226,13 @@ public class BlobGraph {
 	 * this class when this was an inner class of it. So those fields and
 	 * methods of this class have been made as package private when re
 	 * factoring. </p>
+	 * <p>
+	 * [14 Feb, 2015] TODO: {@link AbstractDrainer#schExecutorService} and
+	 * {@link AbstractDrainer#state} have been made package private during the
+	 * re factoring. We can make those fields private by moving
+	 * {@link BlobNode#drain()} and {@link BlobNode#drained()} to
+	 * {@link AbstractDrainer}.
+	 * </p>
 	 * 
 	 * BlobNode represents the vertex in the blob graph ({@link BlobGraph} ). It
 	 * represents a {@link Blob} and carry the draining process of that blob.
