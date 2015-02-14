@@ -67,7 +67,7 @@ public interface PartitionManager {
 	 * @return map of nodeID to list of set of workers which are assigned to the
 	 *         node.
 	 */
-	public Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
+	public Map<Integer, List<Set<Worker<?, ?>>>> partitionMap(
 			Configuration config);
 
 	/**

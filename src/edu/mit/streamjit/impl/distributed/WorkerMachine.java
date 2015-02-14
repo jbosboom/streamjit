@@ -88,7 +88,7 @@ public final class WorkerMachine extends AbstractPartitionManager {
 	@Override
 	public boolean newConfiguration(Configuration config) {
 
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(config);
+		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = partitionMap(config);
 		try {
 			app.verifyConfiguration(partitionsMachineMap);
 		} catch (StreamCompilationFailedException ex) {
@@ -98,7 +98,7 @@ public final class WorkerMachine extends AbstractPartitionManager {
 		return true;
 	}
 
-	public Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
+	public Map<Integer, List<Set<Worker<?, ?>>>> partitionMap(
 			Configuration config) {
 
 		Map<Integer, Set<Worker<?, ?>>> partition = new HashMap<>();
