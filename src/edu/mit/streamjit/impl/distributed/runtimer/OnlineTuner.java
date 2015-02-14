@@ -8,7 +8,7 @@ import edu.mit.streamjit.impl.common.AbstractDrainer;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.TimeLogger;
-import edu.mit.streamjit.impl.distributed.PartitionManager;
+import edu.mit.streamjit.impl.distributed.ConfigurationManager;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
@@ -32,18 +32,18 @@ public class OnlineTuner implements Runnable {
 	private final StreamJitAppManager manager;
 	private final OpenTuner tuner;
 	private final StreamJitApp<?, ?> app;
-	private final PartitionManager partitionManager;
+	private final ConfigurationManager cfgManager;
 	private final boolean needTermination;
 	private final TimeLogger logger;
 	private final ConfigurationPrognosticator prognosticator;
 
 	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
-			StreamJitApp<?, ?> app, PartitionManager partitionManager,
+			StreamJitApp<?, ?> app, ConfigurationManager cfgManager,
 			TimeLogger logger, boolean needTermination) {
 		this.drainer = drainer;
 		this.manager = manager;
 		this.app = app;
-		this.partitionManager = partitionManager;
+		this.cfgManager = cfgManager;
 		this.tuner = new TCPTuner();
 		this.needTermination = needTermination;
 		this.logger = logger;
@@ -217,7 +217,7 @@ public class OnlineTuner implements Runnable {
 		if (manager.getStatus() == AppStatus.STOPPED)
 			return new Pair<Boolean, Long>(false, 0l);
 
-		if (!partitionManager.newConfiguration(config))
+		if (!cfgManager.newConfiguration(config))
 			return new Pair<Boolean, Long>(true, -2l);
 
 		if (!prognosticator.prognosticate(config))
