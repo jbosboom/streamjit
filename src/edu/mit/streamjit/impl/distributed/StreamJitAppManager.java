@@ -54,8 +54,6 @@ public class StreamJitAppManager {
 
 	private AppStatusProcessorImpl apStsPro = null;
 
-	private final PartitionManager partitionManager;
-
 	private Map<Token, ConnectionInfo> conInfoMap;
 
 	private final ConnectionManager conManager;
@@ -108,11 +106,9 @@ public class StreamJitAppManager {
 	private final SNTimeInfoProcessor timeInfoProcessor;
 
 	public StreamJitAppManager(Controller controller, StreamJitApp<?, ?> app,
-			PartitionManager partitionManager, ConnectionManager conManager,
-			TimeLogger logger) {
+			ConnectionManager conManager, TimeLogger logger) {
 		this.controller = controller;
 		this.app = app;
-		this.partitionManager = partitionManager;
 		this.conManager = conManager;
 		this.logger = logger;
 		this.timeInfoProcessor = new SNTimeInfoProcessorImpl(logger);
