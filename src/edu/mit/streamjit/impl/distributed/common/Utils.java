@@ -14,10 +14,19 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
 
+import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.IOInfo;
+import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.distributed.ConfigurationManager;
+import edu.mit.streamjit.impl.distributed.HotSpotTuning;
+import edu.mit.streamjit.impl.distributed.PartitionManager;
+import edu.mit.streamjit.impl.distributed.StreamJitApp;
+import edu.mit.streamjit.test.apps.fmradio.FMRadio;
+import edu.mit.streamjit.util.ConfigurationUtils;
 
 /**
  * @author Sumanan sumanan@mit.edu
@@ -184,5 +193,45 @@ public class Utils {
 			e.printStackTrace();
 		}
 		return fw;
+	}
+
+	/**
+	 * [16-02-2015] - I couldn't run dot tools in Lanka cluster. So as a hack, i
+	 * implemented this method to generate blob graph for each configuration.
+	 * TODO: This generation process is damn slow. Takes 40 mins to process 5000
+	 * cfgs.
+	 * 
+	 * @param stream
+	 * @throws IOException
+	 */
+	public static void generateBlobGraphs(OneToOneElement<?, ?> stream)
+			throws IOException {
+		StreamJitApp<?, ?> app = new StreamJitApp<>(stream);
+		PartitionManager partitionManager = new HotSpotTuning(app);
+		partitionManager.getDefaultConfiguration(
+				Workers.getAllWorkersInGraph(app.source), 2);
+		ConfigurationManager cfgManager = new ConfigurationManager(app,
+				partitionManager);
+
+		for (Integer i = 1; i < -5010; i++) {
+			String prefix = i.toString();
+			Configuration cfg = ConfigurationUtils.readConfiguration(app.name,
+					prefix);
+			if (cfg != null) {
+				cfg = ConfigurationUtils.addConfigPrefix(cfg, prefix);
+				cfgManager.newConfiguration(cfg);
+			}
+		}
+
+		Configuration cfg = ConfigurationUtils.readConfiguration(app.name,
+				"final");
+		if (cfg != null) {
+			cfg = ConfigurationUtils.addConfigPrefix(cfg, "final");
+			cfgManager.newConfiguration(cfg);
+		}
+	}
+
+	public static void main(String[] args) throws IOException {
+		generateBlobGraphs(new FMRadio.FMRadioCore());
 	}
 }
