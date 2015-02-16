@@ -11,7 +11,9 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableSet;
 
 import edu.mit.streamjit.api.OneToOneElement;
@@ -212,8 +214,8 @@ public class Utils {
 				Workers.getAllWorkersInGraph(app.source), 2);
 		ConfigurationManager cfgManager = new ConfigurationManager(app,
 				partitionManager);
-
-		for (Integer i = 1; i < -5010; i++) {
+		Stopwatch sw = Stopwatch.createStarted();
+		for (Integer i = 1; i < 5010; i++) {
 			String prefix = i.toString();
 			Configuration cfg = ConfigurationUtils.readConfiguration(app.name,
 					prefix);
@@ -229,6 +231,8 @@ public class Utils {
 			cfg = ConfigurationUtils.addConfigPrefix(cfg, "final");
 			cfgManager.newConfiguration(cfg);
 		}
+		sw.stop();
+		System.out.println(sw.elapsed(TimeUnit.SECONDS));
 	}
 
 	public static void main(String[] args) throws IOException {
