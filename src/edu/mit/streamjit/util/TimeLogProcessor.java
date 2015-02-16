@@ -108,6 +108,33 @@ public class TimeLogProcessor {
 		return ret;
 	}
 
+	private static List<Integer> processTuningRoundTime(String appName)
+			throws IOException {
+
+		BufferedReader reader = new BufferedReader(new FileReader(
+				String.format("%s%srunTime.txt", appName, File.separator)));
+		FileWriter writer = new FileWriter(String.format(
+				"%s%sProcessedTuningRoundTime.txt", appName, File.separator));
+		String line;
+		int i = 0;
+		List<Integer> ret = new ArrayList<Integer>(3000);
+		while ((line = reader.readLine()) != null) {
+			if (line.startsWith("Tuning")) {
+				String[] arr = line.split(" ");
+				String time = arr[4].trim();
+				time = time.substring(0, time.length() - 1);
+				int val = Integer.parseInt(time);
+				ret.add(val);
+				String data = String.format("%-6d\t%-6d\n", ++i, val);
+				writer.write(data);
+			}
+		}
+		writer.flush();
+		reader.close();
+		writer.close();
+		return ret;
+	}
+
 	private static void writeHeapStat(String fileName) throws IOException {
 		List<Integer> heapSize = processSNHeap(fileName, false);
 		List<Integer> heapMaxSize = processSNHeap(fileName, true);
@@ -147,6 +174,7 @@ public class TimeLogProcessor {
 		List<Integer> compileTime = processCompileTime(appName);
 		List<Integer> runTime = processRunTime(appName);
 		List<Integer> drainTime = processDrainTime(appName);
+		List<Integer> tuningRoundTime = processTuningRoundTime(appName);
 		String dataFile = "totalStats.txt";
 
 		// String summaryDir = String.format("%s%ssummary", appName,
@@ -159,10 +187,11 @@ public class TimeLogProcessor {
 				File.separator, dataFile));
 		int min = Integer.MAX_VALUE;
 
-		for (int i = 0; i < runTime.size(); i++) {
+		for (int i = 0; i < tuningRoundTime.size(); i++) {
 			min = Math.min(min, runTime.get(i));
-			String msg = String.format("%-6d\t%-6d\t%-6d\t%-6d\t%-6d\n", i + 1,
-					compileTime.get(i), runTime.get(i), drainTime.get(i), min);
+			String msg = String.format("%-6d\t%-6d\t%-6d\t%-6d\t%-6d\t%-6d\n",
+					i + 1, tuningRoundTime.get(i), compileTime.get(i),
+					runTime.get(i), drainTime.get(i), min);
 
 			writer.write(msg);
 		}
@@ -187,16 +216,19 @@ public class TimeLogProcessor {
 		writer.write("set grid\n");
 		writer.write("#set yrange [0:*]\n");
 		writer.write(String
-				.format("plot \"%s\" using 1:5 with linespoints title \"Current best running time\"\n",
+				.format("plot \"%s\" using 1:6 with linespoints title \"Current best running time\"\n",
 						dataFile));
 		writer.write(String
-				.format("plot \"%s\" using 1:2 with linespoints title \"Compile time\"\n",
+				.format("plot \"%s\" using 1:3 with linespoints title \"Compile time\"\n",
 						dataFile));
 		writer.write(String.format(
-				"plot \"%s\" using 1:3 with linespoints title \"Run time\"\n",
+				"plot \"%s\" using 1:4 with linespoints title \"Run time\"\n",
 				dataFile));
 		writer.write(String
-				.format("plot \"%s\" using 1:4 with linespoints title \"Drain time\"\n",
+				.format("plot \"%s\" using 1:5 with linespoints title \"Drain time\"\n",
+						dataFile));
+		writer.write(String
+				.format("plot \"%s\" using 1:2 with linespoints title \"Tuning Round time\"\n",
 						dataFile));
 		writer.close();
 	}
