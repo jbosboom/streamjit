@@ -221,8 +221,10 @@ public interface Visualizer {
 					"-o", outFileName);
 			try {
 				Process p = pb.start();
-				p.waitFor();
-			} catch (IOException | InterruptedException e) {
+				// TODO: [20-2-2015]. I am commenting the following line for
+				// some performance improvement. Look for bugs.
+				// p.waitFor();
+			} catch (IOException e) {
 				System.err
 						.println("DotVisualizer: dot(Graphviz) tool is not properly installed in the system");
 				hasDot = false;
