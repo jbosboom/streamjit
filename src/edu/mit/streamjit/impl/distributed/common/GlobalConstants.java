@@ -1,7 +1,9 @@
 package edu.mit.streamjit.impl.distributed.common;
 
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Properties;
 
@@ -82,19 +84,19 @@ public final class GlobalConstants {
 	 * tuning on remote machines.
 	 * </ol>
 	 */
-	public static final int tunerStartMode = 0;
+	public static final int tunerStartMode;
 
 	/**
 	 * To turn on or turn off the drain data. If this is false, drain data will
 	 * be ignored and every new reconfiguration will run with fresh inputs.
 	 */
-	public static final boolean useDrainData = false;
+	public static final boolean useDrainData;
 
 	/**
 	 * To turn on or off the dead lock handler. see {@link AbstractDrainer} for
 	 * it's usage.
 	 */
-	public static final boolean needDrainDeadlockHandler = true;
+	public static final boolean needDrainDeadlockHandler;
 
 	/**
 	 * Enables tuning. Tuner will be started iff this flag is set true.
@@ -111,37 +113,37 @@ public final class GlobalConstants {
 	 * 2 - Evaluate configuration files. ( compares final cfg with hand tuned
 	 * cfg. Both file should be presented in the running directory.
 	 */
-	public static final int tune = 1;
+	public static final int tune;
 
 	/**
 	 * Save all configurations tired by open tuner in to
 	 * "configurations//app.name" directory.
 	 */
-	public static final boolean saveAllConfigurations = true;
+	public static final boolean saveAllConfigurations;
 
 	/**
 	 * Output count for tuning. Tuner measures the running time for this number
 	 * of outputs.
 	 */
-	public static final int outputCount = 100000;
+	public static final int outputCount;
 
 	/**
 	 * if true uses Compiler2, interpreter otherwise.
 	 */
-	public static final boolean useCompilerBlob = true;
+	public static final boolean useCompilerBlob;
 
 	/**
 	 * Period to print output count periodically. This printing feature get
 	 * turned off if this value is less than 1. Time unit is ms. See
 	 * {@link TailChannels}.
 	 */
-	public static final int printOutputCountPeriod = 6000;
+	public static final int printOutputCountPeriod;
 
 	/**
 	 * Enables {@link DistributedStreamCompiler} to run on a single node. When
 	 * this is enabled, noOfNodes passed as compiler argument has no effect.
 	 */
-	public static final boolean singleNodeOnline = true;
+	public static final boolean singleNodeOnline;
 
 	/**
 	 * We can set this value at class loading time also as follows.
@@ -151,18 +153,50 @@ public final class GlobalConstants {
 	 * 
 	 * Lets hard code this for the moment.
 	 */
-	public static final int maxNumCores = 24;
+	public static final int maxNumCores;
 
 	/**
 	 * Turn On/Off the profiling.
 	 */
-	public static final boolean needProfiler = true;
+	public static final boolean needProfiler;
+
+	static {
+		Properties prop = loadProperties();
+		printOutputCountPeriod = Integer.parseInt(prop
+				.getProperty("printOutputCountPeriod"));;
+		maxNumCores = Integer.parseInt(prop.getProperty("maxNumCores"));
+		useCompilerBlob = Boolean.parseBoolean(prop
+				.getProperty("useCompilerBlob"));
+		needDrainDeadlockHandler = Boolean.parseBoolean(prop
+				.getProperty("needDrainDeadlockHandler"));
+		needProfiler = Boolean.parseBoolean(prop.getProperty("needProfiler"));
+		outputCount = Integer.parseInt(prop.getProperty("outputCount"));
+		tune = Integer.parseInt(prop.getProperty("tune"));
+		tunerStartMode = Integer.parseInt(prop.getProperty("tunerStartMode"));
+		saveAllConfigurations = Boolean.parseBoolean(prop
+				.getProperty("saveAllConfigurations"));
+		singleNodeOnline = Boolean.parseBoolean(prop
+				.getProperty("singleNodeOnline"));
+		useDrainData = Boolean.parseBoolean(prop.getProperty("useDrainData"));
+	}
+
+	private static Properties loadProperties() {
+		Properties prop = new Properties();
+		InputStream input = null;
+		try {
+			input = new FileInputStream("options.properties");
+			prop.load(input);
+		} catch (IOException ex) {
+			System.err.println("Failed to load options.properties");
+		}
+		return prop;
+	}
 
 	public static void storeProperties() {
 		Properties prop = new Properties();
 		OutputStream output = null;
 		try {
-			output = new FileOutputStream("globalConstants.properties");
+			output = new FileOutputStream("options.properties");
 			setProperty(prop, "tunerStartMode", tunerStartMode);
 			setProperty(prop, "useDrainData", useDrainData);
 			setProperty(prop, "needDrainDeadlockHandler",
