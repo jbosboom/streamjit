@@ -163,26 +163,18 @@ public final class GlobalConstants {
 		OutputStream output = null;
 		try {
 			output = new FileOutputStream("globalConstants.properties");
-			prop.setProperty("tunerStartMode",
-					new Integer(tunerStartMode).toString());
-			prop.setProperty("useDrainData",
-					new Boolean(useDrainData).toString());
-			prop.setProperty("needDrainDeadlockHandler", new Boolean(
-					needDrainDeadlockHandler).toString());
-			prop.setProperty("tune", new Integer(tune).toString());
-			prop.setProperty("saveAllConfigurations", new Boolean(
-					saveAllConfigurations).toString());
-			prop.setProperty("outputCount", new Integer(outputCount).toString());
-			prop.setProperty("useCompilerBlob",
-					new Boolean(useCompilerBlob).toString());
-			prop.setProperty("printOutputCountPeriod", new Integer(
-					printOutputCountPeriod).toString());
-			prop.setProperty("singleNodeOnline",
-					new Boolean(singleNodeOnline).toString());
-			prop.setProperty("maxNumCores", new Integer(maxNumCores).toString());
-			prop.setProperty("needProfiler",
-					new Boolean(needProfiler).toString());
-
+			setProperty(prop, "tunerStartMode", tunerStartMode);
+			setProperty(prop, "useDrainData", useDrainData);
+			setProperty(prop, "needDrainDeadlockHandler",
+					needDrainDeadlockHandler);
+			setProperty(prop, "tune", tune);
+			setProperty(prop, "saveAllConfigurations", saveAllConfigurations);
+			setProperty(prop, "outputCount", outputCount);
+			setProperty(prop, "useCompilerBlob", useCompilerBlob);
+			setProperty(prop, "printOutputCountPeriod", printOutputCountPeriod);
+			setProperty(prop, "singleNodeOnline", singleNodeOnline);
+			setProperty(prop, "maxNumCores", maxNumCores);
+			setProperty(prop, "needProfiler", needProfiler);
 			prop.store(output, null);
 
 		} catch (IOException io) {
@@ -196,5 +188,13 @@ public final class GlobalConstants {
 				}
 			}
 		}
+	}
+
+	private static void setProperty(Properties prop, String name, Integer val) {
+		prop.setProperty(name, val.toString());
+	}
+
+	private static void setProperty(Properties prop, String name, Boolean val) {
+		prop.setProperty(name, val.toString());
 	}
 }
