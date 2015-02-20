@@ -10,6 +10,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -138,33 +139,12 @@ public class Utils {
 			Calendar cal = Calendar.getInstance();
 			writer.write(dateFormat.format(cal.getTime()) + "\n");
 			writer.write(appName + "\n");
-			update(writer, "tunerStartMode", GlobalConstants.tunerStartMode);
-			update(writer, "useDrainData", GlobalConstants.useDrainData);
-			update(writer, "needDrainDeadlockHandler",
-					GlobalConstants.needDrainDeadlockHandler);
-			update(writer, "tune", GlobalConstants.tune);
-			update(writer, "saveAllConfigurations",
-					GlobalConstants.saveAllConfigurations);
-			update(writer, "outputCount", GlobalConstants.outputCount);
-			update(writer, "useCompilerBlob", GlobalConstants.useCompilerBlob);
-			update(writer, "printOutputCountPeriod",
-					GlobalConstants.printOutputCountPeriod);
-			update(writer, "singleNodeOnline", GlobalConstants.singleNodeOnline);
-			update(writer, "maxNumCores", GlobalConstants.maxNumCores);
+			Properties prop = GlobalConstants.getProperties();
+			prop.store(writer, "GlobalConstants.Properties");
 			writer.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-
-	private static void update(FileWriter writer, String name, int val)
-			throws IOException {
-		writer.write(String.format("%s=%d\n", name, val));
-	}
-
-	private static void update(FileWriter writer, String name, boolean val)
-			throws IOException {
-		writer.write(String.format("%s=%s\n", name, val ? "True" : "False"));
 	}
 
 	/**
