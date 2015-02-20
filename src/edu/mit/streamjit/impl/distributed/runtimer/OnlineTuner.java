@@ -64,6 +64,7 @@ public class OnlineTuner implements Runnable {
 			System.err
 					.println("GlobalConstants.tune is neither in tune mode nor in evaluate mode.");
 	}
+
 	private void tune() {
 		int round = 0;
 		// Keeps track of the current best time. Uses this to discard bad cfgs
@@ -88,17 +89,7 @@ public class OnlineTuner implements Runnable {
 					break;
 				}
 
-				String cfgPrefix = new Integer(++round).toString();
-				System.out.println(String.format(
-						"---------------------%s-------------------------",
-						cfgPrefix));
-				logger.newConfiguration(cfgPrefix);
-				Configuration config = Configuration.fromJson(cfgJson);
-				config = ConfigurationUtils.addConfigPrefix(config, cfgPrefix);
-
-				if (GlobalConstants.saveAllConfigurations)
-					ConfigurationUtils.saveConfg(cfgJson, cfgPrefix, app.name);
-
+				Configuration config = newCfg(++round, cfgJson);
 				ret = reconfigure(config, 2 * currentBestTime);
 				if (ret.first) {
 					long time = ret.second;
@@ -286,6 +277,19 @@ public class OnlineTuner implements Runnable {
 			else
 				System.err.println("Invalid final configuration.");
 		}
+	}
+
+	private Configuration newCfg(int round, String cfgJson) {
+		String cfgPrefix = new Integer(round).toString();
+		System.out.println(String.format(
+				"---------------------%s-------------------------", cfgPrefix));
+		logger.newConfiguration(cfgPrefix);
+		Configuration config = Configuration.fromJson(cfgJson);
+		config = ConfigurationUtils.addConfigPrefix(config, cfgPrefix);
+
+		if (GlobalConstants.saveAllConfigurations)
+			ConfigurationUtils.saveConfg(cfgJson, cfgPrefix, app.name);
+		return config;
 	}
 
 	private void terminate() {
