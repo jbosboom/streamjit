@@ -1,8 +1,12 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
@@ -55,13 +59,11 @@ public class OnlineTuner implements Runnable {
 		if (GlobalConstants.tune == 1)
 			tune();
 		else if (GlobalConstants.tune == 2)
-			// verifyTuningTimes();
-			evaluate();
+			verifyTuningTimes(cfgPrefixes());
 		else
 			System.err
 					.println("GlobalConstants.tune is neither in tune mode nor in evaluate mode.");
 	}
-
 	private void tune() {
 		int round = 0;
 		// Keeps track of the current best time. Uses this to discard bad cfgs
@@ -173,10 +175,7 @@ public class OnlineTuner implements Runnable {
 	 * 
 	 * This method can be called after the completion of the tuning.
 	 */
-	private void verifyTuningTimes() {
-		String[] cfgPrefixes = { "10", "50", "100", "150", "200", "250", "300",
-				"350", "400", "450", "500", "550", "600", "650", "700", "750",
-				"800", "850", "900", "950", "1000", "hand", "final" };
+	private void verifyTuningTimes(Iterable<String> cfgPrefixes) {
 		for (String prefix : cfgPrefixes) {
 			String cfgName = String.format("%s_%s.cfg", prefix, app.name);
 			Configuration cfg = ConfigurationUtils.readConfiguration(app.name,
@@ -352,5 +351,26 @@ public class OnlineTuner implements Runnable {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
+	}
+
+	private Iterable<String> cfgPrefixes() {
+		List<String> cfgPrefixes = new ArrayList<String>();
+		cfgPrefixes.add("final");
+		cfgPrefixes.add("hand");
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(
+					String.format("%s%sverify.txt", app.name, File.separator)));
+			String line;
+			while ((line = reader.readLine()) != null) {
+				String[] arr = line.split(",");
+				for (String s : arr) {
+					cfgPrefixes.add(s.trim());
+				}
+			}
+			reader.close();
+		} catch (IOException e) {
+			// e.printStackTrace();
+		}
+		return cfgPrefixes;
 	}
 }
