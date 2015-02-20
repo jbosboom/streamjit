@@ -193,24 +193,11 @@ public final class GlobalConstants {
 	}
 
 	public static void storeProperties() {
-		Properties prop = new Properties();
 		OutputStream output = null;
 		try {
 			output = new FileOutputStream("options.properties");
-			setProperty(prop, "tunerStartMode", tunerStartMode);
-			setProperty(prop, "useDrainData", useDrainData);
-			setProperty(prop, "needDrainDeadlockHandler",
-					needDrainDeadlockHandler);
-			setProperty(prop, "tune", tune);
-			setProperty(prop, "saveAllConfigurations", saveAllConfigurations);
-			setProperty(prop, "outputCount", outputCount);
-			setProperty(prop, "useCompilerBlob", useCompilerBlob);
-			setProperty(prop, "printOutputCountPeriod", printOutputCountPeriod);
-			setProperty(prop, "singleNodeOnline", singleNodeOnline);
-			setProperty(prop, "maxNumCores", maxNumCores);
-			setProperty(prop, "needProfiler", needProfiler);
+			Properties prop = getProperties();
 			prop.store(output, null);
-
 		} catch (IOException io) {
 			io.printStackTrace();
 		} finally {
@@ -230,5 +217,21 @@ public final class GlobalConstants {
 
 	private static void setProperty(Properties prop, String name, Boolean val) {
 		prop.setProperty(name, val.toString());
+	}
+
+	public static Properties getProperties() {
+		Properties prop = new Properties();
+		setProperty(prop, "tunerStartMode", tunerStartMode);
+		setProperty(prop, "useDrainData", useDrainData);
+		setProperty(prop, "needDrainDeadlockHandler", needDrainDeadlockHandler);
+		setProperty(prop, "tune", tune);
+		setProperty(prop, "saveAllConfigurations", saveAllConfigurations);
+		setProperty(prop, "outputCount", outputCount);
+		setProperty(prop, "useCompilerBlob", useCompilerBlob);
+		setProperty(prop, "printOutputCountPeriod", printOutputCountPeriod);
+		setProperty(prop, "singleNodeOnline", singleNodeOnline);
+		setProperty(prop, "maxNumCores", maxNumCores);
+		setProperty(prop, "needProfiler", needProfiler);
+		return prop;
 	}
 }
