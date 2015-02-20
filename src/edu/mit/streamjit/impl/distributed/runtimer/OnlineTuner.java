@@ -152,23 +152,6 @@ public class OnlineTuner implements Runnable {
 		tuner.writeLine(Jsonifiers.toJson(app.getConfiguration()).toString());
 	}
 
-	private void evaluate() {
-		Configuration finalCfg = ConfigurationUtils.readConfiguration(app.name,
-				"final");
-		evaluateConfig(finalCfg, "Final configuration");
-
-		Configuration handCfg = ConfigurationUtils.readConfiguration(app.name,
-				"hand");
-		evaluateConfig(handCfg, "Handtuned configuration");
-
-		try {
-			drainer.dumpDraindataStatistics();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		terminate();
-	}
-
 	/**
 	 * This method just picks a few configurations and re-run the app to ensure
 	 * the time we reported to the opentuner is correct.
@@ -327,7 +310,7 @@ public class OnlineTuner implements Runnable {
 		System.out.println("Evaluating " + cfgName);
 		FileWriter writer;
 		double total = 0;
-		int count = 4;
+		int count = 2;
 		try {
 			writer = new FileWriter(String.format("%s%sEval_%s.txt", app.name,
 					File.separator, app.name), true);
