@@ -1,5 +1,10 @@
 package edu.mit.streamjit.impl.distributed.common;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Properties;
+
 import edu.mit.streamjit.impl.common.drainer.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.distributed.TailChannels;
@@ -152,4 +157,44 @@ public final class GlobalConstants {
 	 * Turn On/Off the profiling.
 	 */
 	public static final boolean needProfiler = true;
+
+	public static void storeProperties() {
+		Properties prop = new Properties();
+		OutputStream output = null;
+		try {
+			output = new FileOutputStream("globalConstants.properties");
+			prop.setProperty("tunerStartMode",
+					new Integer(tunerStartMode).toString());
+			prop.setProperty("useDrainData",
+					new Boolean(useDrainData).toString());
+			prop.setProperty("needDrainDeadlockHandler", new Boolean(
+					needDrainDeadlockHandler).toString());
+			prop.setProperty("tune", new Integer(tune).toString());
+			prop.setProperty("saveAllConfigurations", new Boolean(
+					saveAllConfigurations).toString());
+			prop.setProperty("outputCount", new Integer(outputCount).toString());
+			prop.setProperty("useCompilerBlob",
+					new Boolean(useCompilerBlob).toString());
+			prop.setProperty("printOutputCountPeriod", new Integer(
+					printOutputCountPeriod).toString());
+			prop.setProperty("singleNodeOnline",
+					new Boolean(singleNodeOnline).toString());
+			prop.setProperty("maxNumCores", new Integer(maxNumCores).toString());
+			prop.setProperty("needProfiler",
+					new Boolean(needProfiler).toString());
+
+			prop.store(output, null);
+
+		} catch (IOException io) {
+			io.printStackTrace();
+		} finally {
+			if (output != null) {
+				try {
+					output.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
 }
