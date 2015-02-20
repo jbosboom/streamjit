@@ -361,7 +361,7 @@ public class TailChannels {
 
 		private boolean skipLatchUp;
 
-		private Stopwatch stopWatch;
+		private final Stopwatch stopWatch;
 
 		/**
 		 * @param buffer
