@@ -108,20 +108,7 @@ public class OnlineTuner implements Runnable {
 			terminate();
 		}
 
-		try {
-			drainer.dumpDraindataStatistics();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		if (needTermination)
-			terminate();
-
-		try {
-			TimeLogProcessor.summarize(app.name);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		tuningFinished();
 	}
 
 	private void startTuner() throws IOException {
@@ -290,6 +277,23 @@ public class OnlineTuner implements Runnable {
 		if (GlobalConstants.saveAllConfigurations)
 			ConfigurationUtils.saveConfg(cfgJson, cfgPrefix, app.name);
 		return config;
+	}
+
+	private void tuningFinished() {
+		try {
+			drainer.dumpDraindataStatistics();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		if (needTermination)
+			terminate();
+
+		try {
+			TimeLogProcessor.summarize(app.name);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private void terminate() {
