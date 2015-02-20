@@ -128,6 +128,10 @@ public interface TimeLogger {
 	 * This method shall be called to indicate the logger that a new
 	 * configuration has been received. Appropriate caller would be
 	 * {@link OnlineTuner}.
+	 * 
+	 * @param cfgPrefix
+	 *            The prefix name of the new {@link Configuration}. Pass null or
+	 *            empty string if the prefix is unknown.
 	 */
-	public void newConfiguration();
+	public void newConfiguration(String cfgPrefix);
 }

@@ -89,7 +89,7 @@ public class TimeLoggers {
 		}
 
 		@Override
-		public void newConfiguration() {
+		public void newConfiguration(String cfgPrefix) {
 		}
 
 		@Override
@@ -225,13 +225,16 @@ public class TimeLoggers {
 		}
 
 		@Override
-		public void newConfiguration() {
-			updateTuningRoundTime();
+		public void newConfiguration(String cfgPrefix) {
 			reconfigNo++;
+			if (cfgPrefix == null || cfgPrefix.isEmpty())
+				cfgPrefix = new Integer(reconfigNo).toString();
+
+			updateTuningRoundTime();
 
 			String msg = String
-					.format("----------------------------%d----------------------------\n",
-							reconfigNo);
+					.format("----------------------------%s----------------------------\n",
+							cfgPrefix);
 			write(compileTimeWriter, msg);
 			write(runTimeWriter, msg);
 			write(drainTimeWriter, msg);

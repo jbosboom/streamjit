@@ -76,7 +76,6 @@ public class OnlineTuner implements Runnable {
 			System.out.println("New tune run.............");
 			while (manager.getStatus() != AppStatus.STOPPED) {
 				String cfgJson = tuner.readLine();
-				logger.newConfiguration();
 				if (cfgJson == null) {
 					System.err.println("OpenTuner closed unexpectly.");
 					break;
@@ -89,16 +88,16 @@ public class OnlineTuner implements Runnable {
 					break;
 				}
 
+				String cfgPrefix = new Integer(++round).toString();
 				System.out.println(String.format(
-						"---------------------%d-------------------------",
-						++round));
+						"---------------------%s-------------------------",
+						cfgPrefix));
+				logger.newConfiguration(cfgPrefix);
 				Configuration config = Configuration.fromJson(cfgJson);
-				config = ConfigurationUtils.addConfigPrefix(config,
-						new Integer(round).toString());
+				config = ConfigurationUtils.addConfigPrefix(config, cfgPrefix);
 
 				if (GlobalConstants.saveAllConfigurations)
-					ConfigurationUtils.saveConfg(cfgJson,
-							new Integer(round).toString(), app.name);
+					ConfigurationUtils.saveConfg(cfgJson, cfgPrefix, app.name);
 
 				ret = reconfigure(config, 2 * currentBestTime);
 				if (ret.first) {
