@@ -326,6 +326,7 @@ public class OnlineTuner implements Runnable {
 			if (cfg != null) {
 				Pair<Boolean, Long> ret;
 				for (int i = 0; i < count; i++) {
+					logger.newConfiguration(cfgName);
 					ret = reconfigure(cfg, 0);
 					if (ret.first) {
 						prognosticator.time(ret.second);
