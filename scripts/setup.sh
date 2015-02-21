@@ -4,16 +4,19 @@
 #Setup directories and scripts to run a distributed StreamJit app.
 function writeRun(){
 	runfile="run.sh"
+	res=$(get_prop "./$1/options.properties" "tune")
 	echo "#!/bin/bash" > $runfile
 	echo "#SBATCH --tasks-per-node=1" >> $runfile
 	echo "#SBATCH -N 1"  >> $runfile
 	echo "#SBATCH --cpu_bind=verbose,cores" >> $runfile
 	echo "#SBATCH --exclusive" >> $runfile
 	echo "cd /data/scratch/sumanan/"$1 >> $runfile
-	echo "mkdir -p $2" >> $runfile
-	echo "cd $2" >> $runfile
-	echo "srun python ../lib/opentuner/streamjit/streamjit2.py 12563 &" >> $runfile
-	echo "cd .." >> $runfile
+	if [ "$res" -eq "1" ];then
+		echo "mkdir -p $2" >> $runfile
+		echo "cd $2" >> $runfile
+		echo "srun python ../lib/opentuner/streamjit/streamjit2.py 12563 &" >> $runfile
+		echo "cd .." >> $runfile
+	fi
 	echo "srun -l ../bin/java/jdk1.8.0_25/bin/java -Xmx2048m -jar $1.jar $3" >> $runfile
 }
 
@@ -35,6 +38,9 @@ function creatdirs(){
 	cd $1
 }
 
+get_prop(){
+	grep  "^${2}=" ${1}| sed "s%${2}=\(.*\)%\1%"
+}
 
 if [ "$#" -ne 3 ]; then
 	echo "Illegal number of parameters"
