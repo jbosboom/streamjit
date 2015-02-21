@@ -4,7 +4,7 @@
 #Setup directories and scripts to run a distributed StreamJit app.
 function writeRun(){
 	runfile="run.sh"
-	res=$(get_prop "./$1/options.properties" "tune")
+	res=$(get_prop "./options.properties" "tune")
 	echo "#!/bin/bash" > $runfile
 	echo "#SBATCH --tasks-per-node=1" >> $runfile
 	echo "#SBATCH -N 1"  >> $runfile
