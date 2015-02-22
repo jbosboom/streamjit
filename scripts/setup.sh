@@ -56,5 +56,6 @@ nodes=${args[2]}
 totalNodes=$((nodes + 1))
 cd /data/scratch/sumanan
 creatdirs $app			#Changes the current working directory(CWD).
+mv "optionsLanka.properties" "options.properties"
 writeRun $app $mainClass $totalNodes
 writeSN $app $nodes
