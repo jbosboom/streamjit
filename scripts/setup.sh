@@ -55,6 +55,6 @@ mainClass=${args[1]}
 nodes=${args[2]}
 totalNodes=$((nodes + 1))
 cd /data/scratch/sumanan
-creatdirs $app
+creatdirs $app			#Changes the current working directory(CWD).
 writeRun $app $mainClass $totalNodes
 writeSN $app $nodes
