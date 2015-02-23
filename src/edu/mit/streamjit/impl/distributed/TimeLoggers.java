@@ -224,6 +224,13 @@ public class TimeLoggers {
 			write(runTimeWriter, msg);
 		}
 
+		/**
+		 * [24-02-2015] When a new configuration come from the OpenTuner, we
+		 * drain previous configuration. So the drainTime file should be updated
+		 * with previous configuration prefix.
+		 */
+		String prevcfgPrefix = "";
+
 		@Override
 		public void newConfiguration(String cfgPrefix) {
 			reconfigNo++;
@@ -235,9 +242,13 @@ public class TimeLoggers {
 			String msg = String
 					.format("----------------------------%s----------------------------\n",
 							cfgPrefix);
+			String msg1 = String
+					.format("----------------------------%s----------------------------\n",
+							prevcfgPrefix);
 			write(compileTimeWriter, msg);
 			write(runTimeWriter, msg);
-			write(drainTimeWriter, msg);
+			write(drainTimeWriter, msg1);
+			prevcfgPrefix = cfgPrefix;
 		}
 
 		private void updateTuningRoundTime() {
