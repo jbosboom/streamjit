@@ -176,7 +176,7 @@ public class AsyncTCPConnection implements Connection {
 		this.ooStream.flush();
 		bBAos.writeCompleted();
 		send();
-		System.err.println("Softclose is called");
+		// System.err.println("Softclose is called");
 	}
 
 	/**
