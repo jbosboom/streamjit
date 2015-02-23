@@ -119,7 +119,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		PartitionManager partitionManager = new HotSpotTuning(app);
 		ConfigurationManager cfgManager = new ConfigurationManager(app,
 				partitionManager);
-		ConnectionManager conManager = new ConnectionManager.BlockingTCPNoParams(
+		ConnectionManager conManager = new ConnectionManager.AsyncTCPNoParams(
 				controller.controllerNodeID);
 		setConfiguration(controller, app, partitionManager, conManager,
 				cfgManager);
