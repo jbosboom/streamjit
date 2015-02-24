@@ -179,7 +179,10 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				if (stopType.get() > 0 && ++bufFullCount > 20) {
+				if (stopType.get() == 3) {
+					System.err.println(name + " receiveData:DISCARDING....");
+					break;
+				} else if (stopType.get() > 0 && ++bufFullCount > 20) {
 					this.extraBuffer = new ExtraBuffer();
 					extraBuffer.write(obj);
 					System.err
