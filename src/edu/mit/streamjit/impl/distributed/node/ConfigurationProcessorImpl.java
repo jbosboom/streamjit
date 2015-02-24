@@ -8,9 +8,15 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.base.Stopwatch;
@@ -290,5 +296,88 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 		}
 		System.out.println("All blobs have been created");
 		return blobSet.build();
+	}
+
+	/**
+	 * Compiles the blobs in parallel.
+	 */
+	private ImmutableSet<Blob> blobset1(ImmutableSet.Builder<Blob> blobSet,
+			List<BlobSpecifier> blobList, DrainData drainData,
+			Configuration blobConfigs, Worker<?, ?> source) {
+		Set<Future<Blob>> futures = new HashSet<>();
+		ExecutorService executerSevce = Executors.newFixedThreadPool(blobList
+				.size());
+
+		for (BlobSpecifier bs : blobList) {
+			MakeBlob mb = new MakeBlob(bs, drainData, blobConfigs, source);
+			Future<Blob> f = executerSevce.submit(mb);
+			futures.add(f);
+		}
+
+		executerSevce.shutdown();
+
+		while (!executerSevce.isTerminated()) {
+			try {
+				Thread.sleep(200);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+
+		for (Future<Blob> f : futures) {
+			Blob b;
+			try {
+				b = f.get();
+				if (b == null)
+					return null;
+				blobSet.add(b);
+			} catch (InterruptedException | ExecutionException e) {
+				e.printStackTrace();
+			}
+		}
+
+		System.out.println("All blobs have been created");
+		return blobSet.build();
+	}
+
+	private class MakeBlob implements Callable<Blob> {
+		private final BlobSpecifier bs;
+		private final DrainData drainData;
+		private final Configuration blobConfigs;
+		private final Worker<?, ?> source;
+
+		private MakeBlob(BlobSpecifier bs, DrainData drainData,
+				Configuration blobConfigs, Worker<?, ?> source) {
+			this.bs = bs;
+			this.drainData = drainData;
+			this.blobConfigs = blobConfigs;
+			this.source = source;
+		}
+
+		@Override
+		public Blob call() throws Exception {
+			Blob b = null;
+			Set<Integer> workIdentifiers = bs.getWorkerIdentifiers();
+			ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
+			try {
+				BlobFactory bf = bs.getBlobFactory();
+				int maxCores = bs.getCores();
+				Stopwatch sw = Stopwatch.createStarted();
+				DrainData dd = drainData == null ? null : drainData
+						.subset(workIdentifiers);
+				b = bf.makeBlob(workerset, blobConfigs, maxCores, dd);
+				sendCompilationTime(sw, Utils.getblobID(workerset));
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			} catch (OutOfMemoryError er) {
+				Utils.printOutOfMemory();
+			}
+			// DEBUG MSG
+			if (!GlobalConstants.singleNodeOnline && b != null)
+				System.out.println(String.format(
+						"A new blob with workers %s has been created.",
+						workIdentifiers.toString()));
+			return b;
+		}
 	}
 }
