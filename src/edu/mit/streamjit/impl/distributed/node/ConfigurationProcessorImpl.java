@@ -139,34 +139,8 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 
 			Configuration blobConfigs = dyncfg
 					.getSubconfiguration("blobConfigs");
+			return blobset(blobSet, blobList, drainData, blobConfigs, source);
 
-			for (BlobSpecifier bs : blobList) {
-				Set<Integer> workIdentifiers = bs.getWorkerIdentifiers();
-				ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
-				try {
-					BlobFactory bf = bs.getBlobFactory();
-					int maxCores = bs.getCores();
-					Stopwatch sw = Stopwatch.createStarted();
-					DrainData dd = drainData == null ? null : drainData
-							.subset(workIdentifiers);
-					Blob b = bf.makeBlob(workerset, blobConfigs, maxCores, dd);
-					sendCompilationTime(sw, Utils.getblobID(workerset));
-					blobSet.add(b);
-				} catch (Exception ex) {
-					ex.printStackTrace();
-					return null;
-				} catch (OutOfMemoryError er) {
-					Utils.printOutOfMemory();
-					return null;
-				}
-				// DEBUG MSG
-				if (!GlobalConstants.singleNodeOnline)
-					System.out.println(String.format(
-							"A new blob with workers %s has been created.",
-							workIdentifiers.toString()));
-			}
-			System.out.println("All blobs have been created");
-			return blobSet.build();
 		} else
 			return null;
 	}
@@ -284,5 +258,37 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 				String.format(
 						"Innter class %s is not found in the outter class %s. Check the accessibility/visibility of the inner class",
 						InnterClassName, OutterClass.getName()));
+	}
+
+	private ImmutableSet<Blob> blobset(ImmutableSet.Builder<Blob> blobSet,
+			List<BlobSpecifier> blobList, DrainData drainData,
+			Configuration blobConfigs, Worker<?, ?> source) {
+		for (BlobSpecifier bs : blobList) {
+			Set<Integer> workIdentifiers = bs.getWorkerIdentifiers();
+			ImmutableSet<Worker<?, ?>> workerset = bs.getWorkers(source);
+			try {
+				BlobFactory bf = bs.getBlobFactory();
+				int maxCores = bs.getCores();
+				Stopwatch sw = Stopwatch.createStarted();
+				DrainData dd = drainData == null ? null : drainData
+						.subset(workIdentifiers);
+				Blob b = bf.makeBlob(workerset, blobConfigs, maxCores, dd);
+				sendCompilationTime(sw, Utils.getblobID(workerset));
+				blobSet.add(b);
+			} catch (Exception ex) {
+				ex.printStackTrace();
+				return null;
+			} catch (OutOfMemoryError er) {
+				Utils.printOutOfMemory();
+				return null;
+			}
+			// DEBUG MSG
+			if (!GlobalConstants.singleNodeOnline)
+				System.out.println(String.format(
+						"A new blob with workers %s has been created.",
+						workIdentifiers.toString()));
+		}
+		System.out.println("All blobs have been created");
+		return blobSet.build();
 	}
 }
