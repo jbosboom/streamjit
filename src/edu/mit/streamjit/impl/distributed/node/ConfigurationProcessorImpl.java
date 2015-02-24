@@ -145,7 +145,7 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 
 			Configuration blobConfigs = dyncfg
 					.getSubconfiguration("blobConfigs");
-			return blobset(blobSet, blobList, drainData, blobConfigs, source);
+			return blobset1(blobSet, blobList, drainData, blobConfigs, source);
 
 		} else
 			return null;
@@ -266,6 +266,9 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 						InnterClassName, OutterClass.getName()));
 	}
 
+	/**
+	 * Compiles the blobs in serial.
+	 */
 	private ImmutableSet<Blob> blobset(ImmutableSet.Builder<Blob> blobSet,
 			List<BlobSpecifier> blobList, DrainData drainData,
 			Configuration blobConfigs, Worker<?, ?> source) {
