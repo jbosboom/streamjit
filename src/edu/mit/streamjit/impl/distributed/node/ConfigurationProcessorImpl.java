@@ -291,11 +291,11 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 				Utils.printOutOfMemory();
 				return null;
 			}
-			// DEBUG MSG
-			if (!GlobalConstants.singleNodeOnline)
-				System.out.println(String.format(
-						"A new blob with workers %s has been created.",
-						workIdentifiers.toString()));
+			// // DEBUG MSG
+			// if (!GlobalConstants.singleNodeOnline)
+			// System.out.println(String.format(
+			// "A new blob with workers %s has been created.",
+			// workIdentifiers.toString()));
 		}
 		System.out.println("All blobs have been created");
 		return blobSet.build();
@@ -376,10 +376,10 @@ public class ConfigurationProcessorImpl implements ConfigurationProcessor {
 				Utils.printOutOfMemory();
 			}
 			// DEBUG MSG
-			if (!GlobalConstants.singleNodeOnline && b != null)
-				System.out.println(String.format(
-						"A new blob with workers %s has been created.",
-						workIdentifiers.toString()));
+			// if (!GlobalConstants.singleNodeOnline && b != null)
+			// System.out.println(String.format(
+			// "A new blob with workers %s has been created.",
+			// workIdentifiers.toString()));
 			return b;
 		}
 	}

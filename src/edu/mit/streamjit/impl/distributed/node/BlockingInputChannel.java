@@ -180,7 +180,7 @@ public class BlockingInputChannel implements BoundaryInputChannel {
 					e.printStackTrace();
 				}
 				if (stopType.get() == 3) {
-					System.err.println(name + " receiveData:DISCARDING....");
+					// System.err.println(name + " receiveData:DISCARDING....");
 					break;
 				} else if (stopType.get() > 0 && ++bufFullCount > 20) {
 					this.extraBuffer = new ExtraBuffer();
