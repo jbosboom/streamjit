@@ -63,7 +63,7 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage {
 		try {
 			return readHandle.invoke(index);
 		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.read(%d, %s)", this, index), ex);
+			throw new AssertionError(String.format("%s.read(%d)", this, index), ex);
 		}
 	}
 
