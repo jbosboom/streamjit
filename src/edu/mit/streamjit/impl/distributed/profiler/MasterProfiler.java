@@ -15,7 +15,7 @@ import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNProfileEle
  */
 public class MasterProfiler implements SNProfileElementProcessor {
 
-	private final Map<Integer, SNBufferStatusData> BufferStatusDataMap;
+	// private final Map<Integer, SNBufferStatusData> BufferStatusDataMap;
 
 	private final ProfileElementLogger logger;
 
@@ -24,13 +24,14 @@ public class MasterProfiler implements SNProfileElementProcessor {
 	}
 
 	public MasterProfiler(String appName) {
-		BufferStatusDataMap = new ConcurrentHashMap<>();
+		// BufferStatusDataMap = new ConcurrentHashMap<>();
 		logger = new FileProfileElementLogger(appName);
 	}
 
 	@Override
 	public void process(SNBufferStatusData bufferStatusData) {
-		BufferStatusDataMap.put(bufferStatusData.machineID, bufferStatusData);
+		// BufferStatusDataMap.put(bufferStatusData.machineID,
+		// bufferStatusData);
 		logger.process(bufferStatusData);
 	}
 }
