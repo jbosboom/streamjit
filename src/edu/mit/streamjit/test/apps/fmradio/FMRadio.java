@@ -227,7 +227,7 @@ public final class FMRadio {
 		private static final float high = 1760;
 
 		public FMRadioCore() {
-			this(11, 64);
+			this(7, 128);
 		}
 
 		public FMRadioCore(int bands, int taps) {
