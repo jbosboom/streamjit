@@ -8,10 +8,12 @@ import edu.mit.streamjit.api.Output;
 import edu.mit.streamjit.api.StreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.test.Benchmark.Dataset;
-import edu.mit.streamjit.test.apps.channelvocoder7.ChannelVocoder7;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio.FMRadioBenchmarkProvider;
-import edu.mit.streamjit.test.sanity.nestedsplitjoinexample.NestedSplitJoin.NestedSplitJoinBenchmarkProvider;
 
+/**
+ * @author sumanan
+ * @since 25 Feb, 2015
+ */
 public final class DistAppRunner {
 
 	public static void main(String[] args) throws InterruptedException,
@@ -24,10 +26,10 @@ public final class DistAppRunner {
 			noOfNodes = 3;
 		}
 
-		Benchmark benchmark = new NestedSplitJoinBenchmarkProvider().iterator()
-				.next();
+		// startSNs(noOfNodes);
 		StreamCompiler compiler = new DistributedStreamCompiler(noOfNodes);
 
+		Benchmark benchmark = new FMRadioBenchmarkProvider().iterator().next();
 		Dataset dataset = benchmark.inputs().get(0);
 		Input<Object> input = Datasets.cycle(dataset.input());
 
