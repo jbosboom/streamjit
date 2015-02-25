@@ -1,7 +1,9 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Function;
+
 import static com.google.common.base.Preconditions.checkState;
+
 import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashBasedTable;
@@ -19,6 +21,7 @@ import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
 import com.google.common.reflect.TypeResolver;
 import com.google.common.reflect.TypeToken;
+
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Input;
@@ -47,6 +50,7 @@ import edu.mit.streamjit.impl.compiler.Schedule;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.DrainInstruction;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.ReadInstruction;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.WriteInstruction;
+import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
@@ -57,6 +61,7 @@ import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.bytecode.Module;
 import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
+
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -94,7 +99,7 @@ public class Compiler2 {
 	public static final RemovalStrategy REMOVAL_STRATEGY = new BitsetRemovalStrategy();
 	public static final FusionStrategy FUSION_STRATEGY = new BitsetFusionStrategy();
 	public static final UnboxingStrategy UNBOXING_STRATEGY = new BitsetUnboxingStrategy();
-	public static final AllocationStrategy ALLOCATION_STRATEGY = new SubsetBiasAllocationStrategy(8);
+	public static final AllocationStrategy ALLOCATION_STRATEGY = new SubsetBiasAllocationStrategy(GlobalConstants.maxNumCores);
 	public static final StorageStrategy INTERNAL_STORAGE_STRATEGY = new TuneInternalStorageStrategy();
 	public static final StorageStrategy EXTERNAL_STORAGE_STRATEGY = new TuneExternalStorageStrategy();
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
