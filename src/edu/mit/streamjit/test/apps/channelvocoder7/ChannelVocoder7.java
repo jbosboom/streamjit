@@ -89,6 +89,10 @@ public final class ChannelVocoder7 implements BenchmarkProvider {
 			add(new LowPassFilter(1, (float) ((2 * Math.PI * 5000) / 8000), 64));
 			add(new MainSplitjoin(numFilters, numTaps));
 		}
+
+		public ChannelVocoder7Kernel() {
+			this(16, 64);
+		}
 	}
 
 	/**
