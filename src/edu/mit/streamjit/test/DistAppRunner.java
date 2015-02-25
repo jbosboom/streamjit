@@ -67,8 +67,9 @@ public final class DistAppRunner {
 			long elapsedMills) throws IOException {
 		FileWriter writer = new FileWriter(String.format("%s%sREADME.txt",
 				appName, File.separator), true);
-		writer.write("benchmarkName=" + benchmarkName);
-		writer.write("TotalRunningTime=" + elapsedTime(elapsedMills));
+		writer.write(String.format("benchmarkName=%s\n", benchmarkName));
+		writer.write(String.format("TotalRunningTime=%s\n",
+				elapsedTime(elapsedMills)));
 		writer.close();
 	}
 
