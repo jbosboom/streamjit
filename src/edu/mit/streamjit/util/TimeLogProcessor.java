@@ -150,6 +150,7 @@ public class TimeLogProcessor {
 
 	private static List<Integer> processSNHeap(String fileName,
 			Boolean isHeapMax) throws IOException {
+		String slurmPrefix = "0: ";
 		String heapType = "heapSize";
 		if (isHeapMax)
 			heapType = "heapMaxSize";
@@ -158,6 +159,9 @@ public class TimeLogProcessor {
 		int i = 0;
 		List<Integer> ret = new ArrayList<Integer>(3000);
 		while ((line = reader.readLine()) != null) {
+			// Slurm adds prefix to every sysout line.
+			if (line.startsWith(slurmPrefix))
+				line = line.substring(slurmPrefix.length());
 			if (line.startsWith(heapType)) {
 				String[] arr = line.split(" ");
 				String time = arr[2].trim();
