@@ -24,12 +24,13 @@ public class TimeLogProcessor {
 		summarize("FMRadioCore");
 	}
 
-	private static List<Integer> processCompileTime(String appName)
+	private static List<Integer> processCompileTime(String appName, File outDir)
 			throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%scompileTime.txt", appName, File.separator)));
-		FileWriter writer = new FileWriter(String.format(
-				"%s%sProcessedCompileTime.txt", appName, File.separator));
+
+		File outFile = new File(outDir, "processedCompileTime.txt");
+		FileWriter writer = new FileWriter(outFile, false);
 		String line;
 		int i = 0;
 		List<Integer> ret = new ArrayList<Integer>(3000);
@@ -50,13 +51,14 @@ public class TimeLogProcessor {
 		return ret;
 	}
 
-	private static List<Integer> processRunTime(String appName)
+	private static List<Integer> processRunTime(String appName, File outDir)
 			throws IOException {
 
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%srunTime.txt", appName, File.separator)));
-		FileWriter writer = new FileWriter(String.format(
-				"%s%sProcessedRunTime.txt", appName, File.separator));
+
+		File outFile = new File(outDir, "processedRunTime.txt");
+		FileWriter writer = new FileWriter(outFile, false);
 		String line;
 		int i = 0;
 		List<Integer> ret = new ArrayList<Integer>(3000);
@@ -82,12 +84,13 @@ public class TimeLogProcessor {
 		return ret;
 	}
 
-	private static List<Integer> processDrainTime(String appName)
+	private static List<Integer> processDrainTime(String appName, File outDir)
 			throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%sdrainTime.txt", appName, File.separator)));
-		FileWriter writer = new FileWriter(String.format(
-				"%s%sProcessedDrainTime.txt", appName, File.separator));
+
+		File outFile = new File(outDir, "processedDrainTime.txt");
+		FileWriter writer = new FileWriter(outFile, false);
 		String line;
 		int i = 0;
 		List<Integer> ret = new ArrayList<Integer>(3000);
@@ -108,13 +111,13 @@ public class TimeLogProcessor {
 		return ret;
 	}
 
-	private static List<Integer> processTuningRoundTime(String appName)
-			throws IOException {
+	private static List<Integer> processTuningRoundTime(String appName,
+			File outDir) throws IOException {
 
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%srunTime.txt", appName, File.separator)));
-		FileWriter writer = new FileWriter(String.format(
-				"%s%sProcessedTuningRoundTime.txt", appName, File.separator));
+		File outFile = new File(outDir, "processedTuningRoundTime.txt");
+		FileWriter writer = new FileWriter(outFile, false);
 		String line;
 		int i = 0;
 		List<Integer> ret = new ArrayList<Integer>(3000);
@@ -135,11 +138,14 @@ public class TimeLogProcessor {
 		return ret;
 	}
 
-	private static void writeHeapStat(String fileName) throws IOException {
+	private static void writeHeapStat(String fileName, File outDir)
+			throws IOException {
 		List<Integer> heapSize = processSNHeap(fileName, false);
 		List<Integer> heapMaxSize = processSNHeap(fileName, true);
-		FileWriter writer = new FileWriter(String.format("%s_heapStatus.txt",
-				fileName));
+
+		String outFileName = String.format("%s_heapStatus.txt", fileName);
+		File outFile = new File(outDir, outFileName);
+		FileWriter writer = new FileWriter(outFile, false);
 		for (int i = 0; i < heapSize.size(); i++) {
 			String msg = String.format("%-6d\t%-6d\t%-6d\n", i + 1,
 					heapSize.get(i), heapMaxSize.get(i));
@@ -175,20 +181,21 @@ public class TimeLogProcessor {
 	}
 
 	public static void summarize(String appName) throws IOException {
-		List<Integer> compileTime = processCompileTime(appName);
-		List<Integer> runTime = processRunTime(appName);
-		List<Integer> drainTime = processDrainTime(appName);
-		List<Integer> tuningRoundTime = processTuningRoundTime(appName);
+		File summaryDir = new File(String.format("%s%ssummary", appName,
+				File.separator));
+		Utils.createDir(summaryDir.getPath());
+		List<Integer> compileTime = processCompileTime(appName, summaryDir);
+		List<Integer> runTime = processRunTime(appName, summaryDir);
+		List<Integer> drainTime = processDrainTime(appName, summaryDir);
+		List<Integer> tuningRoundTime = processTuningRoundTime(appName,
+				summaryDir);
 		String dataFile = "totalStats.txt";
 
 		// String summaryDir = String.format("%s%ssummary", appName,
 		// File.separator);
-		File summaryDir = new File(String.format("%s%ssummary", appName,
-				File.separator));
-		Utils.createDir(summaryDir.getPath());
 
-		FileWriter writer = new FileWriter(String.format("%s%s%s", summaryDir,
-				File.separator, dataFile));
+		File outfile = new File(summaryDir, dataFile);
+		FileWriter writer = new FileWriter(outfile, false);
 		int min = Integer.MAX_VALUE;
 
 		for (int i = 0; i < tuningRoundTime.size(); i++) {
