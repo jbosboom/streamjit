@@ -54,7 +54,7 @@ public final class DistAppRunner {
 		for (int i = 1; i < noOfNodes; i++)
 			new ProcessBuilder("xterm", "-e", "java", "-jar", "StreamNode.jar")
 					.start();
-		new ProcessBuilder("java", "-jar", "StreamNode.jar").start();
+		// new ProcessBuilder("java", "-jar", "StreamNode.jar").start();
 	}
 
 	/**
