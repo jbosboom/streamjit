@@ -54,7 +54,7 @@ public final class FilterBank6 {
 		@Override
 		@SuppressWarnings("unchecked")
 		public OneToOneElement<Object, Object> instantiate() {
-			return (OneToOneElement)new FilterBankPipeline(8);
+			return (OneToOneElement)new FilterBankPipeline(32);
 		}
 	}
 
