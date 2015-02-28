@@ -98,7 +98,7 @@ public class TimeLogProcessor {
 				String.format("%s%srunTime.txt", appName, File.separator)));
 		File outFile = new File(outDir, "processedTuningRoundTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
-		Map<String, Integer> ret = process(reader, writer, "Tuning", false, 4);
+		Map<String, Integer> ret = process(reader, writer, "Tuning", false, 3);
 		reader.close();
 		writer.close();
 		return ret;
