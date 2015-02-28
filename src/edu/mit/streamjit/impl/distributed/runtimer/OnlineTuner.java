@@ -43,6 +43,7 @@ public class OnlineTuner implements Runnable {
 	private final boolean needTermination;
 	private final TimeLogger logger;
 	private final ConfigurationPrognosticator prognosticator;
+	private final Verifier verifier;
 
 	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
 			StreamJitApp<?, ?> app, ConfigurationManager cfgManager,
@@ -55,6 +56,7 @@ public class OnlineTuner implements Runnable {
 		this.needTermination = needTermination;
 		this.logger = logger;
 		this.prognosticator = new GraphPropertyPrognosticator(app);
+		this.verifier = new Verifier();
 	}
 
 	@Override
@@ -62,7 +64,7 @@ public class OnlineTuner implements Runnable {
 		if (GlobalConstants.tune == 1)
 			tune();
 		else if (GlobalConstants.tune == 2) {
-			new Verifier().verify();
+			verifier.verify();
 			terminate();
 		} else
 			System.err
@@ -224,12 +226,8 @@ public class OnlineTuner implements Runnable {
 		ConfigurationUtils.saveConfg(finalConfg, "final", app.name);
 		Configuration finalcfg = Configuration.fromJson(finalConfg);
 		finalcfg = ConfigurationUtils.addConfigPrefix(finalcfg, "final");
-		evaluateConfig(finalcfg, "Final configuration");
 
-		Configuration handCfg = ConfigurationUtils.readConfiguration(app.name,
-				"hand");
-		handCfg = ConfigurationUtils.addConfigPrefix(handCfg, "hand");
-		evaluateConfig(handCfg, "Handtuned configuration");
+		verifier.verify();
 
 		if (needTermination) {
 			terminate();
