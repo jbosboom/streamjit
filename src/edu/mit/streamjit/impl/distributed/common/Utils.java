@@ -133,7 +133,7 @@ public class Utils {
 	 */
 	public static void writeReadMeTxt(String appName) {
 		try {
-			backupReadMeTxt(appName);
+			rename(appName, "README.txt");
 			FileWriter writer = new FileWriter(String.format("%s%sREADME.txt",
 					appName, File.separator));
 			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
@@ -148,15 +148,15 @@ public class Utils {
 		}
 	}
 
-	private static void backupReadMeTxt(String appName) {
-		File readMeOrig = new File(String.format("%s%sREADMEOrig.txt", appName,
-				File.separator));
-		File readMe = new File(String.format("%s%sREADME.txt", appName,
-				File.separator));
-		if (readMeOrig.exists())
+	private static void rename(String appName, String fileName) {
+		File file = new File(String.format("%s%s%s", appName, File.separator,
+				fileName));
+		File fileOrig = new File(String.format("%s%s%s.Orig", appName,
+				File.separator, fileName));
+		if (fileOrig.exists())
 			return;
-		if (readMe.exists())
-			readMe.renameTo(readMeOrig);
+		if (file.exists())
+			file.renameTo(fileOrig);
 	}
 
 	/**
