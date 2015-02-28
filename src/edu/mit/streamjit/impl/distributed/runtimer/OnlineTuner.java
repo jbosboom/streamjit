@@ -5,8 +5,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
@@ -289,9 +289,12 @@ public class OnlineTuner implements Runnable {
 		 * ensure the time we reported to the opentuner is correct.
 		 * 
 		 * This method can be called after the completion of the tuning.
+		 * 
+		 * @param cfgPrefixes
+		 *            map of cfgPrefixes and expected running time.
 		 */
-		private void verifyTuningTimes(Iterable<String> cfgPrefixes) {
-			for (String prefix : cfgPrefixes) {
+		private void verifyTuningTimes(Map<String, Integer> cfgPrefixes) {
+			for (String prefix : cfgPrefixes.keySet()) {
 				String cfgName = String.format("%s_%s.cfg", prefix, app.name);
 				Configuration cfg = ConfigurationUtils.readConfiguration(
 						app.name, prefix);
@@ -312,10 +315,10 @@ public class OnlineTuner implements Runnable {
 			terminate();
 		}
 
-		private Iterable<String> cfgPrefixes() {
-			List<String> cfgPrefixes = new ArrayList<String>();
-			cfgPrefixes.add("final");
-			cfgPrefixes.add("hand");
+		private Map<String, Integer> cfgPrefixes() {
+			Map<String, Integer> cfgPrefixes = new HashMap<>();
+			cfgPrefixes.put("final", 0);
+			cfgPrefixes.put("hand", 0);
 			try {
 				BufferedReader reader = new BufferedReader(new FileReader(
 						String.format("%s%sverify.txt", app.name,
@@ -324,12 +327,11 @@ public class OnlineTuner implements Runnable {
 				while ((line = reader.readLine()) != null) {
 					String[] arr = line.split(",");
 					for (String s : arr) {
-						cfgPrefixes.add(s.trim());
+						cfgPrefixes.put(s.trim(), 0);
 					}
 				}
 				reader.close();
 			} catch (IOException e) {
-				// e.printStackTrace();
 			}
 			return cfgPrefixes;
 		}
