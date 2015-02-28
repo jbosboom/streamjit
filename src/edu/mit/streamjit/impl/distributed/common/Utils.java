@@ -151,7 +151,7 @@ public class Utils {
 	/**
 	 * @return true iff renaming is success.
 	 */
-	private static boolean rename(String appName, String fileName) {
+	public static boolean rename(String appName, String fileName) {
 		File file = new File(String.format("%s%s%s", appName, File.separator,
 				fileName));
 		File fileOrig = new File(String.format("%s%s%s.Orig", appName,
