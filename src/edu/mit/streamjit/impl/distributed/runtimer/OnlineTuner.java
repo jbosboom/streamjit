@@ -7,6 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
@@ -295,9 +296,7 @@ public class OnlineTuner implements Runnable {
 		 */
 		private void verifyTuningTimes(Map<String, Integer> cfgPrefixes) {
 			try {
-				FileWriter writer = new FileWriter(String.format(
-						"%s%sEval_%s.txt", app.name, File.separator, app.name),
-						true);
+				FileWriter writer = writer();
 				for (String prefix : cfgPrefixes.keySet()) {
 					String cfgName = String.format("%s_%s.cfg", prefix,
 							app.name);
@@ -316,6 +315,14 @@ public class OnlineTuner implements Runnable {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+		}
+		private FileWriter writer() throws IOException {
+			FileWriter writer = new FileWriter(String.format("%s%sEval_%s.txt",
+					app.name, File.separator, app.name), true);
+			writer.write("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+			Properties prop = GlobalConstants.getProperties();
+			prop.store(writer, "");
+			return writer;
 		}
 
 		private Map<String, Integer> cfgPrefixes() {
