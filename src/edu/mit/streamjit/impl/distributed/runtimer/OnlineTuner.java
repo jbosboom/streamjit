@@ -315,14 +315,34 @@ public class OnlineTuner implements Runnable {
 					writer.write("----------------------------------------\n");
 					writer.write(String.format("Configuration name = %s\n",
 							cfgName));
-					writer.write(String.format("Expected running time = %d\n",
-							expectedRunningTime));
-					List<Long> runningTime = evaluateConfig(cfg, cfgName);
+					List<Long> runningTimes = evaluateConfig(cfg, cfgName);
+					processRunningTimes(runningTimes, expectedRunningTime,
+							writer);
 				}
-
+				writer.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+		}
+
+		private void processRunningTimes(List<Long> runningTimes,
+				Integer expectedRunningTime, FileWriter writer)
+				throws IOException {
+			writer.write(String.format("Expected running time = %dms\n",
+					expectedRunningTime));
+			int correctEval = 0;
+			double total = 0;
+			for (int i = 0; i < runningTimes.size(); i++) {
+				long runningTime = runningTimes.get(i);
+				if (runningTime > 0) {
+					correctEval++;
+					total += runningTime;
+				}
+				writer.write(String.format("Evaluation %d = %dms\n", i + 1,
+						runningTime));
+			}
+			double avg = total / correctEval;
+			writer.write(String.format("Average running time = %.3fms\n", avg));
 		}
 
 		private FileWriter writer() throws IOException {
