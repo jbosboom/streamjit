@@ -44,18 +44,16 @@ public class TimeLogProcessor {
 		return l.trim();
 	}
 
-	private static List<Integer> processRunTime(String appName, File outDir)
-			throws IOException {
-
+	private static Map<String, Integer> processRunTime(String appName,
+			File outDir) throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%srunTime.txt", appName, File.separator)));
-
 		File outFile = new File(outDir, "processedRunTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
 		String line;
 		String cfgPrefix = "1";
 		int i = 0;
-		List<Integer> ret = new ArrayList<Integer>(3000);
+		Map<String, Integer> ret = new HashMap<>(5000);
 		int min = Integer.MAX_VALUE;
 		while ((line = reader.readLine()) != null) {
 			if (line.startsWith("----------------------------"))
@@ -68,7 +66,7 @@ public class TimeLogProcessor {
 				if (val < 1)
 					val = 2 * min;
 				min = Math.min(min, val);
-				ret.add(val);
+				ret.put(cfgPrefix, val);
 				String data = String.format("%-6d\t%-6s\t%-6d\t%-6d\n", ++i,
 						cfgPrefix, val, min);
 				writer.write(data);
