@@ -61,9 +61,10 @@ public class OnlineTuner implements Runnable {
 	public void run() {
 		if (GlobalConstants.tune == 1)
 			tune();
-		else if (GlobalConstants.tune == 2)
+		else if (GlobalConstants.tune == 2) {
 			new Verifier().verify();
-		else
+			terminate();
+		} else
 			System.err
 					.println("GlobalConstants.tune is neither in tune mode nor in evaluate mode.");
 	}
