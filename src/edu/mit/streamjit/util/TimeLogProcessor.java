@@ -33,25 +33,7 @@ public class TimeLogProcessor {
 
 		File outFile = new File(outDir, "processedCompileTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
-		String line;
-		String cfgPrefix = "1";
-		int i = 0;
-		Map<String, Integer> ret = new HashMap<>(5000);
-		while ((line = reader.readLine()) != null) {
-			if (line.startsWith("----------------------------"))
-				cfgPrefix = cfgString(line);
-			if (line.startsWith("Total")) {
-				String[] arr = line.split(" ");
-				String time = arr[3].trim();
-				time = time.substring(0, time.length() - 2);
-				int val = Integer.parseInt(time);
-				ret.put(cfgPrefix, val);
-				String data = String
-						.format("%d\t%s\t%d\n", ++i, cfgPrefix, val);
-				writer.write(data);
-			}
-		}
-		writer.flush();
+		Map<String, Integer> ret = process(reader, writer, "Total");
 		reader.close();
 		writer.close();
 		return ret;
@@ -95,27 +77,13 @@ public class TimeLogProcessor {
 		return ret;
 	}
 
-	private static List<Integer> processDrainTime(String appName, File outDir)
-			throws IOException {
+	private static Map<String, Integer> processDrainTime(String appName,
+			File outDir) throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%sdrainTime.txt", appName, File.separator)));
-
 		File outFile = new File(outDir, "processedDrainTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
-		String line;
-		int i = 0;
-		List<Integer> ret = new ArrayList<Integer>(3000);
-		while ((line = reader.readLine()) != null) {
-			if (line.startsWith("Drain time")) {
-				String[] arr = line.split(" ");
-				String time = arr[3].trim();
-				time = time.substring(0, time.length() - 2);
-				int val = Integer.parseInt(time);
-				ret.add(val);
-				String data = String.format("%d\t%d\n", ++i, val);
-				writer.write(data);
-			}
-		}
+		Map<String, Integer> ret = process(reader, writer, "Drain time");
 		writer.flush();
 		reader.close();
 		writer.close();
@@ -146,6 +114,30 @@ public class TimeLogProcessor {
 		writer.flush();
 		reader.close();
 		writer.close();
+		return ret;
+	}
+
+	private static Map<String, Integer> process(BufferedReader reader,
+			FileWriter writer, String startString) throws IOException {
+		String line;
+		String cfgPrefix = "1";
+		int i = 0;
+		Map<String, Integer> ret = new HashMap<>(5000);
+		while ((line = reader.readLine()) != null) {
+			if (line.startsWith("----------------------------"))
+				cfgPrefix = cfgString(line);
+			if (line.startsWith(startString)) {
+				String[] arr = line.split(" ");
+				String time = arr[3].trim();
+				time = time.substring(0, time.length() - 2);
+				int val = Integer.parseInt(time);
+				ret.put(cfgPrefix, val);
+				String data = String
+						.format("%d\t%s\t%d\n", ++i, cfgPrefix, val);
+				writer.write(data);
+			}
+		}
+		writer.flush();
 		return ret;
 	}
 
