@@ -33,7 +33,7 @@ public class TimeLogProcessor {
 
 		File outFile = new File(outDir, "processedCompileTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
-		Map<String, Integer> ret = process(reader, writer, "Total");
+		Map<String, Integer> ret = process(reader, writer, "Total", true);
 		reader.close();
 		writer.close();
 		return ret;
@@ -83,35 +83,20 @@ public class TimeLogProcessor {
 				String.format("%s%sdrainTime.txt", appName, File.separator)));
 		File outFile = new File(outDir, "processedDrainTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
-		Map<String, Integer> ret = process(reader, writer, "Drain time");
+		Map<String, Integer> ret = process(reader, writer, "Drain time", true);
 		writer.flush();
 		reader.close();
 		writer.close();
 		return ret;
 	}
 
-	private static List<Integer> processTuningRoundTime(String appName,
+	private static Map<String, Integer> processTuningRoundTime(String appName,
 			File outDir) throws IOException {
-
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%srunTime.txt", appName, File.separator)));
 		File outFile = new File(outDir, "processedTuningRoundTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
-		String line;
-		int i = 0;
-		List<Integer> ret = new ArrayList<Integer>(3000);
-		while ((line = reader.readLine()) != null) {
-			if (line.startsWith("Tuning")) {
-				String[] arr = line.split(" ");
-				String time = arr[4].trim();
-				time = time.substring(0, time.length() - 1);
-				int val = Integer.parseInt(time);
-				ret.add(val);
-				String data = String.format("%-6d\t%-6d\n", ++i, val);
-				writer.write(data);
-			}
-		}
-		writer.flush();
+		Map<String, Integer> ret = process(reader, writer, "Tuning", false);
 		reader.close();
 		writer.close();
 		return ret;
