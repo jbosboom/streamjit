@@ -59,7 +59,7 @@ public class OnlineTuner implements Runnable {
 		if (GlobalConstants.tune == 1)
 			tune();
 		else if (GlobalConstants.tune == 2)
-			verifyTuningTimes(cfgPrefixes());
+			new Verifier().verify();
 		else
 			System.err
 					.println("GlobalConstants.tune is neither in tune mode nor in evaluate mode.");
@@ -127,33 +127,6 @@ public class OnlineTuner implements Runnable {
 
 		tuner.writeLine("confg");
 		tuner.writeLine(Jsonifiers.toJson(app.getConfiguration()).toString());
-	}
-
-	/**
-	 * This method just picks a few configurations and re-run the app to ensure
-	 * the time we reported to the opentuner is correct.
-	 * 
-	 * This method can be called after the completion of the tuning.
-	 */
-	private void verifyTuningTimes(Iterable<String> cfgPrefixes) {
-		for (String prefix : cfgPrefixes) {
-			String cfgName = String.format("%s_%s.cfg", prefix, app.name);
-			Configuration cfg = ConfigurationUtils.readConfiguration(app.name,
-					prefix);
-			if (cfg == null) {
-				System.err.println(String.format("No %s file exists", cfgName));
-				continue;
-			}
-			cfg = ConfigurationUtils.addConfigPrefix(cfg, prefix);
-			evaluateConfig(cfg, cfgName);
-		}
-
-		try {
-			drainer.dumpDraindataStatistics();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		terminate();
 	}
 
 	/**
@@ -369,5 +342,41 @@ public class OnlineTuner implements Runnable {
 			// e.printStackTrace();
 		}
 		return cfgPrefixes;
+	}
+
+	private class Verifier {
+
+		public void verify() {
+			verifyTuningTimes(cfgPrefixes());
+		}
+
+		/**
+		 * This method just picks a few configurations and re-run the app to
+		 * ensure the time we reported to the opentuner is correct.
+		 * 
+		 * This method can be called after the completion of the tuning.
+		 */
+		private void verifyTuningTimes(Iterable<String> cfgPrefixes) {
+			for (String prefix : cfgPrefixes) {
+				String cfgName = String.format("%s_%s.cfg", prefix, app.name);
+				Configuration cfg = ConfigurationUtils.readConfiguration(
+						app.name, prefix);
+				if (cfg == null) {
+					System.err.println(String.format("No %s file exists",
+							cfgName));
+					continue;
+				}
+				cfg = ConfigurationUtils.addConfigPrefix(cfg, prefix);
+				evaluateConfig(cfg, cfgName);
+			}
+
+			try {
+				drainer.dumpDraindataStatistics();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			terminate();
+		}
+
 	}
 }
