@@ -53,10 +53,13 @@ public class TimeLogProcessor {
 		File outFile = new File(outDir, "processedRunTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
 		String line;
+		String cfgPrefix = "1";
 		int i = 0;
 		List<Integer> ret = new ArrayList<Integer>(3000);
 		int min = Integer.MAX_VALUE;
 		while ((line = reader.readLine()) != null) {
+			if (line.startsWith("----------------------------"))
+				cfgPrefix = cfgString(line);
 			if (line.startsWith("Execution")) {
 				String[] arr = line.split(" ");
 				String time = arr[3].trim();
@@ -66,8 +69,8 @@ public class TimeLogProcessor {
 					val = 2 * min;
 				min = Math.min(min, val);
 				ret.add(val);
-				String data = String
-						.format("%-6d\t%-6d\t%-6d\n", ++i, val, min);
+				String data = String.format("%-6d\t%-6s\t%-6d\t%-6d\n", ++i,
+						cfgPrefix, val, min);
 				writer.write(data);
 			}
 		}
