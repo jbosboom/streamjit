@@ -323,27 +323,6 @@ public class OnlineTuner implements Runnable {
 		}
 	}
 
-	private Iterable<String> cfgPrefixes() {
-		List<String> cfgPrefixes = new ArrayList<String>();
-		cfgPrefixes.add("final");
-		cfgPrefixes.add("hand");
-		try {
-			BufferedReader reader = new BufferedReader(new FileReader(
-					String.format("%s%sverify.txt", app.name, File.separator)));
-			String line;
-			while ((line = reader.readLine()) != null) {
-				String[] arr = line.split(",");
-				for (String s : arr) {
-					cfgPrefixes.add(s.trim());
-				}
-			}
-			reader.close();
-		} catch (IOException e) {
-			// e.printStackTrace();
-		}
-		return cfgPrefixes;
-	}
-
 	private class Verifier {
 
 		public void verify() {
@@ -378,5 +357,26 @@ public class OnlineTuner implements Runnable {
 			terminate();
 		}
 
+		private Iterable<String> cfgPrefixes() {
+			List<String> cfgPrefixes = new ArrayList<String>();
+			cfgPrefixes.add("final");
+			cfgPrefixes.add("hand");
+			try {
+				BufferedReader reader = new BufferedReader(new FileReader(
+						String.format("%s%sverify.txt", app.name,
+								File.separator)));
+				String line;
+				while ((line = reader.readLine()) != null) {
+					String[] arr = line.split(",");
+					for (String s : arr) {
+						cfgPrefixes.add(s.trim());
+					}
+				}
+				reader.close();
+			} catch (IOException e) {
+				// e.printStackTrace();
+			}
+			return cfgPrefixes;
+		}
 	}
 }
