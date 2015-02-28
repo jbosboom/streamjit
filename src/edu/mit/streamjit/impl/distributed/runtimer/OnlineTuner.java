@@ -5,7 +5,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -315,7 +317,7 @@ public class OnlineTuner implements Runnable {
 							cfgName));
 					writer.write(String.format("Expected running time = %d\n",
 							expectedRunningTime));
-					evaluateConfig(cfg, cfgName, writer);
+					List<Long> runningTime = evaluateConfig(cfg, cfgName);
 				}
 
 			} catch (IOException e) {
@@ -388,37 +390,26 @@ public class OnlineTuner implements Runnable {
 		 *            name of the configuration. This is just for logging
 		 *            purpose.
 		 */
-		private void evaluateConfig(Configuration cfg, String cfgName,
-				FileWriter writer) {
+		private List<Long> evaluateConfig(Configuration cfg, String cfgName) {
 			System.out.println("Evaluating " + cfgName);
-			double total = 0;
 			int count = 2;
-			try {
-				if (cfg != null) {
-					Pair<Boolean, Long> ret;
-					for (int i = 0; i < count; i++) {
-						logger.newConfiguration(cfgName);
-						ret = reconfigure(cfg, 0);
-						if (ret.first) {
-							prognosticator.time(ret.second);
-							writer.write(ret.second.toString());
-							writer.write('\n');
-							writer.flush();
-							total += ret.second;
-						} else {
-							break;
-						}
+			List<Long> runningTime = new ArrayList<>(count);
+			Pair<Boolean, Long> ret;
+			if (cfg != null) {
+				for (int i = 0; i < count; i++) {
+					logger.newConfiguration(cfgName);
+					ret = reconfigure(cfg, 0);
+					if (ret.first) {
+						prognosticator.time(ret.second);
+						runningTime.add(ret.second);
+					} else {
+						System.err.println("Evaluation failed...");
 					}
-					double avg = total / count;
-					writer.write(String.format(
-							"Average execution time = %f%n\n", avg));
-				} else {
-					writer.write("Null configuration\n");
 				}
-				writer.close();
-			} catch (IOException e1) {
-				e1.printStackTrace();
+			} else {
+				System.err.println("Null configuration\n");
 			}
+			return runningTime;
 		}
 	}
 }
