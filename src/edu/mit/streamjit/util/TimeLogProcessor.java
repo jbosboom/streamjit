@@ -186,26 +186,29 @@ public class TimeLogProcessor {
 				summaryDir);
 		String dataFile = "totalStats.txt";
 
-		// String summaryDir = String.format("%s%ssummary", appName,
-		// File.separator);
-
 		File outfile = new File(summaryDir, dataFile);
 		FileWriter writer = new FileWriter(outfile, false);
+		FileWriter verify = new FileWriter(String.format("%s%sverify.txt",
+				appName, File.separator));
 		int min = Integer.MAX_VALUE;
 
 		for (int i = 1; i <= tuningRoundTime.size(); i++) {
 			String key = new Integer(i).toString();
 			Integer time = runTime.get(key);
+
 			if (time == null) {
 				System.err.println("No running time for round " + key);
-			} else
-				min = Math.min(min, time);
+			} else if (time < min) {
+				verify.write(String.format("%s=%d\n", key, time));
+				min = time;
+			}
 
 			String msg = String.format("%-6d\t%-6d\t%-6d\t%-6d\t%-6d\t%-6d\n",
 					i, tuningRoundTime.get(key), compileTime.get(key),
 					runTime.get(key), drainTime.get(key), min);
 			writer.write(msg);
 		}
+		verify.close();
 		writer.close();
 
 		makePlotFile(summaryDir, appName, dataFile);
@@ -214,6 +217,7 @@ public class TimeLogProcessor {
 		// writeHeapStat(String.format("%s%sst1.txt", appName, File.separator));
 		// writeHeapStat(String.format("%s%sst2.txt", appName, File.separator));
 	}
+
 	private static void makePlotFile(File dir, String name, String dataFile)
 			throws IOException {
 		File plotfile = new File(dir, "plot.plt");
@@ -242,7 +246,6 @@ public class TimeLogProcessor {
 						dataFile));
 		writer.close();
 	}
-
 
 	private static void plot(File dir) throws IOException {
 		String[] s = { "/usr/bin/gnuplot", "plot.plt" };
