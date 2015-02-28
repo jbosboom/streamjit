@@ -177,10 +177,11 @@ public class TimeLogProcessor {
 		File summaryDir = new File(String.format("%s%ssummary", appName,
 				File.separator));
 		Utils.createDir(summaryDir.getPath());
-		List<Integer> compileTime = processCompileTime(appName, summaryDir);
-		List<Integer> runTime = processRunTime(appName, summaryDir);
-		List<Integer> drainTime = processDrainTime(appName, summaryDir);
-		List<Integer> tuningRoundTime = processTuningRoundTime(appName,
+		Map<String, Integer> compileTime = processCompileTime(appName,
+				summaryDir);
+		Map<String, Integer> runTime = processRunTime(appName, summaryDir);
+		Map<String, Integer> drainTime = processDrainTime(appName, summaryDir);
+		Map<String, Integer> tuningRoundTime = processTuningRoundTime(appName,
 				summaryDir);
 		String dataFile = "totalStats.txt";
 
@@ -191,12 +192,12 @@ public class TimeLogProcessor {
 		FileWriter writer = new FileWriter(outfile, false);
 		int min = Integer.MAX_VALUE;
 
-		for (int i = 0; i < tuningRoundTime.size(); i++) {
-			min = Math.min(min, runTime.get(i));
+		for (int i = 1; i <= tuningRoundTime.size(); i++) {
+			String key = new Integer(i).toString();
+			min = Math.min(min, runTime.get(key));
 			String msg = String.format("%-6d\t%-6d\t%-6d\t%-6d\t%-6d\t%-6d\n",
-					i + 1, tuningRoundTime.get(i), compileTime.get(i),
-					runTime.get(i), drainTime.get(i), min);
-
+					i, tuningRoundTime.get(key), compileTime.get(key),
+					runTime.get(key), drainTime.get(key), min);
 			writer.write(msg);
 		}
 		writer.close();
