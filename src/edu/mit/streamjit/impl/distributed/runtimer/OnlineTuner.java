@@ -294,17 +294,27 @@ public class OnlineTuner implements Runnable {
 		 *            map of cfgPrefixes and expected running time.
 		 */
 		private void verifyTuningTimes(Map<String, Integer> cfgPrefixes) {
-			for (String prefix : cfgPrefixes.keySet()) {
-				String cfgName = String.format("%s_%s.cfg", prefix, app.name);
-				Configuration cfg = ConfigurationUtils.readConfiguration(
-						app.name, prefix);
-				if (cfg == null) {
-					System.err.println(String.format("No %s file exists",
-							cfgName));
-					continue;
+			try {
+				FileWriter writer = new FileWriter(String.format(
+						"%s%sEval_%s.txt", app.name, File.separator, app.name),
+						true);
+				for (String prefix : cfgPrefixes.keySet()) {
+					String cfgName = String.format("%s_%s.cfg", prefix,
+							app.name);
+					Configuration cfg = ConfigurationUtils.readConfiguration(
+							app.name, prefix);
+					if (cfg == null) {
+						System.err.println(String.format("No %s file exists",
+								cfgName));
+						continue;
+					}
+					cfg = ConfigurationUtils.addConfigPrefix(cfg, prefix);
+					evaluateConfig(cfg, cfgName, writer);
 				}
-				cfg = ConfigurationUtils.addConfigPrefix(cfg, prefix);
-				evaluateConfig(cfg, cfgName);
+
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 
@@ -364,14 +374,12 @@ public class OnlineTuner implements Runnable {
 		 *            name of the configuration. This is just for logging
 		 *            purpose.
 		 */
-		private void evaluateConfig(Configuration cfg, String cfgName) {
+		private void evaluateConfig(Configuration cfg, String cfgName,
+				FileWriter writer) {
 			System.out.println("Evaluating " + cfgName);
-			FileWriter writer;
 			double total = 0;
 			int count = 2;
 			try {
-				writer = new FileWriter(String.format("%s%sEval_%s.txt",
-						app.name, File.separator, app.name), true);
 				writer.write("\n----------------------------------------\n");
 				writer.write(String
 						.format("Configuration name = %s\n", cfgName));
