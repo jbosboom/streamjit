@@ -306,13 +306,6 @@ public class OnlineTuner implements Runnable {
 				cfg = ConfigurationUtils.addConfigPrefix(cfg, prefix);
 				evaluateConfig(cfg, cfgName);
 			}
-
-			try {
-				drainer.dumpDraindataStatistics();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			terminate();
 		}
 
 		private Map<String, Integer> cfgPrefixes() {
