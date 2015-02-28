@@ -100,7 +100,7 @@
 		<!--echo message="Password: ${password}" /-->
 	</target>
 
-	<target name="remotesetup" depends="sendtoLanka">
+	<target name="remotesetup" depends="sendtoLanka, createDownloadScript">
 		<sshexec trust="true" host="lanka.csail.mit.edu" username="${username}" password="${password}" command="/data/scratch/${username}/setup.sh ${app} ${streamGraphName} ${numOfSNs}" />
 	</target>
 
@@ -130,5 +130,22 @@
 	<!-- Compiles the java code -->
 	<target name="compile" depends="clean, makedir">
 		<javac srcdir="${src.dir}" destdir="${build.dir}" classpathref="build.classpath" />
+	</target>
+
+	<target name="createDownloadScript">
+		<echo file="../Experiments/${app}.sh" append="false">#!/bin/bash
+#Author - Sumanan
+app=${app}
+mainClass=${streamGraphName}
+if [ -d $app ]; then
+	echo "$app exists. No downloads..."
+ 	exit
+fi
+mkdir -p $app
+cd $app
+mkdir -p $mainClass
+scp -r sumanan@lanka.csail.mit.edu:/data/scratch/sumanan/$app/$mainClass/\{summary,*.txt,streamgraph.dot\} $mainClass/
+scp -r sumanan@lanka.csail.mit.edu:/data/scratch/sumanan/$app/\{*.sh,slurm-*,options.properties,*.jar\} .
+	</echo>
 	</target>
 </project>
