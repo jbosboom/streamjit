@@ -154,7 +154,7 @@ public class Utils {
 	public static boolean rename(String appName, String fileName) {
 		File file = new File(String.format("%s%s%s", appName, File.separator,
 				fileName));
-		File fileOrig = new File(String.format("%s%s%s.Orig", appName,
+		File fileOrig = new File(String.format("%s%s%s.orig", appName,
 				File.separator, fileName));
 		if (fileOrig.exists())
 			return false;
