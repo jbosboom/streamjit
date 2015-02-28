@@ -148,15 +148,19 @@ public class Utils {
 		}
 	}
 
-	private static void rename(String appName, String fileName) {
+	/**
+	 * @return true iff renaming is success.
+	 */
+	private static boolean rename(String appName, String fileName) {
 		File file = new File(String.format("%s%s%s", appName, File.separator,
 				fileName));
 		File fileOrig = new File(String.format("%s%s%s.Orig", appName,
 				File.separator, fileName));
 		if (fileOrig.exists())
-			return;
+			return false;
 		if (file.exists())
 			file.renameTo(fileOrig);
+		return true;
 	}
 
 	/**
