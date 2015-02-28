@@ -262,7 +262,7 @@ public class TimeLoggers {
 				tuningRoundSW.start();
 			}
 			write(runTimeWriter,
-					String.format("Tuning round time - %dS\n", time));
+					String.format("Tuning round time %dS\n", time));
 		}
 
 		private static OutputStreamWriter getOSWriter(OutputStream os) {
