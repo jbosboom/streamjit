@@ -318,6 +318,7 @@ public class OnlineTuner implements Runnable {
 					processRunningTimes(runningTimes, expectedRunningTime,
 							writer);
 				}
+				writer.write("**************FINISHED**************\n\n");
 				writer.close();
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -347,7 +348,7 @@ public class OnlineTuner implements Runnable {
 		private FileWriter writer() throws IOException {
 			FileWriter writer = new FileWriter(String.format("%s%sEval_%s.txt",
 					app.name, File.separator, app.name), true);
-			writer.write("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+			writer.write("##########################################################");
 			Properties prop = GlobalConstants.getProperties();
 			prop.store(writer, "");
 			return writer;
