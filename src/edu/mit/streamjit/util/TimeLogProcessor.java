@@ -118,10 +118,14 @@ public class TimeLogProcessor {
 	}
 
 	private static Map<String, Integer> process(BufferedReader reader,
-			FileWriter writer, String startString) throws IOException {
+			FileWriter writer, String startString, boolean isms)
+			throws IOException {
 		String line;
 		String cfgPrefix = "1";
 		int i = 0;
+		int timeUnitLength = 1;
+		if (isms)
+			timeUnitLength = 2;
 		Map<String, Integer> ret = new HashMap<>(5000);
 		while ((line = reader.readLine()) != null) {
 			if (line.startsWith("----------------------------"))
@@ -129,7 +133,7 @@ public class TimeLogProcessor {
 			if (line.startsWith(startString)) {
 				String[] arr = line.split(" ");
 				String time = arr[3].trim();
-				time = time.substring(0, time.length() - 2);
+				time = time.substring(0, time.length() - timeUnitLength);
 				int val = Integer.parseInt(time);
 				ret.put(cfgPrefix, val);
 				String data = String
