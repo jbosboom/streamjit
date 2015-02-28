@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import edu.mit.streamjit.impl.distributed.common.Utils;
 
@@ -24,24 +26,28 @@ public class TimeLogProcessor {
 		summarize("FMRadioCore");
 	}
 
-	private static List<Integer> processCompileTime(String appName, File outDir)
-			throws IOException {
+	private static Map<String, Integer> processCompileTime(String appName,
+			File outDir) throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%scompileTime.txt", appName, File.separator)));
 
 		File outFile = new File(outDir, "processedCompileTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
 		String line;
+		String cfgPrefix = "1";
 		int i = 0;
-		List<Integer> ret = new ArrayList<Integer>(3000);
+		Map<String, Integer> ret = new HashMap<>(5000);
 		while ((line = reader.readLine()) != null) {
+			if (line.startsWith("----------------------------"))
+				cfgPrefix = cfgString(line);
 			if (line.startsWith("Total")) {
 				String[] arr = line.split(" ");
 				String time = arr[3].trim();
 				time = time.substring(0, time.length() - 2);
 				int val = Integer.parseInt(time);
-				ret.add(val);
-				String data = String.format("%d\t%d\n", ++i, val);
+				ret.put(cfgPrefix, val);
+				String data = String
+						.format("%d\t%s\t%d\n", ++i, cfgPrefix, val);
 				writer.write(data);
 			}
 		}
@@ -49,6 +55,11 @@ public class TimeLogProcessor {
 		reader.close();
 		writer.close();
 		return ret;
+	}
+
+	private static String cfgString(String line) {
+		String l = line.replace('-', ' ');
+		return l.trim();
 	}
 
 	private static List<Integer> processRunTime(String appName, File outDir)
