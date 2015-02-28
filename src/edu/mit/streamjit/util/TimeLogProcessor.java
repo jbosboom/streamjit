@@ -33,7 +33,7 @@ public class TimeLogProcessor {
 
 		File outFile = new File(outDir, "processedCompileTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
-		Map<String, Integer> ret = process(reader, writer, "Total", true);
+		Map<String, Integer> ret = process(reader, writer, "Total", true, 3);
 		reader.close();
 		writer.close();
 		return ret;
@@ -84,7 +84,8 @@ public class TimeLogProcessor {
 				String.format("%s%sdrainTime.txt", appName, File.separator)));
 		File outFile = new File(outDir, "processedDrainTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
-		Map<String, Integer> ret = process(reader, writer, "Drain time", true);
+		Map<String, Integer> ret = process(reader, writer, "Drain time", true,
+				3);
 		writer.flush();
 		reader.close();
 		writer.close();
@@ -97,14 +98,14 @@ public class TimeLogProcessor {
 				String.format("%s%srunTime.txt", appName, File.separator)));
 		File outFile = new File(outDir, "processedTuningRoundTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
-		Map<String, Integer> ret = process(reader, writer, "Tuning", false);
+		Map<String, Integer> ret = process(reader, writer, "Tuning", false, 4);
 		reader.close();
 		writer.close();
 		return ret;
 	}
 
 	private static Map<String, Integer> process(BufferedReader reader,
-			FileWriter writer, String startString, boolean isms)
+			FileWriter writer, String startString, boolean isms, int timepos)
 			throws IOException {
 		String line;
 		String cfgPrefix = "1";
@@ -118,7 +119,7 @@ public class TimeLogProcessor {
 				cfgPrefix = cfgString(line);
 			if (line.startsWith(startString)) {
 				String[] arr = line.split(" ");
-				String time = arr[3].trim();
+				String time = arr[timepos].trim();
 				time = time.substring(0, time.length() - timeUnitLength);
 				int val = Integer.parseInt(time);
 				ret.put(cfgPrefix, val);
@@ -194,7 +195,12 @@ public class TimeLogProcessor {
 
 		for (int i = 1; i <= tuningRoundTime.size(); i++) {
 			String key = new Integer(i).toString();
-			min = Math.min(min, runTime.get(key));
+			Integer time = runTime.get(key);
+			if (time == null) {
+				System.err.println("No running time for round " + key);
+			} else
+				min = Math.min(min, time);
+
 			String msg = String.format("%-6d\t%-6d\t%-6d\t%-6d\t%-6d\t%-6d\n",
 					i, tuningRoundTime.get(key), compileTime.get(key),
 					runTime.get(key), drainTime.get(key), min);
@@ -208,7 +214,6 @@ public class TimeLogProcessor {
 		// writeHeapStat(String.format("%s%sst1.txt", appName, File.separator));
 		// writeHeapStat(String.format("%s%sst2.txt", appName, File.separator));
 	}
-
 	private static void makePlotFile(File dir, String name, String dataFile)
 			throws IOException {
 		File plotfile = new File(dir, "plot.plt");
@@ -237,6 +242,7 @@ public class TimeLogProcessor {
 						dataFile));
 		writer.close();
 	}
+
 
 	private static void plot(File dir) throws IOException {
 		String[] s = { "/usr/bin/gnuplot", "plot.plt" };
