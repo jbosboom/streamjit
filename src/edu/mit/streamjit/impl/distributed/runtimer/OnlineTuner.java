@@ -278,51 +278,6 @@ public class OnlineTuner implements Runnable {
 		}
 	}
 
-	/**
-	 * Evaluates a configuration.
-	 * 
-	 * @param cfg
-	 *            configuration that needs to be evaluated
-	 * @param cfgName
-	 *            name of the configuration. This is just for logging purpose.
-	 */
-	private void evaluateConfig(Configuration cfg, String cfgName) {
-		System.out.println("Evaluating " + cfgName);
-		FileWriter writer;
-		double total = 0;
-		int count = 2;
-		try {
-			writer = new FileWriter(String.format("%s%sEval_%s.txt", app.name,
-					File.separator, app.name), true);
-			writer.write("\n----------------------------------------\n");
-			writer.write(String.format("Configuration name = %s\n", cfgName));
-			if (cfg != null) {
-				Pair<Boolean, Long> ret;
-				for (int i = 0; i < count; i++) {
-					logger.newConfiguration(cfgName);
-					ret = reconfigure(cfg, 0);
-					if (ret.first) {
-						prognosticator.time(ret.second);
-						writer.write(ret.second.toString());
-						writer.write('\n');
-						writer.flush();
-						total += ret.second;
-					} else {
-						break;
-					}
-				}
-				double avg = total / count;
-				writer.write(String.format("Average execution time = %f%n\n",
-						avg));
-			} else {
-				writer.write("Null configuration\n");
-			}
-			writer.close();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-	}
-
 	private class Verifier {
 
 		public void verify() {
@@ -377,6 +332,53 @@ public class OnlineTuner implements Runnable {
 				// e.printStackTrace();
 			}
 			return cfgPrefixes;
+		}
+
+		/**
+		 * Evaluates a configuration.
+		 * 
+		 * @param cfg
+		 *            configuration that needs to be evaluated
+		 * @param cfgName
+		 *            name of the configuration. This is just for logging
+		 *            purpose.
+		 */
+		private void evaluateConfig(Configuration cfg, String cfgName) {
+			System.out.println("Evaluating " + cfgName);
+			FileWriter writer;
+			double total = 0;
+			int count = 2;
+			try {
+				writer = new FileWriter(String.format("%s%sEval_%s.txt",
+						app.name, File.separator, app.name), true);
+				writer.write("\n----------------------------------------\n");
+				writer.write(String
+						.format("Configuration name = %s\n", cfgName));
+				if (cfg != null) {
+					Pair<Boolean, Long> ret;
+					for (int i = 0; i < count; i++) {
+						logger.newConfiguration(cfgName);
+						ret = reconfigure(cfg, 0);
+						if (ret.first) {
+							prognosticator.time(ret.second);
+							writer.write(ret.second.toString());
+							writer.write('\n');
+							writer.flush();
+							total += ret.second;
+						} else {
+							break;
+						}
+					}
+					double avg = total / count;
+					writer.write(String.format(
+							"Average execution time = %f%n\n", avg));
+				} else {
+					writer.write("Null configuration\n");
+				}
+				writer.close();
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
 		}
 	}
 }
