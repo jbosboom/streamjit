@@ -297,7 +297,9 @@ public class OnlineTuner implements Runnable {
 		private void verifyTuningTimes(Map<String, Integer> cfgPrefixes) {
 			try {
 				FileWriter writer = writer();
-				for (String prefix : cfgPrefixes.keySet()) {
+				for (Map.Entry<String, Integer> en : cfgPrefixes.entrySet()) {
+					String prefix = en.getKey();
+					Integer expectedRunningTime = en.getValue();
 					String cfgName = String.format("%s_%s.cfg", prefix,
 							app.name);
 					Configuration cfg = ConfigurationUtils.readConfiguration(
@@ -308,14 +310,19 @@ public class OnlineTuner implements Runnable {
 						continue;
 					}
 					cfg = ConfigurationUtils.addConfigPrefix(cfg, prefix);
+					writer.write("----------------------------------------\n");
+					writer.write(String.format("Configuration name = %s\n",
+							cfgName));
+					writer.write(String.format("Expected running time = %d\n",
+							expectedRunningTime));
 					evaluateConfig(cfg, cfgName, writer);
 				}
 
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
+
 		private FileWriter writer() throws IOException {
 			FileWriter writer = new FileWriter(String.format("%s%sEval_%s.txt",
 					app.name, File.separator, app.name), true);
@@ -387,9 +394,6 @@ public class OnlineTuner implements Runnable {
 			double total = 0;
 			int count = 2;
 			try {
-				writer.write("\n----------------------------------------\n");
-				writer.write(String
-						.format("Configuration name = %s\n", cfgName));
 				if (cfg != null) {
 					Pair<Boolean, Long> ret;
 					for (int i = 0; i < count; i++) {
