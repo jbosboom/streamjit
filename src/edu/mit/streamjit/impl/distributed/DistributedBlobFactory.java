@@ -78,7 +78,7 @@ public class DistributedBlobFactory implements BlobFactory {
 			builder.addParameter(p);
 
 		connectionManager.addConnectionParameters(builder, workers);
-		addMaxCoreParam(builder);
+		// addMaxCoreParam(builder);
 		return builder.build();
 	}
 
