@@ -33,6 +33,7 @@ import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements.NewConInfo;
+import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.Drained;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
@@ -154,7 +155,7 @@ public class StreamJitAppManager {
 		}
 
 		if (tailChannel != null) {
-			if (GlobalConstants.useDrainData)
+			if (Options.useDrainData)
 				if (isFinal)
 					tailChannel.stop(DrainType.FINAL);
 				else
@@ -291,7 +292,7 @@ public class StreamJitAppManager {
 
 	private MasterProfiler setupProfiler() {
 		MasterProfiler p = null;
-		if (GlobalConstants.needProfiler) {
+		if (Options.needProfiler) {
 			p = new MasterProfiler(app.name);
 			controller.sendToAll(ProfilerCommand.START);
 		}
@@ -338,11 +339,11 @@ public class StreamJitAppManager {
 			throw new IllegalArgumentException(
 					"No tail buffer in the passed bufferMap.");
 
-		int skipCount = Math.max(GlobalConstants.outputCount, multiplier * 5);
+		int skipCount = Math.max(Options.outputCount, multiplier * 5);
 		tailChannel = new TailChannels.BlockingTailChannel2(
 				bufferMap.get(tailToken), controller.getConProvider(),
 				tailconInfo, "tailChannel - " + tailToken.toString(), 0,
-				skipCount, GlobalConstants.outputCount, app.name);
+				skipCount, Options.outputCount, app.name);
 	}
 
 	/**
@@ -487,7 +488,7 @@ public class StreamJitAppManager {
 
 		@Override
 		public void process(SNDrainedData snDrainedData) {
-			if (GlobalConstants.useDrainData)
+			if (Options.useDrainData)
 				drainer.newSNDrainData(snDrainedData);
 		}
 	}

@@ -11,7 +11,7 @@ import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.compiler.CompilerBlobFactory;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.distributed.ConnectionManager.BlockingTCPNoParams;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.interp.Interpreter.InterpreterBlobFactory;
 
 /**
@@ -68,7 +68,7 @@ public class DistributedBlobFactory implements BlobFactory {
 
 		Configuration distCfg = partitionManager.getDefaultConfiguration(
 				workers, noOfMachines);
-		if (!GlobalConstants.useCompilerBlob)
+		if (!Options.useCompilerBlob)
 			return distCfg;
 
 		Configuration.Builder builder = Configuration.builder(distCfg);
@@ -84,10 +84,10 @@ public class DistributedBlobFactory implements BlobFactory {
 
 	private void addMaxCoreParam(Configuration.Builder builder) {
 		int min = 1;
-		int val = GlobalConstants.maxNumCores / 2;
+		int val = Options.maxNumCores / 2;
 		val = min > val ? min : val;
 		Parameter p = new Configuration.IntParameter("maxNumCores", min,
-				GlobalConstants.maxNumCores, val);
+				Options.maxNumCores, val);
 		builder.addParameter(p);
 	}
 

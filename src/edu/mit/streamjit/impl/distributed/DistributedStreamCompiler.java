@@ -30,7 +30,7 @@ import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.common.drainer.AbstractDrainer;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.HeadChannel.HeadBuffer;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.CommunicationManager.CommunicationType;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
@@ -100,7 +100,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 	public DistributedStreamCompiler(int noOfnodes, Configuration cfg) {
 		if (noOfnodes < 1)
 			throw new IllegalArgumentException("noOfnodes must be 1 or greater");
-		if (GlobalConstants.singleNodeOnline) {
+		if (Options.singleNodeOnline) {
 			System.out
 					.println("Flag GlobalConstants.singleNodeOnline is enabled."
 							+ " noOfNodes passed as compiler argument has no effect");
@@ -136,7 +136,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		manager.reconfigure(1);
 		CompiledStream cs = new DistributedCompiledStream(drainer);
 
-		if (GlobalConstants.tune > 0 && this.cfg != null) {
+		if (Options.tune > 0 && this.cfg != null) {
 			OnlineTuner tuner = new OnlineTuner(drainer, manager, app,
 					cfgManager, logger, needTermination);
 			new Thread(tuner, "OnlineTuner").start();
@@ -269,7 +269,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 				controller.closeAll();
 				throw new IllegalConfigurationException();
 			}
-		} else if (GlobalConstants.tune == 0) {
+		} else if (Options.tune == 0) {
 			this.cfg = cfgFromFile(app, controller, defaultCfg);
 		} else
 			this.cfg = defaultCfg;

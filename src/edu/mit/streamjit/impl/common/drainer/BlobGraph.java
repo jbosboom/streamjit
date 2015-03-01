@@ -25,7 +25,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.drainer.AbstractDrainer.DrainerState;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
 
 /**
@@ -321,7 +321,7 @@ public class BlobGraph {
 			}
 
 			DrainType drainType;
-			if (GlobalConstants.useDrainData)
+			if (Options.useDrainData)
 				if (drainer.state == DrainerState.FINAL)
 					drainType = DrainType.FINAL;
 				else
@@ -332,7 +332,7 @@ public class BlobGraph {
 			drainer.drain(blobID, drainType);
 
 			// TODO: Verify the waiting time is reasonable.
-			if (GlobalConstants.needDrainDeadlockHandler)
+			if (Options.needDrainDeadlockHandler)
 				drainer.schExecutorService.schedule(deadLockHandler(), 6000,
 						TimeUnit.MILLISECONDS);
 		}

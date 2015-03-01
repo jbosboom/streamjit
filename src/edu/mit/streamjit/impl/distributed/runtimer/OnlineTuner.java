@@ -19,7 +19,7 @@ import edu.mit.streamjit.impl.distributed.ConfigurationManager;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.tuner.OpenTuner;
@@ -62,9 +62,9 @@ public class OnlineTuner implements Runnable {
 
 	@Override
 	public void run() {
-		if (GlobalConstants.tune == 1)
+		if (Options.tune == 1)
 			tune();
-		else if (GlobalConstants.tune == 2) {
+		else if (Options.tune == 2) {
 			verifier.verify(true);
 			terminate();
 		} else
@@ -250,7 +250,7 @@ public class OnlineTuner implements Runnable {
 		Configuration config = Configuration.fromJson(cfgJson);
 		config = ConfigurationUtils.addConfigPrefix(config, cfgPrefix);
 
-		if (GlobalConstants.saveAllConfigurations)
+		if (Options.saveAllConfigurations)
 			ConfigurationUtils.saveConfg(cfgJson, cfgPrefix, app.name);
 		return config;
 	}
@@ -352,7 +352,7 @@ public class OnlineTuner implements Runnable {
 			FileWriter writer = new FileWriter(String.format("%s%sEval_%s.txt",
 					app.name, File.separator, app.name), true);
 			writer.write("##########################################################");
-			Properties prop = GlobalConstants.getProperties();
+			Properties prop = Options.getProperties();
 			prop.store(writer, "");
 			return writer;
 		}

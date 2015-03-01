@@ -32,7 +32,7 @@ import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
@@ -192,7 +192,7 @@ public abstract class AbstractDrainer {
 				throw e;
 			}
 
-			if (GlobalConstants.needDrainDeadlockHandler)
+			if (Options.needDrainDeadlockHandler)
 				this.schExecutorService = Executors
 						.newSingleThreadScheduledExecutor();
 
@@ -287,7 +287,7 @@ public abstract class AbstractDrainer {
 	 * @throws InterruptedException
 	 */
 	public final void awaitDrainData() throws InterruptedException {
-		if (GlobalConstants.useDrainData) {
+		if (Options.useDrainData) {
 			drainDataLatch.await();
 			app.drainData = getDrainData();
 		}
@@ -308,7 +308,7 @@ public abstract class AbstractDrainer {
 	 * @return Aggregated DrainData after the draining.
 	 */
 	private final DrainData getDrainData() {
-		if (!GlobalConstants.useDrainData)
+		if (!Options.useDrainData)
 			return null;
 		DrainData drainData = null;
 		Map<Token, ImmutableList<Object>> boundaryInputData = new HashMap<>();
@@ -550,7 +550,7 @@ public abstract class AbstractDrainer {
 				state = DrainerState.NODRAINING;
 			}
 
-			if (GlobalConstants.needDrainDeadlockHandler)
+			if (Options.needDrainDeadlockHandler)
 				schExecutorService.shutdownNow();
 		}
 	}

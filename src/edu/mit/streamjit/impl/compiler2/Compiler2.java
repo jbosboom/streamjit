@@ -50,7 +50,7 @@ import edu.mit.streamjit.impl.compiler.Schedule;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.DrainInstruction;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.ReadInstruction;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.WriteInstruction;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
@@ -99,7 +99,7 @@ public class Compiler2 {
 	public static final RemovalStrategy REMOVAL_STRATEGY = new BitsetRemovalStrategy();
 	public static final FusionStrategy FUSION_STRATEGY = new BitsetFusionStrategy();
 	public static final UnboxingStrategy UNBOXING_STRATEGY = new BitsetUnboxingStrategy();
-	public static final AllocationStrategy ALLOCATION_STRATEGY = new SubsetBiasAllocationStrategy(GlobalConstants.maxNumCores);
+	public static final AllocationStrategy ALLOCATION_STRATEGY = new SubsetBiasAllocationStrategy(Options.maxNumCores);
 	public static final StorageStrategy INTERNAL_STORAGE_STRATEGY = new TuneInternalStorageStrategy();
 	public static final StorageStrategy EXTERNAL_STORAGE_STRATEGY = new TuneExternalStorageStrategy();
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();

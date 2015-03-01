@@ -12,7 +12,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Random;
 
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Options;
 
 public final class TCPTuner implements OpenTuner {
 
@@ -54,14 +54,14 @@ public final class TCPTuner implements OpenTuner {
 		int min = 5000;
 		Random rand = new Random();
 		Integer port = rand.nextInt(65535 - min) + min;
-		if (GlobalConstants.tunerStartMode == 0) {
+		if (Options.tunerStartMode == 0) {
 			ProcessBuilder xtermPB = new ProcessBuilder("xterm", "-hold", "-e",
 					"python", tunerPath, port.toString());
 			ProcessBuilder gnomePB = new ProcessBuilder("gnome-terminal", "-e",
 					String.format("python %s %s", tunerPath, port.toString()));
 			gnomePB.directory(workingDir);
 			this.tuner = gnomePB.start();
-		} else if (GlobalConstants.tunerStartMode == 1) {
+		} else if (Options.tunerStartMode == 1) {
 			ProcessBuilder pb = new ProcessBuilder("python", tunerPath,
 					port.toString());
 			pb.directory(workingDir);

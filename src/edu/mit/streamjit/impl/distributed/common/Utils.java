@@ -140,7 +140,7 @@ public class Utils {
 			Calendar cal = Calendar.getInstance();
 			writer.write(dateFormat.format(cal.getTime()) + "\n");
 			writer.write(appName + "\n");
-			Properties prop = GlobalConstants.getProperties();
+			Properties prop = Options.getProperties();
 			prop.store(writer, "GlobalConstants.Properties");
 			writer.close();
 		} catch (IOException e) {

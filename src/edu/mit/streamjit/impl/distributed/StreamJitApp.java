@@ -38,6 +38,7 @@ import edu.mit.streamjit.impl.common.drainer.BlobGraph;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.concurrent.ConcurrentChannelFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
@@ -155,7 +156,7 @@ public class StreamJitApp<I, O> {
 	public void verifyConfiguration(
 			Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap) {
 
-		if (!GlobalConstants.singleNodeOnline) {
+		if (!Options.singleNodeOnline) {
 			// printPartition(partitionsMachineMap);
 		}
 
@@ -396,7 +397,7 @@ public class StreamJitApp<I, O> {
 		partParam.addBlobFactory(comp2Factory);
 		blobtoMachineMap = new HashMap<>();
 
-		BlobFactory bf = GlobalConstants.useCompilerBlob ? comp2Factory
+		BlobFactory bf = Options.useCompilerBlob ? comp2Factory
 				: intFactory;
 		for (Integer machineID : partitionsMachineMap.keySet()) {
 			List<Set<Worker<?, ?>>> blobList = partitionsMachineMap
@@ -412,7 +413,7 @@ public class StreamJitApp<I, O> {
 		}
 
 		builder.addParameter(partParam.build());
-		if (GlobalConstants.useCompilerBlob)
+		if (Options.useCompilerBlob)
 			builder.addSubconfiguration("blobConfigs", getConfiguration());
 		else
 			builder.addSubconfiguration("blobConfigs", getInterpreterConfg());
@@ -436,6 +437,6 @@ public class StreamJitApp<I, O> {
 				IntParameter.class);
 		if (maxCoreParam != null)
 			return maxCoreParam.getValue();
-		return GlobalConstants.maxNumCores;
+		return Options.maxNumCores;
 	}
 }

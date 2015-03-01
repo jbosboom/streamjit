@@ -15,7 +15,7 @@ import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
 
 public class TailChannels {
@@ -82,11 +82,11 @@ public class TailChannels {
 			System.out.println(String.format(
 					"PerformanceLogger starts to log the time to"
 							+ " produce %d number of outputs",
-					GlobalConstants.outputCount));
+					Options.outputCount));
 
 			try {
 				writer.write(String.format("GlobalConstants.outputCount = %d",
-						GlobalConstants.outputCount));
+						Options.outputCount));
 				writer.write('\n');
 				writer.flush();
 			} catch (IOException e) {
@@ -120,7 +120,7 @@ public class TailChannels {
 		}
 
 		private void printOutputCount() {
-			if (GlobalConstants.printOutputCountPeriod < 1)
+			if (Options.printOutputCountPeriod < 1)
 				return;
 
 			lastCount = 0;
@@ -137,12 +137,12 @@ public class TailChannels {
 							System.out.println(String
 									.format("Outputs: since started - %d, during last %d ms - %d",
 											currentCount,
-											GlobalConstants.printOutputCountPeriod,
+											Options.printOutputCountPeriod,
 											newOutputs));
 
 						}
-					}, GlobalConstants.printOutputCountPeriod,
-					GlobalConstants.printOutputCountPeriod,
+					}, Options.printOutputCountPeriod,
+					Options.printOutputCountPeriod,
 					TimeUnit.MILLISECONDS);
 		}
 
@@ -192,13 +192,13 @@ public class TailChannels {
 			this.skipCount = skipCount;
 			this.totalCount = steadyCount + skipCount;
 			count = 0;
-			if (GlobalConstants.tune == 0) {
+			if (Options.tune == 0) {
 				// TODO: Leaks this object from the constructor. May cause
 				// subtle bugs. Re-factor it.
 				pLogger = new PerformanceLogger(this, appName);
 				pLogger.start();
 			}
-			if (GlobalConstants.printOutputCountPeriod > 0)
+			if (Options.printOutputCountPeriod > 0)
 				outputCountPrinter = new OutputCountPrinter(this);
 		}
 
@@ -219,7 +219,7 @@ public class TailChannels {
 		}
 
 		protected long normalizedTime(long time) {
-			return (GlobalConstants.outputCount * time)
+			return (Options.outputCount * time)
 					/ (totalCount - skipCount);
 		}
 
@@ -229,7 +229,7 @@ public class TailChannels {
 		 */
 		protected long unnormalizedTime(long time) {
 			return (time * (totalCount - skipCount))
-					/ GlobalConstants.outputCount;
+					/ Options.outputCount;
 		}
 	}
 
