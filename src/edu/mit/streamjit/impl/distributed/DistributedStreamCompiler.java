@@ -119,8 +119,8 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		PartitionManager partitionManager = new HotSpotTuning(app);
 		ConfigurationManager cfgManager = new ConfigurationManager(app,
 				partitionManager);
-		ConnectionManager conManager = new ConnectionManager.AsyncTCPNoParams(
-				controller.controllerNodeID);
+		ConnectionManager conManager = connectionManager(controller.controllerNodeID);
+
 		setConfiguration(controller, app, partitionManager, conManager,
 				cfgManager);
 
@@ -142,6 +142,19 @@ public class DistributedStreamCompiler implements StreamCompiler {
 			new Thread(tuner, "OnlineTuner").start();
 		}
 		return cs;
+	}
+
+	private ConnectionManager connectionManager(int controllerNodeID) {
+		switch (Options.connectionManager) {
+			case 0 :
+				return new ConnectionManager.AllConnectionParams(
+						controllerNodeID);
+			case 1 :
+				return new ConnectionManager.BlockingTCPNoParams(
+						controllerNodeID);
+			default :
+				return new ConnectionManager.AsyncTCPNoParams(controllerNodeID);
+		}
 	}
 
 	private <I, O> Configuration cfgFromFile(StreamJitApp<I, O> app,

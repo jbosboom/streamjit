@@ -8,6 +8,9 @@ import java.io.OutputStream;
 import java.util.Properties;
 
 import edu.mit.streamjit.impl.common.drainer.AbstractDrainer;
+import edu.mit.streamjit.impl.distributed.ConnectionManager.AllConnectionParams;
+import edu.mit.streamjit.impl.distributed.ConnectionManager.AsyncTCPNoParams;
+import edu.mit.streamjit.impl.distributed.ConnectionManager.BlockingTCPNoParams;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.distributed.TailChannels;
 import edu.mit.streamjit.tuner.TCPTuner;
@@ -113,6 +116,20 @@ public final class Options {
 	 */
 	public static final boolean useDrainData;
 
+	// Following are miscellaneous options to avoid rebuilding jar files every
+	// time to change some class selections.
+	// TODO: Fix all design pattern related issues.
+
+	/**
+	 * <ol>
+	 * <li>0 - {@link AllConnectionParams}
+	 * <li>1 - {@link BlockingTCPNoParams}
+	 * <li>2 - {@link AsyncTCPNoParams}
+	 * <li>default: {@link AsyncTCPNoParams}
+	 * </ol>
+	 */
+	public static final int connectionManager;
+
 	static {
 		Properties prop = loadProperties();
 		printOutputCountPeriod = Integer.parseInt(prop
@@ -131,6 +148,8 @@ public final class Options {
 		singleNodeOnline = Boolean.parseBoolean(prop
 				.getProperty("singleNodeOnline"));
 		useDrainData = Boolean.parseBoolean(prop.getProperty("useDrainData"));
+		connectionManager = Integer.parseInt(prop
+				.getProperty("connectionManager"));
 	}
 
 	public static Properties getProperties() {
@@ -146,6 +165,7 @@ public final class Options {
 		setProperty(prop, "singleNodeOnline", singleNodeOnline);
 		setProperty(prop, "maxNumCores", maxNumCores);
 		setProperty(prop, "needProfiler", needProfiler);
+		setProperty(prop, "connectionManager", connectionManager);
 		return prop;
 	}
 
