@@ -13,6 +13,8 @@ import edu.mit.streamjit.impl.distributed.ConnectionManager.AsyncTCPNoParams;
 import edu.mit.streamjit.impl.distributed.ConnectionManager.BlockingTCPNoParams;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.distributed.TailChannels;
+import edu.mit.streamjit.impl.distributed.TailChannels.BlockingTailChannel1;
+import edu.mit.streamjit.impl.distributed.TailChannels.BlockingTailChannel2;
 import edu.mit.streamjit.tuner.TCPTuner;
 
 /**
@@ -130,6 +132,15 @@ public final class Options {
 	 */
 	public static final int connectionManager;
 
+	/**
+	 * <ol>
+	 * <li>1 - {@link BlockingTailChannel1}
+	 * <li>2 - {@link BlockingTailChannel2}
+	 * <li>default: {@link BlockingTailChannel2}
+	 * </ol>
+	 */
+	public static final int tailChannel;
+
 	static {
 		Properties prop = loadProperties();
 		printOutputCountPeriod = Integer.parseInt(prop
@@ -150,6 +161,7 @@ public final class Options {
 		useDrainData = Boolean.parseBoolean(prop.getProperty("useDrainData"));
 		connectionManager = Integer.parseInt(prop
 				.getProperty("connectionManager"));
+		tailChannel = Integer.parseInt(prop.getProperty("tailChannel"));
 	}
 
 	public static Properties getProperties() {
@@ -166,6 +178,7 @@ public final class Options {
 		setProperty(prop, "maxNumCores", maxNumCores);
 		setProperty(prop, "needProfiler", needProfiler);
 		setProperty(prop, "connectionManager", connectionManager);
+		setProperty(prop, "tailChannel", tailChannel);
 		return prop;
 	}
 

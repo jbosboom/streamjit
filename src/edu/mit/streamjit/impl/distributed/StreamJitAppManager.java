@@ -30,6 +30,7 @@ import edu.mit.streamjit.impl.distributed.common.Command;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationProcessor.ConfigType;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Error.ErrorProcessor;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements.NewConInfo;
@@ -340,10 +341,26 @@ public class StreamJitAppManager {
 					"No tail buffer in the passed bufferMap.");
 
 		int skipCount = Math.max(Options.outputCount, multiplier * 5);
-		tailChannel = new TailChannels.BlockingTailChannel2(
-				bufferMap.get(tailToken), controller.getConProvider(),
-				tailconInfo, "tailChannel - " + tailToken.toString(), 0,
-				skipCount, Options.outputCount, app.name);
+		tailChannel = tailChannel(bufferMap.get(tailToken),
+				controller.getConProvider(), tailconInfo, "tailChannel - "
+						+ tailToken.toString(), 0, skipCount,
+				Options.outputCount, app.name);
+	}
+
+	private TailChannel tailChannel(Buffer buffer,
+			ConnectionProvider conProvider, ConnectionInfo conInfo,
+			String bufferTokenName, int debugLevel, int skipCount,
+			int steadyCount, String appName) {
+		switch (Options.tailChannel) {
+			case 1 :
+				return new TailChannels.BlockingTailChannel1(buffer,
+						conProvider, conInfo, bufferTokenName, debugLevel,
+						skipCount, steadyCount, appName);
+			default :
+				return new TailChannels.BlockingTailChannel2(buffer,
+						conProvider, conInfo, bufferTokenName, debugLevel,
+						skipCount, steadyCount, appName);
+		}
 	}
 
 	/**
