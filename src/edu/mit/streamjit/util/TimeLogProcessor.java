@@ -135,27 +135,25 @@ public class TimeLogProcessor {
 
 	private static File writeHeapStat(String fileName, File outDir)
 			throws IOException {
-		List<Integer> heapSize = processSNHeap(fileName, false);
-		List<Integer> heapMaxSize = processSNHeap(fileName, true);
+		List<Integer> heapSize = processSNHeap(fileName, "heapSize");
+		List<Integer> heapMaxSize = processSNHeap(fileName, "heapMaxSize");
+		List<Integer> heapFreeSize = processSNHeap(fileName, "heapFreeSize");
 		File f = new File(fileName);
 		String outFileName = String.format("%s_heapStatus.txt", f.getName());
 		File outFile = new File(outDir, outFileName);
 		FileWriter writer = new FileWriter(outFile, false);
 		for (int i = 0; i < heapSize.size(); i++) {
-			String msg = String.format("%-6d\t%-6d\t%-6d\n", i + 1,
-					heapSize.get(i), heapMaxSize.get(i));
+			String msg = String.format("%-6d\t%-6d\t%-6d\t%-6d\n", i + 1,
+					heapFreeSize.get(i), heapSize.get(i), heapMaxSize.get(i));
 			writer.write(msg);
 		}
 		writer.close();
 		return outFile;
 	}
 
-	private static List<Integer> processSNHeap(String fileName,
-			Boolean isHeapMax) throws IOException {
+	private static List<Integer> processSNHeap(String fileName, String heapType)
+			throws IOException {
 		String slurmPrefix = "0: ";
-		String heapType = "heapSize";
-		if (isHeapMax)
-			heapType = "heapMaxSize";
 		BufferedReader reader = new BufferedReader(new FileReader(fileName));
 		String line;
 		int i = 0;
@@ -260,13 +258,15 @@ public class TimeLogProcessor {
 		writer.write("#set yrange [0:*]\n");
 
 		writer.write(String
-				.format("plot \"%s\" using 1:2 with linespoints title \"Heap Size\","
-						+ "\"%s\" using 1:3 with linespoints title \"Heap Max Size\" \n",
-						dataFile1, dataFile1));
+				.format("plot \"%s\" using 1:2 with linespoints title \"Heap Free Size\","
+						+ "\"%s\" using 1:3 with linespoints title \"Heap Size\","
+						+ "\"%s\" using 1:4 with linespoints title \"Heap Max Size\" \n",
+						dataFile1, dataFile1, dataFile1));
 		writer.write(String
-				.format("plot \"%s\" using 1:2 with linespoints title \"Heap Size\","
-						+ "\"%s\" using 1:3 with linespoints title \"Heap Max Size\" \n",
-						dataFile2, dataFile2));
+				.format("plot \"%s\" using 1:2 with linespoints title \"Heap Free Size\","
+						+ "\"%s\" using 1:3 with linespoints title \"Heap Size\","
+						+ "\"%s\" using 1:4 with linespoints title \"Heap Max Size\" \n",
+						dataFile2, dataFile2, dataFile2));
 
 		writer.close();
 		return plotfile;
