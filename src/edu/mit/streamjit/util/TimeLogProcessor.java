@@ -260,11 +260,11 @@ public class TimeLogProcessor {
 
 		writer.write(String
 				.format("plot \"%s\" using 1:2 with linespoints title \"Heap Size\","
-						+ " plot \"%s\" using 1:3 with linespoints title \"Heap Max Size\" \n",
+						+ "\"%s\" using 1:3 with linespoints title \"Heap Max Size\" \n",
 						dataFile1, dataFile1));
 		writer.write(String
 				.format("plot \"%s\" using 1:2 with linespoints title \"Heap Size\","
-						+ " plot \"%s\" using 1:3 with linespoints title \"Heap Max Size\" \n",
+						+ "\"%s\" using 1:3 with linespoints title \"Heap Max Size\" \n",
 						dataFile2, dataFile2));
 
 		writer.close();
