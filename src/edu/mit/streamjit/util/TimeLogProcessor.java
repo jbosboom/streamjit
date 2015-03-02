@@ -132,13 +132,11 @@ public class TimeLogProcessor {
 		return ret;
 	}
 
-	private static void writeHeapStat(String fileName, File outDir)
+	private static File writeHeapStat(String fileName, File outDir)
 			throws IOException {
 		List<Integer> heapSize = processSNHeap(fileName, false);
 		List<Integer> heapMaxSize = processSNHeap(fileName, true);
-
 		File f = new File(fileName);
-
 		String outFileName = String.format("%s_heapStatus.txt", f.getName());
 		File outFile = new File(outDir, outFileName);
 		FileWriter writer = new FileWriter(outFile, false);
@@ -148,6 +146,7 @@ public class TimeLogProcessor {
 			writer.write(msg);
 		}
 		writer.close();
+		return outFile;
 	}
 
 	private static List<Integer> processSNHeap(String fileName,
@@ -246,6 +245,30 @@ public class TimeLogProcessor {
 		writer.close();
 	}
 
+	private static void makeHeapPlotFile(File dir, String name,
+			String dataFile1, String dataFile2) throws IOException {
+		File plotfile = new File(dir, "heapplot.plt");
+		FileWriter writer = new FileWriter(plotfile, false);
+		writer.write("set terminal postscript eps enhanced color\n");
+		writer.write(String.format("set output \"%sHeap.eps\"\n", name));
+		writer.write("set ylabel \"Memory(MB)\"\n");
+		writer.write("set xlabel \"Tuning Rounds\"\n");
+		writer.write(String.format("set title \"%sHeap\"\n", name));
+		writer.write("set grid\n");
+		writer.write("#set yrange [0:*]\n");
+
+		writer.write(String
+				.format("plot \"%s\" using 1:2 with linespoints title \"Heap Size\","
+						+ " plot \"%s\" using 1:3 with linespoints title \"Heap Max Size\" \n",
+						dataFile1, dataFile1));
+		writer.write(String
+				.format("plot \"%s\" using 1:2 with linespoints title \"Heap Size\","
+						+ " plot \"%s\" using 1:3 with linespoints title \"Heap Max Size\" \n",
+						dataFile2, dataFile2));
+
+		writer.close();
+	}
+
 	private static void plot(File dir) throws IOException {
 		String[] s = { "/usr/bin/gnuplot", "plot.plt" };
 		try {
@@ -273,11 +296,12 @@ public class TimeLogProcessor {
 		File summaryDir = new File(String.format("%s%ssummary", appName,
 				File.separator));
 		Utils.createDir(summaryDir.getPath());
-		writeHeapStat(
+		File f1 = writeHeapStat(
 				String.format("%s%sslurm-662553.out", appName, File.separator),
 				summaryDir);
-		writeHeapStat(
+		File f2 = writeHeapStat(
 				String.format("%s%sslurm-662554.out", appName, File.separator),
 				summaryDir);
+		makeHeapPlotFile(summaryDir, appName, f1.getName(), f2.getName());
 	}
 }
