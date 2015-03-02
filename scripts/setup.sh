@@ -17,7 +17,7 @@ function writeRun(){
 		echo "srun python ../lib/opentuner/streamjit/streamjit2.py 12563 &" >> $runfile
 		echo "cd .." >> $runfile
 	fi
-	echo "srun -l ../bin/java/jdk1.8.0_25/bin/java -Xmx2048m -jar $1.jar $3" >> $runfile
+	echo "srun -l ../bin/java/jdk1.8.0_31/bin/java -Xmx2048m -jar $1.jar $3" >> $runfile
 }
 
 function writeSN(){
@@ -28,7 +28,7 @@ function writeSN(){
 	echo "#SBATCH --cpu_bind=verbose,cores" >> $runfile
 	echo "#SBATCH --exclusive" >> $runfile
 	echo "cd /data/scratch/sumanan/"$1 >> $runfile
-	echo "srun --exclusive  --nodes=$2 ../bin/java/jdk1.8.0_25/bin/java -Xmx2048m -jar StreamNode.jar 128.30.116." >> $runfile
+	echo "srun --exclusive  --nodes=$2 ../bin/java/jdk1.8.0_31/bin/java -Xmx2048m -jar StreamNode.jar 128.30.116." >> $runfile
 }
 
 function creatdirs(){
