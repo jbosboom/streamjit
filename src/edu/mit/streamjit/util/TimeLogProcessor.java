@@ -137,7 +137,9 @@ public class TimeLogProcessor {
 		List<Integer> heapSize = processSNHeap(fileName, false);
 		List<Integer> heapMaxSize = processSNHeap(fileName, true);
 
-		String outFileName = String.format("%s_heapStatus.txt", fileName);
+		File f = new File(fileName);
+
+		String outFileName = String.format("%s_heapStatus.txt", f.getName());
 		File outFile = new File(outDir, outFileName);
 		FileWriter writer = new FileWriter(outFile, false);
 		for (int i = 0; i < heapSize.size(); i++) {
