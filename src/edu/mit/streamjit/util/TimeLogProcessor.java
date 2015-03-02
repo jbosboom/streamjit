@@ -212,8 +212,8 @@ public class TimeLogProcessor {
 		verify.close();
 		writer.close();
 
-		makePlotFile(summaryDir, appName, dataFile);
-		plot(summaryDir);
+		File f = makePlotFile(summaryDir, appName, dataFile);
+		plot(summaryDir, f);
 	}
 
 	private static File makePlotFile(File dir, String name, String dataFile)
@@ -271,8 +271,8 @@ public class TimeLogProcessor {
 		return plotfile;
 	}
 
-	private static void plot(File dir) throws IOException {
-		String[] s = { "/usr/bin/gnuplot", "plot.plt" };
+	private static void plot(File dir, File plotFile) throws IOException {
+		String[] s = { "/usr/bin/gnuplot", plotFile.getName() };
 		try {
 			ProcessBuilder pb = new ProcessBuilder(s);
 			pb.directory(dir);
