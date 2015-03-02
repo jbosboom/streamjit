@@ -304,6 +304,8 @@ public class TimeLogProcessor {
 		File f2 = writeHeapStat(
 				String.format("%s%sslurm-662554.out", appName, File.separator),
 				summaryDir);
-		makeHeapPlotFile(summaryDir, appName, f1.getName(), f2.getName());
+		File f = makeHeapPlotFile(summaryDir, appName, f1.getName(),
+				f2.getName());
+		plot(summaryDir, f);
 	}
 }
