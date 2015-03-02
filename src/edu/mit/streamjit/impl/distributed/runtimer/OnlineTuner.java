@@ -20,7 +20,6 @@ import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.Options;
-import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.tuner.OpenTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
@@ -65,7 +64,7 @@ public class OnlineTuner implements Runnable {
 		if (Options.tune == 1)
 			tune();
 		else if (Options.tune == 2) {
-			verifier.verify(true);
+			verifier.verify();
 			terminate();
 		} else
 			System.err
@@ -228,7 +227,7 @@ public class OnlineTuner implements Runnable {
 		Configuration finalcfg = Configuration.fromJson(finalConfg);
 		finalcfg = ConfigurationUtils.addConfigPrefix(finalcfg, "final");
 
-		verifier.verify(false);
+		verifier.verify();
 
 		if (needTermination) {
 			terminate();
@@ -283,9 +282,7 @@ public class OnlineTuner implements Runnable {
 
 	private class Verifier {
 
-		public void verify(boolean needBackup) {
-			if (needBackup)
-				backup();
+		public void verify() {
 			verifyTuningTimes(cfgPrefixes());
 		}
 
@@ -433,18 +430,6 @@ public class OnlineTuner implements Runnable {
 				System.err.println("Null configuration\n");
 			}
 			return runningTime;
-		}
-
-		/**
-		 * Backups the files generated during tuning.
-		 */
-		private void backup() {
-			Utils.rename(app.name, "summary");
-			Utils.rename(app.name, "compileTime.txt");
-			Utils.rename(app.name, "runTime.txt");
-			Utils.rename(app.name, "drainTime.txt");
-			Utils.rename(app.name, "GraphProperty.txt");
-			Utils.rename(app.name, "profile.txt");
 		}
 	}
 }

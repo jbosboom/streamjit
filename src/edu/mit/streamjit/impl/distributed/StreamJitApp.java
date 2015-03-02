@@ -113,8 +113,7 @@ public class StreamJitApp<I, O> {
 		this.jarFilePath = this.getClass().getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
 		this.constraints = getConstrains();
-		Utils.createAppDir(name);
-		Utils.writeReadMeTxt(name);
+		Utils.newApp(name);
 		visualizer = new Visualizer.DotVisualizer(streamGraph);
 	}
 

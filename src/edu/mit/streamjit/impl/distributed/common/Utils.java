@@ -234,4 +234,22 @@ public class Utils {
 	public static void main(String[] args) throws IOException {
 		generateBlobGraphs(new FMRadio.FMRadioCore());
 	}
+
+	/**
+	 * Backups the files generated during tuning.
+	 */
+	public static void backup(String appName) {
+		rename(appName, "summary");
+		rename(appName, "compileTime.txt");
+		rename(appName, "runTime.txt");
+		rename(appName, "drainTime.txt");
+		rename(appName, "GraphProperty.txt");
+		rename(appName, "profile.txt");
+	}
+
+	public static void newApp(String appName) {
+		createAppDir(appName);
+		backup(appName);
+		Utils.writeReadMeTxt(appName);
+	}
 }
