@@ -309,4 +309,27 @@ public class TimeLogProcessor {
 				f2.getName());
 		plot(summaryDir, f);
 	}
+
+	public static void GraphPropertyProcessor(String appName)
+			throws IOException {
+		BufferedReader reader = new BufferedReader(
+				new FileReader(String.format("%s%sGraphProperty.txt", appName,
+						File.separator)));
+		int truecnt = 0;
+		int falsecnt = 0;
+		String line;
+		while ((line = reader.readLine()) != null) {
+			if (line.contains("True"))
+				truecnt++;
+			else if (line.contains("False"))
+				falsecnt++;
+			else
+				System.err.println("Not a tuning line...");
+		}
+		reader.close();
+		double total = truecnt + falsecnt;
+		System.out.println(String.format(
+				"Total=%f, TrueCount=%d(%f), FalseCount=%d(%f)", total,
+				truecnt, (truecnt / total), falsecnt, (falsecnt / total)));
+	}
 }
