@@ -24,6 +24,7 @@ public class TimeLogProcessor {
 
 	public static void main(String[] args) throws IOException {
 		summarize("FMRadioCore");
+		summarizeHeap("FMRadioCore");
 	}
 
 	private static Map<String, Integer> processCompileTime(String appName,
