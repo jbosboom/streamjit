@@ -216,7 +216,7 @@ public class TimeLogProcessor {
 		plot(summaryDir);
 	}
 
-	private static void makePlotFile(File dir, String name, String dataFile)
+	private static File makePlotFile(File dir, String name, String dataFile)
 			throws IOException {
 		File plotfile = new File(dir, "plot.plt");
 		FileWriter writer = new FileWriter(plotfile, false);
@@ -243,9 +243,10 @@ public class TimeLogProcessor {
 				.format("plot \"%s\" using 1:2 with linespoints title \"Tuning Round time\"\n",
 						dataFile));
 		writer.close();
+		return plotfile;
 	}
 
-	private static void makeHeapPlotFile(File dir, String name,
+	private static File makeHeapPlotFile(File dir, String name,
 			String dataFile1, String dataFile2) throws IOException {
 		File plotfile = new File(dir, "heapplot.plt");
 		FileWriter writer = new FileWriter(plotfile, false);
@@ -267,6 +268,7 @@ public class TimeLogProcessor {
 						dataFile2, dataFile2));
 
 		writer.close();
+		return plotfile;
 	}
 
 	private static void plot(File dir) throws IOException {
