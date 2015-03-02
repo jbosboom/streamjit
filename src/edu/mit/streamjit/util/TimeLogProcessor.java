@@ -215,9 +215,6 @@ public class TimeLogProcessor {
 
 		makePlotFile(summaryDir, appName, dataFile);
 		plot(summaryDir);
-
-		// writeHeapStat(String.format("%s%sst1.txt", appName, File.separator));
-		// writeHeapStat(String.format("%s%sst2.txt", appName, File.separator));
 	}
 
 	private static void makePlotFile(File dir, String name, String dataFile)
@@ -270,5 +267,17 @@ public class TimeLogProcessor {
 		} catch (Exception e) {
 			System.err.println("Fail: " + e);
 		}
+	}
+
+	public static void summarizeHeap(String appName) throws IOException {
+		File summaryDir = new File(String.format("%s%ssummary", appName,
+				File.separator));
+		Utils.createDir(summaryDir.getPath());
+		writeHeapStat(
+				String.format("%s%sslurm-662553.out", appName, File.separator),
+				summaryDir);
+		writeHeapStat(
+				String.format("%s%sslurm-662554.out", appName, File.separator),
+				summaryDir);
 	}
 }
