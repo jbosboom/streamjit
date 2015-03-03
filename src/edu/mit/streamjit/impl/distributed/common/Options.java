@@ -15,6 +15,7 @@ import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.distributed.TailChannels;
 import edu.mit.streamjit.impl.distributed.TailChannels.BlockingTailChannel1;
 import edu.mit.streamjit.impl.distributed.TailChannels.BlockingTailChannel2;
+import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
 
 /**
@@ -141,6 +142,13 @@ public final class Options {
 	 */
 	public static final int tailChannel;
 
+	/**
+	 * {@link OnlineTuner}'s verifier verifies the configurations if
+	 * {@link #tune}==2. evaluationCount determines the number of re runs for a
+	 * configuration.
+	 */
+	public static final int evaluationCount;
+
 	static {
 		Properties prop = loadProperties();
 		printOutputCountPeriod = Integer.parseInt(prop
@@ -162,6 +170,7 @@ public final class Options {
 		connectionManager = Integer.parseInt(prop
 				.getProperty("connectionManager"));
 		tailChannel = Integer.parseInt(prop.getProperty("tailChannel"));
+		evaluationCount = Integer.parseInt(prop.getProperty("evaluationCount"));
 	}
 
 	public static Properties getProperties() {
@@ -179,6 +188,7 @@ public final class Options {
 		setProperty(prop, "needProfiler", needProfiler);
 		setProperty(prop, "connectionManager", connectionManager);
 		setProperty(prop, "tailChannel", tailChannel);
+		setProperty(prop, "evaluationCount", evaluationCount);
 		return prop;
 	}
 

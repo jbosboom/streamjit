@@ -412,7 +412,7 @@ public class OnlineTuner implements Runnable {
 		 */
 		private List<Long> evaluateConfig(Configuration cfg, String cfgName) {
 			System.out.println("Evaluating " + cfgName);
-			int count = 2;
+			int count = Options.evaluationCount;
 			List<Long> runningTime = new ArrayList<>(count);
 			Pair<Boolean, Long> ret;
 			if (cfg != null) {
