@@ -260,9 +260,9 @@ public class TimeLoggers {
 				time = tuningRoundSW.elapsed(TimeUnit.SECONDS);
 				tuningRoundSW.reset();
 				tuningRoundSW.start();
+				write(runTimeWriter,
+						String.format("Tuning round time %dS\n", time));
 			}
-			write(runTimeWriter,
-					String.format("Tuning round time %dS\n", time));
 		}
 
 		private static OutputStreamWriter getOSWriter(OutputStream os) {
