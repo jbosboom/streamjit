@@ -298,25 +298,27 @@ public class OnlineTuner implements Runnable {
 		private void verifyTuningTimes(Map<String, Integer> cfgPrefixes) {
 			try {
 				FileWriter writer = writer();
-				for (Map.Entry<String, Integer> en : cfgPrefixes.entrySet()) {
-					String prefix = en.getKey();
-					Integer expectedRunningTime = en.getValue();
-					String cfgName = String.format("%s_%s.cfg", prefix,
-							app.name);
-					Configuration cfg = ConfigurationUtils.readConfiguration(
-							app.name, prefix);
-					if (cfg == null) {
-						System.err.println(String.format("No %s file exists",
+				for (int i = 0; i < Options.verificationCount; i++) {
+					for (Map.Entry<String, Integer> en : cfgPrefixes.entrySet()) {
+						String prefix = en.getKey();
+						Integer expectedRunningTime = en.getValue();
+						String cfgName = String.format("%s_%s.cfg", prefix,
+								app.name);
+						Configuration cfg = ConfigurationUtils
+								.readConfiguration(app.name, prefix);
+						if (cfg == null) {
+							System.err.println(String.format(
+									"No %s file exists", cfgName));
+							continue;
+						}
+						cfg = ConfigurationUtils.addConfigPrefix(cfg, prefix);
+						writer.write("----------------------------------------\n");
+						writer.write(String.format("Configuration name = %s\n",
 								cfgName));
-						continue;
+						List<Long> runningTimes = evaluateConfig(cfg, cfgName);
+						processRunningTimes(runningTimes, expectedRunningTime,
+								writer);
 					}
-					cfg = ConfigurationUtils.addConfigPrefix(cfg, prefix);
-					writer.write("----------------------------------------\n");
-					writer.write(String.format("Configuration name = %s\n",
-							cfgName));
-					List<Long> runningTimes = evaluateConfig(cfg, cfgName);
-					processRunningTimes(runningTimes, expectedRunningTime,
-							writer);
 				}
 				writer.write("**************FINISHED**************\n\n");
 				writer.close();

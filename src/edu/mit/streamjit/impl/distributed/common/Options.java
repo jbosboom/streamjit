@@ -120,7 +120,8 @@ public final class Options {
 	public static final boolean useDrainData;
 
 	// Following are miscellaneous options to avoid rebuilding jar files every
-	// time to change some class selections.
+	// time to change some class selections. You may decide to remove these
+	// variables in a stable release.
 	// TODO: Fix all design pattern related issues.
 
 	/**
@@ -145,9 +146,16 @@ public final class Options {
 	/**
 	 * {@link OnlineTuner}'s verifier verifies the configurations if
 	 * {@link #tune}==2. evaluationCount determines the number of re runs for a
-	 * configuration.
+	 * configuration. Default value is 2.
 	 */
 	public static final int evaluationCount;
+
+	/**
+	 * {@link OnlineTuner}'s verifier verifies the configurations if
+	 * {@link #tune}==2. verificationCount determines the number of re runs for
+	 * a set of configurations in the verify.txt. Default value is 1.
+	 */
+	public static final int verificationCount;
 
 	static {
 		Properties prop = loadProperties();
@@ -171,6 +179,8 @@ public final class Options {
 				.getProperty("connectionManager"));
 		tailChannel = Integer.parseInt(prop.getProperty("tailChannel"));
 		evaluationCount = Integer.parseInt(prop.getProperty("evaluationCount"));
+		verificationCount = Integer.parseInt(prop
+				.getProperty("verificationCount"));
 	}
 
 	public static Properties getProperties() {
@@ -189,6 +199,7 @@ public final class Options {
 		setProperty(prop, "connectionManager", connectionManager);
 		setProperty(prop, "tailChannel", tailChannel);
 		setProperty(prop, "evaluationCount", evaluationCount);
+		setProperty(prop, "verificationCount", verificationCount);
 		return prop;
 	}
 
