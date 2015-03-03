@@ -157,6 +157,11 @@ public final class Options {
 	 */
 	public static final int verificationCount;
 
+	/**
+	 * Large multiplier -> Large compilation time and Large waiting time.
+	 */
+	public static final int multiplierMaxValue;
+
 	static {
 		Properties prop = loadProperties();
 		printOutputCountPeriod = Integer.parseInt(prop
@@ -181,6 +186,8 @@ public final class Options {
 		evaluationCount = Integer.parseInt(prop.getProperty("evaluationCount"));
 		verificationCount = Integer.parseInt(prop
 				.getProperty("verificationCount"));
+		multiplierMaxValue = Integer.parseInt(prop
+				.getProperty("multiplierMaxValue"));
 	}
 
 	public static Properties getProperties() {
@@ -200,6 +207,7 @@ public final class Options {
 		setProperty(prop, "tailChannel", tailChannel);
 		setProperty(prop, "evaluationCount", evaluationCount);
 		setProperty(prop, "verificationCount", verificationCount);
+		setProperty(prop, "multiplierMaxValue", multiplierMaxValue);
 		return prop;
 	}
 
