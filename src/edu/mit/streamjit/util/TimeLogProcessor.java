@@ -52,7 +52,7 @@ public class TimeLogProcessor {
 		File outFile = new File(outDir, "processedRunTime.txt");
 		FileWriter writer = new FileWriter(outFile, false);
 		String line;
-		String cfgPrefix = "1";
+		String cfgPrefix = "Init";
 		int i = 0;
 		Map<String, Integer> ret = new HashMap<>(5000);
 		int min = Integer.MAX_VALUE;
@@ -109,7 +109,7 @@ public class TimeLogProcessor {
 			FileWriter writer, String startString, boolean isms, int timepos)
 			throws IOException {
 		String line;
-		String cfgPrefix = "1";
+		String cfgPrefix = "Init";
 		int i = 0;
 		int timeUnitLength = 1;
 		if (isms)
