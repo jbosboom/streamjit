@@ -56,6 +56,7 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+
 		return true;
 	}
 
@@ -157,7 +158,7 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 			writer.write(String.format("%.7s", "hasCycles"));
 			writer.write("\t\t");
 			writer.write(String.format("%.7s", "time"));
-			writer.write("\t\t");
+			// writer.write("\t\t");
 			writer.flush();
 		} catch (IOException e) {
 
@@ -167,7 +168,7 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 	@Override
 	public void time(double time) {
 		try {
-			writer.write(String.format("%.0f\t\t", time));
+			writer.write(String.format("%.0f", time));
 			writer.flush();
 		} catch (IOException e) {
 			e.printStackTrace();
