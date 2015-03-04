@@ -13,6 +13,7 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Workers;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
+import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.util.ConfigurationUtils;
 
@@ -44,20 +45,59 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 		float bigToSmallBlobRatio = bigToSmallBlobRatio();
 		float loadRatio = loadRatio();
 		float blobToNodeRatio = blobToNodeRatio();
-		float BoundaryChannelRatio = totalToBoundaryChannelRatio();
+		float boundaryChannelRatio = totalToBoundaryChannelRatio();
 		boolean hasCycle = hasCycle();
 		try {
 			writer.write(String.format("\n%6s\t\t", cfgPrefix));
 			writer.write(String.format("%.2f\t\t", bigToSmallBlobRatio));
 			writer.write(String.format("%.2f\t\t", loadRatio));
 			writer.write(String.format("%.2f\t\t", blobToNodeRatio));
-			writer.write(String.format("%.2f\t\t", BoundaryChannelRatio));
+			writer.write(String.format("%.2f\t\t", boundaryChannelRatio));
 			writer.write(String.format("%s\t\t", hasCycle ? "True" : "False"));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		return decide(bigToSmallBlobRatio, loadRatio, blobToNodeRatio,
+				boundaryChannelRatio, hasCycle);
+	}
 
-		return true;
+	private boolean decide(float bigToSmallBlobRatio, float loadRatio,
+			float blobToNodeRatio, float boundaryChannelRatio, boolean hasCycle) {
+		StringBuilder s = new StringBuilder();
+		boolean accept = true;
+		if (Options.prognosticate) {
+			if (Options.bigToSmallBlobRatio > 0
+					&& bigToSmallBlobRatio > Options.bigToSmallBlobRatio) {
+				s.append("1,");
+				accept = false;
+			}
+			if (Options.loadRatio > 0 && loadRatio > Options.loadRatio) {
+				s.append("2,");
+				accept = false;
+			}
+			if (Options.blobToNodeRatio > 0
+					&& blobToNodeRatio > Options.blobToNodeRatio) {
+				s.append("3,");
+				accept = false;
+			}
+			if (Options.boundaryChannelRatio > 0
+					&& boundaryChannelRatio < Options.boundaryChannelRatio) {
+				s.append("4,");
+				accept = false;
+			}
+			if (hasCycle) {
+				s.append("5,");
+				accept = false;
+			}
+		}
+
+		try {
+			writer.write(String.format("%s\t\t",
+					accept ? "Accepted" : s.toString()));
+		} catch (IOException e) {
+
+		}
+		return accept;
 	}
 
 	/**
@@ -156,6 +196,8 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 			writer.write(String.format("%.7s", "BoundaryChannelRatio"));
 			writer.write("\t\t");
 			writer.write(String.format("%.7s", "hasCycles"));
+			writer.write("\t\t");
+			writer.write(String.format("%.7s", "A/R")); // Accepted or Rejected.
 			writer.write("\t\t");
 			writer.write(String.format("%.7s", "time"));
 			// writer.write("\t\t");

@@ -162,6 +162,16 @@ public final class Options {
 	 */
 	public static final int multiplierMaxValue;
 
+	public static final boolean prognosticate;
+
+	public static final int bigToSmallBlobRatio;
+
+	public static final int loadRatio;
+
+	public static final int blobToNodeRatio;
+
+	public static final int boundaryChannelRatio;
+
 	static {
 		Properties prop = loadProperties();
 		printOutputCountPeriod = Integer.parseInt(prop
@@ -188,6 +198,14 @@ public final class Options {
 				.getProperty("verificationCount"));
 		multiplierMaxValue = Integer.parseInt(prop
 				.getProperty("multiplierMaxValue"));
+		prognosticate = Boolean.parseBoolean(prop.getProperty("prognosticate"));
+		bigToSmallBlobRatio = Integer.parseInt(prop
+				.getProperty("bigToSmallBlobRatio"));
+		loadRatio = Integer.parseInt(prop.getProperty("loadRatio"));
+		blobToNodeRatio = Integer.parseInt(prop.getProperty("blobToNodeRatio"));
+		boundaryChannelRatio = Integer.parseInt(prop
+				.getProperty("boundaryChannelRatio"));
+
 	}
 
 	public static Properties getProperties() {
@@ -208,6 +226,11 @@ public final class Options {
 		setProperty(prop, "evaluationCount", evaluationCount);
 		setProperty(prop, "verificationCount", verificationCount);
 		setProperty(prop, "multiplierMaxValue", multiplierMaxValue);
+		setProperty(prop, "prognosticate", prognosticate);
+		setProperty(prop, "bigToSmallBlobRatio", bigToSmallBlobRatio);
+		setProperty(prop, "loadRatio", loadRatio);
+		setProperty(prop, "blobToNodeRatio", blobToNodeRatio);
+		setProperty(prop, "boundaryChannelRatio", boundaryChannelRatio);
 		return prop;
 	}
 
