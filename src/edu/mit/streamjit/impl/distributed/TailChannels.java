@@ -3,6 +3,8 @@ package edu.mit.streamjit.impl.distributed;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -16,6 +18,7 @@ import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Options;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
 
 public class TailChannels {
@@ -105,6 +108,8 @@ public class TailChannels {
 	 */
 	private static class OutputCountPrinter {
 
+		private final String appName;
+
 		private final TailChannel tailChannel;
 
 		/**
@@ -112,34 +117,40 @@ public class TailChannels {
 		 */
 		private int lastCount;
 
+		private FileWriter writer;
+
+		private RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
+
 		private ScheduledExecutorService scheduledExecutorService;
 
-		OutputCountPrinter(TailChannel tailChannel) {
+		OutputCountPrinter(TailChannel tailChannel, String appName) {
 			this.tailChannel = tailChannel;
+			this.appName = appName;
 			printOutputCount();
 		}
 
 		private void printOutputCount() {
 			if (Options.printOutputCountPeriod < 1)
 				return;
-
+			writer = Utils.fileWriter(appName, "outputCount.txt", true);
 			lastCount = 0;
 			scheduledExecutorService = Executors
 					.newSingleThreadScheduledExecutor();
 			scheduledExecutorService.scheduleAtFixedRate(
 					new Runnable() {
-
 						@Override
 						public void run() {
 							int currentCount = tailChannel.count();
 							int newOutputs = currentCount - lastCount;
 							lastCount = currentCount;
-							System.out.println(String
-									.format("Outputs: since started - %d, during last %d ms - %d",
-											currentCount,
-											Options.printOutputCountPeriod,
-											newOutputs));
-
+							String msg = String.format("%d\t\t%d\t\t%d\n",
+									rb.getUptime(), currentCount, newOutputs);
+							try {
+								writer.write(msg);
+								writer.flush();
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
 						}
 					}, Options.printOutputCountPeriod,
 					Options.printOutputCountPeriod,
@@ -199,7 +210,7 @@ public class TailChannels {
 				pLogger.start();
 			}
 			if (Options.printOutputCountPeriod > 0)
-				outputCountPrinter = new OutputCountPrinter(this);
+				outputCountPrinter = new OutputCountPrinter(this, appName);
 		}
 
 		@Override
@@ -219,8 +230,7 @@ public class TailChannels {
 		}
 
 		protected long normalizedTime(long time) {
-			return (Options.outputCount * time)
-					/ (totalCount - skipCount);
+			return (Options.outputCount * time) / (totalCount - skipCount);
 		}
 
 		/**
@@ -228,8 +238,7 @@ public class TailChannels {
 		 * <code>time=unnormalizedTime(normalizedTime(time))</code>
 		 */
 		protected long unnormalizedTime(long time) {
-			return (time * (totalCount - skipCount))
-					/ Options.outputCount;
+			return (time * (totalCount - skipCount)) / Options.outputCount;
 		}
 	}
 
