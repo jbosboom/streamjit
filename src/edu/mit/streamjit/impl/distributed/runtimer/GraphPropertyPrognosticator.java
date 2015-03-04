@@ -93,7 +93,7 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 
 		try {
 			writer.write(String.format("%s\t\t",
-					accept ? "Accepted" : s.toString()));
+					accept ? "Acptd" : s.toString()));
 		} catch (IOException e) {
 
 		}
