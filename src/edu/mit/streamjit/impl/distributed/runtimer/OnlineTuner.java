@@ -75,7 +75,11 @@ public class OnlineTuner implements Runnable {
 		int round = 0;
 		// Keeps track of the current best time. Uses this to discard bad cfgs
 		// early.
-		long currentBestTime = Long.MAX_VALUE;
+		long currentBestTime;
+		if (Options.timeOut)
+			currentBestTime = Long.MAX_VALUE;
+		else
+			currentBestTime = 0;
 		try {
 			startTuner();
 			Pair<Boolean, Long> ret;

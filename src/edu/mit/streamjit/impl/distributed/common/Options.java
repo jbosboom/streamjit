@@ -172,6 +172,8 @@ public final class Options {
 
 	public static final int boundaryChannelRatio;
 
+	public static final boolean timeOut;
+
 	static {
 		Properties prop = loadProperties();
 		printOutputCountPeriod = Integer.parseInt(prop
@@ -205,7 +207,7 @@ public final class Options {
 		blobToNodeRatio = Integer.parseInt(prop.getProperty("blobToNodeRatio"));
 		boundaryChannelRatio = Integer.parseInt(prop
 				.getProperty("boundaryChannelRatio"));
-
+		timeOut = Boolean.parseBoolean(prop.getProperty("timeOut"));
 	}
 
 	public static Properties getProperties() {
@@ -231,6 +233,7 @@ public final class Options {
 		setProperty(prop, "loadRatio", loadRatio);
 		setProperty(prop, "blobToNodeRatio", blobToNodeRatio);
 		setProperty(prop, "boundaryChannelRatio", boundaryChannelRatio);
+		setProperty(prop, "timeOut", timeOut);
 		return prop;
 	}
 
