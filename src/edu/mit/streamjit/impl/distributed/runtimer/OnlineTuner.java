@@ -10,6 +10,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+
+import com.google.common.base.Stopwatch;
 
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
@@ -80,6 +83,7 @@ public class OnlineTuner implements Runnable {
 			currentBestTime = Long.MAX_VALUE;
 		else
 			currentBestTime = 0;
+		Stopwatch searchTimeSW = Stopwatch.createStarted();
 		try {
 			startTuner();
 			Pair<Boolean, Long> ret;
@@ -87,6 +91,8 @@ public class OnlineTuner implements Runnable {
 			System.out.println("New tune run.............");
 			while (manager.getStatus() != AppStatus.STOPPED) {
 				String cfgJson = tuner.readLine();
+				logger.logSearchTime(searchTimeSW
+						.elapsed(TimeUnit.MILLISECONDS));
 				if (cfgJson == null) {
 					System.err.println("OpenTuner closed unexpectly.");
 					break;
@@ -107,6 +113,8 @@ public class OnlineTuner implements Runnable {
 							? time : currentBestTime;
 					prognosticator.time(ret.second);
 					tuner.writeLine(new Double(ret.second).toString());
+					searchTimeSW.reset();
+					searchTimeSW.start();
 				} else {
 					tuner.writeLine("exit");
 					break;

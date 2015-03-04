@@ -134,4 +134,11 @@ public interface TimeLogger {
 	 *            empty string if the prefix is unknown.
 	 */
 	public void newConfiguration(String cfgPrefix);
+
+	/**
+	 * Logs the time taken to get a new configuration from the OpenTuner.
+	 * 
+	 * @param time
+	 */
+	public void logSearchTime(long time);
 }

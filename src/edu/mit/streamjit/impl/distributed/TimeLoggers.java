@@ -1,6 +1,5 @@
 package edu.mit.streamjit.impl.distributed;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -32,7 +31,8 @@ public class TimeLoggers {
 		public FileTimeLogger(String appName) {
 			super(Utils.fileWriter(appName, "compileTime.txt"), Utils
 					.fileWriter(appName, "runTime.txt"), Utils.fileWriter(
-					appName, "drainTime.txt"));
+					appName, "drainTime.txt"), Utils.fileWriter(appName,
+					"searchTime.txt"));
 		}
 	}
 
@@ -97,6 +97,10 @@ public class TimeLoggers {
 		@Override
 		public void drainDataCollectionFinished(String msg) {
 		}
+
+		@Override
+		public void logSearchTime(long time) {
+		}
 	}
 
 	/**
@@ -106,7 +110,7 @@ public class TimeLoggers {
 	public static class PrintTimeLogger extends TimeLoggerImpl {
 
 		public PrintTimeLogger() {
-			super(System.out, System.out, System.out);
+			super(System.out, System.out, System.out, System.out);
 		}
 	}
 
@@ -117,6 +121,8 @@ public class TimeLoggers {
 		private final OutputStreamWriter drainTimeWriter;
 
 		private final OutputStreamWriter runTimeWriter;
+
+		private final OutputStreamWriter searchTimeWriter;
 
 		private int reconfigNo = 0;
 
@@ -129,16 +135,17 @@ public class TimeLoggers {
 		private Stopwatch tuningRoundSW = null;
 
 		TimeLoggerImpl(OutputStream compileOS, OutputStream runOs,
-				OutputStream drainOs) {
+				OutputStream drainOs, OutputStream searchOs) {
 			this(getOSWriter(compileOS), getOSWriter(runOs),
-					getOSWriter(drainOs));
+					getOSWriter(drainOs), getOSWriter(searchOs));
 		}
 
 		TimeLoggerImpl(OutputStreamWriter compileW, OutputStreamWriter runW,
-				OutputStreamWriter drainW) {
+				OutputStreamWriter drainW, OutputStreamWriter searchW) {
 			compileTimeWriter = compileW;
 			runTimeWriter = runW;
 			drainTimeWriter = drainW;
+			searchTimeWriter = searchW;
 		}
 
 		@Override
@@ -245,6 +252,7 @@ public class TimeLoggers {
 							prevcfgPrefix);
 			write(compileTimeWriter, msg);
 			write(runTimeWriter, msg);
+			write(searchTimeWriter, msg);
 			write(drainTimeWriter, msg1);
 			prevcfgPrefix = cfgPrefix;
 		}
@@ -278,6 +286,12 @@ public class TimeLoggers {
 					e.printStackTrace();
 				}
 			}
+		}
+
+		@Override
+		public void logSearchTime(long time) {
+			write(searchTimeWriter,
+					String.format("Search time is %dms\n", time));
 		}
 	}
 }
