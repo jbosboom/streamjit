@@ -33,8 +33,7 @@ public class GraphPropertyPrognosticator implements ConfigurationPrognosticator 
 
 	public GraphPropertyPrognosticator(StreamJitApp<?, ?> app) {
 		this.app = app;
-		this.writer = Utils.fileWriter(String.format("%s%sGraphProperty.txt",
-				app.name, File.separator));
+		this.writer = Utils.fileWriter(app.name, "GraphProperty.txt");
 		writeHeader(writer);
 		paths = app.paths();
 	}

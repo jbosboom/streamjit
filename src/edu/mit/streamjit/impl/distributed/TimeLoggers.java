@@ -30,11 +30,9 @@ public class TimeLoggers {
 	public static class FileTimeLogger extends TimeLoggerImpl {
 
 		public FileTimeLogger(String appName) {
-			super(Utils.fileWriter(String.format("%s%scompileTime.txt",
-					appName, File.separator)), Utils.fileWriter(String.format(
-					"%s%srunTime.txt", appName, File.separator)), Utils
-					.fileWriter(String.format("%s%sdrainTime.txt", appName,
-							File.separator)));
+			super(Utils.fileWriter(appName, "compileTime.txt"), Utils
+					.fileWriter(appName, "runTime.txt"), Utils.fileWriter(
+					appName, "drainTime.txt"));
 		}
 	}
 

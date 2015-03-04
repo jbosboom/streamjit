@@ -164,12 +164,36 @@ public class Utils {
 	}
 
 	/**
+	 * Returns a {@link FileWriter} of the file "dirName/fileName" with append =
+	 * false. Creates the file if it not exists. Suppresses {@link IOException}
+	 * and returns null if exception occurred. This method is added to keep
+	 * other classes clean.
+	 * 
+	 * @return {@link FileWriter} or null.
+	 */
+	public static FileWriter fileWriter(String dirName, String fileName) {
+		return fileWriter(dirName, fileName, false);
+	}
+
+	/**
+	 * Returns a {@link FileWriter} of the file "dirName/fileName". Creates the
+	 * file if it not exists. Suppresses {@link IOException} and returns null if
+	 * exception occurred. This method is added to keep other classes clean.
+	 * 
+	 * @return {@link FileWriter} or null.
+	 */
+	public static FileWriter fileWriter(String dirName, String fileName,
+			boolean append) {
+		String fullFileName = String.format("%s%s%s", dirName, File.separator,
+				fileName);
+		return fileWriter(fullFileName, append);
+	}
+	/**
 	 * Creates and returns a {@link FileWriter} with append = false. Suppresses
 	 * {@link IOException} and returns null if exception occurred. This method
 	 * is added to keep other classes clean.
 	 * 
-	 * @param name
-	 * @return
+	 * @return {@link FileWriter} or null.
 	 */
 	public static FileWriter fileWriter(String name) {
 		return fileWriter(name, false);
@@ -180,8 +204,7 @@ public class Utils {
 	 * and returns null if exception occurred. This method is added to keep
 	 * other classes clean.
 	 * 
-	 * @param name
-	 * @return
+	 * @return {@link FileWriter} or null.
 	 */
 	public static FileWriter fileWriter(String name, boolean append) {
 		FileWriter fw = null;

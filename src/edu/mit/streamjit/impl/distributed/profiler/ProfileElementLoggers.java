@@ -23,8 +23,7 @@ public class ProfileElementLoggers {
 				ProfileElementLoggerImpl {
 
 		public FileProfileElementLogger(String appName) {
-			super(Utils.fileWriter(String.format("%s%sprofile.txt", appName,
-					File.separator)));
+			super(Utils.fileWriter(appName, "profile.txt"));
 		}
 	}
 
