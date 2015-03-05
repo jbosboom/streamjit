@@ -332,4 +332,29 @@ public class TimeLogProcessor {
 				"Total=%f, TrueCount=%d(%f), FalseCount=%d(%f)", total,
 				truecnt, (truecnt / total), falsecnt, (falsecnt / total)));
 	}
+
+	public static void processEvaltxt(String appName) throws IOException {
+		File summaryDir = new File(String.format("%s%ssummary", appName,
+				File.separator));
+		Utils.createDir(summaryDir.getPath());
+		BufferedReader reader = new BufferedReader(new FileReader(
+				String.format("%s%sevaluation.txt", appName, File.separator)));
+		File outFile = new File(summaryDir, "processedEvaluation.txt");
+		FileWriter writer = new FileWriter(outFile, false);
+		String line;
+		int i = 0;
+		while ((line = reader.readLine()) != null) {
+			if (line.startsWith("Evaluation")) {
+				String[] arr = line.split(" ");
+				String time = arr[3].trim();
+				time = time.substring(0, time.length() - 2);
+				int val = Integer.parseInt(time);
+				String data = String.format("%-6d\t%-6d\n", ++i, val);
+				writer.write(data);
+			}
+		}
+		writer.flush();
+		reader.close();
+		writer.close();
+	}
 }
