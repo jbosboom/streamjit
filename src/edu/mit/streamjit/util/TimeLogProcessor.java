@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 
 /**
@@ -333,6 +334,11 @@ public class TimeLogProcessor {
 				truecnt, (truecnt / total), falsecnt, (falsecnt / total)));
 	}
 
+	/**
+	 * If you evaluate a same configuration for several times by setting the
+	 * {@link Options#evaluationCount} value, then use this method to process
+	 * the output evaluation.txt.
+	 */
 	public static void processEvaltxt(String appName) throws IOException {
 		File summaryDir = new File(String.format("%s%ssummary", appName,
 				File.separator));
@@ -356,5 +362,51 @@ public class TimeLogProcessor {
 		writer.flush();
 		reader.close();
 		writer.close();
+	}
+
+	/**
+	 * If you run a set of configurations in a cyclic manner by setting
+	 * {@link Options#verificationCount}, then use this method to process the
+	 * runTime.txt.
+	 */
+	private static void processVerifycaionRunTime(String appName, File outDir,
+			String cfgName) throws IOException {
+		BufferedReader reader = new BufferedReader(new FileReader(
+				String.format("%s%srunTime.txt", appName, File.separator)));
+		File outFile = new File(outDir, String.format("processed%s.txt",
+				cfgName));
+		FileWriter writer = new FileWriter(outFile, false);
+		String line;
+		String cfgPrefix = "Init";
+		int i = 0;
+		int min = Integer.MAX_VALUE;
+		while ((line = reader.readLine()) != null) {
+			if (line.startsWith("----------------------------"))
+				cfgPrefix = cfgString(line);
+			if (cfgName.equals(cfgPrefix))
+				if (line.startsWith("Execution")) {
+					String[] arr = line.split(" ");
+					String time = arr[3].trim();
+					time = time.substring(0, time.length() - 2);
+					int val = Integer.parseInt(time);
+					if (val < 1)
+						val = 2 * min;
+					min = Math.min(min, val);
+					String data = String.format("%-6d\t%-6s\t%-6d\t%-6d\n",
+							++i, cfgPrefix, val, min);
+					writer.write(data);
+				}
+		}
+		writer.flush();
+		reader.close();
+		writer.close();
+	}
+
+	public static void processVerifycaionRun(String appName) throws IOException {
+		File summaryDir = new File(String.format("%s%ssummary", appName,
+				File.separator));
+		Utils.createDir(summaryDir.getPath());
+		processVerifycaionRunTime(appName, summaryDir,
+				"final_NestedSplitJoinCore.cfg");
 	}
 }
