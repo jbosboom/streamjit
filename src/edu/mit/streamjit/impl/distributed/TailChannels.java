@@ -161,6 +161,20 @@ public class TailChannels {
 			if (scheduledExecutorService != null)
 				scheduledExecutorService.shutdown();
 		}
+
+		/**
+		 * Logs the time reporting event.
+		 * 
+		 * TODO: This method is just for debugging purpose, Remove this method
+		 * and its usage later.
+		 */
+		private void reportingTime(long time) {
+			if (writer != null)
+				try {
+					writer.write(String.format("Reporting time=%d...\n", time));
+				} catch (Exception e) {
+				}
+		}
 	}
 
 	private static abstract class AbstractBlockingTailChannel
@@ -240,6 +254,17 @@ public class TailChannels {
 		protected long unnormalizedTime(long time) {
 			return (time * (totalCount - skipCount)) / Options.outputCount;
 		}
+
+		/**
+		 * Logs the time reporting event.
+		 * 
+		 * TODO: This method is just for debugging purpose, Remove this method
+		 * and its usage later.
+		 */
+		protected void reportingTime(long time) {
+			if (outputCountPrinter != null)
+				outputCountPrinter.reportingTime(time);
+		}
 	}
 
 	public static final class BlockingTailChannel1
@@ -316,6 +341,7 @@ public class TailChannels {
 			steadyLatch.await();
 			stopwatch.stop();
 			long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+			reportingTime(time);
 			return normalizedTime(time);
 		}
 
@@ -334,11 +360,11 @@ public class TailChannels {
 				Thread.sleep(100);
 			}
 
-			if (stopwatch.elapsed(TimeUnit.MILLISECONDS) > timeout)
-				return -1;
-
 			stopwatch.stop();
 			long time = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+			reportingTime(time);
+			if (time > timeout)
+				return -1;
 			return normalizedTime(time);
 		}
 
@@ -432,6 +458,7 @@ public class TailChannels {
 			while (stopWatch.isRunning())
 				Thread.sleep(250);
 			long time = stopWatch.elapsed(TimeUnit.MILLISECONDS);
+			reportingTime(time);
 			return normalizedTime(time);
 		}
 
@@ -451,7 +478,7 @@ public class TailChannels {
 			}
 
 			long time = stopWatch.elapsed(TimeUnit.MILLISECONDS);
-
+			reportingTime(time);
 			if (time > timeout)
 				return -1;
 			else
