@@ -163,17 +163,20 @@ public class TailChannels {
 		}
 
 		/**
-		 * Logs the time reporting event.
-		 * 
+		 * This method writes to the file in a non thread safe way. But this is
+		 * enough to serve the purpose.
+		 * <P>
 		 * TODO: This method is just for debugging purpose, Remove this method
 		 * and its usage later.
 		 */
-		private void reportingTime(long time) {
+		private boolean write(String msg) {
 			if (writer != null)
 				try {
-					writer.write(String.format("Reporting time=%d...\n", time));
+					writer.write(msg);
+					return true;
 				} catch (Exception e) {
 				}
+			return false;
 		}
 	}
 
@@ -190,6 +193,8 @@ public class TailChannels {
 		private PerformanceLogger pLogger = null;
 
 		private OutputCountPrinter outputCountPrinter = null;
+
+		private final String cfgPrefix;
 
 		protected abstract void releaseAndInitilize();
 
@@ -212,11 +217,12 @@ public class TailChannels {
 		public AbstractBlockingTailChannel(Buffer buffer,
 				ConnectionProvider conProvider, ConnectionInfo conInfo,
 				String bufferTokenName, int debugLevel, int skipCount,
-				int steadyCount, String appName) {
+				int steadyCount, String appName, String cfgPrefix) {
 			super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
 			this.skipCount = skipCount;
 			this.totalCount = steadyCount + skipCount;
 			count = 0;
+			this.cfgPrefix = cfgPrefix;
 			if (Options.tune == 0) {
 				// TODO: Leaks this object from the constructor. May cause
 				// subtle bugs. Re-factor it.
@@ -262,8 +268,11 @@ public class TailChannels {
 		 * and its usage later.
 		 */
 		protected void reportingTime(long time) {
-			if (outputCountPrinter != null)
-				outputCountPrinter.reportingTime(time);
+			if (outputCountPrinter != null) {
+				String msg = String.format("Reporting...%s.cfg,time=%d\n",
+						cfgPrefix, time);
+				outputCountPrinter.write(msg);
+			}
 		}
 	}
 
@@ -300,9 +309,9 @@ public class TailChannels {
 		public BlockingTailChannel1(Buffer buffer,
 				ConnectionProvider conProvider, ConnectionInfo conInfo,
 				String bufferTokenName, int debugLevel, int skipCount,
-				int steadyCount, String appName) {
+				int steadyCount, String appName, String cfgPrefix) {
 			super(buffer, conProvider, conInfo, bufferTokenName, debugLevel,
-					skipCount, steadyCount, appName);
+					skipCount, steadyCount, appName, cfgPrefix);
 			steadyLatch = new CountDownLatch(1);
 			skipLatch = new CountDownLatch(1);
 			this.skipLatchUp = true;
@@ -419,9 +428,9 @@ public class TailChannels {
 		public BlockingTailChannel2(Buffer buffer,
 				ConnectionProvider conProvider, ConnectionInfo conInfo,
 				String bufferTokenName, int debugLevel, int skipCount,
-				int steadyCount, String appName) {
+				int steadyCount, String appName, String cfgPrefix) {
 			super(buffer, conProvider, conInfo, bufferTokenName, debugLevel,
-					skipCount, steadyCount, appName);
+					skipCount, steadyCount, appName, cfgPrefix);
 			stopWatch = Stopwatch.createUnstarted();
 			skipLatch = new CountDownLatch(1);
 			this.skipLatchUp = true;

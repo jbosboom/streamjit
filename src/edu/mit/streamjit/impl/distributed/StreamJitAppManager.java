@@ -352,16 +352,17 @@ public class StreamJitAppManager {
 		int debugLevel = 0;
 		String bufferTokenName = "tailChannel - " + tailToken.toString();
 		ConnectionProvider conProvider = controller.getConProvider();
-
+		String cfgPrefix = ConfigurationUtils.getConfigPrefix(app
+				.getConfiguration());
 		switch (Options.tailChannel) {
 			case 1 :
 				return new TailChannels.BlockingTailChannel1(buffer,
 						conProvider, conInfo, bufferTokenName, debugLevel,
-						skipCount, steadyCount, appName);
+						skipCount, steadyCount, appName, cfgPrefix);
 			default :
 				return new TailChannels.BlockingTailChannel2(buffer,
 						conProvider, conInfo, bufferTokenName, debugLevel,
-						skipCount, steadyCount, appName);
+						skipCount, steadyCount, appName, cfgPrefix);
 		}
 	}
 
