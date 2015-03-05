@@ -360,8 +360,9 @@ public class OnlineTuner implements Runnable {
 		}
 
 		private FileWriter writer() throws IOException {
-			FileWriter writer = new FileWriter(String.format("%s%sEval_%s.txt",
-					app.name, File.separator, app.name), true);
+			FileWriter writer = new FileWriter(String.format(
+					"%s%sevaluation.txt", app.name, File.separator, app.name),
+					true);
 			writer.write("##########################################################");
 			Properties prop = Options.getProperties();
 			prop.store(writer, "");
