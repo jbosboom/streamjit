@@ -145,7 +145,7 @@ mkdir -p $app
 cd $app
 mkdir -p $mainClass
 scp -r ${username}@lanka.csail.mit.edu:/data/scratch/${username}/$app/$mainClass/\{summary,*.txt,streamgraph.dot\} $mainClass/
-scp -r ${username}@lanka.csail.mit.edu:/data/scratch/${username}/$app/\{*.sh,slurm-*,options.properties,*.jar\} .
+scp -r ${username}@lanka.csail.mit.edu:/data/scratch/${username}/$app/\{*.sh,slurm-*,options.properties\} .
 	</echo>
 	</target>
 </project>
