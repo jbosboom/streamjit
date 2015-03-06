@@ -95,6 +95,7 @@ public class OnlineTuner implements Runnable {
 
 			System.out.println("New tune run.............");
 			while (manager.getStatus() != AppStatus.STOPPED) {
+				mLogger.bTuningRound();
 				String cfgJson = tuner.readLine();
 				logger.logSearchTime(searchTimeSW
 						.elapsed(TimeUnit.MILLISECONDS));
@@ -130,6 +131,7 @@ public class OnlineTuner implements Runnable {
 					tuner.writeLine("exit");
 					break;
 				}
+				mLogger.eTuningRound();
 			}
 
 		} catch (IOException e) {

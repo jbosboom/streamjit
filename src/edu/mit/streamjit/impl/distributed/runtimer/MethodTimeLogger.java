@@ -45,6 +45,9 @@ public interface MethodTimeLogger {
 	void bGetFixedOutputTime();
 	void eGetFixedOutputTime();
 
+	void bTuningRound();
+	void eTuningRound();
+
 	public static class MethodTimeLoggerImpl implements MethodTimeLogger {
 
 		private final OutputStreamWriter osWriter;
@@ -58,6 +61,7 @@ public interface MethodTimeLogger {
 		private final Stopwatch intermediateDraining;
 		private final Stopwatch managerReconfigure;
 		private final Stopwatch getFixedOutputTime;
+		private final Stopwatch tuningRound;
 
 		private RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
 
@@ -72,8 +76,9 @@ public interface MethodTimeLogger {
 			this.intermediateDraining = Stopwatch.createUnstarted();
 			this.managerReconfigure = Stopwatch.createUnstarted();
 			this.getFixedOutputTime = Stopwatch.createUnstarted();
+			this.tuningRound = Stopwatch.createUnstarted();
 			write("Method\t\t\tUptime\t\telapsedtime\n");
-			write("----------------------------------------------------\n");
+			write("====================================================\n");
 		}
 
 		@Override
@@ -164,6 +169,17 @@ public interface MethodTimeLogger {
 		@Override
 		public void eGetFixedOutputTime() {
 			end(getFixedOutputTime, "getFixedOutputTime");
+		}
+
+		@Override
+		public void bTuningRound() {
+			begin(tuningRound);
+		}
+
+		@Override
+		public void eTuningRound() {
+			end(tuningRound, "tuningRound");
+			write("--------------------------------------------------\n");
 		}
 
 		private void begin(Stopwatch sw) {
