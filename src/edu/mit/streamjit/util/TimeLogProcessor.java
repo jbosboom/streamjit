@@ -192,7 +192,7 @@ public class TimeLogProcessor {
 		FileWriter verify = new FileWriter(String.format("%s%sverify.txt",
 				appName, File.separator));
 		int min = Integer.MAX_VALUE;
-
+		writer.write("cfg\tTRTime\tcomp\trun\tdrain\tmin\n");
 		for (int i = 1; i <= tuningRoundTime.size(); i++) {
 			String key = new Integer(i).toString();
 			Integer time = runTime.get(key);
