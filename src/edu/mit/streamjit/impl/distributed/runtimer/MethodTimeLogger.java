@@ -210,7 +210,7 @@ public interface MethodTimeLogger {
 
 	public static class FileMethodTimeLogger extends MethodTimeLoggerImpl {
 		public FileMethodTimeLogger(String appName) {
-			super(Utils.fileWriter(appName, "OnlineTuner.txt"));
+			super(Utils.fileWriter(appName, "onlineTuner.txt"));
 		}
 	}
 }
