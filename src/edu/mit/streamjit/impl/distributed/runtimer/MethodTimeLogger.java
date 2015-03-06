@@ -1,6 +1,7 @@
 package edu.mit.streamjit.impl.distributed.runtimer;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
@@ -64,6 +65,10 @@ public interface MethodTimeLogger {
 		private final Stopwatch tuningRound;
 
 		private RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
+
+		public MethodTimeLoggerImpl(OutputStream os) {
+			this(getOSWriter(os));
+		}
 
 		public MethodTimeLoggerImpl(OutputStreamWriter osWriter) {
 			this.osWriter = osWriter;
@@ -191,8 +196,6 @@ public interface MethodTimeLogger {
 			sw.stop();
 			long uptime = rb.getUptime();
 			long elapsedtime = sw.elapsed(TimeUnit.MILLISECONDS);
-			// write(String.format("%s:uptime=%d,elapsedtime=%d\n", methodName,
-			// uptime, elapsedtime));
 			write(String.format("%-22s\t%-12d\t%d\n", methodName, uptime,
 					elapsedtime));
 		}
@@ -206,11 +209,23 @@ public interface MethodTimeLogger {
 					e.printStackTrace();
 				}
 		}
+
+		private static OutputStreamWriter getOSWriter(OutputStream os) {
+			if (os == null)
+				return null;
+			return new OutputStreamWriter(os);
+		}
 	}
 
 	public static class FileMethodTimeLogger extends MethodTimeLoggerImpl {
 		public FileMethodTimeLogger(String appName) {
 			super(Utils.fileWriter(appName, "onlineTuner.txt"));
+		}
+	}
+
+	public static class PrintMethodTimeLogger extends MethodTimeLoggerImpl {
+		public PrintMethodTimeLogger() {
+			super(System.out);
 		}
 	}
 }
