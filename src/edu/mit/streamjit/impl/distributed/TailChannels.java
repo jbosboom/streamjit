@@ -160,6 +160,12 @@ public class TailChannels {
 		private void stop() {
 			if (scheduledExecutorService != null)
 				scheduledExecutorService.shutdown();
+			if (writer != null)
+				try {
+					writer.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 		}
 
 		/**
