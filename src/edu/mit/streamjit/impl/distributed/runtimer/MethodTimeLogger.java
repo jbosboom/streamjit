@@ -108,7 +108,7 @@ public interface MethodTimeLogger {
 
 		@Override
 		public void eNewCfg(int round) {
-			end(newCfg, "newCfg");
+			end(newCfg, String.format("newCfg-%d", round));
 		}
 
 		@Override
