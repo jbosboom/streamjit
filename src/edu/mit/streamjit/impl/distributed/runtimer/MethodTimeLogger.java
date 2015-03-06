@@ -72,6 +72,8 @@ public interface MethodTimeLogger {
 			this.intermediateDraining = Stopwatch.createUnstarted();
 			this.managerReconfigure = Stopwatch.createUnstarted();
 			this.getFixedOutputTime = Stopwatch.createUnstarted();
+			write("Method\t\t\tUptime\t\telapsedtime\n");
+			write("----------------------------------------------------\n");
 		}
 
 		@Override
@@ -173,8 +175,10 @@ public interface MethodTimeLogger {
 			sw.stop();
 			long uptime = rb.getUptime();
 			long elapsedtime = sw.elapsed(TimeUnit.MILLISECONDS);
-			write(String.format("%s:uptime=%d,elapsedtime=%d\n", methodName,
-					uptime, elapsedtime));
+			// write(String.format("%s:uptime=%d,elapsedtime=%d\n", methodName,
+			// uptime, elapsedtime));
+			write(String.format("%-22s\t%-12d\t%d\n", methodName, uptime,
+					elapsedtime));
 		}
 
 		private void write(String msg) {
