@@ -49,6 +49,9 @@ public interface MethodTimeLogger {
 	void bTuningRound();
 	void eTuningRound();
 
+	void bCfgManagerNewcfg();
+	void eCfgManagerNewcfg();
+
 	/**
 	 * Logs nothing.
 	 */
@@ -133,6 +136,14 @@ public interface MethodTimeLogger {
 		@Override
 		public void eTuningRound() {
 		}
+
+		@Override
+		public void bCfgManagerNewcfg() {
+		}
+
+		@Override
+		public void eCfgManagerNewcfg() {
+		}
 	}
 
 	public static class MethodTimeLoggerImpl implements MethodTimeLogger {
@@ -149,6 +160,7 @@ public interface MethodTimeLogger {
 		private final Stopwatch managerReconfigure;
 		private final Stopwatch getFixedOutputTime;
 		private final Stopwatch tuningRound;
+		private final Stopwatch CfgManagerNewcfg;
 
 		private RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
 
@@ -168,6 +180,7 @@ public interface MethodTimeLogger {
 			this.managerReconfigure = Stopwatch.createUnstarted();
 			this.getFixedOutputTime = Stopwatch.createUnstarted();
 			this.tuningRound = Stopwatch.createUnstarted();
+			this.CfgManagerNewcfg = Stopwatch.createUnstarted();
 			write("Method\t\t\tUptime\t\telapsedtime\n");
 			write("====================================================\n");
 		}
@@ -271,6 +284,16 @@ public interface MethodTimeLogger {
 		public void eTuningRound() {
 			end(tuningRound, "tuningRound");
 			write("--------------------------------------------------\n");
+		}
+
+		@Override
+		public void bCfgManagerNewcfg() {
+			begin(CfgManagerNewcfg);
+		}
+
+		@Override
+		public void eCfgManagerNewcfg() {
+			end(CfgManagerNewcfg, "CfgManagerNewcfg");
 		}
 
 		private void begin(Stopwatch sw) {
