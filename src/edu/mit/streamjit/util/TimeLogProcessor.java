@@ -199,6 +199,7 @@ public class TimeLogProcessor {
 
 			if (time == null) {
 				System.err.println("No running time for round " + key);
+				continue;
 			} else if (time < min) {
 				verify.write(String.format("%s=%d\n", key, time));
 				min = time;
