@@ -24,6 +24,7 @@ import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
+import edu.mit.streamjit.impl.distributed.runtimer.MethodTimeLogger.FileMethodTimeLogger;
 import edu.mit.streamjit.tuner.OpenTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
 import edu.mit.streamjit.util.ConfigurationUtils;
@@ -47,6 +48,7 @@ public class OnlineTuner implements Runnable {
 	private final TimeLogger logger;
 	private final ConfigurationPrognosticator prognosticator;
 	private final Verifier verifier;
+	private final MethodTimeLogger mLogger;
 
 	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
 			StreamJitApp<?, ?> app, ConfigurationManager cfgManager,
@@ -60,6 +62,7 @@ public class OnlineTuner implements Runnable {
 		this.logger = logger;
 		this.prognosticator = new GraphPropertyPrognosticator(app);
 		this.verifier = new Verifier();
+		this.mLogger = new FileMethodTimeLogger(app.name);
 	}
 
 	@Override
@@ -85,7 +88,9 @@ public class OnlineTuner implements Runnable {
 			currentBestTime = 0;
 		Stopwatch searchTimeSW = Stopwatch.createStarted();
 		try {
+			mLogger.bStartTuner();
 			startTuner();
+			mLogger.eStartTuner();
 			Pair<Boolean, Long> ret;
 
 			System.out.println("New tune run.............");
@@ -101,12 +106,18 @@ public class OnlineTuner implements Runnable {
 				// At the end of the tuning, Opentuner will send "Completed"
 				// msg. This means no more tuning.
 				if (cfgJson.equals("Completed")) {
+					mLogger.bHandleTermination();
 					handleTermination();
+					mLogger.eHandleTermination();
 					break;
 				}
 
+				mLogger.bNewCfg();
 				Configuration config = newCfg(++round, cfgJson);
+				mLogger.eNewCfg(round);
+				mLogger.bReconfigure();
 				ret = reconfigure(config, 2 * currentBestTime);
+				mLogger.eReconfigure();
 				if (ret.first) {
 					long time = ret.second;
 					currentBestTime = (time > 1 && currentBestTime > time)
@@ -123,10 +134,13 @@ public class OnlineTuner implements Runnable {
 
 		} catch (IOException e) {
 			e.printStackTrace();
+			mLogger.bTerminate();
 			terminate();
+			mLogger.eTerminate();
 		}
-
+		mLogger.bTuningFinished();
 		tuningFinished();
+		mLogger.eTuningFinished();
 	}
 
 	private void startTuner() throws IOException {
@@ -180,16 +194,24 @@ public class OnlineTuner implements Runnable {
 			return new Pair<Boolean, Long>(true, -3l);
 
 		try {
-			if (!intermediateDraining())
+			mLogger.bIntermediateDraining();
+			boolean intermediateDraining = intermediateDraining();
+			mLogger.eIntermediateDraining();
+			if (!intermediateDraining)
 				return new Pair<Boolean, Long>(false, -4l);
 
 			drainer.setBlobGraph(app.blobGraph);
 			int multiplier = getMultiplier(config);
-			if (manager.reconfigure(multiplier)) {
+			mLogger.bManagerReconfigure();
+			boolean reconfigure = manager.reconfigure(multiplier);
+			mLogger.eManagerReconfigure();
+			if (reconfigure) {
 				// TODO: need to check the manager's status before passing the
 				// time. Exceptions, final drain, etc may causes app to stop
 				// executing.
+				mLogger.bGetFixedOutputTime();
 				time = manager.getFixedOutputTime(timeout);
+				mLogger.eGetFixedOutputTime();
 				logger.logRunTime(time);
 			} else {
 				time = -5l;
