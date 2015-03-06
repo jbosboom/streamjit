@@ -49,6 +49,92 @@ public interface MethodTimeLogger {
 	void bTuningRound();
 	void eTuningRound();
 
+	/**
+	 * Logs nothing.
+	 */
+	public static class NoMethodTimeLogger implements MethodTimeLogger {
+
+		@Override
+		public void bStartTuner() {
+		}
+
+		@Override
+		public void eStartTuner() {
+		}
+
+		@Override
+		public void bHandleTermination() {
+		}
+
+		@Override
+		public void eHandleTermination() {
+		}
+
+		@Override
+		public void bNewCfg() {
+		}
+
+		@Override
+		public void eNewCfg(int round) {
+		}
+
+		@Override
+		public void bReconfigure() {
+		}
+
+		@Override
+		public void eReconfigure() {
+		}
+
+		@Override
+		public void bTuningFinished() {
+		}
+
+		@Override
+		public void eTuningFinished() {
+		}
+
+		@Override
+		public void bTerminate() {
+		}
+
+		@Override
+		public void eTerminate() {
+		}
+
+		@Override
+		public void bIntermediateDraining() {
+		}
+
+		@Override
+		public void eIntermediateDraining() {
+		}
+
+		@Override
+		public void bManagerReconfigure() {
+		}
+
+		@Override
+		public void eManagerReconfigure() {
+		}
+
+		@Override
+		public void bGetFixedOutputTime() {
+		}
+
+		@Override
+		public void eGetFixedOutputTime() {
+		}
+
+		@Override
+		public void bTuningRound() {
+		}
+
+		@Override
+		public void eTuningRound() {
+		}
+	}
+
 	public static class MethodTimeLoggerImpl implements MethodTimeLogger {
 
 		private final OutputStreamWriter osWriter;
@@ -217,12 +303,18 @@ public interface MethodTimeLogger {
 		}
 	}
 
+	/**
+	 * Writes the method call time info to appName/onlineTuner.txt file.
+	 */
 	public static class FileMethodTimeLogger extends MethodTimeLoggerImpl {
 		public FileMethodTimeLogger(String appName) {
 			super(Utils.fileWriter(appName, "onlineTuner.txt"));
 		}
 	}
 
+	/**
+	 * Prints the method call time info to the standard out.
+	 */
 	public static class PrintMethodTimeLogger extends MethodTimeLoggerImpl {
 		public PrintMethodTimeLogger() {
 			super(System.out);
