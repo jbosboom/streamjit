@@ -211,13 +211,14 @@ public interface Visualizer {
 		}
 
 		private void runDot(String file) {
+			String outFileFormat = "svg";
 			String fileName = String.format("./%s%s%s.dot", appName,
 					File.separator, file);
 			String outFileName = String.format(
-					"./%s%sconfigurations%s%s_%s.png", appName, File.separator,
-					File.separator, namePrefix, file);
-			ProcessBuilder pb = new ProcessBuilder("dot", "-Tpng", fileName,
-					"-o", outFileName);
+					"./%s%sconfigurations%s%s_%s.%s", appName, File.separator,
+					File.separator, namePrefix, file, outFileFormat);
+			ProcessBuilder pb = new ProcessBuilder("dot", "-T" + outFileFormat,
+					fileName, "-o", outFileName);
 			try {
 				Process p = pb.start();
 				// TODO: [20-2-2015]. I am commenting the following line for
