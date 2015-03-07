@@ -10,17 +10,19 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobFactory;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager;
+import edu.mit.streamjit.impl.distributed.PartitionManager;
 import edu.mit.streamjit.impl.distributed.WorkerMachine;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Options;
 
 public class ConcurrentBlobFactory implements BlobFactory {
 
 	private int noOfBlobs;
 
-	private final ConfigurationManager cfgManager;
+	private final PartitionManager partitionManager;
 
-	public ConcurrentBlobFactory(ConfigurationManager cfgManager, int noOfBlobs) {
-		this.cfgManager = cfgManager;
+	public ConcurrentBlobFactory(PartitionManager partitionManager,
+			int noOfBlobs) {
+		this.partitionManager = partitionManager;
 		this.noOfBlobs = noOfBlobs;
 	}
 
@@ -45,12 +47,12 @@ public class ConcurrentBlobFactory implements BlobFactory {
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers) {
 		Configuration concurrentCfg;
 		if (this.noOfBlobs > 1)
-			concurrentCfg = cfgManager.getDefaultConfiguration(workers,
+			concurrentCfg = partitionManager.getDefaultConfiguration(workers,
 					noOfBlobs);
 		else
 			concurrentCfg = Configuration.builder().build();
 
-		if (!GlobalConstants.useCompilerBlob)
+		if (!Options.useCompilerBlob)
 			return concurrentCfg;
 
 		Configuration.Builder builder = Configuration.builder(concurrentCfg);
@@ -65,8 +67,9 @@ public class ConcurrentBlobFactory implements BlobFactory {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result
-				+ ((cfgManager == null) ? 0 : cfgManager.hashCode());
+		result = prime
+				* result
+				+ ((partitionManager == null) ? 0 : partitionManager.hashCode());
 		result = prime * result + noOfBlobs;
 		return result;
 	}
@@ -80,10 +83,10 @@ public class ConcurrentBlobFactory implements BlobFactory {
 		if (getClass() != obj.getClass())
 			return false;
 		ConcurrentBlobFactory other = (ConcurrentBlobFactory) obj;
-		if (cfgManager == null) {
-			if (other.cfgManager != null)
+		if (partitionManager == null) {
+			if (other.partitionManager != null)
 				return false;
-		} else if (!cfgManager.equals(other.cfgManager))
+		} else if (!partitionManager.equals(other.partitionManager))
 			return false;
 		if (noOfBlobs != other.noOfBlobs)
 			return false;

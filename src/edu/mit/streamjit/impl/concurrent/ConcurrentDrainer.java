@@ -10,8 +10,10 @@ import com.google.common.collect.ImmutableMap;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.BlobThread;
+import edu.mit.streamjit.impl.common.TimeLogger;
 import edu.mit.streamjit.impl.common.drainer.AbstractDrainer;
 import edu.mit.streamjit.impl.common.drainer.BlobGraph;
+import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.Utils;
 
@@ -34,8 +36,9 @@ public final class ConcurrentDrainer extends AbstractDrainer {
 	 */
 	ImmutableMap<Blob, Set<BlobThread>> threadMap;
 
-	public ConcurrentDrainer(BlobGraph blobGraph,
-			Map<Blob, Set<BlobThread>> threadMap) {
+	public ConcurrentDrainer(StreamJitApp<?, ?> app, TimeLogger logger,
+			BlobGraph blobGraph, Map<Blob, Set<BlobThread>> threadMap) {
+		super(app, logger);
 		setBlobGraph(blobGraph);
 		blobMap = buildBlobMap(threadMap.keySet());
 		this.threadMap = ImmutableMap.copyOf(threadMap);
@@ -98,6 +101,5 @@ public final class ConcurrentDrainer extends AbstractDrainer {
 
 	@Override
 	protected void prepareDraining(boolean isFinal) {
-		// TODO Auto-generated method stub
 	}
 }
