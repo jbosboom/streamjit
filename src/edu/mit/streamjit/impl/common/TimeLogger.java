@@ -2,7 +2,7 @@ package edu.mit.streamjit.impl.common;
 
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
-import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
+import edu.mit.streamjit.tuner.OnlineTuner;
 
 /**
  * Logs various time measurements for off line performance analysis. Controller

@@ -8,7 +8,7 @@ import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.drainer.BlobGraph;
-import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
+import edu.mit.streamjit.tuner.OnlineTuner;
 
 public class ConfigurationManager {
 

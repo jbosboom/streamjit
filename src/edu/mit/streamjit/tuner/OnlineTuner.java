@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.distributed.runtimer;
+package edu.mit.streamjit.tuner;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -24,9 +24,7 @@ import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
-import edu.mit.streamjit.impl.distributed.runtimer.MethodTimeLogger.FileMethodTimeLogger;
-import edu.mit.streamjit.tuner.OpenTuner;
-import edu.mit.streamjit.tuner.TCPTuner;
+import edu.mit.streamjit.tuner.MethodTimeLogger.FileMethodTimeLogger;
 import edu.mit.streamjit.util.ConfigurationUtils;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.TimeLogProcessor;

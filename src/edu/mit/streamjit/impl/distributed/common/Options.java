@@ -15,7 +15,7 @@ import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.distributed.TailChannels;
 import edu.mit.streamjit.impl.distributed.TailChannels.BlockingTailChannel1;
 import edu.mit.streamjit.impl.distributed.TailChannels.BlockingTailChannel2;
-import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
+import edu.mit.streamjit.tuner.OnlineTuner;
 import edu.mit.streamjit.tuner.TCPTuner;
 
 /**

@@ -1,4 +1,4 @@
-package edu.mit.streamjit.impl.distributed.runtimer;
+package edu.mit.streamjit.tuner;
 
 import java.io.File;
 import java.io.FileWriter;
