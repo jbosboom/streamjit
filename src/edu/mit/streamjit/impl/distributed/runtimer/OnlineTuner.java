@@ -195,7 +195,10 @@ public class OnlineTuner implements Runnable {
 		if (!validCfg)
 			return new Pair<Boolean, Long>(true, -2l);
 
-		if (!prognosticator.prognosticate(config))
+		mLogger.bPrognosticate();
+		boolean prog = prognosticator.prognosticate(config);
+		mLogger.ePrognosticate();
+		if (!prog)
 			return new Pair<Boolean, Long>(true, -3l);
 
 		try {

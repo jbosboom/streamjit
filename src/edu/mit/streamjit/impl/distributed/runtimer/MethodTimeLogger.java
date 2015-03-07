@@ -52,6 +52,9 @@ public interface MethodTimeLogger {
 	void bCfgManagerNewcfg();
 	void eCfgManagerNewcfg();
 
+	void bPrognosticate();
+	void ePrognosticate();
+
 	/**
 	 * Logs nothing.
 	 */
@@ -144,6 +147,14 @@ public interface MethodTimeLogger {
 		@Override
 		public void eCfgManagerNewcfg() {
 		}
+
+		@Override
+		public void bPrognosticate() {
+		}
+
+		@Override
+		public void ePrognosticate() {
+		}
 	}
 
 	public static class MethodTimeLoggerImpl implements MethodTimeLogger {
@@ -160,7 +171,8 @@ public interface MethodTimeLogger {
 		private final Stopwatch managerReconfigure;
 		private final Stopwatch getFixedOutputTime;
 		private final Stopwatch tuningRound;
-		private final Stopwatch CfgManagerNewcfg;
+		private final Stopwatch cfgManagerNewcfg;
+		private final Stopwatch prognosticate;
 
 		private RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
 
@@ -180,7 +192,8 @@ public interface MethodTimeLogger {
 			this.managerReconfigure = Stopwatch.createUnstarted();
 			this.getFixedOutputTime = Stopwatch.createUnstarted();
 			this.tuningRound = Stopwatch.createUnstarted();
-			this.CfgManagerNewcfg = Stopwatch.createUnstarted();
+			this.cfgManagerNewcfg = Stopwatch.createUnstarted();
+			this.prognosticate = Stopwatch.createUnstarted();
 			write("Method\t\t\tUptime\t\telapsedtime\n");
 			write("====================================================\n");
 		}
@@ -288,12 +301,22 @@ public interface MethodTimeLogger {
 
 		@Override
 		public void bCfgManagerNewcfg() {
-			begin(CfgManagerNewcfg);
+			begin(cfgManagerNewcfg);
 		}
 
 		@Override
 		public void eCfgManagerNewcfg() {
-			end(CfgManagerNewcfg, "CfgManagerNewcfg");
+			end(cfgManagerNewcfg, "CfgManagerNewcfg");
+		}
+
+		@Override
+		public void bPrognosticate() {
+			begin(prognosticate);
+		}
+
+		@Override
+		public void ePrognosticate() {
+			end(prognosticate, "prognosticate");
 		}
 
 		private void begin(Stopwatch sw) {
