@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +30,7 @@ import edu.mit.streamjit.util.bytecode.methodhandles.ProxyFactory;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 /**
  * Represents one core during the compilation.
@@ -38,16 +39,19 @@ import java.util.List;
  */
 public class Core {
 	private final ImmutableMap<Storage, ConcreteStorage> storage;
+	private final BiFunction<MethodHandle[], WorkerActor, MethodHandle> switchFactory;
 	private final ImmutableMap<ActorGroup, Integer> unrollFactors;
 	private final ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers, outputTransformers;
 	private final ProxyFactory bytecodifier;
 	private final List<Pair<ActorGroup, Range<Integer>>> allocations = new ArrayList<>();
 	public Core(ImmutableMap<Storage, ConcreteStorage> storage,
+			BiFunction<MethodHandle[], WorkerActor, MethodHandle> switchFactory,
 			ImmutableMap<ActorGroup, Integer> unrollFactors,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers,
 			ProxyFactory bytecodifier) {
 		this.storage = storage;
+		this.switchFactory = switchFactory;
 		this.unrollFactors = unrollFactors;
 		this.inputTransformers = inputTransformers;
 		this.outputTransformers = outputTransformers;
@@ -64,7 +68,7 @@ public class Core {
 		//List<Pair<ActorGroup, MethodHandle>>, then sort before semicolon(code).
 		List<MethodHandle> code = new ArrayList<>(allocations.size());
 		for (Pair<ActorGroup, Range<Integer>> p : allocations)
-			code.add(p.first.specialize(p.second, storage, unrollFactors.get(p.first), inputTransformers, outputTransformers, bytecodifier));
+			code.add(p.first.specialize(p.second, storage, switchFactory, unrollFactors.get(p.first), inputTransformers, outputTransformers, bytecodifier));
 		return Combinators.semicolon(code);
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -119,6 +119,7 @@ public class Compiler2 {
 	public static final AllocationStrategy ALLOCATION_STRATEGY = new SubsetBiasAllocationStrategy(8);
 	public static final StorageStrategy INTERNAL_STORAGE_STRATEGY = new TuneInternalStorageStrategy();
 	public static final StorageStrategy EXTERNAL_STORAGE_STRATEGY = new TuneExternalStorageStrategy();
+	public static final SwitchingStrategy SWITCHING_STRATEGY = SwitchingStrategy.tunePerWorker();
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
@@ -894,7 +895,7 @@ public class Compiler2 {
 		 * time we build the token init schedule information required by the
 		 * blob host.
 		 */
-		Core initCore = new Core(CollectionUtils.union(initStorage, internalStorage), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new ProxyFactory(classloader, packageName+".init"));
+		Core initCore = new Core(CollectionUtils.union(initStorage, internalStorage), (table, wa) -> Combinators.lookupswitch(table), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new ProxyFactory(classloader, packageName+".init"));
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
@@ -962,7 +963,7 @@ public class Compiler2 {
 				unrollFactors.put(g, param.getValue());
 			}
 
-			ssCores.add(new Core(CollectionUtils.union(steadyStateStorage, internalStorage), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new ProxyFactory(classloader, packageName+".steadystate.")));
+			ssCores.add(new Core(CollectionUtils.union(steadyStateStorage, internalStorage), (table, wa) -> SWITCHING_STRATEGY.createSwitch(table, wa, config), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new ProxyFactory(classloader, packageName+".steadystate.")));
 		}
 
 		int throughputPerSteadyState = 0;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -54,6 +54,7 @@ public final class Compiler2BlobFactory implements BlobFactory {
 		Compiler2.ALLOCATION_STRATEGY.makeParameters(workers, builder);
 		Compiler2.INTERNAL_STORAGE_STRATEGY.makeParameters(workers, builder);
 		Compiler2.EXTERNAL_STORAGE_STRATEGY.makeParameters(workers, builder);
+		Compiler2.SWITCHING_STRATEGY.makeParameters(workers, builder);
 		for (Worker<?, ?> w : workers)
 			for (int i = 0; i < Compiler2.ALLOCATION_STRATEGY.maxNumCores(); ++i) {
 				int id = Workers.getIdentifier(w);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -50,6 +50,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 /**
  * Compiler IR for a fused group of workers (what used to be called StreamNode).
@@ -272,6 +273,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * @return a void->void method handle
 	 */
 	public MethodHandle specialize(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage,
+			BiFunction<MethodHandle[], WorkerActor, MethodHandle> switchFactory,
 			int unrollFactor,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers,
@@ -280,7 +282,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		assert !isTokenGroup() : actors();
 
 		Map<Actor, MethodHandle> withRWHandlesBound =
-				bindActorsToStorage(iterations, storage, inputTransformers, outputTransformers);
+				bindActorsToStorage(iterations, storage, switchFactory, inputTransformers, outputTransformers);
 
 		int totalIterations = iterations.upperEndpoint() - iterations.lowerEndpoint();
 		unrollFactor = Math.min(unrollFactor, totalIterations);
@@ -297,7 +299,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * Compute the read and write method handles for each Actor. These don't
 	 * depend on the iteration, so we can bind and reuse them.
 	 */
-	private Map<Actor, MethodHandle> bindActorsToStorage(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage, ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers, ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers) {
+	private Map<Actor, MethodHandle> bindActorsToStorage(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage, BiFunction<MethodHandle[], WorkerActor, MethodHandle> switchFactory, ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers, ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers) {
 		Map<Actor, MethodHandle> withRWHandlesBound = new HashMap<>();
 		for (Actor a : actors()) {
 			WorkerActor wa = (WorkerActor)a;
@@ -312,7 +314,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 					table[i] = MethodHandles.filterArguments(storage.get(a.inputs().get(i)).readHandle(), 0,
 							inputTransformers.get(a, i).transform(a.inputIndexFunctions().get(i), new PeeksSupplier(a, i, iterations)))
 							.asType(readHandleType);
-				read = Combinators.tableswitch(table);
+				read = switchFactory.apply(table, wa);
 			} else
 				read = MethodHandles.filterArguments(storage.get(a.inputs().get(0)).readHandle(), 0,
 						inputTransformers.get(a, 0).transform(a.inputIndexFunctions().get(0), new PeeksSupplier(a, 0, iterations)))
@@ -327,7 +329,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 					table[i] = MethodHandles.filterArguments(storage.get(a.outputs().get(i)).writeHandle(), 0,
 							outputTransformers.get(a, i).transform(a.outputIndexFunctions().get(i), new PushesSupplier(a, i, iterations)))
 							.asType(writeHandleType);
-				write = Combinators.tableswitch(table);
+				write = switchFactory.apply(table, wa);
 			} else
 				write = MethodHandles.filterArguments(storage.get(a.outputs().get(0)).writeHandle(), 0,
 						outputTransformers.get(a, 0).transform(a.outputIndexFunctions().get(0), new PushesSupplier(a, 0, iterations)))

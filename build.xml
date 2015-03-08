@@ -1,6 +1,6 @@
 <!--
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -105,7 +105,7 @@ xmlns:if="ant:if" xmlns:unless="ant:unless"
 			 dest="lib/sqlitejdbc.jar"
 			 skipexisting="true"/>
 
-		<get src="https://github.com/jbosboom/bytecodelib/releases/download/20141017/bytecodelib.jar"
+		<get src="https://github.com/jbosboom/bytecodelib/releases/download/20150307/bytecodelib.jar"
 			 dest="lib/bytecodelib.jar"
 			 skipexisting="true"/>
 	</target>
