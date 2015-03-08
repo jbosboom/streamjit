@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,14 +37,11 @@ public final class StandardExternalStorageStrategy implements StorageStrategy {
 	}
 	@Override
 	public StorageFactory asFactory(Configuration config) {
-		return new StorageFactory() {
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				if (storage.steadyStateCapacity() == 0)
-					return new EmptyConcreteStorage(storage);
-				Arrayish array = new Arrayish.ArrayArrayish(storage.type(), storage.steadyStateCapacity());
-				return new CircularArrayConcreteStorage(array, storage);
-			}
+		return (Storage storage) -> {
+			if (storage.steadyStateCapacity() == 0)
+				return new EmptyConcreteStorage(storage);
+			Arrayish array = new Arrayish.ArrayArrayish(storage.type(), storage.steadyStateCapacity());
+			return new CircularArrayConcreteStorage(array, storage);
 		};
 	}
 }
