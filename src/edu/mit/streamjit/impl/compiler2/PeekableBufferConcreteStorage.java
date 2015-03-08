@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,11 +21,9 @@
  */
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.PeekableBuffer;
 import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
 import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
@@ -101,28 +99,20 @@ public final class PeekableBufferConcreteStorage implements ConcreteStorage {
 	}
 
 	public static StorageFactory factory(final Map<Token, PeekableBuffer> buffers) {
-		return new StorageFactory() {
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				assert buffers.containsKey(storage.id()) : storage.id()+" not in "+buffers;
-				//Hack: we don't have the throughput when making init storage,
-				//but we don't need it either.
-				int throughput;
-				try {
-					throughput = storage.throughput();
-				} catch (IllegalStateException ignored) {
-					throughput = Integer.MIN_VALUE;
-				}
-				ImmutableSet<ActorGroup> relevantGroups = ImmutableSet.<ActorGroup>builder()
-						.addAll(storage.upstreamGroups()).addAll(storage.downstreamGroups()).build();
-				int minReadIndex = storage.readIndices(Maps.asMap(relevantGroups, new Function<ActorGroup, Integer>() {
-					@Override
-					public Integer apply(ActorGroup input) {
-						return 1;
-					}
-				})).first();
-				return new PeekableBufferConcreteStorage(storage.type(), throughput, minReadIndex, buffers.get(storage.id()));
+		return (Storage storage) -> {
+			assert buffers.containsKey(storage.id()) : storage.id()+" not in "+buffers;
+			//Hack: we don't have the throughput when making init storage,
+			//but we don't need it either.
+			int throughput1;
+			try {
+				throughput1 = storage.throughput();
+			} catch (IllegalStateException ignored) {
+				throughput1 = Integer.MIN_VALUE;
 			}
+			ImmutableSet<ActorGroup> relevantGroups = ImmutableSet.<ActorGroup>builder()
+					.addAll(storage.upstreamGroups()).addAll(storage.downstreamGroups()).build();
+			int minReadIndex1 = storage.readIndices(Maps.asMap(relevantGroups, i -> 1)).first();
+			return new PeekableBufferConcreteStorage(storage.type(), throughput1, minReadIndex1, buffers.get(storage.id()));
 		};
 	}
 }
