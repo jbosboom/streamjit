@@ -21,9 +21,7 @@
  */
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
-import com.google.common.base.Predicate;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -129,12 +127,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	}
 
 	public Set<Storage> internalEdges() {
-		return Sets.filter(allEdges(), new Predicate<Storage>() {
-			@Override
-			public boolean apply(Storage input) {
-				return input.isInternal();
-			}
-		});
+		return Sets.filter(allEdges(), Storage::isInternal);
 	}
 
 	private Set<Storage> allEdges() {
@@ -214,12 +207,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * @return a map of read physical indices
 	 */
 	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> reads(final int iteration) {
-		return Maps.toMap(inputs(), new Function<Storage, ImmutableSortedSet<Integer>>() {
-			@Override
-			public ImmutableSortedSet<Integer> apply(Storage input) {
-				return reads(input, iteration);
-			}
-		});
+		return Maps.toMap(inputs(), (Storage input) -> reads(input, iteration));
 	}
 
 	/**
@@ -257,12 +245,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * @return a map of written physical indices
 	 */
 	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> writes(final int iteration) {
-		return Maps.toMap(outputs(), new Function<Storage, ImmutableSortedSet<Integer>>() {
-			@Override
-			public ImmutableSortedSet<Integer> apply(Storage output) {
-				return writes(output, iteration);
-			}
-		});
+		return Maps.toMap(outputs(), (Storage output) -> writes(output, iteration));
 	}
 
 	/**
