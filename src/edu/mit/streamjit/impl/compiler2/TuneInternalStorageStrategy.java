@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,15 +46,12 @@ public final class TuneInternalStorageStrategy implements StorageStrategy {
 	}
 	@Override
 	public StorageFactory asFactory(final Configuration config) {
-		return new StorageFactory() {
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				if (storage.steadyStateCapacity() == 0)
-					return new EmptyConcreteStorage(storage);
-				Configuration.SwitchParameter<Arrayish.Factory> factoryParam = config.getParameter("InternalArrayish"+storage.id(), Configuration.SwitchParameter.class, Arrayish.Factory.class);
-				Arrayish.Factory factory = storage.type().isPrimitive() ? factoryParam.getValue() : Arrayish.ArrayArrayish.factory();
-				return new InternalArrayConcreteStorage(factory.make(storage.type(), storage.steadyStateCapacity()), storage);
-			}
+		return (Storage storage) -> {
+			if (storage.steadyStateCapacity() == 0)
+				return new EmptyConcreteStorage(storage);
+			Configuration.SwitchParameter<Arrayish.Factory> factoryParam = config.getParameter("InternalArrayish"+storage.id(), Configuration.SwitchParameter.class, Arrayish.Factory.class);
+			Arrayish.Factory factory = storage.type().isPrimitive() ? factoryParam.getValue() : Arrayish.ArrayArrayish.factory();
+			return new InternalArrayConcreteStorage(factory.make(storage.type(), storage.steadyStateCapacity()), storage);
 		};
 	}
 }
