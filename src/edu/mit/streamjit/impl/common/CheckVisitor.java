@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,6 @@
  */
 package edu.mit.streamjit.impl.common;
 
-import com.google.common.base.Function;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -141,13 +140,7 @@ public final class CheckVisitor extends SerialCompositeStreamVisitor {
 			private ElementRepeatedException(StreamElement<?, ?> element, ImmutableList<GraphTraceElement> firstTrace, ImmutableList<GraphTraceElement> secondTrace, ImmutableList<GraphTraceElement>... moreTraces) {
 				super("Element appears more than once in stream graph", element);
 				this.traceStrings = com.google.common.base.Joiner.on("\n\n").join(
-						Iterables.transform(Lists.asList(firstTrace, secondTrace, moreTraces),
-						new Function<ImmutableList<GraphTraceElement>, String>() {
-							@Override
-							public String apply(ImmutableList<GraphTraceElement> input) {
-								return asTrace(input);
-							}
-						}));
+						Iterables.transform(Lists.asList(firstTrace, secondTrace, moreTraces), StackVisitor::asTrace));
 			}
 
 			@Override
