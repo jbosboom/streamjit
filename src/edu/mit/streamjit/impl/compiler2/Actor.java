@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,6 @@
  */
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ContiguousSet;
@@ -313,12 +312,7 @@ public abstract class Actor implements Comparable<Actor> {
 	}
 
 	public ImmutableSortedSet<Integer> translateInputIndices(final int input, Set<Integer> logicalIndices) {
-		return ImmutableSortedSet.copyOf(Collections2.transform(logicalIndices, new Function<Integer, Integer>() {
-			@Override
-			public Integer apply(Integer index) {
-				return translateInputIndex(input, index);
-			}
-		}));
+		return ImmutableSortedSet.copyOf(Collections2.transform(logicalIndices, index -> translateInputIndex(input, index)));
 	}
 
 	public ImmutableSortedSet<Integer> translateInputIndices(final int input, Range<Integer> logicalIndices) {
@@ -340,12 +334,7 @@ public abstract class Actor implements Comparable<Actor> {
 	}
 
 	public ImmutableSortedSet<Integer> translateOutputIndices(final int input, Set<Integer> logicalIndices) {
-		return ImmutableSortedSet.copyOf(Collections2.transform(logicalIndices, new Function<Integer, Integer>() {
-			@Override
-			public Integer apply(Integer index) {
-				return translateOutputIndex(input, index);
-			}
-		}));
+		return ImmutableSortedSet.copyOf(Collections2.transform(logicalIndices, index -> translateOutputIndex(input, index)));
 	}
 
 	public ImmutableSortedSet<Integer> translateOutputIndices(final int input, Range<Integer> logicalIndices) {
