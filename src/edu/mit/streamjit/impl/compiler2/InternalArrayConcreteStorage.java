@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -99,25 +99,19 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 	}
 
 	public static StorageFactory factory() {
-		return new StorageFactory() {
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				Arrayish array = new Arrayish.ArrayArrayish(storage.type(), storage.steadyStateCapacity());
-				return new InternalArrayConcreteStorage(array, storage);
-			}
+		return (Storage storage) -> {
+			Arrayish array1 = new Arrayish.ArrayArrayish(storage.type(), storage.steadyStateCapacity());
+			return new InternalArrayConcreteStorage(array1, storage);
 		};
 	}
 
 	public static StorageFactory initFactory(final Map<ActorGroup, Integer> initSchedule) {
-		return new StorageFactory() {
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				Range<Integer> indices = storage.writeIndexSpan(initSchedule).span(storage.initialDataIndexSpan());
-				assert indices.upperBoundType() == BoundType.OPEN;
-				int capacity = indices.upperEndpoint();
-				Arrayish array = new Arrayish.ArrayArrayish(storage.type(), capacity);
-				return new InternalArrayConcreteStorage(array, storage);
-			}
+		return (Storage storage) -> {
+			Range<Integer> indices = storage.writeIndexSpan(initSchedule).span(storage.initialDataIndexSpan());
+			assert indices.upperBoundType() == BoundType.OPEN;
+			int capacity = indices.upperEndpoint();
+			Arrayish array1 = new Arrayish.ArrayArrayish(storage.type(), capacity);
+			return new InternalArrayConcreteStorage(array1, storage);
 		};
 	}
 }
