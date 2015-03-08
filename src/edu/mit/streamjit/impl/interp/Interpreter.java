@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,6 @@ import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.IOInfo;
 import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.util.EmptyRunnable;
 import edu.mit.streamjit.util.ReflectionUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -259,7 +258,7 @@ public class Interpreter implements Blob {
 					//Run the callback (which may be empty).
 					callback.run();
 					//Set the callback to empty so we only run it once.
-					Interpreter.this.callback.set(new EmptyRunnable());
+					Interpreter.this.callback.set(() -> {});
 				}
 			}
 		};
