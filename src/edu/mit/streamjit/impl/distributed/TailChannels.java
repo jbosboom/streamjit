@@ -275,8 +275,9 @@ public class TailChannels {
 		 */
 		protected void reportingTime(long time) {
 			if (outputCountPrinter != null) {
-				String msg = String.format("Reporting...%s.cfg,time=%d\n",
-						cfgPrefix, time);
+				String msg = String.format(
+						"Reporting-%s.cfg,time=%d,TotalCount=%d\n", cfgPrefix,
+						time, count);
 				outputCountPrinter.write(msg);
 			}
 		}
