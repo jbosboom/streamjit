@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,6 @@
  */
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Maps;
@@ -59,12 +58,7 @@ public final class MapConcreteStorage implements ConcreteStorage {
 	}
 	public static MapConcreteStorage create(Storage s) {
 		ImmutableSet<ActorGroup> relevantGroups = ImmutableSet.<ActorGroup>builder().addAll(s.upstreamGroups()).addAll(s.downstreamGroups()).build();
-		return new MapConcreteStorage(s.type(), ADJUST, s.readIndices(Maps.asMap(relevantGroups, new Function<ActorGroup, Integer>() {
-			@Override
-			public Integer apply(ActorGroup input) {
-				return 1;
-			}
-		})).first(), s.throughput());
+		return new MapConcreteStorage(s.type(), ADJUST, s.readIndices(Maps.asMap(relevantGroups, i -> 1)).first(), s.throughput());
 	}
 	public static MapConcreteStorage createNopAdjust(Storage s) {
 		return new MapConcreteStorage(s.type(), Combinators.nop(Object.class), Integer.MAX_VALUE, Integer.MAX_VALUE);
@@ -115,20 +109,10 @@ public final class MapConcreteStorage implements ConcreteStorage {
 	}
 
 	public static StorageFactory factory() {
-		return new StorageFactory() {
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				return create(storage);
-			}
-		};
+		return MapConcreteStorage::create;
 	}
 
 	public static StorageFactory initFactory() {
-		return new StorageFactory() {
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				return createNopAdjust(storage);
-			}
-		};
+		return MapConcreteStorage::createNopAdjust;
 	}
 }
