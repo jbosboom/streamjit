@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -162,12 +162,7 @@ public class Compiler2BlobHost implements Blob {
 			capacityRequirements.add(i.getMinimumBufferCapacity());
 		for (WriteInstruction i : Iterables.concat(this.initWriteInstructions, this.writeInstructions))
 			capacityRequirements.add(i.getMinimumBufferCapacity());
-		this.minimumBufferCapacity = CollectionUtils.union(new Maps.EntryTransformer<Token, List<Integer>, Integer>() {
-			@Override
-			public Integer transformEntry(Token key, List<Integer> value) {
-				return Collections.max(value);
-			}
-		}, capacityRequirements);
+		this.minimumBufferCapacity = CollectionUtils.union((key, value) -> Collections.max(value), capacityRequirements);
 
 		MethodHandle mainLoop = MAIN_LOOP.bindTo(this),
 				doInit = DO_INIT.bindTo(this),
@@ -368,17 +363,14 @@ public class Compiler2BlobHost implements Blob {
 			data.add(i.unload());
 		for (DrainInstruction i : drains)
 			data.add(i.call());
-		ImmutableMap<Token, List<Object>> mergedData = CollectionUtils.union(new Maps.EntryTransformer<Token, List<Object[]>, List<Object>>() {
-			@Override
-			public List<Object> transformEntry(Token key, List<Object[]> value) {
-				int size = 0;
-				for (Object[] v : value)
-					size += v.length;
-				List<Object> data = new ArrayList<>(size);
-				for (Object[] v : value)
-					data.addAll(Arrays.asList(v));
-				return data;
-			}
+		ImmutableMap<Token, List<Object>> mergedData = CollectionUtils.union((key, value) -> {
+			int size = 0;
+			for (Object[] v : value)
+				size += v.length;
+			List<Object> data1 = new ArrayList<>(size);
+			for (Object[] v : value)
+				data1.addAll(Arrays.asList(v));
+			return data1;
 		}, data);
 		//Try once to write data on output edges, then let the interpreter handle it.
 		Predicate<Token> isOutput = Predicates.in(getOutputs());
@@ -401,12 +393,7 @@ public class Compiler2BlobHost implements Blob {
 		interp.installBuffers(buffers);
 		Runnable interpCode = interp.getCoreCode(0);
 		final AtomicBoolean interpFinished = new AtomicBoolean();
-		interp.drain(new Runnable() {
-			@Override
-			public void run() {
-				interpFinished.set(true);
-			}
-		});
+		interp.drain(() -> interpFinished.set(true));
 		while (!interpFinished.get())
 			interpCode.run();
 		this.drainData = interp.getDrainData();
