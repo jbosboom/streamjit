@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -168,13 +168,7 @@ public class BlobHostStreamCompiler implements StreamCompiler {
 		}
 
 		private void drain() {
-			blob.drain(new Runnable() {
-				@Override
-				public void run() {
-					for (PollingCoreThread t : threads)
-						t.requestStop();
-				}
-			});
+			blob.drain(() -> threads.forEach(PollingCoreThread::requestStop));
 		}
 
 		@Override
