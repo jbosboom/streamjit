@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,6 @@
  */
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
@@ -57,12 +56,7 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage {
 		this.writeArray = arrayFactory.make(s.type(), throughput);
 
 		ImmutableSet<ActorGroup> relevantGroups = ImmutableSet.<ActorGroup>builder().addAll(s.upstreamGroups()).addAll(s.downstreamGroups()).build();
-		Map<ActorGroup, Integer> oneMap = Maps.asMap(relevantGroups, new Function<ActorGroup, Integer>() {
-			@Override
-			public Integer apply(ActorGroup input) {
-				return 1;
-			}
-		});
+		Map<ActorGroup, Integer> oneMap = Maps.asMap(relevantGroups, x -> 1);
 		this.readOffset = s.readIndices(oneMap).first();
 		int writeOffset = s.writeIndices(oneMap).first();
 
@@ -119,13 +113,8 @@ public class DoubleArrayConcreteStorage implements ConcreteStorage {
 	}
 
 	public static StorageFactory factory() {
-		return new StorageFactory() {
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				if (storage.steadyStateCapacity() == 0)
-					return new EmptyConcreteStorage(storage);
-				return new DoubleArrayConcreteStorage(Arrayish.ArrayArrayish.factory(), storage);
-			}
-		};
+		return storage -> storage.steadyStateCapacity() == 0 ?
+				new EmptyConcreteStorage(storage) :
+				new DoubleArrayConcreteStorage(Arrayish.ArrayArrayish.factory(), storage);
 	}
 }
