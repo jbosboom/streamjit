@@ -23,7 +23,6 @@ package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.checkState;
-import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
@@ -810,12 +809,7 @@ public class Compiler2 {
 		for (final ActorArchetype archetype : archetypes) {
 			Iterable<WorkerActor> workerActors = FluentIterable.from(actors)
 					.filter(WorkerActor.class)
-					.filter(new Predicate<WorkerActor>() {
-						@Override
-						public boolean apply(WorkerActor input) {
-							return input.archetype().equals(archetype);
-						}
-					});
+					.filter(wa -> wa.archetype().equals(archetype));
 			archetype.generateCode(packageName, classloader, workerActors);
 			for (WorkerActor wa : workerActors)
 				wa.setStateHolder(archetype.makeStateHolder(wa));
@@ -865,12 +859,7 @@ public class Compiler2 {
 	}
 
 	private void createInitCode() {
-		ImmutableMap<Actor, ImmutableList<MethodHandle>> indexFxnBackup = adjustOutputIndexFunctions(new Function<Storage, Set<Integer>>() {
-			@Override
-			public Set<Integer> apply(Storage input) {
-				return input.initialDataIndices();
-			}
-		});
+		ImmutableMap<Actor, ImmutableList<MethodHandle>> indexFxnBackup = adjustOutputIndexFunctions(Storage::initialDataIndices);
 
 		this.initStorage = createStorage(false, new PeekPokeStorageFactory(InternalArrayConcreteStorage.initFactory(initSchedule)));
 		initReadInstructions.add(new InitDataReadInstruction(initStorage, initialStateDataMap));
