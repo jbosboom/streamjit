@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -142,12 +142,7 @@ public abstract class Workers {
 	 * @return a topologically-ordered list of the given nodes
 	 */
 	public static <T extends Worker<?, ?>> ImmutableList<T> topologicalSort(Iterable<T> workers) {
-		return TopologicalSort.sort(workers, new TopologicalSort.PartialOrder<Worker<?, ?>>() {
-			@Override
-			public boolean lessThan(Worker<?, ?> a, Worker<?, ?> b) {
-				return Workers.getAllSuccessors(a).contains(b);
-			}
-		});
+		return TopologicalSort.sort(workers, (a, b) -> Workers.getAllSuccessors(a).contains(b));
 	}
 
 	/**
