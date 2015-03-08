@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,6 @@
  */
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicates;
 import com.google.common.collect.FluentIterable;
@@ -210,13 +209,7 @@ public class ActorArchetype {
 			this.constructStateHolder = findConstructor(stateHolderClass);
 			Class<?> archetypeClass = loader.loadClass(archetypeKlass.getName());
 			ImmutableListMultimap<String, java.lang.reflect.Method> methodsByName
-					= Multimaps.index(Arrays.asList(archetypeClass.getMethods()),
-							new Function<java.lang.reflect.Method, String>() {
-								@Override
-								public String apply(java.lang.reflect.Method input) {
-									return input.getName();
-								}
-			});
+					= Multimaps.index(Arrays.asList(archetypeClass.getMethods()), java.lang.reflect.Method::getName);
 			for (Pair<Class<?>, Class<?>> p : methods.keySet()) {
 				String name = makeWorkMethodName(p.first, p.second);
 				workMethodsBuilder.put(p, MethodHandles.publicLookup().unreflect(
