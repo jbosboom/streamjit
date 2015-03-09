@@ -1091,13 +1091,15 @@ public class Compiler2 {
 			List<ConcreteStorage> storages = e.getValue().first;
 			List<Integer> indices = e.getValue().second;
 			assert !storages.contains(null) : "lost an element from "+e.getKey()+": "+e.getValue();
-			if (storages.stream().anyMatch(s -> s instanceof PeekableBufferConcreteStorage)) {
+			if (!storages.isEmpty() && storages.get(0) instanceof PeekableBufferConcreteStorage) {
 				assert storages.stream().allMatch(s -> s instanceof PeekableBufferConcreteStorage)
 						: "mixed peeking and not? "+e.getKey()+": "+e.getValue();
 				//we still create a drain instruction, but it does nothing
 				storages.clear();
 				indices = Ints.asList();
-			}
+			} else
+				assert storages.stream().noneMatch(s -> s instanceof PeekableBufferConcreteStorage)
+						: "mixed peeking and not? "+e.getKey()+": "+e.getValue();
 			drainInstructions.add(new XDrainInstruction(e.getKey(), storages, indices));
 		}
 
