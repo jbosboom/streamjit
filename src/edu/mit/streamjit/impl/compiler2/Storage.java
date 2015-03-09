@@ -363,7 +363,9 @@ public final class Storage implements Comparable<Storage> {
 		this.throughput = 0;
 		for (Actor a : upstream())
 			for (int iteration = 0, max = a.group().schedule().get(a) * externalSchedule.get(a.group()); iteration < max; ++iteration)
-				this.throughput += a.writes(this, iteration).size();
+				for (int output = 0; output < a.outputs().size(); ++output)
+					if (a.outputs().get(output).equals(this))
+						this.throughput += a.push(output);
 		this.steadyStateCapacity = ContiguousSet.create(readIndices.span(writeIndices), DiscreteDomain.integers()).size();
 	}
 
