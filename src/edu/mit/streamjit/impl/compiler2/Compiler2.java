@@ -1189,14 +1189,15 @@ public class Compiler2 {
 		private MigrationInstruction(Storage storage, ConcreteStorage init, ConcreteStorage steady) {
 			this.init = init;
 			this.steady = steady;
-			ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+			Set<Integer> builder = new HashSet<>();
 			for (Actor a : storage.downstream())
 				for (int i = 0; i < a.inputs().size(); ++i)
 					if (a.inputs().get(i).equals(storage))
 						for (int idx = 0; idx < a.inputSlots(i).size(); ++idx)
 							if (a.inputSlots(i).get(idx).isLive())
 								builder.add(a.translateInputIndex(i, idx));
-			this.indicesToMigrate = Ints.toArray(builder.build());
+			this.indicesToMigrate = Ints.toArray(builder);
+			//TODO: we used to sort here (using ImmutableSortedSet).  Does it matter?
 		}
 		@Override
 		public void run() {
