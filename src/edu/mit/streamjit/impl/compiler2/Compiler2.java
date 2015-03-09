@@ -1066,9 +1066,11 @@ public class Compiler2 {
 	 * storage when draining.
 	 */
 	private void createDrainInstructions() {
-		Map<Token, List<Pair<ConcreteStorage, Integer>>> drainReads = new HashMap<>();
+		Map<Token, Pair<List<ConcreteStorage>, List<Integer>>> drainReads = new HashMap<>();
 		for (Map.Entry<Token, Integer> e : postInitLiveness.entrySet())
-			drainReads.put(e.getKey(), new ArrayList<>(Collections.nCopies(e.getValue(), (Pair<ConcreteStorage, Integer>)null)));
+			drainReads.put(e.getKey(), Pair.make(
+					new ArrayList<>(Collections.nCopies(e.getValue(), null)),
+					Ints.asList(new int[e.getValue()])));
 
 		for (Actor a : actors) {
 			for (int input = 0; input < a.inputs().size(); ++input) {
@@ -1076,20 +1078,27 @@ public class Compiler2 {
 				for (int index = 0; index < a.inputSlots(input).size(); ++index) {
 					StorageSlot info = a.inputSlots(input).get(index);
 					if (info.isDrainable()) {
-						Pair<ConcreteStorage, Integer> old = drainReads.get(info.token()).
-								set(info.index(), new Pair<>(storage, a.translateInputIndex(input, index)));
+						Pair<List<ConcreteStorage>, List<Integer>> dr = drainReads.get(info.token());
+						ConcreteStorage old = dr.first.set(info.index(), storage);
 						assert old == null : "overwriting "+info;
+						dr.second.set(info.index(), a.translateInputIndex(input, index));
 					}
 				}
 			}
 		}
 
-		for (Map.Entry<Token, List<Pair<ConcreteStorage, Integer>>> e : drainReads.entrySet()) {
-			assert !e.getValue().contains(null) : "lost an element from "+e.getKey()+": "+e.getValue();
-			for (Iterator<Pair<ConcreteStorage, Integer>> i = e.getValue().iterator(); i.hasNext();)
-				if (i.next().first instanceof PeekableBufferConcreteStorage)
-					i.remove();
-			drainInstructions.add(new XDrainInstruction(e.getKey(), e.getValue()));
+		for (Map.Entry<Token, Pair<List<ConcreteStorage>, List<Integer>>> e : drainReads.entrySet()) {
+			List<ConcreteStorage> storages = e.getValue().first;
+			List<Integer> indices = e.getValue().second;
+			assert !storages.contains(null) : "lost an element from "+e.getKey()+": "+e.getValue();
+			if (storages.stream().anyMatch(s -> s instanceof PeekableBufferConcreteStorage)) {
+				assert storages.stream().allMatch(s -> s instanceof PeekableBufferConcreteStorage)
+						: "mixed peeking and not? "+e.getKey()+": "+e.getValue();
+				//we still create a drain instruction, but it does nothing
+				storages.clear();
+				indices = Ints.asList();
+			}
+			drainInstructions.add(new XDrainInstruction(e.getKey(), storages, indices));
 		}
 
 		for (WorkerActor wa : Iterables.filter(actors, WorkerActor.class))
@@ -1218,18 +1227,15 @@ public class Compiler2 {
 		private final Token token;
 		private final ConcreteStorage[] storage;
 		private final int[] storageSelector, index;
-		private XDrainInstruction(Token token, List<Pair<ConcreteStorage, Integer>> reads) {
+		private XDrainInstruction(Token token, List<ConcreteStorage> storages, List<Integer> indices) {
+			assert storages.size() == indices.size() : String.format("%s %s %s", token, storages, indices);
 			this.token = token;
-			Set<ConcreteStorage> set = new HashSet<>();
-			for (Pair<ConcreteStorage, Integer> p : reads)
-				set.add(p.first);
+			Set<ConcreteStorage> set = new HashSet<>(storages);
 			this.storage = set.toArray(new ConcreteStorage[set.size()]);
-			this.storageSelector = new int[reads.size()];
-			this.index = new int[reads.size()];
-			for (int i = 0; i < reads.size(); ++i) {
-				storageSelector[i] = Arrays.asList(storage).indexOf(reads.get(i).first);
-				index[i] = reads.get(i).second;
-			}
+			this.storageSelector = new int[indices.size()];
+			this.index = Ints.toArray(indices);
+			for (int i = 0; i < indices.size(); ++i)
+				storageSelector[i] = Arrays.asList(storage).indexOf(storages.get(i));
 		}
 		@Override
 		public Map<Token, Object[]> call() {
