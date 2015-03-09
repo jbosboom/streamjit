@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -276,7 +276,8 @@ public final class Storage implements Comparable<Storage> {
 	public Range<Integer> readIndexSpan(Map<ActorGroup, Integer> externalSchedule) {
 		Range<Integer> range = null;
 		for (Actor a : downstream())
-			for (int iteration = 0, max = a.group().schedule().get(a) * externalSchedule.get(a.group()); iteration < max; ++iteration) {
+			//just the first and last iteration
+			for (int iteration : new int[]{0, a.group().schedule().get(a) * externalSchedule.get(a.group())-1}) {
 				ImmutableSortedSet<Integer> reads = a.reads(this, iteration);
 				Range<Integer> readRange = reads.isEmpty() ? range : Range.closed(reads.first(), reads.last());
 				range = range == null ? readRange : range.span(readRange);
@@ -316,7 +317,8 @@ public final class Storage implements Comparable<Storage> {
 	public Range<Integer> writeIndexSpan(Map<ActorGroup, Integer> externalSchedule) {
 		Range<Integer> range = null;
 		for (Actor a : upstream())
-			for (int iteration = 0, max = a.group().schedule().get(a) * externalSchedule.get(a.group()); iteration < max; ++iteration) {
+			//just the first and last iteration
+			for (int iteration : new int[]{0, a.group().schedule().get(a) * externalSchedule.get(a.group())-1}) {
 				ImmutableSortedSet<Integer> writes = a.writes(this, iteration);
 				Range<Integer> writeRange = writes.isEmpty() ? range : Range.closed(writes.first(), writes.last());
 				range = range == null ? writeRange : range.span(writeRange);
