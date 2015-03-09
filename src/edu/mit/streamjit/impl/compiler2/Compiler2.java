@@ -978,9 +978,9 @@ public class Compiler2 {
 				steadyStateCodeBuilder.add(c.code());
 		//Provide at least one core of code, even if it doesn't do anything; the
 		//blob host will still copy inputs to outputs.
-		if (steadyStateCodeBuilder.build().isEmpty())
-			steadyStateCodeBuilder.add(Combinators.nop());
 		this.steadyStateCode = steadyStateCodeBuilder.build();
+		if (steadyStateCode.isEmpty())
+			this.steadyStateCode = ImmutableList.of(Combinators.nop());
 
 		createMigrationInstructions();
 		createDrainInstructions();
