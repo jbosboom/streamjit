@@ -1,11 +1,16 @@
 package edu.mit.streamjit.impl.distributed.common;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 import java.io.File;
 import java.io.FileWriter;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -133,7 +138,7 @@ public class Utils {
 	 */
 	public static void writeReadMeTxt(String appName) {
 		try {
-			rename(appName, "README.txt");
+			// rename(appName, "README.txt");
 			FileWriter writer = new FileWriter(String.format("%s%sREADME.txt",
 					appName, File.separator));
 			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
@@ -270,9 +275,49 @@ public class Utils {
 		rename(appName, "profile.txt");
 	}
 
+	/**
+	 * Move all files and directories, except the configuration directory, from
+	 * appDir to appDir/tune directory. Does nothing if tune directory exists.
+	 * 
+	 * @param appName
+	 */
+	public static void backup1(String appName) {
+		File[] listOfFilesMove = listOfFilesMove(appName);
+		if (listOfFilesMove.length == 0)
+			return;
+
+		File tuneDir = new File(String.format("%s%stune", appName,
+				File.separator));
+		if (tuneDir.exists())
+			return;
+
+		if (!createDir(tuneDir.getPath()))
+			System.err.println(String.format("Creating %s dir failed.",
+					tuneDir.getPath()));
+		for (File f : listOfFilesMove) {
+			try {
+				Files.move(f.toPath(),
+						Paths.get(tuneDir.getPath(), f.getName()),
+						REPLACE_EXISTING);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public static File[] listOfFilesMove(final String appName) {
+		File dir = new File(appName);
+		File[] files = dir.listFiles(new FilenameFilter() {
+			public boolean accept(File dir, String name) {
+				return !name.equals("configurations");
+			}
+		});
+		return files;
+	}
+
 	public static void newApp(String appName) {
 		createAppDir(appName);
-		backup(appName);
+		backup1(appName);
 		Utils.writeReadMeTxt(appName);
 	}
 }
