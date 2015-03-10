@@ -233,8 +233,8 @@ public class ConfigurationEditor {
 	private static void convert() {
 		String appName = "ChannelVocoder7Kernel";
 		Configuration cfg = ConfigurationUtils.readConfiguration(String.format(
-				"%s%sconfigurations%s%d_%s.cfg", appName, File.separator,
-				File.separator, 1, appName));
+				"%s%s%s%s%d_%s.cfg", appName, File.separator,
+				ConfigurationUtils.configDir, File.separator, 1, appName));
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(
 					String.format("%d_%s.cfg", 0, appName)));

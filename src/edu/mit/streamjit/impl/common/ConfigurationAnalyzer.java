@@ -46,11 +46,11 @@ public class ConfigurationAnalyzer {
 	 */
 
 	public ConfigurationAnalyzer(String appName) {
-		verifyPath("configurations", appName);
+		verifyPath(ConfigurationUtils.configDir, appName);
 		bestConfigurations = new LinkedList<>();
 		this.appName = appName;
 		this.cfgDir = String.format("%s%s%s", appName, File.separator,
-				"configurations");
+				ConfigurationUtils.configDir);
 	}
 
 	private void compare(FloatParameter p1, FloatParameter p2) {

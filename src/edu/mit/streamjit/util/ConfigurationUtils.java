@@ -20,6 +20,8 @@ import edu.mit.streamjit.impl.common.Configuration;
  */
 public class ConfigurationUtils {
 
+	public static final String configDir = "configurations";
+
 	/**
 	 * Reads configuration from ./appName/configurations/namePrefix_appName.cfg
 	 * and returns it.
@@ -37,8 +39,8 @@ public class ConfigurationUtils {
 			String namePrefix) {
 		checkNotNull(appName);
 		namePrefix = namePrefix == null ? "" : namePrefix;
-		String cfgFilePath = String.format("%s%sconfigurations%s%s_%s.cfg",
-				appName, File.separator, File.separator, namePrefix, appName);
+		String cfgFilePath = String.format("%s%s%s%s%s_%s.cfg", appName,
+				File.separator, configDir, File.separator, namePrefix, appName);
 		return readConfiguration(cfgFilePath);
 	}
 
@@ -103,8 +105,8 @@ public class ConfigurationUtils {
 			String appName) {
 		try {
 
-			File dir = new File(String.format("%s%sconfigurations", appName,
-					File.separator));
+			File dir = new File(String.format("%s%s%s", appName,
+					File.separator, configDir));
 			if (!dir.exists())
 				if (!dir.mkdirs()) {
 					System.err.println("Make directory failed");

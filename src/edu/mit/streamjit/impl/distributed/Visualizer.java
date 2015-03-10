@@ -214,8 +214,8 @@ public interface Visualizer {
 			String outFileFormat = "svg";
 			String fileName = String.format("./%s%s%s.dot", appName,
 					File.separator, file);
-			String outFileName = String.format(
-					"./%s%sconfigurations%s%s_%s.%s", appName, File.separator,
+			String outFileName = String.format("./%s%s%s%s%s_%s.%s", appName,
+					File.separator, ConfigurationUtils.configDir,
 					File.separator, namePrefix, file, outFileFormat);
 			ProcessBuilder pb = new ProcessBuilder("dot", "-T" + outFileFormat,
 					fileName, "-o", outFileName);

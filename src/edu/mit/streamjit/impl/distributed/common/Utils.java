@@ -125,8 +125,8 @@ public class Utils {
 	 */
 	public static boolean createAppDir(String appName) {
 		if (createDir(appName))
-			return createDir(String.format("%s%sconfigurations", appName,
-					File.separator));
+			return createDir(String.format("%s%s%s", appName, File.separator,
+					ConfigurationUtils.configDir));
 		else
 			return false;
 	}
@@ -309,7 +309,7 @@ public class Utils {
 		File dir = new File(appName);
 		File[] files = dir.listFiles(new FilenameFilter() {
 			public boolean accept(File dir, String name) {
-				return !name.equals("configurations");
+				return !name.equals(ConfigurationUtils.configDir);
 			}
 		});
 		return files;
