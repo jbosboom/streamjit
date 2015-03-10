@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.base.Stopwatch;
 
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.TimeLogger;
 import edu.mit.streamjit.impl.common.drainer.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager;
@@ -23,7 +22,6 @@ import edu.mit.streamjit.impl.distributed.StreamJitApp;
 import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.Options;
-import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.tuner.MethodTimeLogger.FileMethodTimeLogger;
 import edu.mit.streamjit.util.ConfigurationUtils;
 import edu.mit.streamjit.util.Pair;
@@ -47,8 +45,10 @@ public class OnlineTuner implements Runnable {
 	private final ConfigurationPrognosticator prognosticator;
 	private final Verifier verifier;
 	private final MethodTimeLogger mLogger;
+	private final Reconfigurer configurer;
 
 	public OnlineTuner(Reconfigurer configurer, boolean needTermination) {
+		this.configurer = configurer;
 		this.drainer = configurer.drainer;
 		this.manager = configurer.manager;
 		this.app = configurer.app;
@@ -113,7 +113,7 @@ public class OnlineTuner implements Runnable {
 				Configuration config = newCfg(++round, cfgJson);
 				mLogger.eNewCfg(round);
 				mLogger.bReconfigure();
-				ret = reconfigure(config, 2 * currentBestTime);
+				ret = configurer.reconfigure(config, 2 * currentBestTime);
 				mLogger.eReconfigure();
 				if (ret.first) {
 					long time = ret.second;
@@ -160,100 +160,6 @@ public class OnlineTuner implements Runnable {
 	}
 
 	/**
-	 * TODO: Split this method into two methods, 1.reconfigure(),
-	 * 2.getFixedOutputTime().
-	 * 
-	 * @param cfgJson
-	 * @param round
-	 * @return if ret.first == false, then no more tuning. ret.second = running
-	 *         time in milliseconds. ret.second may be a negative value if the
-	 *         reconfiguration is unsuccessful or a timeout is occurred.
-	 *         Meanings of the negative values are follows
-	 *         <ol>
-	 *         <li>-1: Timeout has occurred.
-	 *         <li>-2: Invalid configuration.
-	 *         <li>-3: {@link ConfigurationPrognosticator} has rejected the
-	 *         configuration.
-	 *         <li>-4: Draining failed. Another draining is in progress.
-	 *         <li>-5: Reconfiguration has failed at {@link StreamNode} side.
-	 *         E.g., Compilation error.
-	 *         <li>-6: Misc problems.
-	 */
-	private Pair<Boolean, Long> reconfigure(Configuration config, long timeout) {
-		long time;
-
-		if (manager.getStatus() == AppStatus.STOPPED)
-			return new Pair<Boolean, Long>(false, 0l);
-
-		mLogger.bCfgManagerNewcfg();
-		boolean validCfg = cfgManager.newConfiguration(config);
-		mLogger.eCfgManagerNewcfg();
-		if (!validCfg)
-			return new Pair<Boolean, Long>(true, -2l);
-
-		mLogger.bPrognosticate();
-		boolean prog = prognosticator.prognosticate(config);
-		mLogger.ePrognosticate();
-		if (!prog)
-			return new Pair<Boolean, Long>(true, -3l);
-
-		try {
-			mLogger.bIntermediateDraining();
-			boolean intermediateDraining = intermediateDraining();
-			mLogger.eIntermediateDraining();
-			if (!intermediateDraining)
-				return new Pair<Boolean, Long>(false, -4l);
-
-			drainer.setBlobGraph(app.blobGraph);
-			int multiplier = getMultiplier(config);
-			mLogger.bManagerReconfigure();
-			boolean reconfigure = manager.reconfigure(multiplier);
-			mLogger.eManagerReconfigure();
-			if (reconfigure) {
-				// TODO: need to check the manager's status before passing the
-				// time. Exceptions, final drain, etc may causes app to stop
-				// executing.
-				mLogger.bGetFixedOutputTime();
-				time = manager.getFixedOutputTime(timeout);
-				mLogger.eGetFixedOutputTime();
-				logger.logRunTime(time);
-			} else {
-				time = -5l;
-			}
-		} catch (Exception ex) {
-			ex.printStackTrace();
-			System.err
-					.println("Couldn't compile the stream graph with this configuration");
-			time = -6l;
-		}
-		return new Pair<Boolean, Long>(true, time);
-	}
-
-	/**
-	 * Performs intermediate draining.
-	 * 
-	 * @return <code>true</code> iff the draining is success or the application
-	 *         is not running currently.
-	 * @throws InterruptedException
-	 */
-	private boolean intermediateDraining() throws InterruptedException {
-		if (manager.isRunning()) {
-			return drainer.drainIntermediate();
-		} else
-			return true;
-	}
-
-	private int getMultiplier(Configuration config) {
-		int multiplier = 50;
-		IntParameter mulParam = config.getParameter("multiplier",
-				IntParameter.class);
-		if (mulParam != null)
-			multiplier = mulParam.getValue();
-		System.err.println("Reconfiguring...multiplier = " + multiplier);
-		return multiplier;
-	}
-
-	/**
 	 * Just excerpted from run() method for better readability.
 	 * 
 	 * @throws IOException
@@ -270,7 +176,7 @@ public class OnlineTuner implements Runnable {
 		if (needTermination) {
 			terminate();
 		} else {
-			Pair<Boolean, Long> ret = reconfigure(finalcfg, 0);
+			Pair<Boolean, Long> ret = configurer.reconfigure(finalcfg, 0);
 			if (ret.first && ret.second > 0)
 				System.out
 						.println("Application is running forever with the final configuration.");
@@ -459,7 +365,7 @@ public class OnlineTuner implements Runnable {
 			if (cfg != null) {
 				for (int i = 0; i < count; i++) {
 					logger.newConfiguration(cfgName);
-					ret = reconfigure(cfg, 0);
+					ret = configurer.reconfigure(cfg, 0);
 					if (ret.first) {
 						prognosticator.time(ret.second);
 						runningTime.add(ret.second);
