@@ -38,6 +38,7 @@ import edu.mit.streamjit.impl.distributed.runtimer.DistributedDrainer;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
 import edu.mit.streamjit.tuner.OnlineTuner;
+import edu.mit.streamjit.tuner.Reconfigurer;
 import edu.mit.streamjit.util.ConfigurationUtils;
 
 /**
@@ -137,8 +138,9 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		CompiledStream cs = new DistributedCompiledStream(drainer);
 
 		if (Options.tune > 0 && this.cfg != null) {
-			OnlineTuner tuner = new OnlineTuner(drainer, manager, app,
-					cfgManager, logger, needTermination);
+			Reconfigurer configurer = new Reconfigurer(drainer, manager, app,
+					cfgManager, logger);
+			OnlineTuner tuner = new OnlineTuner(configurer, needTermination);
 			new Thread(tuner, "OnlineTuner").start();
 		}
 		return cs;

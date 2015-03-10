@@ -48,16 +48,14 @@ public class OnlineTuner implements Runnable {
 	private final Verifier verifier;
 	private final MethodTimeLogger mLogger;
 
-	public OnlineTuner(AbstractDrainer drainer, StreamJitAppManager manager,
-			StreamJitApp<?, ?> app, ConfigurationManager cfgManager,
-			TimeLogger logger, boolean needTermination) {
-		this.drainer = drainer;
-		this.manager = manager;
-		this.app = app;
-		this.cfgManager = cfgManager;
+	public OnlineTuner(Reconfigurer configurer, boolean needTermination) {
+		this.drainer = configurer.drainer;
+		this.manager = configurer.manager;
+		this.app = configurer.app;
+		this.cfgManager = configurer.cfgManager;
 		this.tuner = new TCPTuner();
 		this.needTermination = needTermination;
-		this.logger = logger;
+		this.logger = configurer.logger;
 		this.prognosticator = new GraphPropertyPrognosticator(app);
 		this.verifier = new Verifier();
 		this.mLogger = new FileMethodTimeLogger(app.name);
