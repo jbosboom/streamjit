@@ -135,4 +135,12 @@ public class Reconfigurer {
 		return multiplier;
 	}
 
+	public void terminate() {
+		if (manager.isRunning()) {
+			// drainer.startDraining(1);
+			drainer.drainFinal(true);
+		} else {
+			manager.stop();
+		}
+	}
 }

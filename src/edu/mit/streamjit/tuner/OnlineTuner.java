@@ -67,7 +67,7 @@ public class OnlineTuner implements Runnable {
 			tune();
 		else if (Options.tune == 2) {
 			verifier.verify();
-			terminate();
+			configurer.terminate();
 		} else
 			System.err
 					.println("GlobalConstants.tune is neither in tune mode nor in evaluate mode.");
@@ -133,7 +133,7 @@ public class OnlineTuner implements Runnable {
 		} catch (IOException e) {
 			e.printStackTrace();
 			mLogger.bTerminate();
-			terminate();
+			configurer.terminate();
 			mLogger.eTerminate();
 		}
 		mLogger.bTuningFinished();
@@ -174,7 +174,7 @@ public class OnlineTuner implements Runnable {
 		verifier.verify();
 
 		if (needTermination) {
-			terminate();
+			configurer.terminate();
 		} else {
 			Pair<Boolean, Long> ret = configurer.reconfigure(finalcfg, 0);
 			if (ret.first && ret.second > 0)
@@ -206,21 +206,12 @@ public class OnlineTuner implements Runnable {
 		}
 
 		if (needTermination)
-			terminate();
+			configurer.terminate();
 
 		try {
 			TimeLogProcessor.summarize(app.name);
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
-	}
-
-	private void terminate() {
-		if (manager.isRunning()) {
-			// drainer.startDraining(1);
-			drainer.drainFinal(true);
-		} else {
-			manager.stop();
 		}
 	}
 
