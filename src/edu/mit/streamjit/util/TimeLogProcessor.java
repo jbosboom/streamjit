@@ -219,10 +219,16 @@ public class TimeLogProcessor {
 
 	private static File makePlotFile(File dir, String name, String dataFile)
 			throws IOException {
+		boolean pdf = true;
 		File plotfile = new File(dir, "plot.plt");
 		FileWriter writer = new FileWriter(plotfile, false);
-		writer.write("set terminal postscript eps enhanced color\n");
-		writer.write(String.format("set output \"%s.eps\"\n", name));
+		if (pdf) {
+			writer.write("set terminal pdf enhanced color\n");
+			writer.write(String.format("set output \"%s.pdf\"\n", name));
+		} else {
+			writer.write("set terminal postscript eps enhanced color\n");
+			writer.write(String.format("set output \"%s.eps\"\n", name));
+		}
 		writer.write("set ylabel \"Time(ms)\"\n");
 		writer.write("set xlabel \"Tuning Rounds\"\n");
 		writer.write(String.format("set title \"%s\"\n", name));
@@ -249,10 +255,16 @@ public class TimeLogProcessor {
 
 	private static File makeHeapPlotFile(File dir, String name,
 			String dataFile1, String dataFile2) throws IOException {
+		boolean pdf = true;
 		File plotfile = new File(dir, "heapplot.plt");
 		FileWriter writer = new FileWriter(plotfile, false);
-		writer.write("set terminal postscript eps enhanced color\n");
-		writer.write(String.format("set output \"%sHeap.eps\"\n", name));
+		if (pdf) {
+			writer.write("set terminal pdf enhanced color\n");
+			writer.write(String.format("set output \"%sHeap.pdf\"\n", name));
+		} else {
+			writer.write("set terminal postscript eps enhanced color\n");
+			writer.write(String.format("set output \"%sHeap.eps\"\n", name));
+		}
 		writer.write("set ylabel \"Memory(MB)\"\n");
 		writer.write("set xlabel \"Tuning Rounds\"\n");
 		writer.write(String.format("set title \"%sHeap\"\n", name));
