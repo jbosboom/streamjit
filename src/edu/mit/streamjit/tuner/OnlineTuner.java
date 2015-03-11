@@ -51,7 +51,7 @@ public class OnlineTuner implements Runnable {
 		this.needTermination = needTermination;
 		this.logger = configurer.logger;
 		this.prognosticator = new GraphPropertyPrognosticator(app);
-		this.mLogger = new FileMethodTimeLogger(app.name);
+		this.mLogger = configurer.mLogger;
 	}
 
 	@Override
