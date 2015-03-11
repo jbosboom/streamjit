@@ -23,6 +23,13 @@ import edu.mit.streamjit.impl.distributed.common.Utils;
  */
 public class TimeLogProcessor {
 
+	private static final String pRunTimeFile = "processedRunTime.txt";
+	private static final String pCompTimeFile = "processedCompileTime.txt";
+	private static final String pDrainTimeFile = "processedDrainTime.txt";
+	private static final String pTuneRoundTimeFile = "processedTuningRoundTime.txt";
+	private static final String pEvalTimeFile = "processedEvaluation.txt";
+	private static final String ptotalFile = "totalStats.txt";
+
 	public static void main(String[] args) throws IOException {
 		summarize("FMRadioCore");
 		summarizeHeap("FMRadioCore");
@@ -33,7 +40,7 @@ public class TimeLogProcessor {
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%scompileTime.txt", appName, File.separator)));
 
-		File outFile = new File(outDir, "processedCompileTime.txt");
+		File outFile = new File(outDir, pCompTimeFile);
 		FileWriter writer = new FileWriter(outFile, false);
 		Map<String, Integer> ret = process(reader, writer, "Total", true, 3);
 		reader.close();
@@ -50,7 +57,7 @@ public class TimeLogProcessor {
 			File outDir) throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%srunTime.txt", appName, File.separator)));
-		File outFile = new File(outDir, "processedRunTime.txt");
+		File outFile = new File(outDir, pRunTimeFile);
 		FileWriter writer = new FileWriter(outFile, false);
 		String line;
 		String cfgPrefix = "Init";
@@ -79,12 +86,11 @@ public class TimeLogProcessor {
 		writer.close();
 		return ret;
 	}
-
 	private static Map<String, Integer> processDrainTime(String appName,
 			File outDir) throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%sdrainTime.txt", appName, File.separator)));
-		File outFile = new File(outDir, "processedDrainTime.txt");
+		File outFile = new File(outDir, pDrainTimeFile);
 		FileWriter writer = new FileWriter(outFile, false);
 		Map<String, Integer> ret = process(reader, writer, "Drain time", true,
 				3);
@@ -98,7 +104,7 @@ public class TimeLogProcessor {
 			File outDir) throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%srunTime.txt", appName, File.separator)));
-		File outFile = new File(outDir, "processedTuningRoundTime.txt");
+		File outFile = new File(outDir, pTuneRoundTimeFile);
 		FileWriter writer = new FileWriter(outFile, false);
 		Map<String, Integer> ret = process(reader, writer, "Tuning", false, 3);
 		reader.close();
@@ -185,9 +191,8 @@ public class TimeLogProcessor {
 		Map<String, Integer> drainTime = processDrainTime(appName, summaryDir);
 		Map<String, Integer> tuningRoundTime = processTuningRoundTime(appName,
 				summaryDir);
-		String dataFile = "totalStats.txt";
 
-		File outfile = new File(summaryDir, dataFile);
+		File outfile = new File(summaryDir, ptotalFile);
 		FileWriter writer = new FileWriter(outfile, false);
 		FileWriter verify = new FileWriter(String.format("%s%sverify.txt",
 				appName, File.separator));
@@ -213,7 +218,7 @@ public class TimeLogProcessor {
 		verify.close();
 		writer.close();
 
-		File f = makePlotFile(summaryDir, appName, dataFile);
+		File f = makePlotFile(summaryDir, appName, ptotalFile);
 		plot(summaryDir, f);
 	}
 
@@ -359,7 +364,7 @@ public class TimeLogProcessor {
 		Utils.createDir(summaryDir.getPath());
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%sevaluation.txt", appName, File.separator)));
-		File outFile = new File(summaryDir, "processedEvaluation.txt");
+		File outFile = new File(summaryDir, pEvalTimeFile);
 		FileWriter writer = new FileWriter(outFile, false);
 		String line;
 		int i = 0;
