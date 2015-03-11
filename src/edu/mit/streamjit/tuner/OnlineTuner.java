@@ -57,7 +57,7 @@ public class OnlineTuner implements Runnable {
 		this.needTermination = needTermination;
 		this.logger = configurer.logger;
 		this.prognosticator = new GraphPropertyPrognosticator(app);
-		this.verifier = new Verifier();
+		this.verifier = new Verifier(configurer);
 		this.mLogger = new FileMethodTimeLogger(app.name);
 	}
 
@@ -215,7 +215,15 @@ public class OnlineTuner implements Runnable {
 		}
 	}
 
-	private class Verifier {
+	private static class Verifier {
+
+		private final Reconfigurer configurer;
+		private final String appName;
+
+		Verifier(Reconfigurer configurer) {
+			this.configurer = configurer;
+			this.appName = configurer.app.name;
+		}
 
 		public void verify() {
 			verifyTuningTimes(cfgPrefixes());
@@ -238,9 +246,9 @@ public class OnlineTuner implements Runnable {
 						String prefix = en.getKey();
 						Integer expectedRunningTime = en.getValue();
 						String cfgName = String.format("%s_%s.cfg", prefix,
-								app.name);
+								appName);
 						Configuration cfg = ConfigurationUtils
-								.readConfiguration(app.name, prefix);
+								.readConfiguration(appName, prefix);
 						if (cfg == null) {
 							System.err.println(String.format(
 									"No %s file exists", cfgName));
@@ -284,7 +292,7 @@ public class OnlineTuner implements Runnable {
 
 		private FileWriter writer() throws IOException {
 			FileWriter writer = new FileWriter(String.format(
-					"%s%sevaluation.txt", app.name, File.separator, app.name),
+					"%s%sevaluation.txt", appName, File.separator, appName),
 					true);
 			writer.write("##########################################################");
 			Properties prop = Options.getProperties();
@@ -297,8 +305,8 @@ public class OnlineTuner implements Runnable {
 			cfgPrefixes.put("final", 0);
 			cfgPrefixes.put("hand", 0);
 			try {
-				BufferedReader reader = new BufferedReader(new FileReader(
-						String.format("%s%sverify.txt", app.name,
+				BufferedReader reader = new BufferedReader(
+						new FileReader(String.format("%s%sverify.txt", appName,
 								File.separator)));
 				String line;
 				while ((line = reader.readLine()) != null) {
@@ -355,10 +363,10 @@ public class OnlineTuner implements Runnable {
 			Pair<Boolean, Long> ret;
 			if (cfg != null) {
 				for (int i = 0; i < count; i++) {
-					logger.newConfiguration(cfgName);
+					configurer.logger.newConfiguration(cfgName);
 					ret = configurer.reconfigure(cfg, 0);
 					if (ret.first) {
-						prognosticator.time(ret.second);
+						configurer.prognosticator.time(ret.second);
 						runningTime.add(ret.second);
 					} else {
 						System.err.println("Evaluation failed...");
