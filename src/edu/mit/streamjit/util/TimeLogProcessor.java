@@ -225,7 +225,7 @@ public class TimeLogProcessor {
 	private static File createTotalStatsPlotFile(File dir, String name,
 			String dataFile) throws IOException {
 		boolean pdf = true;
-		File plotfile = new File(dir, "plot.plt");
+		File plotfile = new File(dir, "totalStats.plt");
 		FileWriter writer = new FileWriter(plotfile, false);
 		if (pdf) {
 			writer.write("set terminal pdf enhanced color\n");
