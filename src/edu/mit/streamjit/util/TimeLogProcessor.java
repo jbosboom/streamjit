@@ -220,8 +220,13 @@ public class TimeLogProcessor {
 
 		File f = createTotalStatsPlotFile(summaryDir, appName);
 		plot(summaryDir, f);
+		f = createProcessedPlotFile(summaryDir, appName);
+		plot(summaryDir, f);
 	}
 
+	/**
+	 * Creates plot file for {@link #ptotalFile}.
+	 */
 	private static File createTotalStatsPlotFile(File dir, String name)
 			throws IOException {
 		boolean pdf = true;
@@ -255,6 +260,48 @@ public class TimeLogProcessor {
 		writer.write(String
 				.format("plot \"%s\" using 1:2 with linespoints title \"Tuning Round time\"\n",
 						ptotalFile));
+		writer.close();
+		return plotfile;
+	}
+
+	/**
+	 * Creates a plot file that uses data from all processed files (
+	 * {@link #pRunTimeFile}, {@link #pCompTimeFile}, {@link #pDrainTimeFile}
+	 * and {@link #pTuneRoundTimeFile}).
+	 */
+	private static File createProcessedPlotFile(File dir, String name)
+			throws IOException {
+		boolean pdf = true;
+		File plotfile = new File(dir, "processed.plt");
+		FileWriter writer = new FileWriter(plotfile, false);
+		if (pdf) {
+			writer.write("set terminal pdf enhanced color\n");
+			writer.write(String.format("set output \"%sP.pdf\"\n", name));
+		} else {
+			writer.write("set terminal postscript eps enhanced color\n");
+			writer.write(String.format("set output \"%s.eps\"\n", name));
+		}
+		writer.write("set ylabel \"Time(ms)\"\n");
+		writer.write("set xlabel \"Tuning Rounds\"\n");
+		writer.write(String.format("set title \"%s\"\n", name));
+		writer.write("set grid\n");
+		writer.write("#set yrange [0:*]\n");
+		writer.write(String
+				.format("plot \"%s\" using 1:4 with linespoints title \"Current best running time\"\n",
+						pRunTimeFile));
+		writer.write(String.format(
+				"plot \"%s\" using 1:3 with linespoints title \"Run time\"\n",
+				pRunTimeFile));
+		writer.write(String
+				.format("plot \"%s\" using 1:3 with linespoints title \"Compile time\"\n",
+						pCompTimeFile));
+		writer.write(String
+				.format("plot \"%s\" using 1:3 with linespoints title \"Drain time\"\n",
+						pDrainTimeFile));
+		writer.write("set ylabel \"Time(s)\"\n");
+		writer.write(String
+				.format("plot \"%s\" using 1:3 with linespoints title \"Tuning Round time\"\n",
+						pTuneRoundTimeFile));
 		writer.close();
 		return plotfile;
 	}
