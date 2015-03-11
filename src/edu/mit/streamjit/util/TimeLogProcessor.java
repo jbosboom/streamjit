@@ -246,6 +246,7 @@ public class TimeLogProcessor {
 		writer.write(String
 				.format("plot \"%s\" using 1:5 with linespoints title \"Drain time\"\n",
 						dataFile));
+		writer.write("set ylabel \"Time(s)\"\n");
 		writer.write(String
 				.format("plot \"%s\" using 1:2 with linespoints title \"Tuning Round time\"\n",
 						dataFile));
