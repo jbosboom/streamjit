@@ -218,12 +218,12 @@ public class TimeLogProcessor {
 		verify.close();
 		writer.close();
 
-		File f = createTotalStatsPlotFile(summaryDir, appName, ptotalFile);
+		File f = createTotalStatsPlotFile(summaryDir, appName);
 		plot(summaryDir, f);
 	}
 
-	private static File createTotalStatsPlotFile(File dir, String name,
-			String dataFile) throws IOException {
+	private static File createTotalStatsPlotFile(File dir, String name)
+			throws IOException {
 		boolean pdf = true;
 		File plotfile = new File(dir, "totalStats.plt");
 		FileWriter writer = new FileWriter(plotfile, false);
@@ -241,20 +241,20 @@ public class TimeLogProcessor {
 		writer.write("#set yrange [0:*]\n");
 		writer.write(String
 				.format("plot \"%s\" using 1:6 with linespoints title \"Current best running time\"\n",
-						dataFile));
+						ptotalFile));
 		writer.write(String.format(
 				"plot \"%s\" using 1:4 with linespoints title \"Run time\"\n",
-				dataFile));
+				ptotalFile));
 		writer.write(String
 				.format("plot \"%s\" using 1:3 with linespoints title \"Compile time\"\n",
-						dataFile));
+						ptotalFile));
 		writer.write(String
 				.format("plot \"%s\" using 1:5 with linespoints title \"Drain time\"\n",
-						dataFile));
+						ptotalFile));
 		writer.write("set ylabel \"Time(s)\"\n");
 		writer.write(String
 				.format("plot \"%s\" using 1:2 with linespoints title \"Tuning Round time\"\n",
-						dataFile));
+						ptotalFile));
 		writer.close();
 		return plotfile;
 	}
