@@ -17,12 +17,12 @@ import edu.mit.streamjit.util.ConfigurationUtils;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.TimeLogProcessor;
 
-public class Verifier {
+public class Verifier implements Runnable {
 
 	private final Reconfigurer configurer;
 	private final String appName;
 
-	Verifier(Reconfigurer configurer) {
+	public Verifier(Reconfigurer configurer) {
 		this.configurer = configurer;
 		this.appName = configurer.app.name;
 	}
@@ -174,5 +174,14 @@ public class Verifier {
 			System.err.println("Null configuration\n");
 		}
 		return runningTime;
+	}
+
+	@Override
+	public void run() {
+		if (Options.tune == 2) {
+			verify();
+			configurer.terminate();
+		} else
+			System.err.println("Options.tune is not in the verify mode");
 	}
 }
