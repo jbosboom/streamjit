@@ -218,12 +218,12 @@ public class TimeLogProcessor {
 		verify.close();
 		writer.close();
 
-		File f = makePlotFile(summaryDir, appName, ptotalFile);
+		File f = createTotalStatsPlotFile(summaryDir, appName, ptotalFile);
 		plot(summaryDir, f);
 	}
 
-	private static File makePlotFile(File dir, String name, String dataFile)
-			throws IOException {
+	private static File createTotalStatsPlotFile(File dir, String name,
+			String dataFile) throws IOException {
 		boolean pdf = true;
 		File plotfile = new File(dir, "plot.plt");
 		FileWriter writer = new FileWriter(plotfile, false);
