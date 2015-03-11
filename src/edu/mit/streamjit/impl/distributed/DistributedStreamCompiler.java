@@ -39,6 +39,7 @@ import edu.mit.streamjit.partitioner.HorizontalPartitioner;
 import edu.mit.streamjit.partitioner.Partitioner;
 import edu.mit.streamjit.tuner.OnlineTuner;
 import edu.mit.streamjit.tuner.Reconfigurer;
+import edu.mit.streamjit.tuner.Verifier;
 import edu.mit.streamjit.util.ConfigurationUtils;
 
 /**
@@ -140,8 +141,7 @@ public class DistributedStreamCompiler implements StreamCompiler {
 		if (Options.tune > 0 && this.cfg != null) {
 			Reconfigurer configurer = new Reconfigurer(drainer, manager, app,
 					cfgManager, logger);
-			OnlineTuner tuner = new OnlineTuner(configurer, needTermination);
-			new Thread(tuner, "OnlineTuner").start();
+			tuneOrVerify(configurer, needTermination);
 		}
 		return cs;
 	}
@@ -297,6 +297,20 @@ public class DistributedStreamCompiler implements StreamCompiler {
 				.equals(cfg.getParametersMap().keySet()))
 			return true;
 		return false;
+	}
+
+	private void tuneOrVerify(Reconfigurer configurer, boolean needTermination) {
+		Runnable r;
+		if (Options.tune == 1) {
+			r = new OnlineTuner(configurer, needTermination);
+			new Thread(r, "OnlineTuner").start();
+		} else if (Options.tune == 2) {
+			r = new Verifier(configurer);
+			new Thread(r, "Verifier").start();
+		} else {
+			throw new IllegalStateException(
+					"Neither OnlineTuner nor Verifer has been started.");
+		}
 	}
 
 	private static class DistributedCompiledStream implements CompiledStream {
