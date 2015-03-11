@@ -11,13 +11,10 @@ import com.google.common.base.Stopwatch;
 
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.TimeLogger;
-import edu.mit.streamjit.impl.common.drainer.AbstractDrainer;
 import edu.mit.streamjit.impl.distributed.ConfigurationManager;
 import edu.mit.streamjit.impl.distributed.StreamJitApp;
-import edu.mit.streamjit.impl.distributed.StreamJitAppManager;
 import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.Options;
-import edu.mit.streamjit.tuner.MethodTimeLogger.FileMethodTimeLogger;
 import edu.mit.streamjit.util.ConfigurationUtils;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.TimeLogProcessor;
@@ -30,8 +27,6 @@ import edu.mit.streamjit.util.json.Jsonifiers;
  * @since Oct 8, 2013
  */
 public class OnlineTuner implements Runnable {
-	private final AbstractDrainer drainer;
-	private final StreamJitAppManager manager;
 	private final OpenTuner tuner;
 	private final StreamJitApp<?, ?> app;
 	private final ConfigurationManager cfgManager;
@@ -43,14 +38,12 @@ public class OnlineTuner implements Runnable {
 
 	public OnlineTuner(Reconfigurer configurer, boolean needTermination) {
 		this.configurer = configurer;
-		this.drainer = configurer.drainer;
-		this.manager = configurer.manager;
 		this.app = configurer.app;
 		this.cfgManager = configurer.cfgManager;
 		this.tuner = new TCPTuner();
 		this.needTermination = needTermination;
 		this.logger = configurer.logger;
-		this.prognosticator = new GraphPropertyPrognosticator(app);
+		this.prognosticator = configurer.prognosticator;
 		this.mLogger = configurer.mLogger;
 	}
 
@@ -79,7 +72,7 @@ public class OnlineTuner implements Runnable {
 			Pair<Boolean, Long> ret;
 
 			System.out.println("New tune run.............");
-			while (manager.getStatus() != AppStatus.STOPPED) {
+			while (configurer.manager.getStatus() != AppStatus.STOPPED) {
 				mLogger.bTuningRound();
 				String cfgJson = tuner.readLine();
 				logger.logSearchTime(searchTimeSW
@@ -189,7 +182,7 @@ public class OnlineTuner implements Runnable {
 
 	private void tuningFinished() {
 		try {
-			drainer.dumpDraindataStatistics();
+			configurer.drainer.dumpDraindataStatistics();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
