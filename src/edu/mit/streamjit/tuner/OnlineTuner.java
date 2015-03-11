@@ -38,7 +38,6 @@ public class OnlineTuner implements Runnable {
 	private final boolean needTermination;
 	private final TimeLogger logger;
 	private final ConfigurationPrognosticator prognosticator;
-	private final Verifier verifier;
 	private final MethodTimeLogger mLogger;
 	private final Reconfigurer configurer;
 
@@ -52,7 +51,6 @@ public class OnlineTuner implements Runnable {
 		this.needTermination = needTermination;
 		this.logger = configurer.logger;
 		this.prognosticator = new GraphPropertyPrognosticator(app);
-		this.verifier = new Verifier(configurer);
 		this.mLogger = new FileMethodTimeLogger(app.name);
 	}
 
@@ -162,7 +160,7 @@ public class OnlineTuner implements Runnable {
 		Configuration finalcfg = Configuration.fromJson(finalConfg);
 		finalcfg = ConfigurationUtils.addConfigPrefix(finalcfg, "final");
 
-		verifier.verify();
+		new Verifier(configurer).verify();
 
 		if (needTermination) {
 			configurer.terminate();
