@@ -60,7 +60,7 @@ public class TimeLogProcessor {
 		while ((line = reader.readLine()) != null) {
 			if (line.startsWith("----------------------------"))
 				cfgPrefix = cfgString(line);
-			if (line.startsWith("Execution")) {
+			else if (line.startsWith("Execution")) {
 				String[] arr = line.split(" ");
 				String time = arr[3].trim();
 				time = time.substring(0, time.length() - 2);
@@ -119,7 +119,7 @@ public class TimeLogProcessor {
 		while ((line = reader.readLine()) != null) {
 			if (line.startsWith("----------------------------"))
 				cfgPrefix = cfgString(line);
-			if (line.startsWith(startString)) {
+			else if (line.startsWith(startString)) {
 				String[] arr = line.split(" ");
 				String time = arr[timepos].trim();
 				time = time.substring(0, time.length() - timeUnitLength);
