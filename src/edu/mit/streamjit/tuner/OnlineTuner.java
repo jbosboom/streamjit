@@ -96,7 +96,7 @@ public class OnlineTuner implements Runnable {
 				mLogger.eReconfigure();
 				if (ret.first) {
 					long time = ret.second;
-					currentBestTime = (time > 1 && currentBestTime > time)
+					currentBestTime = (time > 0 && currentBestTime > time)
 							? time : currentBestTime;
 					prognosticator.time(ret.second);
 					tuner.writeLine(new Double(ret.second).toString());
