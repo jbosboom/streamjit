@@ -237,12 +237,12 @@ public class TimeLogProcessor {
 		writer.write(String
 				.format("plot \"%s\" using 1:6 with linespoints title \"Current best running time\"\n",
 						dataFile));
-		writer.write(String
-				.format("plot \"%s\" using 1:3 with linespoints title \"Compile time\"\n",
-						dataFile));
 		writer.write(String.format(
 				"plot \"%s\" using 1:4 with linespoints title \"Run time\"\n",
 				dataFile));
+		writer.write(String
+				.format("plot \"%s\" using 1:3 with linespoints title \"Compile time\"\n",
+						dataFile));
 		writer.write(String
 				.format("plot \"%s\" using 1:5 with linespoints title \"Drain time\"\n",
 						dataFile));
