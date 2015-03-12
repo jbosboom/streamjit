@@ -198,7 +198,7 @@ public class TimeLogProcessor {
 		File outfile = new File(summaryDir, ptotalFile);
 		FileWriter writer = new FileWriter(outfile, false);
 		FileWriter verify = new FileWriter(String.format("%s%sverify.txt",
-				appName, File.separator));
+				appName, File.separator), true);
 		int min = Integer.MAX_VALUE;
 		writer.write("cfg\tTRTime\tcomp\trun\tdrain\tmin\n");
 		for (int i = 1; i <= tuningRoundTime.size(); i++) {
