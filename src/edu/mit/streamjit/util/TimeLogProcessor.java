@@ -16,6 +16,7 @@ import java.util.Properties;
 
 import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.common.Utils;
+import edu.mit.streamjit.tuner.Verifier;
 
 /**
  * Processes the Distributed StreamJit's time log files and generate summary.
@@ -473,11 +474,17 @@ public class TimeLogProcessor {
 	}
 
 	public static void processVerifycaionRun(String appName) throws IOException {
+		processVerifycaionRun(appName, Verifier.cfgPrefixes(appName));
+	}
+
+	public static void processVerifycaionRun(String appName,
+			Map<String, Integer> cfgPrefixes) throws IOException {
 		File summaryDir = new File(String.format("%s%ssummary", appName,
 				File.separator));
 		Utils.createDir(summaryDir.getPath());
-		processVerifycaionRunTime(appName, summaryDir,
-				"final_NestedSplitJoinCore.cfg");
+		for (String cfgPrefix : cfgPrefixes.keySet()) {
+			processVerifycaionRunTime(appName, summaryDir, cfgPrefix);
+		}
 	}
 
 	private static String getTitle(String appName) {
