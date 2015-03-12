@@ -33,9 +33,10 @@ public class Verifier implements Runnable {
 	}
 
 	private void generateGraphs(Map<String, Integer> cfgPrefixes) {
-		if (Options.verificationCount > 50)
+		if (Options.verificationCount > 50 || Options.evaluationCount > 50)
 			try {
 				TimeLogProcessor.processVerifycaionRun(appName, cfgPrefixes);
+				TimeLogProcessor.summarize(appName);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
