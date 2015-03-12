@@ -28,7 +28,17 @@ public class Verifier implements Runnable {
 	}
 
 	public void verify() {
-		verifyTuningTimes(cfgPrefixes(appName));
+		Map<String, Integer> cfgPrefixes = cfgPrefixes(appName);
+		verifyTuningTimes(cfgPrefixes);
+	}
+
+	private void generateGraphs(Map<String, Integer> cfgPrefixes) {
+		if (Options.verificationCount > 50)
+			try {
+				TimeLogProcessor.processVerifycaionRun(appName, cfgPrefixes);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 	}
 
 	/**
