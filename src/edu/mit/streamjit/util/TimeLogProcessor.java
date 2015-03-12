@@ -444,7 +444,7 @@ public class TimeLogProcessor {
 			String cfgName) throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(
 				String.format("%s%srunTime.txt", appName, File.separator)));
-		File outFile = new File(outDir, String.format("processed%s.txt",
+		File outFile = new File(outDir, String.format("verification%s.txt",
 				cfgName));
 		FileWriter writer = new FileWriter(outFile, false);
 		String line;
@@ -484,6 +484,8 @@ public class TimeLogProcessor {
 		Utils.createDir(summaryDir.getPath());
 		for (String cfgPrefix : cfgPrefixes.keySet()) {
 			processVerifycaionRunTime(appName, summaryDir, cfgPrefix);
+			File f = createVerificationPlotFile(summaryDir, appName, cfgPrefix);
+			plot(summaryDir, f);
 		}
 	}
 
@@ -503,5 +505,38 @@ public class TimeLogProcessor {
 			System.err.println("Failed to load README.txt");
 		}
 		return prop.getProperty("benchmarkName");
+	}
+
+	/**
+	 * Creates a plot file that uses data from all processed files (
+	 * {@link #pRunTimeFile}, {@link #pCompTimeFile}, {@link #pDrainTimeFile}
+	 * and {@link #pTuneRoundTimeFile}).
+	 */
+	private static File createVerificationPlotFile(File dir, String appName,
+			String cfgPrefix) throws IOException {
+		String title = getTitle(appName);
+		title = String.format("%s-cfg%s", title, cfgPrefix);
+		boolean pdf = true;
+		String dataFile = String.format("verification%s.txt", cfgPrefix);
+		File plotfile = new File(dir, String.format("verification%s.plt",
+				cfgPrefix));
+		FileWriter writer = new FileWriter(plotfile, false);
+		if (pdf) {
+			writer.write("set terminal pdf enhanced color\n");
+			writer.write(String.format("set output \"%s.pdf\"\n", title));
+		} else {
+			writer.write("set terminal postscript eps enhanced color\n");
+			writer.write(String.format("set output \"%s.eps\"\n", title));
+		}
+		writer.write("set ylabel \"Time(ms)\"\n");
+		writer.write("set xlabel \"Tuning Rounds\"\n");
+		writer.write(String.format("set title \"%s\"\n", title));
+		writer.write("set grid\n");
+		writer.write("#set yrange [0:*]\n");
+		writer.write(String.format(
+				"plot \"%s\" using 1:3 with linespoints title \"Run time\"\n",
+				dataFile));
+		writer.close();
+		return plotfile;
 	}
 }
