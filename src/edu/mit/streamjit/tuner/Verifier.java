@@ -60,7 +60,7 @@ public class Verifier implements Runnable {
 					writer.write("----------------------------------------\n");
 					writer.write(String.format("Configuration name = %s\n",
 							cfgName));
-					List<Long> runningTimes = evaluateConfig(cfg, cfgName);
+					List<Long> runningTimes = evaluateConfig(cfg);
 					processRunningTimes(runningTimes, expectedRunningTime,
 							writer);
 				}
@@ -151,17 +151,16 @@ public class Verifier implements Runnable {
 	 * 
 	 * @param cfg
 	 *            configuration that needs to be evaluated
-	 * @param cfgName
-	 *            name of the configuration. This is just for logging purpose.
 	 */
-	private List<Long> evaluateConfig(Configuration cfg, String cfgName) {
-		System.out.println("Evaluating " + cfgName);
+	private List<Long> evaluateConfig(Configuration cfg) {
+		String cfgPrefix = ConfigurationUtils.getConfigPrefix(cfg);
+		System.out.println("Evaluating " + cfgPrefix);
 		int count = Options.evaluationCount;
 		List<Long> runningTime = new ArrayList<>(count);
 		Pair<Boolean, Long> ret;
 		if (cfg != null) {
 			for (int i = 0; i < count; i++) {
-				configurer.logger.newConfiguration(cfgName);
+				configurer.logger.newConfiguration(cfgPrefix);
 				ret = configurer.reconfigure(cfg, 0);
 				if (ret.first) {
 					configurer.prognosticator.time(ret.second);
