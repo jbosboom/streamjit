@@ -52,7 +52,7 @@ public class Verifier implements Runnable {
 	 * @param cfgPrefixes
 	 *            map of cfgPrefixes and expected running time.
 	 */
-	private void verifyTuningTimes(Map<String, Integer> cfgPrefixes) {
+	void verifyTuningTimes(Map<String, Integer> cfgPrefixes) {
 		try {
 			FileWriter writer = writer();
 			for (int i = 0; i < Options.verificationCount; i++) {

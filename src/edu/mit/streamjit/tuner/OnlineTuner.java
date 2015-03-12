@@ -2,6 +2,8 @@ package edu.mit.streamjit.tuner;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.base.Stopwatch;
@@ -149,9 +151,7 @@ public class OnlineTuner implements Runnable {
 		ConfigurationUtils.saveConfg(finalConfg, "final", app.name);
 		Configuration finalcfg = Configuration.fromJson(finalConfg);
 		finalcfg = ConfigurationUtils.addConfigPrefix(finalcfg, "final");
-
-		new Verifier(configurer).verify();
-
+		verify();
 		if (needTermination) {
 			configurer.terminate();
 		} else {
@@ -162,6 +162,13 @@ public class OnlineTuner implements Runnable {
 			else
 				System.err.println("Invalid final configuration.");
 		}
+	}
+
+	private void verify() {
+		Map<String, Integer> cfgPrefixes = new HashMap<>();
+		cfgPrefixes.put("final", 0);
+		cfgPrefixes.put("hand", 0);
+		new Verifier(configurer).verifyTuningTimes(cfgPrefixes);
 	}
 
 	private Configuration newCfg(int round, String cfgJson) {
