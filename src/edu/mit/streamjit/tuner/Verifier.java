@@ -102,8 +102,6 @@ public class Verifier implements Runnable {
 
 	public static Map<String, Integer> cfgPrefixes(String appName) {
 		Map<String, Integer> cfgPrefixes = new HashMap<>();
-		cfgPrefixes.put("final", 0);
-		cfgPrefixes.put("hand", 0);
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(
 					String.format("%s%sverify.txt", appName, File.separator)));
