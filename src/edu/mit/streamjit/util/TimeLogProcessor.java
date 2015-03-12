@@ -227,21 +227,21 @@ public class TimeLogProcessor {
 	/**
 	 * Creates plot file for {@link #ptotalFile}.
 	 */
-	private static File createTotalStatsPlotFile(File dir, String name)
+	private static File createTotalStatsPlotFile(File dir, String appName)
 			throws IOException {
 		boolean pdf = true;
 		File plotfile = new File(dir, "totalStats.plt");
 		FileWriter writer = new FileWriter(plotfile, false);
 		if (pdf) {
 			writer.write("set terminal pdf enhanced color\n");
-			writer.write(String.format("set output \"%s.pdf\"\n", name));
+			writer.write(String.format("set output \"%s.pdf\"\n", appName));
 		} else {
 			writer.write("set terminal postscript eps enhanced color\n");
-			writer.write(String.format("set output \"%s.eps\"\n", name));
+			writer.write(String.format("set output \"%s.eps\"\n", appName));
 		}
 		writer.write("set ylabel \"Time(ms)\"\n");
 		writer.write("set xlabel \"Tuning Rounds\"\n");
-		writer.write(String.format("set title \"%s\"\n", name));
+		writer.write(String.format("set title \"%s\"\n", appName));
 		writer.write("set grid\n");
 		writer.write("#set yrange [0:*]\n");
 		writer.write(String
@@ -269,21 +269,21 @@ public class TimeLogProcessor {
 	 * {@link #pRunTimeFile}, {@link #pCompTimeFile}, {@link #pDrainTimeFile}
 	 * and {@link #pTuneRoundTimeFile}).
 	 */
-	private static File createProcessedPlotFile(File dir, String name)
+	private static File createProcessedPlotFile(File dir, String appName)
 			throws IOException {
 		boolean pdf = true;
 		File plotfile = new File(dir, "processed.plt");
 		FileWriter writer = new FileWriter(plotfile, false);
 		if (pdf) {
 			writer.write("set terminal pdf enhanced color\n");
-			writer.write(String.format("set output \"%sP.pdf\"\n", name));
+			writer.write(String.format("set output \"%sP.pdf\"\n", appName));
 		} else {
 			writer.write("set terminal postscript eps enhanced color\n");
-			writer.write(String.format("set output \"%s.eps\"\n", name));
+			writer.write(String.format("set output \"%s.eps\"\n", appName));
 		}
 		writer.write("set ylabel \"Time(ms)\"\n");
 		writer.write("set xlabel \"Tuning Rounds\"\n");
-		writer.write(String.format("set title \"%s\"\n", name));
+		writer.write(String.format("set title \"%s\"\n", appName));
 		writer.write("set grid\n");
 		writer.write("#set yrange [0:*]\n");
 		writer.write(String
