@@ -30,6 +30,7 @@ public class Verifier implements Runnable {
 	public void verify() {
 		Map<String, Integer> cfgPrefixes = cfgPrefixes(appName);
 		verifyTuningTimes(cfgPrefixes);
+		generateGraphs(cfgPrefixes);
 	}
 
 	private void generateGraphs(Map<String, Integer> cfgPrefixes) {
