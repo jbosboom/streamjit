@@ -2,6 +2,7 @@ package edu.mit.streamjit.util;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -11,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.impl.distributed.common.Utils;
@@ -229,19 +231,20 @@ public class TimeLogProcessor {
 	 */
 	private static File createTotalStatsPlotFile(File dir, String appName)
 			throws IOException {
+		String title = getTitle(appName);
 		boolean pdf = true;
 		File plotfile = new File(dir, "totalStats.plt");
 		FileWriter writer = new FileWriter(plotfile, false);
 		if (pdf) {
 			writer.write("set terminal pdf enhanced color\n");
-			writer.write(String.format("set output \"%s.pdf\"\n", appName));
+			writer.write(String.format("set output \"%s.pdf\"\n", title));
 		} else {
 			writer.write("set terminal postscript eps enhanced color\n");
-			writer.write(String.format("set output \"%s.eps\"\n", appName));
+			writer.write(String.format("set output \"%s.eps\"\n", title));
 		}
 		writer.write("set ylabel \"Time(ms)\"\n");
 		writer.write("set xlabel \"Tuning Rounds\"\n");
-		writer.write(String.format("set title \"%s\"\n", appName));
+		writer.write(String.format("set title \"%s\"\n", title));
 		writer.write("set grid\n");
 		writer.write("#set yrange [0:*]\n");
 		writer.write(String
@@ -271,19 +274,20 @@ public class TimeLogProcessor {
 	 */
 	private static File createProcessedPlotFile(File dir, String appName)
 			throws IOException {
+		String title = getTitle(appName);
 		boolean pdf = true;
 		File plotfile = new File(dir, "processed.plt");
 		FileWriter writer = new FileWriter(plotfile, false);
 		if (pdf) {
 			writer.write("set terminal pdf enhanced color\n");
-			writer.write(String.format("set output \"%sP.pdf\"\n", appName));
+			writer.write(String.format("set output \"%sP.pdf\"\n", title));
 		} else {
 			writer.write("set terminal postscript eps enhanced color\n");
-			writer.write(String.format("set output \"%s.eps\"\n", appName));
+			writer.write(String.format("set output \"%s.eps\"\n", title));
 		}
 		writer.write("set ylabel \"Time(ms)\"\n");
 		writer.write("set xlabel \"Tuning Rounds\"\n");
-		writer.write(String.format("set title \"%s\"\n", appName));
+		writer.write(String.format("set title \"%s\"\n", title));
 		writer.write("set grid\n");
 		writer.write("#set yrange [0:*]\n");
 		writer.write(String
@@ -474,5 +478,23 @@ public class TimeLogProcessor {
 		Utils.createDir(summaryDir.getPath());
 		processVerifycaionRunTime(appName, summaryDir,
 				"final_NestedSplitJoinCore.cfg");
+	}
+
+	private static String getTitle(String appName) {
+		String benchmarkName = getBenchmarkName(appName);
+		return benchmarkName == null ? appName : benchmarkName;
+	}
+
+	private static String getBenchmarkName(String appName) {
+		Properties prop = new Properties();
+		InputStream input = null;
+		try {
+			input = new FileInputStream(String.format("%s%sREADME.txt",
+					appName, File.separator));
+			prop.load(input);
+		} catch (IOException ex) {
+			System.err.println("Failed to load README.txt");
+		}
+		return prop.getProperty("benchmarkName");
 	}
 }
