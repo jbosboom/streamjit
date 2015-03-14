@@ -21,9 +21,6 @@
  */
 package edu.mit.streamjit.tuner;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryMXBean;
-import java.lang.management.MemoryUsage;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
@@ -32,9 +29,9 @@ import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.compiler2.Compiler2StreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
+import edu.mit.streamjit.impl.distributed.common.Utils;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
-import edu.mit.streamjit.tuner.ConfigGenerator.sqliteAdapter;
 
 /**
  * {@link RunApp} reads configuration, streamJit's app name and location
@@ -65,16 +62,8 @@ public class RunApp {
 				benchmarkName, round));
 
 		String sjDbPath = "sj" + benchmarkName + ".db";
-		sqliteAdapter sjDb;
-		try {
-			sjDb = new sqliteAdapter();
-		} catch (ClassNotFoundException e1) {
-			System.err
-					.println("Sqlite3 database not found...couldn't update the database with the configutaion.");
-			e1.printStackTrace();
-			return;
-		}
-
+		SqliteAdapter sjDb;
+		sjDb = new SqliteAdapter();
 		sjDb.connectDB(sjDbPath);
 		ResultSet result = sjDb.executeQuery(String.format(
 				"SELECT * FROM results WHERE Round=%d", round));
@@ -113,14 +102,7 @@ public class RunApp {
 			e.printStackTrace();
 			time = -2;
 		} catch (OutOfMemoryError er) {
-			MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
-			System.out.println("******OutOfMemoryError******");
-			MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
-			int MEGABYTE = 1024 * 1024;
-			long maxMemory = heapUsage.getMax() / MEGABYTE;
-			long usedMemory = heapUsage.getUsed() / MEGABYTE;
-			System.out.println("Memory Use :" + usedMemory + "M/" + maxMemory
-					+ "M");
+			Utils.printOutOfMemory();
 			time = -3;
 		}
 

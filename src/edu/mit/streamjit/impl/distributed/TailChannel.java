@@ -21,161 +21,67 @@
  */
 package edu.mit.streamjit.impl.distributed;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 
-import com.google.common.base.Stopwatch;
-
-import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
-import edu.mit.streamjit.impl.distributed.node.TCPInputChannel;
-
-public class TailChannel extends TCPInputChannel {
-
-	private final int skipCount;
-
-	private final int totalCount;
-
-	private int count;
-
-	private volatile CountDownLatch steadyLatch;
-
-	private volatile CountDownLatch skipLatch;
-
-	private performanceLogger pLogger = null;
-
-	private boolean skipLatchUp;
+/**
+ * This is a {@link BoundaryInputChannel} with counting facility.
+ * Implementations need to count the number of elements received and provide
+ * other services based on the count.
+ * 
+ * @author sumanan
+ * @since 24 Jan, 2015
+ */
+public interface TailChannel extends BoundaryInputChannel {
 
 	/**
-	 * @param buffer
-	 * @param conProvider
-	 * @param conInfo
-	 * @param bufferTokenName
-	 * @param debugLevel
-	 * @param skipCount
-	 *            : Skips this amount of output before evaluating the running
-	 *            time. This is added to avoid the noise from init schedule and
-	 *            the drain data. ( i.e., In order to get real steady state
-	 *            execution time)
-	 * @param steadyCount
-	 *            : {@link #getFixedOutputTime()} calculates the time taken to
-	 *            get this amount of outputs ( after skipping skipCount number
-	 *            of outputs at the beginning).
+	 * @return Number of elements received after the last reset()
 	 */
-	public TailChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel,
-			int skipCount, int steadyCount) {
-		super(buffer, conProvider, conInfo, bufferTokenName, debugLevel);
-		this.skipCount = skipCount;
-		this.totalCount = steadyCount + skipCount;
-		count = 0;
-		steadyLatch = new CountDownLatch(1);
-		skipLatch = new CountDownLatch(1);
-		this.skipLatchUp = true;
-		if (GlobalConstants.tune == 0) {
-			pLogger = new performanceLogger();
-			pLogger.start();
-		}
-	}
-
-	@Override
-	public void receiveData() {
-		super.receiveData();
-		count++;
-
-		if (GlobalConstants.printOutputCount && count % 10000 == 0)
-			System.err.println(count);
-
-		if (skipLatchUp && count > skipCount) {
-			skipLatch.countDown();
-			skipLatchUp = false;
-		}
-
-		if (count > totalCount)
-			steadyLatch.countDown();
-	}
-
-	@Override
-	public void stop(int type) {
-		super.stop(type);
-		if (pLogger != null) {
-			reset();
-			pLogger.stopLogging();
-		}
-	}
+	public int count();
 
 	/**
-	 * Skips skipCount amount of output at the beginning and then calculates the
-	 * time taken to get steadyCount amount of outputs. skipCount is added to
-	 * avoid the noise from init schedule and the drain data. ( i.e., In order
-	 * to get real steady state execution time).
+	 * Returns the time to receive fixed number of outputs. The fixed number can
+	 * be hard coded in side an implementation or passed as a constructor
+	 * argument.
+	 * <p>
+	 * The caller will be blocked until the fixed number of outputs are
+	 * received.
 	 * 
-	 * @return time in MILLISECONDS.
+	 * @return the time(ms) to receive fixed number of outputs.
+	 * 
 	 * @throws InterruptedException
 	 */
-	public long getFixedOutputTime() throws InterruptedException {
-		skipLatch.await();
-		Stopwatch stopwatch = Stopwatch.createStarted();
-		steadyLatch.await();
-		stopwatch.stop();
-		return stopwatch.elapsed(TimeUnit.MILLISECONDS);
-	}
+	public long getFixedOutputTime() throws InterruptedException;
 
-	public void reset() {
-		steadyLatch.countDown();
-		steadyLatch = new CountDownLatch(1);
-		skipLatch.countDown();
-		skipLatch = new CountDownLatch(1);
-		count = 0;
-		skipLatchUp = true;
-	}
+	/**
+	 * Returns the time to receive fixed number of outputs. The fixed number can
+	 * be hard coded in side an implementation or passed as a constructor
+	 * argument. Waits at most <code>timeout</code> time to receive fixed number
+	 * of output. Returns -1 if timeout occurred.
+	 * 
+	 * <p>
+	 * If timeout < 1, then the behavior this method is equivalent to calling
+	 * {@link #getFixedOutputTime()}.
+	 * </p>
+	 * 
+	 * <p>
+	 * The caller will be blocked until the fixed number of output is received
+	 * or timeout occurred, whatever happens early.
+	 * 
+	 * @param timeout
+	 *            Wait at most timeout time to receive fixed number of output.
+	 * 
+	 * @return the time(ms) to receive fixed number of outputs or -1 if timeout
+	 *         occurred.
+	 * 
+	 * @throws InterruptedException
+	 */
+	public long getFixedOutputTime(long timeout) throws InterruptedException;
 
-	private class performanceLogger extends Thread {
+	/**
+	 * Resets all counters and other resources. Any thread blocked on either
+	 * {@link #getFixedOutputTime()} or {@link #getFixedOutputTime(long)} should
+	 * be released after this call.
+	 */
+	public void reset();
 
-		private AtomicBoolean stopFlag;
-
-		private performanceLogger() {
-			stopFlag = new AtomicBoolean(false);
-		}
-
-		public void run() {
-			int i = 0;
-			FileWriter writer;
-			try {
-				writer = new FileWriter("FixedOutPut.txt");
-			} catch (IOException e1) {
-				e1.printStackTrace();
-				return;
-			}
-			while (++i < 10 && !stopFlag.get()) {
-				try {
-					Long time = getFixedOutputTime();
-					System.out.println("Execution time is " + time
-							+ " milli seconds");
-
-					writer.write(time.toString());
-					writer.write('\n');
-
-					reset();
-
-				} catch (InterruptedException | IOException e) {
-					e.printStackTrace();
-				}
-			}
-			try {
-				writer.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-
-		public void stopLogging() {
-			stopFlag.set(true);
-		}
-	}
 }

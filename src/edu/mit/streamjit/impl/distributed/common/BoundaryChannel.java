@@ -21,11 +21,11 @@
  */
 package edu.mit.streamjit.impl.distributed.common;
 
-import java.io.IOException;
-
 import com.google.common.collect.ImmutableList;
 
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
 
 /**
  * {@link BoundaryChannel} wraps a {@link Buffer} that crosses over the
@@ -42,29 +42,18 @@ public interface BoundaryChannel {
 	String name();
 
 	/**
-	 * Close the connection.
-	 * 
-	 * @throws IOException
-	 */
-	void closeConnection() throws IOException;
-
-	/**
-	 * @return true iff the connection with the other node is still valid.
-	 */
-	boolean isStillConnected();
-
-	/**
 	 * @return {@link Runnable} that does all IO communication and send
 	 *         data(stream tuples) to other node (or receive from other node).
 	 */
 	Runnable getRunnable();
 
-	/**
-	 * @return Other end of the node's ID.
-	 */
-	int getOtherNodeID();
+	ImmutableList<Object> getUnprocessedData();
 
-	public ImmutableList<Object> getUnprocessedData();
+	Connection getConnection();
+
+	ConnectionInfo getConnectionInfo();
+
+	Buffer getBuffer();
 
 	/**
 	 * Interface that represents input channels.
@@ -88,20 +77,10 @@ public interface BoundaryChannel {
 		 * <p>
 		 * Based on the type argument, implementation may treat uncounsumed data
 		 * differently
-		 * <ol>
-		 * <li>1 - No extraBuffer. Wait and push all received data in to the
-		 * actual buffer. May be used at final draining.
-		 * <li>2 - Create extra buffer and put all unconsumed data. This can be
-		 * send to the controller as draindata. May be used at intermediate
-		 * draining.
-		 * <li>3 - Discard all unconsumed data. This is useful, if we don't care
-		 * about the data while tuning for performance.
 		 * </p>
 		 * 
-		 * @param type
-		 *            : Can be 1, 2 or 3. rest are illegal.
 		 */
-		void stop(int type);
+		void stop(DrainType type);
 
 		/**
 		 * Receive data from other node.

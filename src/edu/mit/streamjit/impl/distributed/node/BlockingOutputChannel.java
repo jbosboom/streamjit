@@ -29,10 +29,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.google.common.collect.ImmutableList;
 
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.Connection;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 
 /**
  * This is {@link BoundaryOutputChannel} over TCP. Reads data from the given
@@ -46,19 +47,19 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
  * @author Sumanan sumanan@mit.edu
  * @since May 29, 2013
  */
-public class TCPOutputChannel implements BoundaryOutputChannel {
+public class BlockingOutputChannel implements BoundaryOutputChannel {
 
-	FileWriter writer;
+	private final FileWriter writer;
 
 	private final int debugLevel;
 
 	private final Buffer buffer;
 
-	private final TCPConnectionProvider conProvider;
+	private final ConnectionProvider conProvider;
 
-	private final TCPConnectionInfo conInfo;
+	private final ConnectionInfo conInfo;
 
-	private Connection tcpConnection;
+	private Connection connection;
 
 	private final AtomicBoolean stopFlag;
 
@@ -70,8 +71,14 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	protected ImmutableList<Object> unProcessedData;
 
-	public TCPOutputChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
+	public BlockingOutputChannel(int bufSize, ConnectionProvider conProvider,
+			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
+		this(new ConcurrentArrayBuffer(bufSize), conProvider, conInfo,
+				bufferTokenName, debugLevel);
+	}
+
+	public BlockingOutputChannel(Buffer buffer, ConnectionProvider conProvider,
+			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this.buffer = buffer;
 		this.conProvider = conProvider;
 		this.conInfo = conInfo;
@@ -81,7 +88,10 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 		this.debugLevel = debugLevel;
 		this.unProcessedData = null;
 		count = 0;
+		writer = fileWriter();
+	}
 
+	private FileWriter fileWriter() {
 		FileWriter w = null;
 		if (this.debugLevel == 5) {
 			try {
@@ -92,19 +102,12 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 				e.printStackTrace();
 			}
 		}
-		writer = w;
+		return w;
 	}
 
-	@Override
-	public final void closeConnection() throws IOException {
+	private void closeConnection() throws IOException {
 		// tcpConnection.closeConnection();
-		tcpConnection.softClose();
-	}
-
-	@Override
-	public final boolean isStillConnected() {
-		return (tcpConnection == null) ? false : tcpConnection
-				.isStillConnected();
+		connection.softClose();
 	}
 
 	@Override
@@ -112,9 +115,9 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 		return new Runnable() {
 			@Override
 			public void run() {
-				if (tcpConnection == null || !tcpConnection.isStillConnected()) {
+				if (connection == null || !connection.isStillConnected()) {
 					try {
-						tcpConnection = conProvider.getConnection(conInfo);
+						connection = conProvider.getConnection(conInfo);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -153,44 +156,8 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 
 	public final void sendData() {
 		while (this.buffer.size() > 0 && !stopFlag.get()) {
-			try {
-				Object obj = buffer.read();
-				tcpConnection.writeObject(obj);
-				count++;
-
-				if (debugLevel == 3) {
-					System.out.println(Thread.currentThread().getName() + " - "
-							+ obj.toString());
-				}
-
-				if (writer != null) {
-					writer.write(obj.toString());
-					writer.write('\n');
-				}
-			} catch (IOException e) {
-				System.err
-						.println("TCP Output Channel. WriteObject exception.");
-				reConnect();
-			}
-			if (count % 1000 == 0 && debugLevel == 2) {
-				System.out.println(Thread.currentThread().getName() + " - "
-						+ count + " items have been sent");
-			}
+			send();
 		}
-	}
-
-	@Override
-	public final int getOtherNodeID() {
-		return 0;
-	}
-
-	@Override
-	public final void stop(boolean isFinal) {
-		if (debugLevel > 0)
-			System.out.println(Thread.currentThread().getName()
-					+ " - stop request");
-		this.isFinal = isFinal;
-		this.stopFlag.set(true);
 	}
 
 	/**
@@ -199,40 +166,30 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 	 */
 	private void finalSend() {
 		while (this.buffer.size() > 0) {
-			try {
-				Object o = buffer.read();
-				tcpConnection.writeObject(o);
-				count++;
+			send();
+		}
+	}
 
-				if (debugLevel == 3) {
-					System.out.println(Thread.currentThread().getName()
-							+ " FinalSend - " + o.toString());
-				}
-
-				if (writer != null) {
-					writer.write(o.toString());
-					writer.write('\n');
-				}
-
-			} catch (IOException e) {
-				System.err.println("TCP Output Channel. finalSend exception.");
-			}
-			if (count % 1000 == 0 && debugLevel == 2) {
-				System.out.println(Thread.currentThread().getName()
-						+ " FinalSend - " + count
-						+ " no of items have been sent");
-			}
+	@Override
+	public final void stop(boolean isFinal) {
+		if (debugLevel > 0)
+			System.out.println(Thread.currentThread().getName()
+					+ " - stop request");
+		if (!this.stopFlag.get()) {
+			this.isFinal = isFinal;
+			this.stopFlag.set(true);
+		} else if (debugLevel > 0) {
+			System.err.println("Stop has already been called.");
 		}
 	}
 
 	private void reConnect() {
 		try {
-			this.tcpConnection.closeConnection();
+			this.connection.closeConnection();
 			while (!stopFlag.get()) {
 				System.out.println("TCPOutputChannel : Reconnecting...");
 				try {
-					this.tcpConnection = conProvider.getConnection(conInfo,
-							1000);
+					this.connection = conProvider.getConnection(conInfo, 1000);
 					return;
 				} catch (SocketTimeoutException stex) {
 					// We make this exception to recheck the stopFlag. Otherwise
@@ -241,6 +198,33 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 			}
 		} catch (IOException e1) {
 			e1.printStackTrace();
+		}
+	}
+
+	private void send() {
+		try {
+			Object o = buffer.read();
+			connection.writeObject(o);
+			count++;
+
+			if (debugLevel == 3) {
+				System.out.println(Thread.currentThread().getName()
+						+ " Send - " + o.toString());
+			}
+
+			if (writer != null) {
+				writer.write(o.toString());
+				writer.write('\n');
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.err.println("TCP Output Channel. Send exception.");
+			reConnect();
+		}
+		if (count % 1000 == 0 && debugLevel == 2) {
+			System.out.println(Thread.currentThread().getName() + " Send - "
+					+ count + " no of items have been sent");
 		}
 	}
 
@@ -265,5 +249,20 @@ public class TCPOutputChannel implements BoundaryOutputChannel {
 			throw new IllegalAccessError(
 					"Still processing... No unprocessed data");
 		return unProcessedData;
+	}
+
+	@Override
+	public Connection getConnection() {
+		return connection;
+	}
+
+	@Override
+	public ConnectionInfo getConnectionInfo() {
+		return conInfo;
+	}
+
+	@Override
+	public Buffer getBuffer() {
+		return buffer;
 	}
 }

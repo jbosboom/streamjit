@@ -50,7 +50,6 @@ import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmark.Dataset;
 import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.Datasets;
-import edu.mit.streamjit.test.apps.bitonicsort.BitonicSort;
 import edu.mit.streamjit.test.apps.channelvocoder7.ChannelVocoder7;
 import edu.mit.streamjit.util.json.Jsonifiers;
 
@@ -112,7 +111,8 @@ public class OfflineTuner {
 		try {
 			autoTuner.startTuner(String.format(
 					"lib%sopentuner%sstreamjit%sstreamjit.py", File.separator,
-					File.separator, File.separator));
+					File.separator, File.separator),
+					new File(System.getProperty("user.dir")));
 
 			autoTuner.writeLine("program");
 			autoTuner.writeLine(app.toString());

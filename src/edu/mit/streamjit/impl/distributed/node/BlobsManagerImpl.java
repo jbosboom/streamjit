@@ -21,41 +21,41 @@
  */
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
-import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
-import edu.mit.streamjit.impl.blob.Buffer;
-import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import edu.mit.streamjit.impl.blob.DrainData;
-import edu.mit.streamjit.impl.common.BlobThread;
-import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.distributed.common.BoundaryChannel;
+import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.distributed.common.AppStatus;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DoDrain;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainDataRequest;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
-import edu.mit.streamjit.impl.distributed.common.AppStatus;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.SNDrainElement;
-import edu.mit.streamjit.impl.distributed.common.SNMessageElement;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 import edu.mit.streamjit.impl.distributed.common.Utils;
+import edu.mit.streamjit.impl.distributed.node.BufferManager.SNLocalBufferManager;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData.BlobBufferStatus;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNBufferStatusData.BufferStatus;
+import edu.mit.streamjit.impl.distributed.profiler.StreamNodeProfiler;
 
 /**
  * {@link BlobsManagerImpl} responsible to run all {@link Blob}s those are
@@ -66,435 +66,68 @@ import edu.mit.streamjit.impl.distributed.common.Utils;
  */
 public class BlobsManagerImpl implements BlobsManager {
 
-	private Set<BlobExecuter> blobExecuters;
-	private final StreamNode streamNode;
-	private final TCPConnectionProvider conProvider;
-	private Map<Token, TCPConnectionInfo> conInfoMap;
+	Map<Token, BlobExecuter> blobExecuters;
 
-	private MonitorBuffers monBufs;
-
-	private final CTRLRDrainProcessor drainProcessor;
+	final BufferManager bufferManager;
 
 	private final CommandProcessor cmdProcessor;
 
-	private final ImmutableMap<Token, Buffer> bufferMap;
+	private final Map<Token, ConnectionInfo> conInfoMap;
+
+	private final ConnectionProvider conProvider;
+
+	volatile BufferCleaner bufferCleaner = null;
+
+	private final CTRLRDrainProcessor drainProcessor;
+
+	MonitorBuffers monBufs = null;
+
+	final StreamNode streamNode;
+
+	/**
+	 * if true {@link BufferCleaner} will be used to unlock the draining time
+	 * dead lock. Otherwise dynamic buffer will be used for local buffers to
+	 * handled drain time data growth.
+	 */
+	final boolean useBufferCleaner = false;
+
+	/**
+	 * if true {@link MonitorBuffers} will be started to log the buffer sizes
+	 * periodically.
+	 */
+	private final boolean monitorBuffers = false;
+
+	private final String appName;
+
+	private ImmutableSet<StreamNodeProfiler> profilers;
+
+	final AffinityManager affinityManager;
 
 	public BlobsManagerImpl(ImmutableSet<Blob> blobSet,
-			Map<Token, TCPConnectionInfo> conInfoMap, StreamNode streamNode,
-			TCPConnectionProvider conProvider) {
+			Map<Token, ConnectionInfo> conInfoMap, StreamNode streamNode,
+			ConnectionProvider conProvider, String appName) {
 		this.conInfoMap = conInfoMap;
 		this.streamNode = streamNode;
 		this.conProvider = conProvider;
 
 		this.cmdProcessor = new CommandProcessorImpl();
 		this.drainProcessor = new CTRLRDrainProcessorImpl();
-
-		bufferMap = createBufferMap(blobSet);
-
-		for (Blob b : blobSet) {
-			b.installBuffers(bufferMap);
-		}
-
-		Set<Token> locaTokens = getLocalTokens(blobSet);
-		blobExecuters = new HashSet<>();
-		for (Blob b : blobSet) {
-			ImmutableMap<Token, BoundaryInputChannel> inputChannels = createInputChannels(
-					Sets.difference(b.getInputs(), locaTokens), bufferMap);
-			ImmutableMap<Token, BoundaryOutputChannel> outputChannels = createOutputChannels(
-					Sets.difference(b.getOutputs(), locaTokens), bufferMap);
-			blobExecuters
-					.add(new BlobExecuter(b, inputChannels, outputChannels));
-		}
-	}
-
-	/**
-	 * Start and execute the blobs. This function should be responsible to
-	 * manage all CPU and I/O threads those are related to the {@link Blob}s.
-	 */
-	public void start() {
-		for (BlobExecuter be : blobExecuters)
-			be.start();
-
-		if (monBufs == null) {
-			System.out.println("Creating new MonitorBuffers");
-			monBufs = new MonitorBuffers();
-			monBufs.start();
-		} else
-			System.err
-					.println("Mon buffer is not null. Check the logic for bug");
-	}
-
-	/**
-	 * Stop all {@link Blob}s if running. No effect if a {@link Blob} is already
-	 * stopped.
-	 */
-	public void stop() {
-		for (BlobExecuter be : blobExecuters)
-			be.stop();
-
-		if (monBufs != null)
-			monBufs.stopMonitoring();
-	}
-
-	// TODO: Buffer sizes, including head and tail buffers, must be optimized.
-	// consider adding some tuning factor
-	private ImmutableMap<Token, Buffer> createBufferMap(Set<Blob> blobSet) {
-		ImmutableMap.Builder<Token, Buffer> bufferMapBuilder = ImmutableMap
-				.<Token, Buffer> builder();
-
-		Map<Token, Integer> minInputBufCapaciy = new HashMap<>();
-		Map<Token, Integer> minOutputBufCapaciy = new HashMap<>();
-
-		for (Blob b : blobSet) {
-			Set<Blob.Token> inputs = b.getInputs();
-			for (Token t : inputs) {
-				minInputBufCapaciy.put(t, b.getMinimumBufferCapacity(t));
-			}
-
-			Set<Blob.Token> outputs = b.getOutputs();
-			for (Token t : outputs) {
-				minOutputBufCapaciy.put(t, b.getMinimumBufferCapacity(t));
-			}
-		}
-
-		Set<Token> localTokens = Sets.intersection(minInputBufCapaciy.keySet(),
-				minOutputBufCapaciy.keySet());
-		Set<Token> globalInputTokens = Sets.difference(
-				minInputBufCapaciy.keySet(), localTokens);
-		Set<Token> globalOutputTokens = Sets.difference(
-				minOutputBufCapaciy.keySet(), localTokens);
-
-		for (Token t : localTokens) {
-			int bufSize = Math.max(minInputBufCapaciy.get(t),
-					minOutputBufCapaciy.get(t));
-			addBuffer(t, bufSize, bufferMapBuilder);
-		}
-
-		for (Token t : globalInputTokens) {
-			int bufSize = minInputBufCapaciy.get(t);
-			addBuffer(t, bufSize, bufferMapBuilder);
-		}
-
-		for (Token t : globalOutputTokens) {
-			int bufSize = minOutputBufCapaciy.get(t);
-			addBuffer(t, bufSize, bufferMapBuilder);
-		}
-		return bufferMapBuilder.build();
-	}
-
-	/**
-	 * Just introduced to avoid code duplication.
-	 * 
-	 * @param t
-	 * @param minSize
-	 * @param bufferMapBuilder
-	 */
-	private void addBuffer(Token t, int minSize,
-			ImmutableMap.Builder<Token, Buffer> bufferMapBuilder) {
-		// TODO: Just to increase the performance. Change it later
-		int bufSize = Math.max(1000, minSize);
-		System.out.println("Buffer size of " + t.toString() + " is " + bufSize);
-		bufferMapBuilder.put(t, new ConcurrentArrayBuffer(bufSize));
-	}
-
-	private long gcd(long a, long b) {
-		while (true) {
-			if (a == 0)
-				return b;
-			b %= a;
-			if (b == 0)
-				return a;
-			a %= b;
-		}
-	}
-
-	private long lcm(long a, long b) {
-		long val = gcd(a, b);
-		long quotient = a / val;
-		return val != 0 ? b * quotient : 0;
-	}
-
-	private Set<Token> getLocalTokens(Set<Blob> blobSet) {
-		Set<Token> inputTokens = new HashSet<>();
-		Set<Token> outputTokens = new HashSet<>();
-
-		for (Blob b : blobSet) {
-			Set<Token> inputs = b.getInputs();
-			for (Token t : inputs) {
-				inputTokens.add(t);
-			}
-
-			Set<Token> outputs = b.getOutputs();
-			for (Token t : outputs) {
-				outputTokens.add(t);
-			}
-		}
-		return Sets.intersection(inputTokens, outputTokens);
-	}
-
-	private ImmutableMap<Token, BoundaryInputChannel> createInputChannels(
-			Set<Token> inputTokens, ImmutableMap<Token, Buffer> bufferMap) {
-		ImmutableMap.Builder<Token, BoundaryInputChannel> inputChannelMap = new ImmutableMap.Builder<>();
-		for (Token t : inputTokens) {
-			TCPConnectionInfo conInfo = conInfoMap.get(t);
-			inputChannelMap.put(t, new TCPInputChannel(bufferMap.get(t),
-					conProvider, conInfo, t.toString(), 0));
-		}
-		return inputChannelMap.build();
-	}
-
-	private ImmutableMap<Token, BoundaryOutputChannel> createOutputChannels(
-			Set<Token> outputTokens, ImmutableMap<Token, Buffer> bufferMap) {
-		ImmutableMap.Builder<Token, BoundaryOutputChannel> outputChannelMap = new ImmutableMap.Builder<>();
-		for (Token t : outputTokens) {
-			TCPConnectionInfo conInfo = conInfoMap.get(t);
-			outputChannelMap.put(t, new TCPOutputChannel(bufferMap.get(t),
-					conProvider, conInfo, t.toString(), 0));
-		}
-		return outputChannelMap.build();
-	}
-
-	private class BlobExecuter {
-
-		private volatile int drainState;
-		private final Token blobID;
-
-		private final Blob blob;
-		private Set<BlobThread> blobThreads;
-
-		private final ImmutableMap<Token, BoundaryInputChannel> inputChannels;
-		private final ImmutableMap<Token, BoundaryOutputChannel> outputChannels;
-
-		Set<Thread> inputChannelThreads;
-		Set<Thread> outputChannelThreads;
-
-		private boolean reqDrainData;
-
-		private BlobExecuter(Blob blob,
-				ImmutableMap<Token, BoundaryInputChannel> inputChannels,
-				ImmutableMap<Token, BoundaryOutputChannel> outputChannels) {
-			this.blob = blob;
-			this.blobThreads = new HashSet<>();
-			assert blob.getInputs().containsAll(inputChannels.keySet());
-			assert blob.getOutputs().containsAll(outputChannels.keySet());
-			this.inputChannels = inputChannels;
-			this.outputChannels = outputChannels;
-			inputChannelThreads = new HashSet<>(inputChannels.values().size());
-			outputChannelThreads = new HashSet<>(outputChannels.values().size());
-
-			for (int i = 0; i < blob.getCoreCount(); i++) {
-				StringBuilder sb = new StringBuilder("Workers-");
-				for (Worker<?, ?> w : blob.getWorkers()) {
-					sb.append(Workers.getIdentifier(w));
-					sb.append(",");
-				}
-				blobThreads.add(new BlobThread(blob.getCoreCode(i), sb
-						.toString()));
-			}
-
-			drainState = 0;
-			this.blobID = Utils.getBlobID(blob);
-		}
-
-		private void start() {
-			for (BoundaryInputChannel bc : inputChannels.values()) {
-				Thread t = new Thread(bc.getRunnable(), bc.name());
-				t.start();
-				inputChannelThreads.add(t);
-			}
-
-			for (BoundaryOutputChannel bc : outputChannels.values()) {
-				Thread t = new Thread(bc.getRunnable(), bc.name());
-				t.start();
-				outputChannelThreads.add(t);
-			}
-
-			for (Thread t : blobThreads)
-				t.start();
-
-			System.out.println(blobID + " started");
-		}
-
-		private void stop() {
-
-			for (BoundaryInputChannel bc : inputChannels.values()) {
-				bc.stop(1);
-			}
-
-			for (BoundaryOutputChannel bc : outputChannels.values()) {
-				bc.stop(true);
-			}
-
-			for (Thread t : blobThreads)
-				try {
-					t.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-
-			if (monBufs != null)
-				monBufs.stopMonitoring();
-		}
-
-		private void doDrain(boolean reqDrainData) {
-			this.reqDrainData = reqDrainData;
-			drainState = 1;
-
-			for (BoundaryInputChannel bc : inputChannels.values()) {
-				// TODO: [2014-02-05] rearranged this order to call stop(3)
-				// whenever GlobalConstants.useDrainData is false irrespective
-				// of reqDrainData.
-				if (GlobalConstants.useDrainData)
-					if (!this.reqDrainData)
-						bc.stop(1);
-					else
-						bc.stop(2);
-				else
-					bc.stop(3);
-			}
-
-			for (Thread t : inputChannelThreads) {
-				try {
-					t.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-
-			DrainCallback dcb = new DrainCallback(this);
-			drainState = 2;
-			this.blob.drain(dcb);
-		}
-
-		private void drained() {
-			drainState = 3;
-			for (BlobThread bt : blobThreads) {
-				bt.requestStop();
-			}
-
-			for (BoundaryOutputChannel bc : outputChannels.values()) {
-				bc.stop(!this.reqDrainData);
-			}
-
-			for (Thread t : outputChannelThreads) {
-				try {
-					t.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-
-			drainState = 4;
-			SNMessageElement drained = new SNDrainElement.Drained(blobID);
-			try {
-				streamNode.controllerConnection.writeObject(drained);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			// System.out.println("Blob " + blobID + "is drained");
-
-			if (GlobalConstants.useDrainData && this.reqDrainData) {
-				// System.out.println("**********************************");
-				DrainData dd = blob.getDrainData();
-				drainState = 5;
-
-				for (Token t : dd.getData().keySet()) {
-					System.out.println("From Blob: " + t.toString() + " - "
-							+ dd.getData().get(t).size());
-				}
-
-				ImmutableMap.Builder<Token, ImmutableList<Object>> inputDataBuilder = new ImmutableMap.Builder<>();
-				ImmutableMap.Builder<Token, ImmutableList<Object>> outputDataBuilder = new ImmutableMap.Builder<>();
-
-				for (Token t : blob.getInputs()) {
-					if (inputChannels.containsKey(t)) {
-						BoundaryChannel chanl = inputChannels.get(t);
-						ImmutableList<Object> draindata = chanl
-								.getUnprocessedData();
-						System.out.println(String.format(
-								"No of unprocessed data of %s is %d",
-								chanl.name(), draindata.size()));
-						inputDataBuilder.put(t, draindata);
-					}
-
-					// TODO: Unnecessary data copy. Optimise this.
-					else {
-						Buffer buf = bufferMap.get(t);
-						Object[] bufArray = new Object[buf.size()];
-						buf.readAll(bufArray);
-						assert buf.size() == 0 : String.format(
-								"buffer size is %d. But 0 is expected",
-								buf.size());
-						inputDataBuilder.put(t, ImmutableList.copyOf(bufArray));
-					}
-				}
-
-				for (Token t : blob.getOutputs()) {
-					if (outputChannels.containsKey(t)) {
-						BoundaryChannel chanl = outputChannels.get(t);
-						ImmutableList<Object> draindata = chanl
-								.getUnprocessedData();
-						System.out.println(String.format(
-								"No of unprocessed data of %s is %d",
-								chanl.name(), draindata.size()));
-						outputDataBuilder.put(t, draindata);
-					}
-				}
-
-				SNMessageElement me = new SNDrainElement.DrainedData(blobID,
-						dd, inputDataBuilder.build(), outputDataBuilder.build());
-				try {
-					streamNode.controllerConnection.writeObject(me);
-					// System.out.println(blobID + " DrainData has been sent");
-					drainState = 6;
-
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-
-				// System.out.println("**********************************");
-			}
-
-			boolean isLastBlob = true;
-			for (BlobExecuter be : blobExecuters) {
-				if (be.drainState < 4) {
-					isLastBlob = false;
-					break;
-				}
-			}
-
-			if (isLastBlob && monBufs != null)
-				monBufs.stopMonitoring();
-
-			// printDrainedStatus();
-		}
-
-		public Token getBlobID() {
-			return Utils.getBlobID(blob);
-		}
-	}
-
-	private static class DrainCallback implements Runnable {
-
-		private final BlobExecuter blobExec;
-
-		DrainCallback(BlobExecuter be) {
-			this.blobExec = be;
-		}
-
-		@Override
-		public void run() {
-			blobExec.drained();
-		}
+		this.bufferManager = new SNLocalBufferManager(blobSet);
+		this.affinityManager = new AffinityManagers.EmptyAffinityManager();
+
+		this.appName = appName;
+		bufferManager.initialise();
+		if (bufferManager.isbufferSizesReady())
+			createBEs(blobSet);
 	}
 
 	/**
 	 * Drain the blob identified by the token.
 	 */
-	public void drain(Token blobID, boolean reqDrainData) {
-		for (BlobExecuter be : blobExecuters) {
+	public void drain(Token blobID, DrainType drainType) {
+		for (BlobExecuter be : blobExecuters.values()) {
 			if (be.getBlobID().equals(blobID)) {
-				be.doDrain(reqDrainData);
+				be.doDrain(drainType);
 				return;
 			}
 		}
@@ -502,12 +135,106 @@ public class BlobsManagerImpl implements BlobsManager {
 				"No blob with blobID %s", blobID));
 	}
 
+	public CommandProcessor getCommandProcessor() {
+		return cmdProcessor;
+	}
+
+	public CTRLRDrainProcessor getDrainProcessor() {
+		return drainProcessor;
+	}
+
+	public void reqDrainedData(Set<Token> blobSet) {
+		throw new UnsupportedOperationException(
+				"Method reqDrainedData not implemented");
+	}
+
+	/**
+	 * Start and execute the blobs. This function should be responsible to
+	 * manage all CPU and I/O threads those are related to the {@link Blob}s.
+	 */
+	public void start() {
+		for (BlobExecuter be : blobExecuters.values())
+			be.startChannels();
+
+		for (BlobExecuter be : blobExecuters.values())
+			be.start();
+
+		if (monitorBuffers && monBufs == null) {
+			// System.out.println("Creating new MonitorBuffers");
+			monBufs = new MonitorBuffers();
+			monBufs.start();
+		}
+	}
+
+	/**
+	 * Stop all {@link Blob}s if running. No effect if a {@link Blob} is already
+	 * stopped.
+	 */
+	public void stop() {
+		for (BlobExecuter be : blobExecuters.values())
+			be.stop();
+
+		if (monBufs != null)
+			monBufs.stopMonitoring();
+
+		if (bufferCleaner != null)
+			bufferCleaner.stopit();
+	}
+
+	@Override
+	public Set<StreamNodeProfiler> profilers() {
+		if (profilers == null) {
+			StreamNodeProfiler snp = new BufferProfiler();
+			profilers = ImmutableSet.of(snp);
+		}
+		return profilers;
+	}
+
+	private void createBEs(ImmutableSet<Blob> blobSet) {
+		assert bufferManager.isbufferSizesReady() : "Buffer sizes must be available to create BlobExecuters.";
+		blobExecuters = new HashMap<>();
+		Set<Token> locaTokens = bufferManager.localTokens();
+		ImmutableMap<Token, Integer> bufferSizesMap = bufferManager
+				.bufferSizes();
+		for (Blob b : blobSet) {
+			Token t = Utils.getBlobID(b);
+			ImmutableMap<Token, BoundaryInputChannel> inputChannels = createInputChannels(
+					Sets.difference(b.getInputs(), locaTokens), bufferSizesMap);
+			ImmutableMap<Token, BoundaryOutputChannel> outputChannels = createOutputChannels(
+					Sets.difference(b.getOutputs(), locaTokens), bufferSizesMap);
+			blobExecuters.put(t, new BlobExecuter(this, t, b, inputChannels,
+					outputChannels));
+		}
+	}
+
+	private ImmutableMap<Token, BoundaryInputChannel> createInputChannels(
+			Set<Token> inputTokens, ImmutableMap<Token, Integer> bufferMap) {
+		ImmutableMap.Builder<Token, BoundaryInputChannel> inputChannelMap = new ImmutableMap.Builder<>();
+		for (Token t : inputTokens) {
+			ConnectionInfo conInfo = conInfoMap.get(t);
+			inputChannelMap.put(t,
+					conInfo.inputChannel(t, bufferMap.get(t), conProvider));
+		}
+		return inputChannelMap.build();
+	}
+
+	private ImmutableMap<Token, BoundaryOutputChannel> createOutputChannels(
+			Set<Token> outputTokens, ImmutableMap<Token, Integer> bufferMap) {
+		ImmutableMap.Builder<Token, BoundaryOutputChannel> outputChannelMap = new ImmutableMap.Builder<>();
+		for (Token t : outputTokens) {
+			ConnectionInfo conInfo = conInfoMap.get(t);
+			outputChannelMap.put(t,
+					conInfo.outputChannel(t, bufferMap.get(t), conProvider));
+		}
+		return outputChannelMap.build();
+	}
+
 	/**
 	 * Just to added for debugging purpose.
 	 */
-	private synchronized void printDrainedStatus() {
+	synchronized void printDrainedStatus() {
 		System.out.println("****************************************");
-		for (BlobExecuter be : blobExecuters) {
+		for (BlobExecuter be : blobExecuters.values()) {
 			switch (be.drainState) {
 				case 0 :
 					System.out.println(String.format("%s - No Drain Called",
@@ -543,54 +270,6 @@ public class BlobsManagerImpl implements BlobsManager {
 		System.out.println("****************************************");
 	}
 
-	public void reqDrainedData(Set<Token> blobSet) {
-		// ImmutableMap.Builder<Token, DrainData> builder = new
-		// ImmutableMap.Builder<>();
-		// for (BlobExecuter be : blobExecuters) {
-		// if (be.isDrained) {
-		// builder.put(be.blobID, be.blob.getDrainData());
-		// }
-		// }
-		//
-		// try {
-		// streamNode.controllerConnection
-		// .writeObject(new SNDrainElement.DrainedData(builder.build()));
-		// } catch (IOException e) {
-		// // TODO Auto-generated catch block
-		// e.printStackTrace();
-		// }
-	}
-
-	public CTRLRDrainProcessor getDrainProcessor() {
-		return drainProcessor;
-	}
-
-	public CommandProcessor getCommandProcessor() {
-		return cmdProcessor;
-	}
-
-	/**
-	 * Implementation of {@link DrainProcessor} at {@link StreamNode} side. All
-	 * appropriate response logic to successfully perform the draining is
-	 * implemented here.
-	 * 
-	 * @author Sumanan sumanan@mit.edu
-	 * @since Jul 30, 2013
-	 */
-	private class CTRLRDrainProcessorImpl implements CTRLRDrainProcessor {
-
-		@Override
-		public void process(DrainDataRequest drnDataReq) {
-			System.err.println("Not expected in current situation");
-			// reqDrainedData(drnDataReq.blobsSet);
-		}
-
-		@Override
-		public void process(DoDrain drain) {
-			drain(drain.blobID, drain.reqDrainData);
-		}
-	}
-
 	/**
 	 * {@link CommandProcessor} at {@link StreamNode} side.
 	 * 
@@ -602,20 +281,8 @@ public class BlobsManagerImpl implements BlobsManager {
 		@Override
 		public void processSTART() {
 			start();
-			long heapMaxSize = Runtime.getRuntime().maxMemory();
-			long heapSize = Runtime.getRuntime().totalMemory();
-			long heapFreeSize = Runtime.getRuntime().freeMemory();
-
-			System.out
-					.println("##############################################");
-
-			System.out.println("heapMaxSize = " + heapMaxSize / 1e6);
-			System.out.println("heapSize = " + heapSize / 1e6);
-			System.out.println("heapFreeSize = " + heapFreeSize / 1e6);
 			System.out.println("StraemJit app is running...");
-			System.out
-					.println("##############################################");
-
+			Utils.printMemoryStatus();
 		}
 
 		@Override
@@ -630,47 +297,374 @@ public class BlobsManagerImpl implements BlobsManager {
 		}
 	}
 
+	/**
+	 * Implementation of {@link DrainProcessor} at {@link StreamNode} side. All
+	 * appropriate response logic to successfully perform the draining is
+	 * implemented here.
+	 * 
+	 * @author Sumanan sumanan@mit.edu
+	 * @since Jul 30, 2013
+	 */
+	private class CTRLRDrainProcessorImpl implements CTRLRDrainProcessor {
+
+		@Override
+		public void process(DoDrain drain) {
+			drain(drain.blobID, drain.drainType);
+		}
+
+		@Override
+		public void process(DrainDataRequest drnDataReq) {
+			System.err.println("Not expected in current situation");
+			// reqDrainedData(drnDataReq.blobsSet);
+		}
+	}
+
+	/**
+	 * Handles another type of deadlock which occurs when draining. A Down blob,
+	 * that has more than one upper blob, cannot progress because some of its
+	 * upper blobs are drained and hence no input on the corresponding input
+	 * channels, and other upper blobs blocked at their output channels as the
+	 * down blob is no more consuming data. So those non-drained upper blobs are
+	 * going to stuck forever at their output channels and the down blob will
+	 * not receive DODrain command from the controller.
+	 * 
+	 * This class just discard the buffer contents so that blocked blobs can
+	 * progress.
+	 * 
+	 * See the Deadlock 5.
+	 * 
+	 * @author sumanan
+	 * 
+	 */
+	class BufferCleaner extends Thread {
+
+		final AtomicBoolean run;
+
+		final boolean needToCopyDrainData;
+
+		final Map<Token, List<Object[]>> newlocalBufferMap;
+
+		BufferCleaner(boolean needToCopyDrainData) {
+			super("BufferCleaner");
+			System.out.println("Buffer Cleaner : needToCopyDrainData == "
+					+ needToCopyDrainData);
+			this.run = new AtomicBoolean(true);
+			this.needToCopyDrainData = needToCopyDrainData;
+			if (needToCopyDrainData)
+				newlocalBufferMap = new HashMap<>();
+			else
+				newlocalBufferMap = null;
+		}
+
+		public void run() {
+			try {
+				Thread.sleep(60000);
+			} catch (InterruptedException e) {
+				return;
+			}
+
+			System.out.println("BufferCleaner is going to clean buffers...");
+			boolean areAllDrained = false;
+
+			while (run.get()) {
+				if (needToCopyDrainData)
+					areAllDrained = copyLocalBuffers();
+				else
+					areAllDrained = cleanAllBuffers();
+
+				if (areAllDrained)
+					break;
+
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					break;
+				}
+			}
+		}
+
+		/**
+		 * Go through all blocked blobs and clean all input and output buffers.
+		 * This method is useful when we don't care about the drain data.
+		 * 
+		 * @return true iff there is no blocked blobs, i.e., all blobs have
+		 *         completed the draining.
+		 */
+		private boolean cleanAllBuffers() {
+			boolean areAllDrained = true;
+			for (BlobExecuter be : blobExecuters.values()) {
+				if (be.drainState == 1 || be.drainState == 2) {
+					// System.out.println(be.blobID + " is not drained");
+					areAllDrained = false;
+					for (Token t : be.blob.getOutputs()) {
+						Buffer b = be.bufferMap.get(t);
+						clean(b, t);
+					}
+
+					for (Token t : be.blob.getInputs()) {
+						Buffer b = be.bufferMap.get(t);
+						clean(b, t);
+					}
+				}
+			}
+			return areAllDrained;
+		}
+
+		private void clean(Buffer b, Token t) {
+			int size = b.size();
+			if (size == 0)
+				return;
+			System.out.println(String.format(
+					"Buffer %s has %d data. Going to clean it", t.toString(),
+					size));
+			Object[] obArray = new Object[size];
+			b.readAll(obArray);
+		}
+
+		/**
+		 * Copy only the local buffers into a new large buffer to make the
+		 * blocked blob to progress. This copied buffer can be sent to
+		 * controller as a drain data.
+		 */
+		private boolean copyLocalBuffers() {
+			ImmutableMap<Token, LocalBuffer> localBufferMap = bufferManager
+					.localBufferMap();
+			boolean areAllDrained = true;
+			for (BlobExecuter be : blobExecuters.values()) {
+				if (be.drainState == 1 || be.drainState == 2) {
+					// System.out.println(be.blobID + " is not drained");
+					areAllDrained = false;
+					for (Token t : be.blob.getOutputs()) {
+						if (localBufferMap.containsKey(t)) {
+							Buffer b = be.bufferMap.get(t);
+							copy(b, t);
+						}
+					}
+				}
+			}
+			return areAllDrained;
+		}
+
+		private void copy(Buffer b, Token t) {
+			int size = b.size();
+			if (size == 0)
+				return;
+
+			if (!newlocalBufferMap.containsKey(t)) {
+				newlocalBufferMap.put(t, new LinkedList<Object[]>());
+			}
+
+			List<Object[]> list = newlocalBufferMap.get(t);
+			Object[] bufArray = new Object[size];
+			b.readAll(bufArray);
+			assert b.size() == 0 : String.format(
+					"buffer size is %d. But 0 is expected", b.size());
+			list.add(bufArray);
+		}
+
+		public void stopit() {
+			this.run.set(false);
+			this.interrupt();
+		}
+
+		public Object[] copiedBuffer(Token t) {
+			assert needToCopyDrainData : "BufferCleaner is not in buffer copy mode";
+			copy(bufferManager.localBufferMap().get(t), t);
+			List<Object[]> list = newlocalBufferMap.get(t);
+			if (list == null)
+				return new Object[0];
+			else if (list.size() == 0)
+				return new Object[0];
+			else if (list.size() == 1)
+				return list.get(0);
+
+			int size = 0;
+			for (Object[] array : list) {
+				size += array.length;
+			}
+
+			int destPos = 0;
+			Object[] mergedArray = new Object[size];
+			for (Object[] array : list) {
+				System.arraycopy(array, 0, mergedArray, destPos, array.length);
+				destPos += array.length;
+			}
+			return mergedArray;
+		}
+	}
+
+	private class BlobsBufferStatus {
+
+		/**
+		 * @return Status of all buffers of all blobs of this
+		 *         {@link BlobsManager}.
+		 */
+		private SNBufferStatusData snBufferStatusData() {
+			Set<BlobBufferStatus> blobBufferStatusSet = new HashSet<>();
+			if (blobExecuters != null) {
+				for (BlobExecuter be : blobExecuters.values()) {
+					blobBufferStatusSet.add(blobBufferStatus(be));
+				}
+			}
+
+			return new SNBufferStatusData(streamNode.getNodeID(),
+					ImmutableSet.copyOf(blobBufferStatusSet));
+		}
+
+		/**
+		 * Status of the all buffers of the blob represented by the @param be.
+		 * 
+		 * @param be
+		 * @return
+		 */
+		private BlobBufferStatus blobBufferStatus(BlobExecuter be) {
+			return new BlobBufferStatus(be.blobID, bufferStatusSet(be, true),
+					bufferStatusSet(be, false));
+		}
+
+		/**
+		 * @param be
+		 * @param isIn
+		 *            Decides whether a blob's inputbuffer's status or
+		 *            outputbuffers's status should be returned.
+		 * @return Set of {@link BufferStatus} of a blob's set of input buffers
+		 *         or set of output buffers depends on isIn argument.
+		 */
+		private ImmutableSet<BufferStatus> bufferStatusSet(BlobExecuter be,
+				boolean isIn) {
+			// TODO: [Feb 8, 2015] "be.blob == null" condition is added to
+			// avoid sending profile data after the blob has been drained. But
+			// we may need the "after draining buffer status" when analyzing
+			// dead lock situations. Remove "be.blob == null" at that time.
+			if (be.bufferMap == null || be.blob == null)
+				return ImmutableSet.of();
+
+			Set<Token> tokenSet = tokenSet(be, isIn);
+			Set<BufferStatus> bufferStatus = new HashSet<>();
+			for (Token t : tokenSet) {
+				bufferStatus.add(bufferStatus(t, be, isIn));
+			}
+			return ImmutableSet.copyOf(bufferStatus);
+		}
+
+		private BufferStatus bufferStatus(Token bufferID, BlobExecuter be,
+				boolean isIn) {
+			int min = Integer.MAX_VALUE;
+			// BE sets blob to null after the drained().
+			if (be.blob != null)
+				min = be.blob.getMinimumBufferCapacity(bufferID);
+
+			int availableResource = min;
+			Buffer b = be.bufferMap.get(bufferID);
+			if (b != null)
+				availableResource = isIn ? b.size() : b.capacity() - b.size();
+
+			return new BufferStatus(bufferID, min, availableResource);
+		}
+
+		/**
+		 * Return a blob's either input or output buffer's token set.
+		 * 
+		 * @param be
+		 * @param isIn
+		 *            Decides whether a blob's inputbuffer's token set or
+		 *            outputbuffers's token set should be returned.
+		 * @return Blob's inputbuffer's token set or outputbuffers's token set.
+		 */
+		private Set<Token> tokenSet(BlobExecuter be, boolean isIn) {
+			Set<Token> tokenSet;
+			// BE sets blob to null after the drained().
+			if (be.blob == null) {
+				if (isIn)
+					tokenSet = be.inChnlManager.inputChannelsMap().keySet();
+				else
+					tokenSet = be.outChnlManager.outputChannelsMap().keySet();
+			} else {
+				if (isIn)
+					tokenSet = be.blob.getInputs();
+				else
+					tokenSet = be.blob.getOutputs();
+			}
+			return tokenSet;
+		}
+	}
+
 	private static int count = 0;
 
-	private class MonitorBuffers extends Thread {
+	/**
+	 * TODO: [27-01-2015] Use BufferProfiler to get buffer status and then write
+	 * the status in to the file. I created BufferProfiler by copying most of
+	 * the code from this class.
+	 * <p>
+	 * Profiles the buffer sizes in a timely manner and log that information
+	 * into a text file. This information may be useful to analyse and find out
+	 * deadlock situations.
+	 * 
+	 * @author sumanan
+	 * 
+	 */
+	class MonitorBuffers extends Thread {
+
 		private final int id;
+
 		private final AtomicBoolean stopFlag;
+
 		int sleepTime = 25000;
+
 		MonitorBuffers() {
+			super("MonitorBuffers");
 			stopFlag = new AtomicBoolean(false);
 			id = count++;
 		}
 
 		public void run() {
-			FileWriter writter = null;
+			FileWriter writer = null;
 			try {
-				writter = new FileWriter(String.format("BufferStatus%d.txt",
-						streamNode.getNodeID()), false);
+				String fileName = String.format("%s%sBufferStatus%d.txt",
+						appName, File.separator, streamNode.getNodeID());
+				writer = new FileWriter(fileName, false);
 
-				writter.write(String.format(
+				writer.write(String.format(
 						"********Started*************** - %d\n", id));
 				while (!stopFlag.get()) {
 					try {
 						Thread.sleep(sleepTime);
 					} catch (InterruptedException e) {
+						break;
 					}
-					if (bufferMap == null) {
-						writter.write("Buffer map is null...\n");
-						continue;
-					}
+
 					if (stopFlag.get())
 						break;
-					writter.write("----------------------------------\n");
-					for (Map.Entry<Token, Buffer> en : bufferMap.entrySet()) {
-						writter.write(en.getKey() + " - "
-								+ en.getValue().size());
-						writter.write('\n');
+
+					if (blobExecuters == null) {
+						writer.write("blobExecuters are null...\n");
+						continue;
 					}
-					writter.write("----------------------------------\n");
-					writter.flush();
+
+					writer.write("----------------------------------\n");
+					for (BlobExecuter be : blobExecuters.values()) {
+						writer.write("Status of blob " + be.blobID.toString()
+								+ "\n");
+
+						if (be.bufferMap == null) {
+							writer.write("Buffer map is null...\n");
+							continue;
+						}
+
+						if (stopFlag.get())
+							break;
+
+						writer.write("Input channel details\n");
+						write(be, writer, true);
+
+						writer.write("Output channel details\n");
+						write(be, writer, false);
+					}
+					writer.write("----------------------------------\n");
+					writer.flush();
 				}
 
-				writter.write(String.format(
+				writer.write(String.format(
 						"********Stopped*************** - %d\n", id));
 			} catch (IOException e1) {
 				e1.printStackTrace();
@@ -678,17 +672,67 @@ public class BlobsManagerImpl implements BlobsManager {
 			}
 
 			try {
-				if (writter != null)
-					writter.close();
+				if (writer != null)
+					writer.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
 
+		private void write(BlobExecuter be, FileWriter writer, boolean isIn)
+				throws IOException {
+			Set<Token> tokenSet = tokenSet(be, isIn);
+			for (Token t : tokenSet) {
+				Buffer b = be.bufferMap.get(t);
+				if (b == null)
+					continue;
+				int min = Integer.MAX_VALUE;
+				// BE sets blob to null after the drained().
+				if (be.blob != null)
+					min = be.blob.getMinimumBufferCapacity(t);
+
+				int availableResource = isIn ? b.size() : b.capacity()
+						- b.size();
+
+				String status = availableResource >= min ? "Firable"
+						: "NOT firable";
+				writer.write(t.toString() + "\tMin - " + min
+						+ ",\tAvailableResource - " + availableResource + "\t"
+						+ status + "\n");
+			}
+		}
+
+		private Set<Token> tokenSet(BlobExecuter be, boolean isIn) {
+			Set<Token> tokenSet;
+			// BE sets blob to null after the drained().
+			if (be.blob == null) {
+				if (isIn)
+					tokenSet = be.inChnlManager.inputChannelsMap().keySet();
+				else
+					tokenSet = be.outChnlManager.outputChannelsMap().keySet();
+			} else {
+				if (isIn)
+					tokenSet = be.blob.getInputs();
+				else
+					tokenSet = be.blob.getOutputs();
+			}
+			return tokenSet;
+		}
+
 		public void stopMonitoring() {
-			System.out.println("MonitorBuffers: Stop monitoring");
+			// System.out.println("MonitorBuffers: Stop monitoring");
 			stopFlag.set(true);
 			this.interrupt();
+		}
+	}
+
+	public class BufferProfiler implements StreamNodeProfiler {
+
+		BlobsBufferStatus bbs = new BlobsBufferStatus();
+
+		@Override
+		public SNProfileElement profile() {
+			return bbs.snBufferStatusData();
 		}
 	}
 }

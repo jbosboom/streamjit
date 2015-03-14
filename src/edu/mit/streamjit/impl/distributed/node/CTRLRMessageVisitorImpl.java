@@ -22,20 +22,25 @@
 package edu.mit.streamjit.impl.distributed.node;
 
 import java.io.IOException;
+import java.util.HashSet;
 
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.CTRLRMessageVisitor;
 import edu.mit.streamjit.impl.distributed.common.Command;
+import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
 import edu.mit.streamjit.impl.distributed.common.ConfigurationString;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationProcessor;
 import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements;
-import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements.MiscCtrlElementProcessor;
 import edu.mit.streamjit.impl.distributed.common.MiscCtrlElements.NewConInfo;
+import edu.mit.streamjit.impl.distributed.common.NodeInfo;
 import edu.mit.streamjit.impl.distributed.common.Request;
-import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
-import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
-import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor;
 import edu.mit.streamjit.impl.distributed.common.Request.RequestProcessor;
+import edu.mit.streamjit.impl.distributed.profiler.Profiler;
+import edu.mit.streamjit.impl.distributed.profiler.ProfilerCommand;
+import edu.mit.streamjit.impl.distributed.profiler.ProfilerCommand.ProfilerCommandProcessor;
+import edu.mit.streamjit.impl.distributed.profiler.StreamNodeProfiler;
 
 /**
  * @author Sumanan sumanan@mit.edu
@@ -45,14 +50,16 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 
 	private final StreamNode streamNode;
 	private final RequestProcessor rp;
-	private final ConfigurationStringProcessor jp;
+	private final ConfigurationProcessor jp;
 	private final MiscCtrlElementProcessor miscProcessor;
+	private final ProfilerCommandProcessorImpl pm;
 
 	public CTRLRMessageVisitorImpl(StreamNode streamNode) {
 		this.streamNode = streamNode;
 		this.rp = new RequestProcessorImpl();
-		this.jp = new CfgStringProcessorImpl(streamNode);
+		this.jp = new ConfigurationProcessorImpl(streamNode);
 		this.miscProcessor = new MiscCtrlElementProcessorImpl();
+		this.pm = new ProfilerCommandProcessorImpl();
 	}
 
 	@Override
@@ -93,9 +100,13 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 		miscCtrlElements.process(miscProcessor);
 	}
 
-	public class MiscCtrlElementProcessorImpl
-			implements
-				MiscCtrlElementProcessor {
+	@Override
+	public void visit(ProfilerCommand command) {
+		command.process(pm);
+	}
+
+	public class MiscCtrlElementProcessorImpl implements
+			MiscCtrlElementProcessor {
 
 		@Override
 		public void process(NewConInfo newConInfo) {
@@ -148,6 +159,59 @@ public class CTRLRMessageVisitorImpl implements CTRLRMessageVisitor {
 		public void processEXIT() {
 			System.out.println("StreamNode is Exiting...");
 			streamNode.exit();
+		}
+	}
+
+	public class ProfilerCommandProcessorImpl implements
+			ProfilerCommandProcessor {
+
+		ProfilerCommandProcessorImpl() {
+
+		}
+
+		@Override
+		public void processSTART() {
+			createProfiler();
+			if (streamNode.profiler.getState() == Thread.State.NEW)
+				streamNode.profiler.start();
+		}
+
+		/**
+		 * Creates a new profiler only if
+		 * <ol>
+		 * <li>no any profiler has already been created OR
+		 * <li>the previously created profiler has been terminated.
+		 * </ol>
+		 */
+		private void createProfiler() {
+			if (streamNode.profiler == null) {
+				streamNode.profiler = new Profiler(
+						new HashSet<StreamNodeProfiler>(),
+						streamNode.controllerConnection);
+			} else if (streamNode.profiler.getState() == Thread.State.TERMINATED) {
+				System.err
+						.println("A profiler has already been created and terminated. Creating another new profiler.");
+				streamNode.profiler = new Profiler(
+						new HashSet<StreamNodeProfiler>(),
+						streamNode.controllerConnection);
+
+			} else
+				System.err.println("A profiler has already been started.");
+		}
+
+		@Override
+		public void processSTOP() {
+			streamNode.profiler.stopProfiling();
+		}
+
+		@Override
+		public void processPAUSE() {
+			streamNode.profiler.pauseProfiling();
+		}
+
+		@Override
+		public void processRESUME() {
+			streamNode.profiler.resumeProfiling();
 		}
 	}
 }

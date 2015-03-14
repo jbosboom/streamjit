@@ -32,6 +32,7 @@ import edu.mit.streamjit.impl.distributed.common.Connection;
 import edu.mit.streamjit.impl.distributed.common.ConnectionFactory;
 import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
 import edu.mit.streamjit.impl.distributed.common.Ipv4Validator;
+import edu.mit.streamjit.impl.distributed.profiler.Profiler;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
 /**
@@ -58,6 +59,8 @@ public class StreamNode extends Thread {
 	private CTRLRMessageVisitor mv;
 
 	private volatile BlobsManager blobsManager;
+
+	Profiler profiler;
 
 	private boolean run; // As we assume that all controller communication and
 							// the MessageElement processing is managed by
@@ -110,13 +113,7 @@ public class StreamNode extends Thread {
 				run = false;
 			}
 		}
-
-		try {
-			this.controllerConnection.closeConnection();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		safelyCloseResources();
 	}
 
 	public int getNodeID() {
@@ -141,7 +138,10 @@ public class StreamNode extends Thread {
 	 *            the blobsManager to set
 	 */
 	public void setBlobsManager(BlobsManager blobsManager) {
+		releaseOldBM();
 		this.blobsManager = blobsManager;
+		if (profiler != null && blobsManager != null)
+			profiler.addAll(blobsManager.profilers());
 	}
 
 	public void exit() {
@@ -150,6 +150,42 @@ public class StreamNode extends Thread {
 
 	public String tostString() {
 		return "StreamNode-" + myNodeID;
+	}
+
+	private void safelyCloseResources() {
+		if (blobsManager != null)
+			blobsManager.stop();
+
+		if (profiler != null) {
+			profiler.stopProfiling();
+
+			try {
+				profiler.join();
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
+		}
+
+		if (controllerConnection.isStillConnected())
+			try {
+				this.controllerConnection.closeConnection();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+	}
+
+	/**
+	 * Un-references old BlobManager object before creating new one.
+	 */
+	void releaseOldBM() {
+		// [2014-3-20] We need to release blobsmanager to release the
+		// memory. Otherwise, Blobthread2.corecode will occupy the memory.
+		if (blobsManager != null) {
+			blobsManager.stop();
+			if (profiler != null)
+				profiler.removeAll(blobsManager.profilers());
+			blobsManager = null;
+		}
 	}
 
 	/**

@@ -21,8 +21,12 @@
  */
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.util.Set;
+
+import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
+import edu.mit.streamjit.impl.distributed.profiler.StreamNodeProfiler;
 
 /**
  * {@link BlobsManager} is the main dispatcher for all blobs. Received commands
@@ -47,4 +51,9 @@ public interface BlobsManager {
 	 * {@link BlobsManagerImpl}#MonitorBuffers thread. Revise this.
 	 */
 	public void stop();
+
+	/**
+	 * @return Set of profilers in this BlobManager.
+	 */
+	public Set<StreamNodeProfiler> profilers();
 }

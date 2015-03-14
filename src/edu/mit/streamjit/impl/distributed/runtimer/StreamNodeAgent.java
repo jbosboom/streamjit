@@ -38,9 +38,13 @@ import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainProcessor
 import edu.mit.streamjit.impl.distributed.common.SNException;
 import edu.mit.streamjit.impl.distributed.common.SNException.SNExceptionProcessor;
 import edu.mit.streamjit.impl.distributed.common.SNMessageVisitor;
+import edu.mit.streamjit.impl.distributed.common.SNTimeInfo;
+import edu.mit.streamjit.impl.distributed.common.SNTimeInfo.SNTimeInfoProcessor;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo;
 import edu.mit.streamjit.impl.distributed.common.SystemInfo.SystemInfoProcessor;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement;
+import edu.mit.streamjit.impl.distributed.profiler.SNProfileElement.SNProfileElementProcessor;
 
 /**
  * StreamNodeAgent represents a {@link StreamNode} at {@link Controller} side.
@@ -69,9 +73,9 @@ public abstract class StreamNodeAgent {
 
 	private final SystemInfoProcessor sp;
 
-	// TODO: How to avoid volatile here. Because we set only once and read
-	// forever later. So if it is volatile, every read will need to access
-	// memory. Is there any way to avoid this?
+	// TODO: How to avoid the volatileness here. Because we set only once and
+	// read forever later. So if it is a volatile, every read will need to
+	// access the memory. Is there any way to avoid this?
 	// Will removing volatile modifier be OK in this context? consider
 	// using piggybacking sync or atomicreferenc with compareandset. This is
 	// actually effectively immutable/safe publication case. But how to
@@ -146,9 +150,11 @@ public abstract class StreamNodeAgent {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			// TODO: If in any chance the IO thread call this function then
-			// it will get blocked on this loop forever. Need to handle
-			// this.
+			// TODO: By any chance, if the IO thread (SNAgentRunner) calls this
+			// function then that thread will get blocked at this loop forever.
+			// Because that thread is responsible to read the nodeInfo from the
+			// StreamNode and set the nodeInfo variable of this class. Need to
+			// handle this issue.
 			while (nodeInfo == null) {
 				try {
 					Thread.sleep(10);
@@ -305,6 +311,20 @@ public abstract class StreamNodeAgent {
 			assert manager != null : "StreamJitAppManager has not been set";
 			SNExceptionProcessor snExP = manager.exceptionProcessor();
 			snException.process(snExP);
+		}
+
+		@Override
+		public void visit(SNTimeInfo timeInfo) {
+			assert manager != null : "StreamJitAppManager has not been set";
+			SNTimeInfoProcessor snTimeP = manager.timeInfoProcessor();
+			timeInfo.process(snTimeP);
+		}
+
+		@Override
+		public void visit(SNProfileElement snProfileElement) {
+			assert manager != null : "StreamJitAppManager has not been set";
+			SNProfileElementProcessor snProfileP = manager.getProfiler();
+			snProfileElement.process(snProfileP);
 		}
 	}
 }

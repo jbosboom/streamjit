@@ -21,14 +21,19 @@
  */
 package edu.mit.streamjit.impl.distributed.common;
 
-import java.io.*;
-import java.net.*;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OptionalDataException;
+import java.net.InetAddress;
+import java.net.Socket;
 
-import static com.google.common.base.Preconditions.*;
-
+import edu.mit.streamjit.impl.blob.Blob.Token;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryOutputChannel;
+import edu.mit.streamjit.impl.distributed.node.BlockingInputChannel;
+import edu.mit.streamjit.impl.distributed.node.BlockingOutputChannel;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 
 /**
@@ -85,8 +90,9 @@ public class TCPConnection implements Connection {
 			try {
 				ooStream.writeObject(obj);
 
+				n++;
 				// TODO: Any way to improve the performance?
-				if (n++ > resetCount) {
+				if (n > resetCount) {
 					n = 0;
 					ooStream.reset();
 				}
@@ -113,6 +119,7 @@ public class TCPConnection implements Connection {
 	}
 
 	public final void closeConnection() {
+		isconnected = false;
 		try {
 			if (ooStream != null)
 				this.ooStream.close();
@@ -121,7 +128,6 @@ public class TCPConnection implements Connection {
 			if (socket != null)
 				this.socket.close();
 		} catch (IOException ex) {
-			isconnected = false;
 			ex.printStackTrace();
 		}
 	}
@@ -195,10 +201,10 @@ public class TCPConnection implements Connection {
 
 		private static final long serialVersionUID = 1L;
 
-		int portNo;
+		private final int portNo;
 
 		public TCPConnectionInfo(int srcID, int dstID, int portNo) {
-			super(srcID, dstID);
+			super(srcID, dstID, true);
 			Ipv4Validator validator = Ipv4Validator.getInstance();
 			if (!validator.isValid(portNo))
 				throw new IllegalArgumentException("Invalid port No");
@@ -236,90 +242,47 @@ public class TCPConnection implements Connection {
 			return "TCPConnectionInfo [srcID=" + getSrcID() + ", dstID="
 					+ getDstID() + ", portID=" + portNo + "]";
 		}
-	}
 
-	/**
-	 * Keeps all opened {@link TCPConnection}s for a machine. Each machine
-	 * should have a single instance of this class and use this class to make
-	 * new connections.
-	 * 
-	 * <p>
-	 * TODO: Need to make this class singleton. I didn't do it now because in
-	 * current way, controller and a local {@link StreamNode} are running in a
-	 * same JVM. So first, local {@link StreamNode} should be made to run on a
-	 * different JVM and then make this class singleton.
-	 */
-	public static class TCPConnectionProvider {
-
-		private ConcurrentMap<TCPConnectionInfo, TCPConnection> allConnections;
-
-		private final int myNodeID;
-
-		private final Map<Integer, InetAddress> iNetAddressMap;
-
-		public TCPConnectionProvider(int myNodeID,
-				Map<Integer, InetAddress> iNetAddressMap) {
-			checkNotNull(iNetAddressMap, "nodeInfoMap is null");
-			this.myNodeID = myNodeID;
-			this.iNetAddressMap = iNetAddressMap;
-			this.allConnections = new ConcurrentHashMap<>();
-		}
-
-		/**
-		 * See {@link #getConnection(TCPConnectionInfo, int)}.
-		 * 
-		 * @param conInfo
-		 * @return
-		 * @throws IOException
-		 */
-		public Connection getConnection(TCPConnectionInfo conInfo)
-				throws IOException {
-			return getConnection(conInfo, 0);
-		}
-
-/**
-		 * If the connection corresponds to conInfo is already established
-		 * returns the connection. Try to make a new connection otherwise.
-		 *
-		 * @param conInfo - Information that uniquely identifies a {@link TCPConnection
-		 * @param timeOut - Time out only valid if making connection needs to be
-		 * 			done through a listener socket. i.e, conInfo.getSrcID() == myNodeID.
-		 * @return
-		 * @throws SocketTimeoutException
-		 * @throws IOException
-		 */
-		public Connection getConnection(TCPConnectionInfo conInfo, int timeOut)
-				throws SocketTimeoutException, IOException {
-			TCPConnection con = allConnections.get(conInfo);
-			if (con != null) {
-				if (con.isStillConnected()) {
-					return con;
-				} else {
-					throw new AssertionError("con.closeConnection()");
-					// con.closeConnection();
+		@Override
+		public Connection makeConnection(int nodeID, NetworkInfo networkInfo,
+				int timeOut) {
+			Connection con = null;
+			if (srcID == nodeID) {
+				try {
+					con = ConnectionFactory.getConnection(portNo, timeOut,
+							false);
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
 			}
 
-			if (conInfo.getSrcID() == myNodeID) {
-				con = ConnectionFactory.getConnection(conInfo.getPortNo(),
-						timeOut, false);
-			} else if (conInfo.getDstID() == myNodeID) {
-				InetAddress ipAddress = iNetAddressMap.get(conInfo.getSrcID());
-				if (ipAddress.isLoopbackAddress())
-					ipAddress = iNetAddressMap.get(0);
-
-				int portNo = conInfo.getPortNo();
-				con = ConnectionFactory.getConnection(
-						ipAddress.getHostAddress(), portNo, false);
+			else if (dstID == nodeID) {
+				InetAddress ipAddress = networkInfo.getInetAddress(srcID);
+				try {
+					con = ConnectionFactory.getConnection(
+							ipAddress.getHostAddress(), portNo, false);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			} else {
+				throw new IllegalArgumentException(
+						"Neither srcID nor dstID matches with nodeID");
 			}
-			allConnections.put(conInfo, con);
 			return con;
 		}
 
-		public void closeAllConnections() {
-			for (TCPConnection con : allConnections.values()) {
-				con.closeConnection();
-			}
+		@Override
+		public BoundaryInputChannel inputChannel(Token t, int bufSize,
+				ConnectionProvider conProvider) {
+			return new BlockingInputChannel(bufSize, conProvider, this,
+					t.toString(), 0);
+		}
+
+		@Override
+		public BoundaryOutputChannel outputChannel(Token t, int bufSize,
+				ConnectionProvider conProvider) {
+			return new BlockingOutputChannel(bufSize, conProvider, this,
+					t.toString(), 0);
 		}
 	}
 }

@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--Sumanan, sumanan@mit.edu, 15-12-2014 -->
+<project default="exportAll" name="StreamJIT" basedir="/media/sumanan/D/StreamJit11/streamjit">
+	<property file="jarapp.properties" />
+	<!--property name="app" value="NestedSplitJoin" /-->
+	<!--property name="mainclasspath" value="edu.mit.streamjit.test.sanity.nestedsplitjoinexample.NestedSplitJoin" /-->
+	<!-- If you want, you can hard code your username and the password as plain 
+		text here. Comment these properties (username or password or both) if you 
+		don't want to keep it as a plain text. If these properties are not set (commented), 
+		Ant will ask you to enter those at runtime. -->
+	<!-- property name="username" value="sumanan" /-->
+	<!-- property name="password" value="" / -->
+
+	<script language="javascript">
+		arr = project.getProperty('mainclasspath').split('.');
+		project.setProperty('mainclass', arr[arr.length -1]);
+	 </script>
+
+	<target name="exportApp.jar" description="Exports ${app}.jar">
+		<jar destfile="${app}.jar" filesetmanifest="mergewithoutmain">
+			<manifest>
+				<attribute name="Main-Class" value="${mainclasspath}" />
+				<attribute name="Class-Path" value="." />
+			</manifest>
+			<fileset dir="bin" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/CopyLibs/org-netbeans-modules-java-j2seproject-copylibstask.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/jsonp/javax.json-1.0-fab.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/ASM/asm-debug-all-4.1.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/ServiceProviderProcessor/ServiceProviderProcessor.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/JOptSimple/jopt-simple-4.5.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/sqlite/sqlite-jdbc-3.7.2.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/Guava/guava-15.0.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/BridJ/bridj-0.7-20140122.002307-56-c-only.jar" />
+		</jar>
+	</target>
+
+	<target name="exportStreamNode.jar" description="Exports StreamNode.jar">
+		<jar destfile="StreamNode.jar" filesetmanifest="mergewithoutmain">
+			<manifest>
+				<attribute name="Main-Class" value="edu.mit.streamjit.impl.distributed.node.StreamNode" />
+				<attribute name="Class-Path" value="." />
+			</manifest>
+			<fileset dir="bin" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/CopyLibs/org-netbeans-modules-java-j2seproject-copylibstask.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/jsonp/javax.json-1.0-fab.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/ASM/asm-debug-all-4.1.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/ServiceProviderProcessor/ServiceProviderProcessor.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/JOptSimple/jopt-simple-4.5.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/sqlite/sqlite-jdbc-3.7.2.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/Guava/guava-15.0.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/BridJ/bridj-0.7-20140122.002307-56-c-only.jar" />
+		</jar>
+	</target>
+
+	<target name="exportAll" depends="exportApp.jar, exportStreamNode.jar">
+	</target>
+
+	<target name="runStreamNode" description="Runs two instances of StreamNode.jar">
+		<exec dir="." executable="gnome-terminal" osfamily="unix">
+			<arg value="--tab" />
+			<arg value="-e" />
+			<arg value="java -jar StreamNode.jar" />
+			<arg value="--tab" />
+			<arg value="-e" />
+			<arg value="java -jar StreamNode.jar" />
+		</exec>
+	</target>
+
+	<target name="runAll" description="Runs app.jar and two instances of StreamNode.jar">
+		<exec dir="." executable="gnome-terminal" osfamily="unix">
+			<arg value="--tab" />
+			<arg value="-e" />
+			<arg value="java -jar ${app}.jar" />
+			<arg value="--tab" />
+			<arg value="-e" />
+			<arg value="java -jar StreamNode.jar" />
+			<arg value="--tab" />
+			<arg value="-e" />
+			<arg value="java -jar StreamNode.jar" />
+		</exec>
+	</target>
+
+	<target name="exportAndRunAll" depends="exportAll, runAll">
+	</target>
+
+	<target name="sendtoLanka" depends="exportAll, getLogin">
+		<scp trust="true" sftp="true" todir="${username}:${password}@lanka.csail.mit.edu:/data/scratch/${username}/${app}">
+			<fileset file="StreamNode.jar" />
+			<fileset file="${app}.jar" />
+			<fileset file="optionsLanka.properties" />
+		</scp>
+	</target>
+
+	<target name="getLogin">
+		<input message="Enter Username:" addproperty="username" />
+		<input message="Enter Password:" addproperty="password">
+			<handler classname="org.apache.tools.ant.input.SecureInputHandler" />
+		</input>
+		<!--echo message="Username: ${username}" /-->
+		<!--echo message="Password: ${password}" /-->
+	</target>
+
+	<target name="remotesetup" depends="sendtoLanka, createDownloadScript">
+		<sshexec trust="true" host="lanka.csail.mit.edu" username="${username}" password="${password}" command="/data/scratch/${username}/setup.sh ${app} ${streamGraphName} ${numOfSNs}" />
+	</target>
+
+	<!--http://www.vogella.com/tutorials/ApacheAnt/article.html-->
+	<!-- The value of a property is accessed via ${} -->
+	<property name="src.dir" location="src" />
+	<property name="lib.dir" location="lib" />
+	<property name="build.dir" location="bin" />
+
+	<!--Create a classpath container which can be later used in the ant task-->
+	<path id="build.classpath">
+		<fileset dir="${lib.dir}">
+			<include name="**/*.jar" />
+		</fileset>
+	</path>
+
+	<!-- Deletes the existing build directory-->
+	<target name="clean">
+		<delete dir="${build.dir}" />
+	</target>
+
+	<!-- Creates the  build  directory-->
+	<target name="makedir">
+		<mkdir dir="${build.dir}" />
+	</target>
+
+	<!-- Compiles the java code -->
+	<target name="compile" depends="clean, makedir">
+		<javac srcdir="${src.dir}" destdir="${build.dir}" classpathref="build.classpath" />
+	</target>
+
+	<target name="createDownloadScript">
+		<echo file="../Experiments/${app}.sh" append="false">#!/bin/bash
+#Author - Sumanan
+app=${app}
+mainClass=${streamGraphName}
+if [ -d $app ]; then
+	echo "$app exists. No downloads..."
+ 	exit
+fi
+mkdir -p $app
+cd $app
+mkdir -p $mainClass
+scp -r ${username}@lanka.csail.mit.edu:/data/scratch/${username}/$app/$mainClass/\{summary,*.txt,*.orig,streamgraph.dot\} $mainClass/
+scp -r ${username}@lanka.csail.mit.edu:/data/scratch/${username}/$app/\{*.sh,slurm-*,options.properties\} .
+#to download everything.
+#rsync -avh --progress ${username}@lanka.csail.mit.edu:/data/scratch/${username}/$app .
+	</echo>
+	</target>
+</project>
