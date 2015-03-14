@@ -211,7 +211,7 @@ public interface Arrayish {
 					MethodType.methodType(type, int.class));
 			this.set = MethodHandles.explicitCastArguments(
 					MethodHandles.filterArguments(
-							findVirtual(UNSAFE.getClass(), "put" + dataTypeNameCap, params(1)).bindTo(UNSAFE),
+							findVirtual(UNSAFE.getClass(), "put" + dataTypeNameCap, params(2)).bindTo(UNSAFE),
 							0, index),
 					MethodType.methodType(void.class, int.class, type));
 		}
