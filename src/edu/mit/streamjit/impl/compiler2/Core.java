@@ -26,7 +26,6 @@ import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Range;
 import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
 import edu.mit.streamjit.util.Pair;
-import edu.mit.streamjit.util.bytecode.methodhandles.ProxyFactory;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,20 +41,17 @@ public class Core {
 	private final BiFunction<MethodHandle[], WorkerActor, MethodHandle> switchFactory;
 	private final ImmutableMap<ActorGroup, Integer> unrollFactors;
 	private final ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers, outputTransformers;
-	private final ProxyFactory bytecodifier;
 	private final List<Pair<ActorGroup, Range<Integer>>> allocations = new ArrayList<>();
 	public Core(ImmutableMap<Storage, ConcreteStorage> storage,
 			BiFunction<MethodHandle[], WorkerActor, MethodHandle> switchFactory,
 			ImmutableMap<ActorGroup, Integer> unrollFactors,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
-			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers,
-			ProxyFactory bytecodifier) {
+			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers) {
 		this.storage = storage;
 		this.switchFactory = switchFactory;
 		this.unrollFactors = unrollFactors;
 		this.inputTransformers = inputTransformers;
 		this.outputTransformers = outputTransformers;
-		this.bytecodifier = bytecodifier;
 	}
 
 	public void allocate(ActorGroup group, Range<Integer> iterations) {
@@ -68,7 +64,7 @@ public class Core {
 		//List<Pair<ActorGroup, MethodHandle>>, then sort before semicolon(code).
 		List<MethodHandle> code = new ArrayList<>(allocations.size());
 		for (Pair<ActorGroup, Range<Integer>> p : allocations)
-			code.add(p.first.specialize(p.second, storage, switchFactory, unrollFactors.get(p.first), inputTransformers, outputTransformers, bytecodifier));
+			code.add(p.first.specialize(p.second, storage, switchFactory, unrollFactors.get(p.first), inputTransformers, outputTransformers));
 		return Combinators.semicolon(code);
 	}
 

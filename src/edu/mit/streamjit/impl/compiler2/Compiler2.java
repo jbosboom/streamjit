@@ -77,7 +77,6 @@ import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.bytecode.Module;
 import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
-import edu.mit.streamjit.util.bytecode.methodhandles.ProxyFactory;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -884,7 +883,7 @@ public class Compiler2 {
 		 * time we build the token init schedule information required by the
 		 * blob host.
 		 */
-		Core initCore = new Core(CollectionUtils.union(initStorage, internalStorage), (table, wa) -> Combinators.lookupswitch(table), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new ProxyFactory(classloader, packageName+".init"));
+		Core initCore = new Core(CollectionUtils.union(initStorage, internalStorage), (table, wa) -> Combinators.lookupswitch(table), unrollFactors.build(), inputTransformers.build(), outputTransformers.build());
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
@@ -952,7 +951,7 @@ public class Compiler2 {
 				unrollFactors.put(g, param.getValue());
 			}
 
-			ssCores.add(new Core(CollectionUtils.union(steadyStateStorage, internalStorage), (table, wa) -> SWITCHING_STRATEGY.createSwitch(table, wa, config), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new ProxyFactory(classloader, packageName+".steadystate.")));
+			ssCores.add(new Core(CollectionUtils.union(steadyStateStorage, internalStorage), (table, wa) -> SWITCHING_STRATEGY.createSwitch(table, wa, config), unrollFactors.build(), inputTransformers.build(), outputTransformers.build()));
 		}
 
 		int throughputPerSteadyState = 0;

@@ -259,8 +259,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			BiFunction<MethodHandle[], WorkerActor, MethodHandle> switchFactory,
 			int unrollFactor,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
-			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers,
-			ProxyFactory bytecodifier) {
+			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers) {
 		//TokenActors are special.
 		assert !isTokenGroup() : actors();
 
@@ -272,10 +271,10 @@ public class ActorGroup implements Comparable<ActorGroup> {
 		int unrolls = (totalIterations/unrollFactor);
 		int unrollEndpoint = iterations.lowerEndpoint() + unrolls*unrollFactor;
 		MethodHandle overall = Combinators.semicolon(
-				makeGroupLoop(Range.closedOpen(iterations.lowerEndpoint(), unrollEndpoint), unrollFactor, withRWHandlesBound, bytecodifier),
-				makeGroupLoop(Range.closedOpen(unrollEndpoint, iterations.upperEndpoint()), 1, withRWHandlesBound, bytecodifier)
+				makeGroupLoop(Range.closedOpen(iterations.lowerEndpoint(), unrollEndpoint), unrollFactor, withRWHandlesBound),
+				makeGroupLoop(Range.closedOpen(unrollEndpoint, iterations.upperEndpoint()), 1, withRWHandlesBound)
 		);
-		return bytecodifier.bytecodify(overall, "Group"+id()+"Iter"+iterations.lowerEndpoint()+"To"+iterations.upperEndpoint());
+		return overall;
 	}
 
 	/**
@@ -330,16 +329,12 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * reinitialize the splitter/joiner index arrays to their initial
 	 * values.
 	 */
-	private MethodHandle makeGroupLoop(Range<Integer> iterations, int unrollFactor, Map<Actor, MethodHandle> withRWHandlesBound, ProxyFactory bytecodifier) {
+	private MethodHandle makeGroupLoop(Range<Integer> iterations, int unrollFactor, Map<Actor, MethodHandle> withRWHandlesBound) {
 		if (iterations.isEmpty()) return Combinators.nop();
-		String groupLoopName = String.format("Group%dIter%dTo%dBy%d", id(), iterations.lowerEndpoint(), iterations.upperEndpoint(), unrollFactor);
 		List<MethodHandle> loopHandles = new ArrayList<>(actors().size());
 		Map<int[], int[]> requiredCopies = new LinkedHashMap<>();
-		for (Actor a : actors()) {
-			MethodHandle workerLoop = makeWorkerLoop((WorkerActor)a, withRWHandlesBound.get(a), unrollFactor, iterations.lowerEndpoint(), requiredCopies);
-			String workerLoopName = String.format("%sWorker%d", groupLoopName, a.id());
-			loopHandles.add(bytecodifier.bytecodify(workerLoop, workerLoopName));
-		}
+		for (Actor a : actors())
+			loopHandles.add(makeWorkerLoop((WorkerActor)a, withRWHandlesBound.get(a), unrollFactor, iterations.lowerEndpoint(), requiredCopies));
 		MethodHandle groupLoop = MethodHandles.insertArguments(OVERALL_GROUP_LOOP, 0,
 				Combinators.semicolon(loopHandles), iterations.lowerEndpoint(), iterations.upperEndpoint(), unrollFactor);
 		if (!requiredCopies.isEmpty()) {
