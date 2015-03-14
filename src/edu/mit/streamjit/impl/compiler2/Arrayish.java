@@ -1,13 +1,35 @@
+/*
+ * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static edu.mit.streamjit.util.LookupUtils.findGetter;
-import static edu.mit.streamjit.util.LookupUtils.findStatic;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findGetter;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findStatic;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import static edu.mit.streamjit.util.LookupUtils.findVirtual;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import edu.mit.streamjit.util.NIOBufferUtils;
 import edu.mit.streamjit.util.PrimitiveUtils;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.params;
 import java.io.Serializable;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
@@ -18,7 +40,7 @@ import java.util.Locale;
 /**
  * An array-ish object; that is, storage for items of a given type (and its
  * subtypes) in slots from 0 to size-1.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 2/28/2014
  */
 public interface Arrayish {
@@ -108,12 +130,10 @@ public interface Arrayish {
 			//explicitCastArguments converts byte to boolean and back; otherwise
 			//the types exactly match and the target is returned immediately.
 			this.get = MethodHandles.explicitCastArguments(
-					findVirtual(MethodHandles.publicLookup(), bufferType, "get", dataType, int.class)
-							.bindTo(buffer),
+					findVirtual(bufferType, "get", MethodType.methodType(dataType, int.class)).bindTo(buffer),
 					MethodType.methodType(type, int.class));
 			this.set = MethodHandles.explicitCastArguments(
-					findVirtual(MethodHandles.publicLookup(), bufferType, "put", bufferType, int.class, dataType)
-							.bindTo(buffer),
+					findVirtual(bufferType, "put", MethodType.methodType(bufferType, int.class, dataType)).bindTo(buffer),
 					MethodType.methodType(void.class, int.class, type));
 		}
 		@Override
@@ -165,8 +185,8 @@ public interface Arrayish {
 				throw new AssertionError(ex);
 			}
 		}
-		private static final MethodHandle MEMORY_GETTER = findGetter(MethodHandles.lookup(), UnsafeArrayish.class, "memory", long.class);
-		private static final MethodHandle INDEX = findStatic(MethodHandles.lookup(), UnsafeArrayish.class, "index", long.class, long.class, int.class, int.class);
+		private static final MethodHandle MEMORY_GETTER = findGetter(MethodHandles.lookup(), "memory");
+		private static final MethodHandle INDEX = findStatic(MethodHandles.lookup(), "index");
 		private final long memory;
 		private final int size;
 		private final MethodHandle get, set;
@@ -186,14 +206,12 @@ public interface Arrayish {
 			//the types exactly match and the target is returned immediately.
 			this.get = MethodHandles.explicitCastArguments(
 					MethodHandles.filterArguments(
-							findVirtual(MethodHandles.publicLookup(), UNSAFE.getClass(), "get" + dataTypeNameCap, dataType, long.class)
-									.bindTo(UNSAFE),
+							findVirtual(UNSAFE.getClass(), "get" + dataTypeNameCap, params(1)).bindTo(UNSAFE),
 							0, index),
 					MethodType.methodType(type, int.class));
 			this.set = MethodHandles.explicitCastArguments(
 					MethodHandles.filterArguments(
-							findVirtual(MethodHandles.publicLookup(), UNSAFE.getClass(), "put" + dataTypeNameCap, void.class, long.class, dataType)
-									.bindTo(UNSAFE),
+							findVirtual(UNSAFE.getClass(), "put" + dataTypeNameCap, params(1)).bindTo(UNSAFE),
 							0, index),
 					MethodType.methodType(void.class, int.class, type));
 		}

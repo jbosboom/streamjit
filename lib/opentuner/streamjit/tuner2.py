@@ -133,7 +133,7 @@ class StreamJitMI(MeasurementInterface):
 	# Return args that is to run from class file.
 	def getArgs2(self, javaPath, jvmArgs):
 		#the classpath, suitable as the value of the '-cp' java argument
-		javaClassPath = "dist/jstreamit.jar:lib/ASM/asm-debug-all-4.1.jar:lib/BridJ/bridj-0.7-20140122.002307-56-c-only.jar:lib/CopyLibs/org-netbeans-modules-java-j2seproject-copylibstask.jar:lib/Guava/guava-15.0.jar:lib/Guava/guava-15.0-javadoc.jar:lib/Guava/guava-15.0-sources.jar:lib/JOptSimple/jopt-simple-4.5.jar:lib/JOptSimple/jopt-simple-4.5-javadoc.jar:lib/JOptSimple/jopt-simple-4.5-sources.jar:lib/jsonp/javax.json-1.0-fab.jar:lib/jsonp/javax.json-api-1.0-SNAPSHOT-javadoc.jar:lib/ServiceProviderProcessor/ServiceProviderProcessor.jar:lib/sqlite/sqlite-jdbc-3.7.15-M1.jar"
+		javaClassPath = "build/jar/streamjit.jar:lib/asm.jar:lib/bridj.jar:lib/bytecodelib.jar:lib/guava.jar:lib/javax.json.jar:lib/joptsimple.jar:lib/sqlitejdbc.jar"
 		args = [javaPath, "-cp", javaClassPath]
 		args.append("edu.mit.streamjit.tuner.RunApp")
 		return args

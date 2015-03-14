@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.common;
 
 import static com.google.common.base.Preconditions.*;
@@ -5,15 +26,16 @@ import com.google.common.reflect.Reflection;
 import edu.mit.streamjit.api.Input;
 import edu.mit.streamjit.api.Input.ManualInput;
 import edu.mit.streamjit.impl.blob.Buffer;
-import static edu.mit.streamjit.util.LookupUtils.findConstructor;
-import static edu.mit.streamjit.util.LookupUtils.findGetter;
-import static edu.mit.streamjit.util.LookupUtils.findSetter;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findConstructor;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findGetter;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findSetter;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.params;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/16/2013
  */
 public abstract class InputBufferFactory {
@@ -56,8 +78,8 @@ public abstract class InputBufferFactory {
 		static {
 			Reflection.initialize(Input.class);
 			assert INPUT_LOOKUP != null;
-			getInputBufferFactory = findGetter(INPUT_LOOKUP, Input.class, "input", InputBufferFactory.class);
-			newInput = findConstructor(INPUT_LOOKUP, Input.class, InputBufferFactory.class);
+			getInputBufferFactory = findGetter(INPUT_LOOKUP, "input");
+			newInput = findConstructor(INPUT_LOOKUP, params(1));
 		}
 	}
 	private static final class ManualInputHolder {
@@ -65,7 +87,7 @@ public abstract class InputBufferFactory {
 		static {
 			Reflection.initialize(ManualInput.class);
 			assert MANUALINPUT_LOOKUP != null;
-			setManualInputDelegate = findSetter(MANUALINPUT_LOOKUP, ManualInput.class, "delegate", ManualInputDelegate.class);
+			setManualInputDelegate = findSetter(MANUALINPUT_LOOKUP, "delegate");
 		}
 	}
 

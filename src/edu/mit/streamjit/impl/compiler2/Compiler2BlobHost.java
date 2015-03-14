@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Predicate;
@@ -18,12 +39,16 @@ import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.util.CollectionUtils;
-import edu.mit.streamjit.util.Combinators;
-import static edu.mit.streamjit.util.LookupUtils.findConstructor;
-import static edu.mit.streamjit.util.LookupUtils.findVirtual;
+import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findConstructor;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import edu.mit.streamjit.util.NothrowCallable;
+import edu.mit.streamjit.util.bytecode.Module;
+import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
+import edu.mit.streamjit.util.bytecode.methodhandles.ProxyFactory;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.invoke.SwitchPoint;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,16 +63,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The actual blob produced by a Compiler2.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/1/2013
  */
 public class Compiler2BlobHost implements Blob {
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle MAIN_LOOP = findVirtual(LOOKUP, Compiler2BlobHost.class, "mainLoop", void.class, MethodHandle.class);
-	private static final MethodHandle DO_INIT = findVirtual(LOOKUP, Compiler2BlobHost.class, "doInit", void.class);
-	private static final MethodHandle DO_ADJUST = findVirtual(LOOKUP, Compiler2BlobHost.class, "doAdjust", void.class);
+	private static final MethodHandle MAIN_LOOP = findVirtual(LOOKUP, "mainLoop");
+	private static final MethodHandle DO_INIT = findVirtual(LOOKUP, "doInit");
+	private static final MethodHandle DO_ADJUST = findVirtual(LOOKUP, "doAdjust");
 	private static final MethodHandle THROW_NEW_ASSERTION_ERROR = MethodHandles.filterReturnValue(
-			findConstructor(LOOKUP, AssertionError.class, Object.class),
+			findConstructor(LOOKUP, AssertionError.class, MethodType.methodType(void.class, Object.class)),
 			MethodHandles.throwException(void.class, AssertionError.class));
 	private static final MethodHandle NOP = Combinators.nop();
 	private static final MethodHandle MAIN_LOOP_NOP = MethodHandles.insertArguments(MAIN_LOOP, 1, NOP);
@@ -137,26 +162,23 @@ public class Compiler2BlobHost implements Blob {
 			capacityRequirements.add(i.getMinimumBufferCapacity());
 		for (WriteInstruction i : Iterables.concat(this.initWriteInstructions, this.writeInstructions))
 			capacityRequirements.add(i.getMinimumBufferCapacity());
-		this.minimumBufferCapacity = CollectionUtils.union(new Maps.EntryTransformer<Token, List<Integer>, Integer>() {
-			@Override
-			public Integer transformEntry(Token key, List<Integer> value) {
-				return Collections.max(value);
-			}
-		}, capacityRequirements);
+		this.minimumBufferCapacity = CollectionUtils.union((key, value) -> Collections.max(value), capacityRequirements);
 
 		MethodHandle mainLoop = MAIN_LOOP.bindTo(this),
 				doInit = DO_INIT.bindTo(this),
 				doAdjust = DO_ADJUST.bindTo(this),
 				mainLoopNop = MAIN_LOOP_NOP.bindTo(this);
-		ImmutableList.Builder<MethodHandle> coreCodeHandles = ImmutableList.builder();
-		for (MethodHandle ssc : this.steadyStateCode) {
+		ProxyFactory pf = new ProxyFactory(new ModuleClassLoader(new Module()));
+		ImmutableList.Builder<Runnable> coreCodeRunnables = ImmutableList.builder();
+		for (int i = 0; i < this.steadyStateCode.size(); ++i) {
+			MethodHandle ssc = this.steadyStateCode.get(i);
 			MethodHandle code = sp1.guardWithTest(mainLoopNop, sp2.guardWithTest(mainLoop.bindTo(ssc), NOP));
-			coreCodeHandles.add(code);
+			coreCodeRunnables.add(pf.createProxy("Proxy"+i, ImmutableMap.of("run", code), Runnable.class));
 		}
-		this.coreCode = Bytecodifier.runnableProxies(coreCodeHandles.build());
+		this.coreCode = coreCodeRunnables.build();
 		MethodHandle throwAE = THROW_NEW_ASSERTION_ERROR.bindTo("Can't happen! Barrier action reached after draining?");
 		MethodHandle barrierAction = sp1.guardWithTest(doInit, sp2.guardWithTest(doAdjust, throwAE));
-		final Runnable onAdvanceRunnable = Bytecodifier.runnableProxies(ImmutableList.of(barrierAction)).get(0);
+		final Runnable onAdvanceRunnable = pf.createProxy("BarrierAction", ImmutableMap.of("run", barrierAction), Runnable.class);
 		this.barrier = new Phaser(coreCode.size()) {
 			@Override
 			protected boolean onAdvance(int phase, int registeredParties) {
@@ -341,17 +363,14 @@ public class Compiler2BlobHost implements Blob {
 			data.add(i.unload());
 		for (DrainInstruction i : drains)
 			data.add(i.call());
-		ImmutableMap<Token, List<Object>> mergedData = CollectionUtils.union(new Maps.EntryTransformer<Token, List<Object[]>, List<Object>>() {
-			@Override
-			public List<Object> transformEntry(Token key, List<Object[]> value) {
-				int size = 0;
-				for (Object[] v : value)
-					size += v.length;
-				List<Object> data = new ArrayList<>(size);
-				for (Object[] v : value)
-					data.addAll(Arrays.asList(v));
-				return data;
-			}
+		ImmutableMap<Token, List<Object>> mergedData = CollectionUtils.union((key, value) -> {
+			int size = 0;
+			for (Object[] v : value)
+				size += v.length;
+			List<Object> data1 = new ArrayList<>(size);
+			for (Object[] v : value)
+				data1.addAll(Arrays.asList(v));
+			return data1;
 		}, data);
 		//Try once to write data on output edges, then let the interpreter handle it.
 		Predicate<Token> isOutput = Predicates.in(getOutputs());
@@ -374,12 +393,7 @@ public class Compiler2BlobHost implements Blob {
 		interp.installBuffers(buffers);
 		Runnable interpCode = interp.getCoreCode(0);
 		final AtomicBoolean interpFinished = new AtomicBoolean();
-		interp.drain(new Runnable() {
-			@Override
-			public void run() {
-				interpFinished.set(true);
-			}
-		});
+		interp.drain(() -> interpFinished.set(true));
 		while (!interpFinished.get())
 			interpCode.run();
 		this.drainData = interp.getDrainData();

@@ -1,7 +1,28 @@
+/*
+ * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Supplier;
-import edu.mit.streamjit.util.Combinators;
+import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
 import java.io.Serializable;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -11,7 +32,7 @@ import java.util.NavigableSet;
 /**
  * An IndexFunctionTransformer that evaluates the given function over its
  * domain, then returns a function that indexes into an array of the outputs.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 12/8/2013
  */
 public class ArrayifyIndexFunctionTransformer implements IndexFunctionTransformer, Serializable {
@@ -63,7 +84,7 @@ public class ArrayifyIndexFunctionTransformer implements IndexFunctionTransforme
 		}
 
 		return MethodHandles.filterArguments(MethodHandles.arrayElementGetter(arrayObj.getClass()).bindTo(arrayObj), 0,
-				Combinators.sub(MethodHandles.identity(int.class), domain.first()))
+				Combinators.adder(-domain.first()))
 				.asType(MethodType.methodType(int.class, int.class));
 	}
 

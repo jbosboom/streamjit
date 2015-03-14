@@ -1,6 +1,26 @@
+/*
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.common;
 
-import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Strings;
 import com.google.common.collect.BoundType;
@@ -53,7 +73,7 @@ import javax.json.JsonValue;
  * Unless otherwise specified, passing null or an empty string to this class'
  * or any parameter class' methods will result in a NullPointerException being
  * thrown.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 3/23/2013
  */
 public final class Configuration {
@@ -1086,12 +1106,7 @@ public final class Configuration {
 			public ImmutableSet<Worker<?, ?>> getWorkers(Worker<?, ?> streamGraph) {
 				ImmutableSet<Worker<?, ?>> allWorkers = Workers.getAllWorkersInGraph(streamGraph);
 				ImmutableMap<Integer, Worker<?, ?>> workersByIdentifier =
-						Maps.uniqueIndex(allWorkers, new Function<Worker<?, ?>, Integer>() {
-					@Override
-					public Integer apply(Worker<?, ?> input) {
-						return Workers.getIdentifier(input);
-					}
-				});
+						Maps.uniqueIndex(allWorkers, Workers::getIdentifier);
 				ImmutableSet.Builder<Worker<?, ?>> workersInBlob = ImmutableSet.builder();
 				for (Integer i : workerIdentifiers) {
 					Worker<?, ?> w = workersByIdentifier.get(i);

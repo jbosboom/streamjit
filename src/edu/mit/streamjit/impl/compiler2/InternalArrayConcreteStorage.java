@@ -1,8 +1,29 @@
+/*
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.collect.BoundType;
 import com.google.common.collect.Range;
-import edu.mit.streamjit.util.LookupUtils;
+import edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.Map;
@@ -11,13 +32,13 @@ import java.util.Map;
  * A ConcreteStorage implementation directly addressing its underlying storage
  * and that cannot be adjusted.  As its name suggests, this is most useful for
  * internal storage, where adjusts are not necessary.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/10/2013
  */
 public class InternalArrayConcreteStorage implements ConcreteStorage {
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle READ_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, InternalArrayConcreteStorage.class, "readExceptionHandler", void.class, String.class, IndexOutOfBoundsException.class, int.class);
-	private static final MethodHandle WRITE_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, InternalArrayConcreteStorage.class, "writeExceptionHandler", void.class, String.class, IndexOutOfBoundsException.class, int.class, Object.class);
+	private static final MethodHandle READ_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, "readExceptionHandler");
+	private static final MethodHandle WRITE_EXCEPTION_HANDLER = LookupUtils.findStatic(LOOKUP, "writeExceptionHandler");
 	private final Arrayish array;
 	private final MethodHandle readHandle, writeHandle;
 	public InternalArrayConcreteStorage(Arrayish array, Storage s) {
@@ -43,24 +64,6 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 	@Override
 	public Class<?> type() {
 		return array.type();
-	}
-
-	@Override
-	public Object read(int index) {
-		try {
-			return readHandle.invoke(index);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.read(%d)", this, index), ex);
-		}
-	}
-
-	@Override
-	public void write(int index, Object data) {
-		try {
-			writeHandle.invoke(index, data);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.write(%d, %s)", this, index, data), ex);
-		}
 	}
 
 	@Override
@@ -96,25 +99,19 @@ public class InternalArrayConcreteStorage implements ConcreteStorage {
 	}
 
 	public static StorageFactory factory() {
-		return new StorageFactory() {
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				Arrayish array = new Arrayish.ArrayArrayish(storage.type(), storage.steadyStateCapacity());
-				return new InternalArrayConcreteStorage(array, storage);
-			}
+		return (Storage storage) -> {
+			Arrayish array1 = new Arrayish.ArrayArrayish(storage.type(), storage.steadyStateCapacity());
+			return new InternalArrayConcreteStorage(array1, storage);
 		};
 	}
 
 	public static StorageFactory initFactory(final Map<ActorGroup, Integer> initSchedule) {
-		return new StorageFactory() {
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				Range<Integer> indices = storage.writeIndexSpan(initSchedule).span(storage.initialDataIndexSpan());
-				assert indices.upperBoundType() == BoundType.OPEN;
-				int capacity = indices.upperEndpoint();
-				Arrayish array = new Arrayish.ArrayArrayish(storage.type(), capacity);
-				return new InternalArrayConcreteStorage(array, storage);
-			}
+		return (Storage storage) -> {
+			Range<Integer> indices = storage.writeIndexSpan(initSchedule).span(storage.initialDataIndexSpan());
+			assert indices.upperBoundType() == BoundType.OPEN;
+			int capacity = indices.upperEndpoint();
+			Arrayish array1 = new Arrayish.ArrayArrayish(storage.type(), capacity);
+			return new InternalArrayConcreteStorage(array1, storage);
 		};
 	}
 }

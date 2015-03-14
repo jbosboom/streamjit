@@ -1,6 +1,26 @@
+/*
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.common;
 
-import com.google.common.base.Function;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -38,7 +58,7 @@ import java.util.Map;
  * TODO: CheckVisitor does not correctly reason about 0 rates, which can be used
  * to "inject" data into a graph with a splitjoin; even legal uses will be
  * reported as errors.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 8/8/2013
  */
 public final class CheckVisitor extends SerialCompositeStreamVisitor {
@@ -120,13 +140,7 @@ public final class CheckVisitor extends SerialCompositeStreamVisitor {
 			private ElementRepeatedException(StreamElement<?, ?> element, ImmutableList<GraphTraceElement> firstTrace, ImmutableList<GraphTraceElement> secondTrace, ImmutableList<GraphTraceElement>... moreTraces) {
 				super("Element appears more than once in stream graph", element);
 				this.traceStrings = com.google.common.base.Joiner.on("\n\n").join(
-						Iterables.transform(Lists.asList(firstTrace, secondTrace, moreTraces),
-						new Function<ImmutableList<GraphTraceElement>, String>() {
-							@Override
-							public String apply(ImmutableList<GraphTraceElement> input) {
-								return asTrace(input);
-							}
-						}));
+						Iterables.transform(Lists.asList(firstTrace, secondTrace, moreTraces), StackVisitor::asTrace));
 			}
 
 			@Override

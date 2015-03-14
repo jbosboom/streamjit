@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.compiler2;
 
 import static com.google.common.base.Preconditions.*;
@@ -26,7 +47,7 @@ import java.util.Set;
  *
  * Rate information is only valid on an untransformed graph; Actor removal can
  * introduce ambiguity.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/27/2013
  */
 public final class Storage implements Comparable<Storage> {
@@ -255,7 +276,8 @@ public final class Storage implements Comparable<Storage> {
 	public Range<Integer> readIndexSpan(Map<ActorGroup, Integer> externalSchedule) {
 		Range<Integer> range = null;
 		for (Actor a : downstream())
-			for (int iteration = 0, max = a.group().schedule().get(a) * externalSchedule.get(a.group()); iteration < max; ++iteration) {
+			//just the first and last iteration
+			for (int iteration : new int[]{0, a.group().schedule().get(a) * externalSchedule.get(a.group())-1}) {
 				ImmutableSortedSet<Integer> reads = a.reads(this, iteration);
 				Range<Integer> readRange = reads.isEmpty() ? range : Range.closed(reads.first(), reads.last());
 				range = range == null ? readRange : range.span(readRange);
@@ -295,7 +317,8 @@ public final class Storage implements Comparable<Storage> {
 	public Range<Integer> writeIndexSpan(Map<ActorGroup, Integer> externalSchedule) {
 		Range<Integer> range = null;
 		for (Actor a : upstream())
-			for (int iteration = 0, max = a.group().schedule().get(a) * externalSchedule.get(a.group()); iteration < max; ++iteration) {
+			//just the first and last iteration
+			for (int iteration : new int[]{0, a.group().schedule().get(a) * externalSchedule.get(a.group())-1}) {
 				ImmutableSortedSet<Integer> writes = a.writes(this, iteration);
 				Range<Integer> writeRange = writes.isEmpty() ? range : Range.closed(writes.first(), writes.last());
 				range = range == null ? writeRange : range.span(writeRange);
@@ -340,7 +363,9 @@ public final class Storage implements Comparable<Storage> {
 		this.throughput = 0;
 		for (Actor a : upstream())
 			for (int iteration = 0, max = a.group().schedule().get(a) * externalSchedule.get(a.group()); iteration < max; ++iteration)
-				this.throughput += a.writes(this, iteration).size();
+				for (int output = 0; output < a.outputs().size(); ++output)
+					if (a.outputs().get(output).equals(this))
+						this.throughput += a.push(output);
 		this.steadyStateCapacity = ContiguousSet.create(readIndices.span(writeIndices), DiscreteDomain.integers()).size();
 	}
 

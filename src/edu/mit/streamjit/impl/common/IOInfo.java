@@ -1,7 +1,27 @@
+/*
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.common;
 
 import static com.google.common.base.Preconditions.*;
-import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
@@ -16,7 +36,7 @@ import java.util.Set;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 4/3/2013
  */
 public class IOInfo {
@@ -127,12 +147,8 @@ public class IOInfo {
 	 * @return a set of IOInfo objects for all external edges of the given set
 	 */
 	public static ImmutableSet<IOInfo> externalEdges(Set<? extends Worker<?, ?>> workers) {
-		return FluentIterable.from(allEdges(workers)).filter(new Predicate<IOInfo>() {
-			@Override
-			public boolean apply(IOInfo input) {
-				return input.isInput() || input.isOutput();
-			}
-		}).toSet();
+		return FluentIterable.from(allEdges(workers))
+				.filter(io -> io.isInput() || io.isOutput()).toSet();
 	}
 
 	/**
@@ -145,12 +161,8 @@ public class IOInfo {
 	 * @return a set of IOInfo objects for all internal edges of the given set
 	 */
 	public static ImmutableSet<IOInfo> internalEdges(Set<? extends Worker<?, ?>> workers) {
-		return FluentIterable.from(allEdges(workers)).filter(new Predicate<IOInfo>() {
-			@Override
-			public boolean apply(IOInfo input) {
-				return input.connectionKind == ConnectionKind.INTERNAL;
-			}
-		}).toSet();
+		return FluentIterable.from(allEdges(workers))
+				.filter(io -> io.connectionKind == ConnectionKind.INTERNAL).toSet();
 	}
 
 	public Worker<?, ?> upstream() {
@@ -210,10 +222,5 @@ public class IOInfo {
 	 * IOInfo doesn't implement Comparable directly because its natural ordering
 	 * would be inconsistent with equals.
 	 */
-	public static final Comparator<IOInfo> TOKEN_SORT = new Comparator<IOInfo>() {
-		@Override
-		public int compare(IOInfo o1, IOInfo o2) {
-			return o1.token().compareTo(o2.token());
-		}
-	};
+	public static final Comparator<IOInfo> TOKEN_SORT = Comparator.comparing(IOInfo::token);
 }

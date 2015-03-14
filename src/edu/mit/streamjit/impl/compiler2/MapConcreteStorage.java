@@ -1,11 +1,31 @@
+/*
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Maps;
-import edu.mit.streamjit.util.Combinators;
-import static edu.mit.streamjit.util.LookupUtils.findVirtual;
+import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -14,16 +34,16 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A ConcreteStorage implementation using a Map<Integer, T>.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/27/2013
  */
 public final class MapConcreteStorage implements ConcreteStorage {
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle MAP_GET = findVirtual(LOOKUP, Map.class, "get", Object.class, Object.class)
+	private static final MethodHandle MAP_GET = findVirtual(Map.class, "get")
 			.asType(MethodType.methodType(Object.class, Map.class, int.class));
-	private static final MethodHandle MAP_PUT = findVirtual(LOOKUP, Map.class, "put", Object.class, Object.class, Object.class)
+	private static final MethodHandle MAP_PUT = findVirtual(Map.class, "put")
 			.asType(MethodType.methodType(void.class, Map.class, int.class, Object.class));
-	private static final MethodHandle ADJUST = findVirtual(LOOKUP, MapConcreteStorage.class, "adjust", void.class);
+	private static final MethodHandle ADJUST = findVirtual(LOOKUP, "adjust");
 	private final Class<?> type;
 	private final Map<Integer, Object> map = new ConcurrentHashMap<>();
 	private final MethodHandle readHandle, writeHandle, adjustHandle;
@@ -38,12 +58,7 @@ public final class MapConcreteStorage implements ConcreteStorage {
 	}
 	public static MapConcreteStorage create(Storage s) {
 		ImmutableSet<ActorGroup> relevantGroups = ImmutableSet.<ActorGroup>builder().addAll(s.upstreamGroups()).addAll(s.downstreamGroups()).build();
-		return new MapConcreteStorage(s.type(), ADJUST, s.readIndices(Maps.asMap(relevantGroups, new Function<ActorGroup, Integer>() {
-			@Override
-			public Integer apply(ActorGroup input) {
-				return 1;
-			}
-		})).first(), s.throughput());
+		return new MapConcreteStorage(s.type(), ADJUST, s.readIndices(Maps.asMap(relevantGroups, i -> 1)).first(), s.throughput());
 	}
 	public static MapConcreteStorage createNopAdjust(Storage s) {
 		return new MapConcreteStorage(s.type(), Combinators.nop(Object.class), Integer.MAX_VALUE, Integer.MAX_VALUE);
@@ -53,24 +68,6 @@ public final class MapConcreteStorage implements ConcreteStorage {
 	@Override
 	public Class<?> type() {
 		return type;
-	}
-
-	@Override
-	public Object read(int index) {
-		try {
-			return readHandle().invoke(index);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.read(%d, %s)", this, index), ex);
-		}
-	}
-
-	@Override
-	public void write(int index, Object data) {
-		try {
-			writeHandle().invoke(index, data);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.write(%d, %s)", this, index, data), ex);
-		}
 	}
 
 	@Override
@@ -112,20 +109,10 @@ public final class MapConcreteStorage implements ConcreteStorage {
 	}
 
 	public static StorageFactory factory() {
-		return new StorageFactory() {
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				return create(storage);
-			}
-		};
+		return MapConcreteStorage::create;
 	}
 
 	public static StorageFactory initFactory() {
-		return new StorageFactory() {
-			@Override
-			public ConcreteStorage make(Storage storage) {
-				return createNopAdjust(storage);
-			}
-		};
+		return MapConcreteStorage::createNopAdjust;
 	}
 }

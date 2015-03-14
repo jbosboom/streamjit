@@ -1,9 +1,27 @@
+/*
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
-import com.google.common.base.Predicate;
-import com.google.common.base.Supplier;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -16,8 +34,9 @@ import com.google.common.collect.Sets;
 import edu.mit.streamjit.api.Filter;
 import edu.mit.streamjit.api.Joiner;
 import edu.mit.streamjit.api.Splitter;
-import edu.mit.streamjit.util.Combinators;
-import static edu.mit.streamjit.util.LookupUtils.findStatic;
+import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findStatic;
+import edu.mit.streamjit.util.bytecode.methodhandles.ProxyFactory;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -28,10 +47,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.stream.IntStream;
 
 /**
  * Compiler IR for a fused group of workers (what used to be called StreamNode).
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/22/2013
  */
 public class ActorGroup implements Comparable<ActorGroup> {
@@ -106,12 +127,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	}
 
 	public Set<Storage> internalEdges() {
-		return Sets.filter(allEdges(), new Predicate<Storage>() {
-			@Override
-			public boolean apply(Storage input) {
-				return input.isInternal();
-			}
-		});
+		return Sets.filter(allEdges(), Storage::isInternal);
 	}
 
 	private Set<Storage> allEdges() {
@@ -191,12 +207,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * @return a map of read physical indices
 	 */
 	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> reads(final int iteration) {
-		return Maps.toMap(inputs(), new Function<Storage, ImmutableSortedSet<Integer>>() {
-			@Override
-			public ImmutableSortedSet<Integer> apply(Storage input) {
-				return reads(input, iteration);
-			}
-		});
+		return Maps.toMap(inputs(), (Storage input) -> reads(input, iteration));
 	}
 
 	/**
@@ -234,12 +245,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * @return a map of written physical indices
 	 */
 	public ImmutableMap<Storage, ImmutableSortedSet<Integer>> writes(final int iteration) {
-		return Maps.toMap(outputs(), new Function<Storage, ImmutableSortedSet<Integer>>() {
-			@Override
-			public ImmutableSortedSet<Integer> apply(Storage output) {
-				return writes(output, iteration);
-			}
-		});
+		return Maps.toMap(outputs(), (Storage output) -> writes(output, iteration));
 	}
 
 	/**
@@ -250,15 +256,16 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * @return a void->void method handle
 	 */
 	public MethodHandle specialize(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage,
+			BiFunction<MethodHandle[], WorkerActor, MethodHandle> switchFactory,
 			int unrollFactor,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers,
 			ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers,
-			Bytecodifier.Function bytecodifier) {
+			ProxyFactory bytecodifier) {
 		//TokenActors are special.
 		assert !isTokenGroup() : actors();
 
 		Map<Actor, MethodHandle> withRWHandlesBound =
-				bindActorsToStorage(iterations, storage, inputTransformers, outputTransformers);
+				bindActorsToStorage(iterations, storage, switchFactory, inputTransformers, outputTransformers);
 
 		int totalIterations = iterations.upperEndpoint() - iterations.lowerEndpoint();
 		unrollFactor = Math.min(unrollFactor, totalIterations);
@@ -275,7 +282,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * Compute the read and write method handles for each Actor. These don't
 	 * depend on the iteration, so we can bind and reuse them.
 	 */
-	private Map<Actor, MethodHandle> bindActorsToStorage(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage, ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers, ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers) {
+	private Map<Actor, MethodHandle> bindActorsToStorage(Range<Integer> iterations, Map<Storage, ConcreteStorage> storage, BiFunction<MethodHandle[], WorkerActor, MethodHandle> switchFactory, ImmutableTable<Actor, Integer, IndexFunctionTransformer> inputTransformers, ImmutableTable<Actor, Integer, IndexFunctionTransformer> outputTransformers) {
 		Map<Actor, MethodHandle> withRWHandlesBound = new HashMap<>();
 		for (Actor a : actors()) {
 			WorkerActor wa = (WorkerActor)a;
@@ -286,14 +293,14 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			MethodHandle read;
 			if (wa.worker() instanceof Joiner) {
 				MethodHandle[] table = new MethodHandle[a.inputs().size()];
-				for (int i = 0; i < a.inputs().size(); i++)
+				IntStream.range(0, a.inputs().size()).forEachOrdered(i ->
 					table[i] = MethodHandles.filterArguments(storage.get(a.inputs().get(i)).readHandle(), 0,
-							inputTransformers.get(a, i).transform(a.inputIndexFunctions().get(i), new PeeksSupplier(a, i, iterations)))
-							.asType(readHandleType);
-				read = Combinators.tableswitch(table);
+							inputTransformers.get(a, i).transform(a.inputIndexFunctions().get(i), () -> a.peeks(i, iterations)))
+							.asType(readHandleType));
+				read = switchFactory.apply(table, wa);
 			} else
 				read = MethodHandles.filterArguments(storage.get(a.inputs().get(0)).readHandle(), 0,
-						inputTransformers.get(a, 0).transform(a.inputIndexFunctions().get(0), new PeeksSupplier(a, 0, iterations)))
+						inputTransformers.get(a, 0).transform(a.inputIndexFunctions().get(0), () -> a.peeks(0, iterations)))
 						.asType(readHandleType);
 
 			assert a.outputs().size() > 0 : a;
@@ -301,50 +308,19 @@ public class ActorGroup implements Comparable<ActorGroup> {
 			MethodHandle write;
 			if (wa.worker() instanceof Splitter) {
 				MethodHandle[] table = new MethodHandle[a.outputs().size()];
-				for (int i = 0; i < a.outputs().size(); ++i)
+				IntStream.range(0, a.outputs().size()).forEachOrdered(i ->
 					table[i] = MethodHandles.filterArguments(storage.get(a.outputs().get(i)).writeHandle(), 0,
-							outputTransformers.get(a, i).transform(a.outputIndexFunctions().get(i), new PushesSupplier(a, i, iterations)))
-							.asType(writeHandleType);
-				write = Combinators.tableswitch(table);
+							outputTransformers.get(a, i).transform(a.outputIndexFunctions().get(i), () -> a.pushes(i, iterations)))
+							.asType(writeHandleType));
+				write = switchFactory.apply(table, wa);
 			} else
 				write = MethodHandles.filterArguments(storage.get(a.outputs().get(0)).writeHandle(), 0,
-						outputTransformers.get(a, 0).transform(a.outputIndexFunctions().get(0), new PushesSupplier(a, 0, iterations)))
+						outputTransformers.get(a, 0).transform(a.outputIndexFunctions().get(0), () -> a.pushes(0, iterations)))
 						.asType(writeHandleType);
 
 			withRWHandlesBound.put(wa, specialized.bindTo(read).bindTo(write));
 		}
 		return withRWHandlesBound;
-	}
-
-	//TODO: replace these with Java 8 lambdas!
-	private static final class PeeksSupplier implements Supplier<ImmutableSortedSet<Integer>> {
-		private final Actor a;
-		private final int input;
-		private final Range<Integer> iterations;
-		private PeeksSupplier(Actor a, int input, Range<Integer> iterations) {
-			this.a = a;
-			this.input = input;
-			this.iterations = iterations;
-		}
-		@Override
-		public ImmutableSortedSet<Integer> get() {
-			return a.peeks(input, iterations);
-		}
-	}
-
-	private static final class PushesSupplier implements Supplier<ImmutableSortedSet<Integer>> {
-		private final Actor a;
-		private final int input;
-		private final Range<Integer> iterations;
-		private PushesSupplier(Actor a, int input, Range<Integer> iterations) {
-			this.a = a;
-			this.input = input;
-			this.iterations = iterations;
-		}
-		@Override
-		public ImmutableSortedSet<Integer> get() {
-			return a.pushes(input, iterations);
-		}
 	}
 
 	/**
@@ -354,7 +330,7 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	 * reinitialize the splitter/joiner index arrays to their initial
 	 * values.
 	 */
-	private MethodHandle makeGroupLoop(Range<Integer> iterations, int unrollFactor, Map<Actor, MethodHandle> withRWHandlesBound, Bytecodifier.Function bytecodifier) {
+	private MethodHandle makeGroupLoop(Range<Integer> iterations, int unrollFactor, Map<Actor, MethodHandle> withRWHandlesBound, ProxyFactory bytecodifier) {
 		if (iterations.isEmpty()) return Combinators.nop();
 		String groupLoopName = String.format("Group%dIter%dTo%dBy%d", id(), iterations.lowerEndpoint(), iterations.upperEndpoint(), unrollFactor);
 		List<MethodHandle> loopHandles = new ArrayList<>(actors().size());
@@ -429,11 +405,11 @@ public class ActorGroup implements Comparable<ActorGroup> {
 	}
 
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle FILTER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_filterLoop", void.class, MethodHandle.class, int.class, int.class, int.class, int.class, int.class);
-	private static final MethodHandle SPLITTER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_splitterLoop", void.class, MethodHandle.class, int.class, int.class, int.class, int[].class, int.class);
-	private static final MethodHandle JOINER_LOOP = findStatic(LOOKUP, ActorGroup.class, "_joinerLoop", void.class, MethodHandle.class, int.class, int.class, int[].class, int.class, int.class);
-	private static final MethodHandle REINITIALIZE_ARRAYS = findStatic(LOOKUP, ActorGroup.class, "_reinitializeArrays", void.class, int[][].class);
-	private static final MethodHandle OVERALL_GROUP_LOOP = findStatic(LOOKUP, ActorGroup.class, "_overallGroupLoop", void.class, MethodHandle.class, int.class, int.class, int.class);
+	private static final MethodHandle FILTER_LOOP = findStatic(LOOKUP, "_filterLoop");
+	private static final MethodHandle SPLITTER_LOOP = findStatic(LOOKUP, "_splitterLoop");
+	private static final MethodHandle JOINER_LOOP = findStatic(LOOKUP, "_joinerLoop");
+	private static final MethodHandle REINITIALIZE_ARRAYS = findStatic(LOOKUP, "_reinitializeArrays");
+	private static final MethodHandle OVERALL_GROUP_LOOP = findStatic(LOOKUP, "_overallGroupLoop");
 	private static void _filterLoop(MethodHandle work, int iterations, int subiterations, int pop, int push, int firstIteration) throws Throwable {
 		for (int i = firstIteration*subiterations; i < (firstIteration+iterations)*subiterations; ++i)
 			work.invokeExact(i * pop, i * push);

@@ -1,3 +1,24 @@
+/*
+ * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.compiler2;
 
 import java.lang.invoke.MethodHandle;
@@ -44,7 +65,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * the initialization schedule are used only within a single thread, so they
  * need not worry about synchronization; normal happens-before ordering in a
  * single thread is enough to ensure readers see preceding writes.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/10/2013
  */
 public interface ConcreteStorage {
@@ -59,13 +80,26 @@ public interface ConcreteStorage {
 	 * @param index the index to read
 	 * @return the element at the given index
 	 */
-	public Object read(int index);
+	public default Object read(int index) {
+		try {
+			return readHandle().invoke(index);
+		} catch (Throwable ex) {
+			throw new AssertionError(String.format("%s.read(%d)", this, index), ex);
+		}
+	}
 	/**
 	 * Writes the given element at the given index, unboxing if necessary.
 	 * @param index the index to write
 	 * @param data the element to write
 	 */
-	public void write(int index, Object data);
+	public default void write(int index, Object data) {
+		try {
+			writeHandle().invoke(index, data);
+		} catch (Throwable ex) {
+			throw new AssertionError(String.format("%s.write(%d, %s)", this, index, data), ex);
+		}
+	}
+
 	/**
 	 * Shifts indices toward negative infinity and ensures that subsequent calls
 	 * to read will see items written by previous calls to write.  (These are

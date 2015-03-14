@@ -1,22 +1,43 @@
+/*
+ * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.compiler2;
 
-import static edu.mit.streamjit.util.LookupUtils.findGetter;
-import static edu.mit.streamjit.util.LookupUtils.findStatic;
-import static edu.mit.streamjit.util.LookupUtils.findVirtual;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findGetter;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findStatic;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findVirtual;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 
 /**
  * A ConcreteStorage using a circular buffer.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 10/10/2013
  */
 public class CircularArrayConcreteStorage implements ConcreteStorage {
 	private static final Lookup LOOKUP = MethodHandles.lookup();
-	private static final MethodHandle INDEX = findStatic(LOOKUP, CircularArrayConcreteStorage.class, "index", int.class, int.class, int.class, int.class);
-	private static final MethodHandle ADJUST = findVirtual(LOOKUP, CircularArrayConcreteStorage.class, "adjust", void.class);;
-	private static final MethodHandle HEAD_GETTER = findGetter(LOOKUP, CircularArrayConcreteStorage.class, "head", int.class);
+	private static final MethodHandle INDEX = findStatic(LOOKUP, "index");
+	private static final MethodHandle ADJUST = findVirtual(LOOKUP, "adjust");
+	private static final MethodHandle HEAD_GETTER = findGetter(LOOKUP, "head");
 	private final Arrayish array;
 	private final int capacity, throughput;
 	private int head;
@@ -38,24 +59,6 @@ public class CircularArrayConcreteStorage implements ConcreteStorage {
 	@Override
 	public Class<?> type() {
 		return array.type();
-	}
-
-	@Override
-	public Object read(int index) {
-		try {
-			return readHandle.invoke(index);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.read(%d, %s)", this, index), ex);
-		}
-	}
-
-	@Override
-	public void write(int index, Object data) {
-		try {
-			writeHandle.invoke(index, data);
-		} catch (Throwable ex) {
-			throw new AssertionError(String.format("%s.write(%d, %s)", this, index, data), ex);
-		}
 	}
 
 	@Override

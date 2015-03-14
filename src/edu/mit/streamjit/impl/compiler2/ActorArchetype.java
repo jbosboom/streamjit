@@ -1,6 +1,26 @@
+/*
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.compiler2;
 
-import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.*;
 import com.google.common.base.Predicates;
 import com.google.common.collect.FluentIterable;
@@ -17,7 +37,6 @@ import edu.mit.streamjit.api.Splitter;
 import edu.mit.streamjit.api.StatefulFilter;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.util.LookupUtils;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.bytecode.Access;
@@ -44,6 +63,7 @@ import edu.mit.streamjit.util.bytecode.insts.JumpInst;
 import edu.mit.streamjit.util.bytecode.insts.LoadInst;
 import edu.mit.streamjit.util.bytecode.insts.ReturnInst;
 import edu.mit.streamjit.util.bytecode.insts.StoreInst;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findConstructor;
 import edu.mit.streamjit.util.bytecode.types.ArrayType;
 import edu.mit.streamjit.util.bytecode.types.MethodType;
 import edu.mit.streamjit.util.bytecode.types.PrimitiveType;
@@ -68,7 +88,7 @@ import java.util.Map;
  * necessary to create common work functions for a particular worker class, with
  * method arguments for its channels and fields.  These methods may later be
  * specialized if desired through the usual inlining mechanisms.
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/20/2013
  */
 public class ActorArchetype {
@@ -186,16 +206,10 @@ public class ActorArchetype {
 		ImmutableMap.Builder<Pair<Class<?>, Class<?>>, MethodHandle> workMethodsBuilder = ImmutableMap.builder();
 		try {
 			Class<?> stateHolderClass = loader.loadClass(stateHolderKlass.getName());
-			this.constructStateHolder = LookupUtils.findConstructor(MethodHandles.publicLookup(), stateHolderClass, workerClass);
+			this.constructStateHolder = findConstructor(stateHolderClass);
 			Class<?> archetypeClass = loader.loadClass(archetypeKlass.getName());
 			ImmutableListMultimap<String, java.lang.reflect.Method> methodsByName
-					= Multimaps.index(Arrays.asList(archetypeClass.getMethods()),
-							new Function<java.lang.reflect.Method, String>() {
-								@Override
-								public String apply(java.lang.reflect.Method input) {
-									return input.getName();
-								}
-			});
+					= Multimaps.index(Arrays.asList(archetypeClass.getMethods()), java.lang.reflect.Method::getName);
 			for (Pair<Class<?>, Class<?>> p : methods.keySet()) {
 				String name = makeWorkMethodName(p.first, p.second);
 				workMethodsBuilder.put(p, MethodHandles.publicLookup().unreflect(

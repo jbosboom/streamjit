@@ -1,8 +1,28 @@
+/*
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Function;
 import static com.google.common.base.Preconditions.checkState;
-import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
@@ -51,12 +71,13 @@ import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
 import edu.mit.streamjit.util.CollectionUtils;
-import edu.mit.streamjit.util.Combinators;
-import static edu.mit.streamjit.util.LookupUtils.findStatic;
+import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
+import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findStatic;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.bytecode.Module;
 import edu.mit.streamjit.util.bytecode.ModuleClassLoader;
+import edu.mit.streamjit.util.bytecode.methodhandles.ProxyFactory;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -79,7 +100,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  *
- * @author Jeffrey Bosboom <jeffreybosboom@gmail.com>
+ * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 9/22/2013
  */
 public class Compiler2 {
@@ -97,6 +118,7 @@ public class Compiler2 {
 	public static final AllocationStrategy ALLOCATION_STRATEGY = new SubsetBiasAllocationStrategy(8);
 	public static final StorageStrategy INTERNAL_STORAGE_STRATEGY = new TuneInternalStorageStrategy();
 	public static final StorageStrategy EXTERNAL_STORAGE_STRATEGY = new TuneExternalStorageStrategy();
+	public static final SwitchingStrategy SWITCHING_STRATEGY = SwitchingStrategy.tunePerWorker();
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
@@ -581,7 +603,7 @@ public class Compiler2 {
 			transfer.add(MethodHandles.insertArguments(ROUNDROBIN_TRANSFER_FUNCTION, 0, weights[x], weightPrefixSum[x], N));
 		return transfer.build();
 	}
-	private final MethodHandle ROUNDROBIN_TRANSFER_FUNCTION = findStatic(LOOKUP, Compiler2.class, "_roundrobinTransferFunction", int.class, int.class, int.class, int.class, int.class);
+	private final MethodHandle ROUNDROBIN_TRANSFER_FUNCTION = findStatic(LOOKUP, "_roundrobinTransferFunction");
 	//TODO: build this directly out of MethodHandles?
 	private static int _roundrobinTransferFunction(int weight, int prefixSum, int N, int i) {
 		//assumes nonnegative indices
@@ -787,12 +809,7 @@ public class Compiler2 {
 		for (final ActorArchetype archetype : archetypes) {
 			Iterable<WorkerActor> workerActors = FluentIterable.from(actors)
 					.filter(WorkerActor.class)
-					.filter(new Predicate<WorkerActor>() {
-						@Override
-						public boolean apply(WorkerActor input) {
-							return input.archetype().equals(archetype);
-						}
-					});
+					.filter(wa -> wa.archetype().equals(archetype));
 			archetype.generateCode(packageName, classloader, workerActors);
 			for (WorkerActor wa : workerActors)
 				wa.setStateHolder(archetype.makeStateHolder(wa));
@@ -842,12 +859,7 @@ public class Compiler2 {
 	}
 
 	private void createInitCode() {
-		ImmutableMap<Actor, ImmutableList<MethodHandle>> indexFxnBackup = adjustOutputIndexFunctions(new Function<Storage, Set<Integer>>() {
-			@Override
-			public Set<Integer> apply(Storage input) {
-				return input.initialDataIndices();
-			}
-		});
+		ImmutableMap<Actor, ImmutableList<MethodHandle>> indexFxnBackup = adjustOutputIndexFunctions(Storage::initialDataIndices);
 
 		this.initStorage = createStorage(false, new PeekPokeStorageFactory(InternalArrayConcreteStorage.initFactory(initSchedule)));
 		initReadInstructions.add(new InitDataReadInstruction(initStorage, initialStateDataMap));
@@ -872,7 +884,7 @@ public class Compiler2 {
 		 * time we build the token init schedule information required by the
 		 * blob host.
 		 */
-		Core initCore = new Core(CollectionUtils.union(initStorage, internalStorage), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".init"));
+		Core initCore = new Core(CollectionUtils.union(initStorage, internalStorage), (table, wa) -> Combinators.lookupswitch(table), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new ProxyFactory(classloader, packageName+".init"));
 		for (ActorGroup g : groups)
 			if (!g.isTokenGroup())
 				initCore.allocate(g, Range.closedOpen(0, initSchedule.get(g)));
@@ -899,14 +911,14 @@ public class Compiler2 {
 				if (s.isInternal()) continue;
 				int itemsWritten = a.push(i) * initSchedule.get(a.group()) * a.group().schedule().get(a);
 				a.outputIndexFunctions().set(i, MethodHandles.filterArguments(
-						a.outputIndexFunctions().get(i), 0, Combinators.add(MethodHandles.identity(int.class), itemsWritten)));
+						a.outputIndexFunctions().get(i), 0, Combinators.adder(itemsWritten)));
 			}
 			for (int i = 0; i < a.inputs().size(); ++i) {
 				Storage s = a.inputs().get(i);
 				if (s.isInternal()) continue;
 				int itemsRead = a.pop(i) * initSchedule.get(a.group()) * a.group().schedule().get(a);
 				a.inputIndexFunctions().set(i, MethodHandles.filterArguments(
-						a.inputIndexFunctions().get(i), 0, Combinators.add(MethodHandles.identity(int.class), itemsRead)));
+						a.inputIndexFunctions().get(i), 0, Combinators.adder(itemsRead)));
 			}
 		}
 
@@ -940,7 +952,7 @@ public class Compiler2 {
 				unrollFactors.put(g, param.getValue());
 			}
 
-			ssCores.add(new Core(CollectionUtils.union(steadyStateStorage, internalStorage), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new Bytecodifier.Function(module, classloader, packageName+".steadystate.")));
+			ssCores.add(new Core(CollectionUtils.union(steadyStateStorage, internalStorage), (table, wa) -> SWITCHING_STRATEGY.createSwitch(table, wa, config), unrollFactors.build(), inputTransformers.build(), outputTransformers.build(), new ProxyFactory(classloader, packageName+".steadystate.")));
 		}
 
 		int throughputPerSteadyState = 0;
@@ -966,9 +978,9 @@ public class Compiler2 {
 				steadyStateCodeBuilder.add(c.code());
 		//Provide at least one core of code, even if it doesn't do anything; the
 		//blob host will still copy inputs to outputs.
-		if (steadyStateCodeBuilder.build().isEmpty())
-			steadyStateCodeBuilder.add(Combinators.nop());
 		this.steadyStateCode = steadyStateCodeBuilder.build();
+		if (steadyStateCode.isEmpty())
+			this.steadyStateCode = ImmutableList.of(Combinators.nop());
 
 		createMigrationInstructions();
 		createDrainInstructions();
@@ -1054,9 +1066,11 @@ public class Compiler2 {
 	 * storage when draining.
 	 */
 	private void createDrainInstructions() {
-		Map<Token, List<Pair<ConcreteStorage, Integer>>> drainReads = new HashMap<>();
+		Map<Token, Pair<List<ConcreteStorage>, List<Integer>>> drainReads = new HashMap<>();
 		for (Map.Entry<Token, Integer> e : postInitLiveness.entrySet())
-			drainReads.put(e.getKey(), new ArrayList<>(Collections.nCopies(e.getValue(), (Pair<ConcreteStorage, Integer>)null)));
+			drainReads.put(e.getKey(), Pair.make(
+					new ArrayList<>(Collections.nCopies(e.getValue(), null)),
+					Ints.asList(new int[e.getValue()])));
 
 		for (Actor a : actors) {
 			for (int input = 0; input < a.inputs().size(); ++input) {
@@ -1064,20 +1078,29 @@ public class Compiler2 {
 				for (int index = 0; index < a.inputSlots(input).size(); ++index) {
 					StorageSlot info = a.inputSlots(input).get(index);
 					if (info.isDrainable()) {
-						Pair<ConcreteStorage, Integer> old = drainReads.get(info.token()).
-								set(info.index(), new Pair<>(storage, a.translateInputIndex(input, index)));
+						Pair<List<ConcreteStorage>, List<Integer>> dr = drainReads.get(info.token());
+						ConcreteStorage old = dr.first.set(info.index(), storage);
 						assert old == null : "overwriting "+info;
+						dr.second.set(info.index(), a.translateInputIndex(input, index));
 					}
 				}
 			}
 		}
 
-		for (Map.Entry<Token, List<Pair<ConcreteStorage, Integer>>> e : drainReads.entrySet()) {
-			assert !e.getValue().contains(null) : "lost an element from "+e.getKey()+": "+e.getValue();
-			for (Iterator<Pair<ConcreteStorage, Integer>> i = e.getValue().iterator(); i.hasNext();)
-				if (i.next().first instanceof PeekableBufferConcreteStorage)
-					i.remove();
-			drainInstructions.add(new XDrainInstruction(e.getKey(), e.getValue()));
+		for (Map.Entry<Token, Pair<List<ConcreteStorage>, List<Integer>>> e : drainReads.entrySet()) {
+			List<ConcreteStorage> storages = e.getValue().first;
+			List<Integer> indices = e.getValue().second;
+			assert !storages.contains(null) : "lost an element from "+e.getKey()+": "+e.getValue();
+			if (!storages.isEmpty() && storages.get(0) instanceof PeekableBufferConcreteStorage) {
+				assert storages.stream().allMatch(s -> s instanceof PeekableBufferConcreteStorage)
+						: "mixed peeking and not? "+e.getKey()+": "+e.getValue();
+				//we still create a drain instruction, but it does nothing
+				storages.clear();
+				indices = Ints.asList();
+			} else
+				assert storages.stream().noneMatch(s -> s instanceof PeekableBufferConcreteStorage)
+						: "mixed peeking and not? "+e.getKey()+": "+e.getValue();
+			drainInstructions.add(new XDrainInstruction(e.getKey(), storages, indices));
 		}
 
 		for (WorkerActor wa : Iterables.filter(actors, WorkerActor.class))
@@ -1112,7 +1135,7 @@ public class Compiler2 {
 				//alternating hole/not-hole).
 				for (int check = 0; check < 100; ++check)
 					assert !liveIndices.contains(a.translateOutputIndex(i, offset + check)) : check;
-				a.outputIndexFunctions().set(i, Combinators.add(a.outputIndexFunctions().get(i), offset));
+				a.outputIndexFunctions().set(i, Combinators.apply(a.outputIndexFunctions().get(i), Combinators.adder(offset)));
 			}
 		}
 		return backup.build();
@@ -1168,14 +1191,15 @@ public class Compiler2 {
 		private MigrationInstruction(Storage storage, ConcreteStorage init, ConcreteStorage steady) {
 			this.init = init;
 			this.steady = steady;
-			ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
+			Set<Integer> builder = new HashSet<>();
 			for (Actor a : storage.downstream())
 				for (int i = 0; i < a.inputs().size(); ++i)
 					if (a.inputs().get(i).equals(storage))
 						for (int idx = 0; idx < a.inputSlots(i).size(); ++idx)
 							if (a.inputSlots(i).get(idx).isLive())
 								builder.add(a.translateInputIndex(i, idx));
-			this.indicesToMigrate = Ints.toArray(builder.build());
+			this.indicesToMigrate = Ints.toArray(builder);
+			//TODO: we used to sort here (using ImmutableSortedSet).  Does it matter?
 		}
 		@Override
 		public void run() {
@@ -1206,18 +1230,15 @@ public class Compiler2 {
 		private final Token token;
 		private final ConcreteStorage[] storage;
 		private final int[] storageSelector, index;
-		private XDrainInstruction(Token token, List<Pair<ConcreteStorage, Integer>> reads) {
+		private XDrainInstruction(Token token, List<ConcreteStorage> storages, List<Integer> indices) {
+			assert storages.size() == indices.size() : String.format("%s %s %s", token, storages, indices);
 			this.token = token;
-			Set<ConcreteStorage> set = new HashSet<>();
-			for (Pair<ConcreteStorage, Integer> p : reads)
-				set.add(p.first);
+			Set<ConcreteStorage> set = new HashSet<>(storages);
 			this.storage = set.toArray(new ConcreteStorage[set.size()]);
-			this.storageSelector = new int[reads.size()];
-			this.index = new int[reads.size()];
-			for (int i = 0; i < reads.size(); ++i) {
-				storageSelector[i] = Arrays.asList(storage).indexOf(reads.get(i).first);
-				index[i] = reads.get(i).second;
-			}
+			this.storageSelector = new int[indices.size()];
+			this.index = Ints.toArray(indices);
+			for (int i = 0; i < indices.size(); ++i)
+				storageSelector[i] = Arrays.asList(storage).indexOf(storages.get(i));
 		}
 		@Override
 		public Map<Token, Object[]> call() {
