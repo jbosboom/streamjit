@@ -47,20 +47,20 @@ public abstract class Actor implements Comparable<Actor> {
 	 * The upstream and downstream Storage, one for each input or output of this
 	 * Actor.  TokenActors will have either inputs xor outputs.
 	 */
-	private final List<Storage> upstream = new ArrayList<>(), downstream = new ArrayList<>();
+	private final ArrayList<Storage> upstream = new ArrayList<>(), downstream = new ArrayList<>();
 	/**
 	 * Index functions (int -> int) that transform a nominal index
 	 * (iteration * rate + popCount/pushCount (+ peekIndex)) into a physical
 	 * index (subject to further adjustment if circular buffers are in use).
 	 * One for each input or output of this actor.
 	 */
-	private final List<MethodHandle> upstreamIndex = new ArrayList<>(),
+	private final ArrayList<MethodHandle> upstreamIndex = new ArrayList<>(),
 			downstreamIndex = new ArrayList<>();
 	/**
 	 * Liveness information for the Storage on the inputs of this actor.  Lazily
 	 * initialized in inputSlots.
 	 */
-	private List<ArrayList<StorageSlot>> inputSlots;
+	private ArrayList<ArrayList<StorageSlot>> inputSlots;
 	private TypeToken<?> inputType, outputType;
 	protected Actor(TypeToken<?> inputType, TypeToken<?> outputType) {
 		//It would be technically more correct to create fresh type variables
@@ -303,7 +303,7 @@ public abstract class Actor implements Comparable<Actor> {
 
 	public int translateInputIndex(int input, int logicalIndex) {
 		checkArgument(logicalIndex >= 0);
-		MethodHandle idxFxn = inputIndexFunctions().get(input);
+		MethodHandle idxFxn = upstreamIndex.get(input);
 		try {
 			return (int)idxFxn.invokeExact(logicalIndex);
 		} catch (Throwable ex) {
@@ -325,7 +325,7 @@ public abstract class Actor implements Comparable<Actor> {
 
 	public int translateOutputIndex(int output, int logicalIndex) {
 		checkArgument(logicalIndex >= 0);
-		MethodHandle idxFxn = outputIndexFunctions().get(output);
+		MethodHandle idxFxn = downstreamIndex.get(output);
 		try {
 			return (int)idxFxn.invokeExact(logicalIndex);
 		} catch (Throwable ex) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -112,16 +112,16 @@ public final class ILPSolver {
 			if (lp == null || row == null || column == null)
 				throw new OutOfMemoryError();
 
-			try {
-				logFile = Files.createTempFile("lp", null);
-			} catch (IOException ignored) {}
-			Pointer<Byte> emptyString = Pointer.pointerToCString(logFile != null ? logFile.toString() : "");
-			setOutputfile(lp, emptyString);
-			emptyString.release();
 
 			boolean assertionsEnabled = false;
 			assert assertionsEnabled = true; //Intentional side effect.
 			if (assertionsEnabled) {
+				try {
+					logFile = Files.createTempFile("lp", null);
+				} catch (IOException ignored) {}
+				Pointer<Byte> emptyString = Pointer.pointerToCString(logFile != null ? logFile.toString() : "");
+				setOutputfile(lp, emptyString);
+				emptyString.release();
 				setVerbose(lp, FULL);
 			} else {
 				setVerbose(lp, IMPORTANT);
@@ -171,13 +171,15 @@ public final class ILPSolver {
 			} else {
 				printLp(lp);
 				String log = "";
-				try {
-					List<String> logLines = Files.readAllLines(logFile, StandardCharsets.UTF_8);
-					StringBuilder sb = new StringBuilder("\n");
-					for (String s : logLines)
-						sb.append(s).append("\n");
-					log = sb.toString();
-				} catch (IOException ignored) {}
+				if (logFile != null) {
+					try {
+						List<String> logLines = Files.readAllLines(logFile, StandardCharsets.UTF_8);
+						StringBuilder sb = new StringBuilder("\n");
+						for (String s : logLines)
+							sb.append(s).append("\n");
+						log = sb.toString();
+					} catch (IOException ignored) {}
+				}
 
 				switch (solret) {
 					case NOMEMORY:

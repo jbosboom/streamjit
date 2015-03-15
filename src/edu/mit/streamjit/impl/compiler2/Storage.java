@@ -361,11 +361,12 @@ public final class Storage implements Comparable<Storage> {
 		//here.  There may be a lot of indices so writeIndices will use a lot of
 		//memory.  But we know (assume) there are no overwrites, so we'll count.
 		this.throughput = 0;
-		for (Actor a : upstream())
-			for (int iteration = 0, max = a.group().schedule().get(a) * externalSchedule.get(a.group()); iteration < max; ++iteration)
-				for (int output = 0; output < a.outputs().size(); ++output)
-					if (a.outputs().get(output).equals(this))
-						this.throughput += a.push(output);
+		for (Actor a : upstream()) {
+			int iterations = a.group().schedule().get(a) * externalSchedule.get(a.group());
+			for (int output = 0; output < a.outputs().size(); ++output)
+				if (a.outputs().get(output).equals(this))
+					this.throughput += iterations * a.push(output);
+		}
 		this.steadyStateCapacity = ContiguousSet.create(readIndices.span(writeIndices), DiscreteDomain.integers()).size();
 	}
 
