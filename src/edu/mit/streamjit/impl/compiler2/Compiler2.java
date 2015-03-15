@@ -432,8 +432,9 @@ public class Compiler2 {
 						new Token(Workers.getPredecessors(w).get(index), w);
 			} else
 				token = ((TokenActor)downstream).token();
+			ArrayList<StorageSlot> inputSlots = downstream.inputSlots(index);
 			for (int i = 0; i < liveItems; ++i)
-				downstream.inputSlots(index).add(StorageSlot.live(token, i));
+				inputSlots.add(StorageSlot.live(token, i));
 			postInitLivenessBuilder.put(token, liveItems);
 		}
 		this.postInitLiveness = postInitLivenessBuilder.build();
@@ -463,18 +464,20 @@ public class Compiler2 {
 				for (Actor a : victim.downstream()) {
 					List<Storage> inputs = a.inputs();
 					List<MethodHandle> inputIndices = a.inputIndexFunctions();
-					for (int j = 0; j < inputs.size(); ++j)
+					for (int j = 0; j < inputs.size(); ++j) {
+						ArrayList<StorageSlot> inputSlots = a.inputSlots(j);
 						if (inputs.get(j).equals(victim)) {
 							inputs.set(j, survivor);
 							survivor.downstream().add(a);
 							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), t));
 							if (splitter.push(i) > 0)
 								for (int idx = 0, q = a.translateInputIndex(j, idx); q < drainInfo.size(); ++idx, q = a.translateInputIndex(j, idx)) {
-									a.inputSlots(j).add(drainInfo.get(q));
+									inputSlots.add(drainInfo.get(q));
 									drainInfo.set(q, drainInfo.get(q).duplify());
 								}
 							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), Sin));
 						}
+					}
 				}
 
 				for (Pair<ImmutableList<Object>, MethodHandle> item : victim.initialData())
@@ -541,9 +544,10 @@ public class Compiler2 {
 			int maxIdx = 0;
 			for (int i = 0; i < joiner.inputs().size(); ++i) {
 				MethodHandle t = transfers.get(i);
-				for (int idx = 0; idx < joiner.inputSlots(i).size(); ++idx)
+				ArrayList<StorageSlot> inputSlots = joiner.inputSlots(i);
+				for (int idx = 0; idx < inputSlots.size(); ++idx)
 					try {
-						maxIdx = Math.max(maxIdx, (int)t.invokeExact(joiner.inputSlots(i).size()-1));
+						maxIdx = Math.max(maxIdx, (int)t.invokeExact(inputSlots.size()-1));
 					} catch (Throwable ex) {
 						throw new AssertionError("Can't happen! transfer function threw?", ex);
 					}
@@ -551,25 +555,28 @@ public class Compiler2 {
 			List<StorageSlot> linearizedInput = new ArrayList<>(Collections.nCopies(maxIdx+1, StorageSlot.hole()));
 			for (int i = 0; i < joiner.inputs().size(); ++i) {
 				MethodHandle t = transfers.get(i);
-				for (int idx = 0; idx < joiner.inputSlots(i).size(); ++idx)
+				ArrayList<StorageSlot> inputSlots = joiner.inputSlots(i);
+				for (int idx = 0; idx < inputSlots.size(); ++idx)
 					try {
-						linearizedInput.set((int)t.invokeExact(idx), joiner.inputSlots(i).get(idx));
+						linearizedInput.set((int)t.invokeExact(idx), inputSlots.get(idx));
 					} catch (Throwable ex) {
 						throw new AssertionError("Can't happen! transfer function threw?", ex);
 					}
-				joiner.inputSlots(i).clear();
-				joiner.inputSlots(i).trimToSize();
+				inputSlots.clear();
+				inputSlots.trimToSize();
 			}
 
 			if (!linearizedInput.isEmpty()) {
 				for (Actor a : survivor.downstream())
 					for (int j = 0; j < a.inputs().size(); ++j)
-						if (a.inputs().get(j).equals(survivor))
+						if (a.inputs().get(j).equals(survivor)) {
+							ArrayList<StorageSlot> inputSlots = a.inputSlots(j);
 							for (int idx = 0, q = a.translateInputIndex(j, idx); q < linearizedInput.size(); ++idx, q = a.translateInputIndex(j, idx)) {
 								StorageSlot slot = linearizedInput.get(q);
-								a.inputSlots(j).add(slot);
+								inputSlots.add(slot);
 								linearizedInput.set(q, slot.duplify());
 							}
+						}
 			}
 
 //			System.out.println("removed "+joiner);
@@ -1074,8 +1081,9 @@ public class Compiler2 {
 		for (Actor a : actors) {
 			for (int input = 0; input < a.inputs().size(); ++input) {
 				ConcreteStorage storage = steadyStateStorage.get(a.inputs().get(input));
-				for (int index = 0; index < a.inputSlots(input).size(); ++index) {
-					StorageSlot info = a.inputSlots(input).get(index);
+				ArrayList<StorageSlot> inputSlots = a.inputSlots(input);
+				for (int index = 0; index < inputSlots.size(); ++index) {
+					StorageSlot info = inputSlots.get(index);
 					if (info.isDrainable()) {
 						Pair<List<ConcreteStorage>, List<Integer>> dr = drainReads.get(info.token());
 						ConcreteStorage old = dr.first.set(info.index(), storage);
@@ -1193,10 +1201,12 @@ public class Compiler2 {
 			Set<Integer> builder = new HashSet<>();
 			for (Actor a : storage.downstream())
 				for (int i = 0; i < a.inputs().size(); ++i)
-					if (a.inputs().get(i).equals(storage))
-						for (int idx = 0; idx < a.inputSlots(i).size(); ++idx)
-							if (a.inputSlots(i).get(idx).isLive())
+					if (a.inputs().get(i).equals(storage)) {
+						ArrayList<StorageSlot> inputSlots = a.inputSlots(i);
+						for (int idx = 0; idx < inputSlots.size(); ++idx)
+							if (inputSlots.get(idx).isLive())
 								builder.add(a.translateInputIndex(i, idx));
+					}
 			this.indicesToMigrate = Ints.toArray(builder);
 			//TODO: we used to sort here (using ImmutableSortedSet).  Does it matter?
 		}
