@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -120,7 +120,8 @@ public final class Compiler2StreamCompiler extends BlobHostStreamCompiler {
 	@Override
 	protected Blob makeBlob(ImmutableSet<Worker<?, ?>> workers, Configuration configuration, Input<?> input, Output<?> output) {
 		//When reporting throughput, repeat the input as needed.
-		if ((Boolean)configuration.getExtraData("reportThroughput"))
+		Boolean reportThroughput = (Boolean)configuration.getExtraData("reportThroughput");
+		if (reportThroughput != null && reportThroughput)
 			input = Datasets.cycle(input);
 		return new Compiler2(workers, configuration, getMaxNumCores(), null, input, output).compile();
 	}
