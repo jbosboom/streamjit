@@ -1434,6 +1434,11 @@ public final class Configuration {
 				SwitchParameter<?> sp = (SwitchParameter)p;
 				builder.addParameter(new SwitchParameter(sp.getName(), sp.getGenericParameter(),
 						sp.getUniverse().get(rng.nextInt(sp.getUniverse().size())), sp.getUniverse()));
+			} else if (p instanceof PermutationParameter) {
+				PermutationParameter<?> sp = (PermutationParameter)p;
+				List<?> universe = new ArrayList<>(sp.getUniverse());
+				Collections.shuffle(universe, rng);
+				builder.addParameter(new PermutationParameter(sp.getName(), sp.getGenericParameter(), universe));
 			} else
 				throw new UnsupportedOperationException("don't know how to randomize a "+p.getClass()+" named "+p.getName());
 		}
