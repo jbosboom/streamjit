@@ -433,6 +433,7 @@ public class Compiler2 {
 			} else
 				token = ((TokenActor)downstream).token();
 			ArrayList<StorageSlot> inputSlots = downstream.inputSlots(index);
+			inputSlots.ensureCapacity(liveItems);
 			for (int i = 0; i < liveItems; ++i)
 				inputSlots.add(StorageSlot.live(token, i));
 			postInitLivenessBuilder.put(token, liveItems);
