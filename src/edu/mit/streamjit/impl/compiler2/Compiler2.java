@@ -469,11 +469,17 @@ public class Compiler2 {
 							inputs.set(j, survivor);
 							survivor.downstream().add(a);
 							inputIndices.set(j, inputIndices.get(j).andThen(t));
-							if (splitter.push(i) > 0)
-								for (int idx = 0, q = a.translateInputIndex(j, idx); q < drainInfo.size(); ++idx, q = a.translateInputIndex(j, idx)) {
+							if (splitter.push(i) > 0) {
+								IndexFunction idxFxn = a.inputIndexFunctions().get(j);
+								int bulkSize = GeneralBinarySearch.binarySearch(idx -> idxFxn.applyAsInt(idx) < drainInfo.size(), 0);
+								int[] bulk = getBulk(bulkSize);
+								idxFxn.applyBulk(bulk);
+								inputSlots.ensureCapacity(bulkSize);
+								for (int q : bulk) {
 									inputSlots.add(drainInfo.get(q));
 									drainInfo.set(q, drainInfo.get(q).duplify());
 								}
+							}
 							inputIndices.set(j, inputIndices.get(j).andThen(Sin));
 						}
 					}
