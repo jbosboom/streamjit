@@ -62,6 +62,7 @@ public interface IndexFunction extends IntUnaryOperator {
 
 final class IdentityIndexFunction implements IndexFunction {
 	static final IndexFunction INSTANCE = new IdentityIndexFunction();
+	private IdentityIndexFunction() {}
 	@Override
 	public int applyAsInt(int operand) {
 		return operand;
