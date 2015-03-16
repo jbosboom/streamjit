@@ -1174,9 +1174,8 @@ public class Compiler2 {
 					continue;
 				Set<Integer> liveIndices = liveIndexExtractor.apply(s);
 				assert liveIndices != null : s +" "+liveIndexExtractor;
-				int offset = 0;
-				while (liveIndices.contains(a.translateOutputIndex(i, offset)))
-					++offset;
+				IndexFunction idxFxn = a.outputIndexFunctions().get(i);
+				int offset = GeneralBinarySearch.binarySearch(o -> liveIndices.contains(idxFxn.applyAsInt(o)), 0);
 				//Check future indices are also open (e.g., that we aren't
 				//alternating hole/not-hole).
 				for (int check = 0; check < 100; ++check)
