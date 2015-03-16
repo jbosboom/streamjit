@@ -33,7 +33,6 @@ import com.google.common.collect.Sets;
 import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.util.Pair;
-import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -67,12 +66,12 @@ public final class Storage implements Comparable<Storage> {
 	 */
 	private Class<?> type = Object.class;
 	/**
-	 * The initial data in this Storage.  The MethodHandle is a write index
+	 * The initial data in this Storage.  The IndexFunction is a write index
 	 * function that specifies where the corresponding item in the list goes.
 	 * Due to these transformations, items in a later pair might precede items
 	 * in an earlier pair.
 	 */
-	private final List<Pair<ImmutableList<Object>, MethodHandle>> initialData = new ArrayList<>();
+	private final List<Pair<ImmutableList<Object>, IndexFunction>> initialData = new ArrayList<>();
 	/**
 	 * The number of data items added to and removed from this storage during
 	 * each steady state iteration.
@@ -170,7 +169,7 @@ public final class Storage implements Comparable<Storage> {
 		return Sets.intersection(upstreamGroups(), downstreamGroups()).isEmpty();
 	}
 
-	public List<Pair<ImmutableList<Object>, MethodHandle>> initialData() {
+	public List<Pair<ImmutableList<Object>, IndexFunction>> initialData() {
 		return initialData;
 	}
 
@@ -184,10 +183,10 @@ public final class Storage implements Comparable<Storage> {
 	 */
 	public ImmutableSortedSet<Integer> initialDataIndices() {
 		ImmutableSortedSet.Builder<Integer> builder = ImmutableSortedSet.naturalOrder();
-		for (Pair<ImmutableList<Object>, MethodHandle> p : initialData())
+		for (Pair<ImmutableList<Object>, IndexFunction> p : initialData())
 			for (int i = 0; i < p.first.size(); ++i)
 				try {
-					builder.add((int)p.second.invokeExact(i));
+					builder.add(p.second.applyAsInt(i));
 				} catch (Throwable ex) {
 					throw new AssertionError("index functions should not throw", ex);
 				}
@@ -208,10 +207,10 @@ public final class Storage implements Comparable<Storage> {
 	 */
 	public Range<Integer> initialDataIndexSpan() {
 		Range<Integer> range = null;
-		for (Pair<ImmutableList<Object>, MethodHandle> p : initialData())
+		for (Pair<ImmutableList<Object>, IndexFunction> p : initialData())
 			for (int i = 0; i < p.first.size(); ++i)
 				try {
-					int x = (int)p.second.invokeExact(i);
+					int x = p.second.applyAsInt(i);
 					range = (range == null) ? Range.singleton(x) : range.span(Range.singleton(x));
 				} catch (Throwable ex) {
 					throw new AssertionError("index functions should not throw", ex);

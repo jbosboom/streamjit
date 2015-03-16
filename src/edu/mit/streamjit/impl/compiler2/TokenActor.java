@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,8 +26,6 @@ import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.api.Identity;
 import edu.mit.streamjit.api.StreamElement;
 import edu.mit.streamjit.impl.blob.Blob.Token;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.ParameterizedType;
 
 /**
@@ -47,11 +45,10 @@ public final class TokenActor extends Actor {
 		super(id < 0 ? TypeToken.of(void.class) : typeVariable(), id < 0 ? typeVariable() : TypeToken.of(void.class));
 		this.token = token;
 		this.id = id;
-		MethodHandle identity = MethodHandles.identity(int.class);
 		if (isOutput())
-			inputIndexFunctions().add(identity);
+			inputIndexFunctions().add(IndexFunction.identity());
 		else
-			outputIndexFunctions().add(identity);
+			outputIndexFunctions().add(IndexFunction.identity());
 	}
 	private static TypeToken<?> typeVariable() {
 		//TODO: I want a TypeToken<T>, but Guava goes out of its way to make

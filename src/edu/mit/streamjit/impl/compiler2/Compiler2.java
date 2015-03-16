@@ -71,8 +71,8 @@ import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
 import edu.mit.streamjit.util.CollectionUtils;
+import edu.mit.streamjit.util.GeneralBinarySearch;
 import edu.mit.streamjit.util.bytecode.methodhandles.Combinators;
-import static edu.mit.streamjit.util.bytecode.methodhandles.LookupUtils.findStatic;
 import edu.mit.streamjit.util.Pair;
 import edu.mit.streamjit.util.ReflectionUtils;
 import edu.mit.streamjit.util.bytecode.Module;
@@ -81,7 +81,6 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -118,7 +117,6 @@ public class Compiler2 {
 	public static final StorageStrategy INTERNAL_STORAGE_STRATEGY = new TuneInternalStorageStrategy();
 	public static final StorageStrategy EXTERNAL_STORAGE_STRATEGY = new TuneExternalStorageStrategy();
 	public static final SwitchingStrategy SWITCHING_STRATEGY = SwitchingStrategy.tunePerWorker();
-	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 	private static final AtomicInteger PACKAGE_NUMBER = new AtomicInteger();
 	private final ImmutableSet<Worker<?, ?>> workers;
 	private final ImmutableSet<ActorArchetype> archetypes;
@@ -220,7 +218,7 @@ public class Compiler2 {
 				ImmutableList<Object> data = initialState.getData(tok);
 				if (data != null && !data.isEmpty()) {
 					initialStateDataMapBuilder.put(tok, data);
-					cell.getValue().initialData().add(Pair.make(data, MethodHandles.identity(int.class)));
+					cell.getValue().initialData().add(Pair.make(data, IndexFunction.identity()));
 				}
 			}
 		}
@@ -453,36 +451,36 @@ public class Compiler2 {
 	private void splitterRemoval() {
 		for (WorkerActor splitter : actorsToBeRemoved) {
 			if (!(splitter.worker() instanceof Splitter)) continue;
-			List<MethodHandle> transfers = splitterTransferFunctions(splitter);
+			List<IndexFunction> transfers = splitterTransferFunctions(splitter);
 			Storage survivor = Iterables.getOnlyElement(splitter.inputs());
 			//Remove all instances of splitter, not just the first.
 			survivor.downstream().removeAll(ImmutableList.of(splitter));
-			MethodHandle Sin = Iterables.getOnlyElement(splitter.inputIndexFunctions());
+			IndexFunction Sin = Iterables.getOnlyElement(splitter.inputIndexFunctions());
 			List<StorageSlot> drainInfo = splitter.inputSlots(0);
 			for (int i = 0; i < splitter.outputs().size(); ++i) {
 				Storage victim = splitter.outputs().get(i);
-				MethodHandle t = transfers.get(i);
+				IndexFunction t = transfers.get(i);
 				for (Actor a : victim.downstream()) {
 					List<Storage> inputs = a.inputs();
-					List<MethodHandle> inputIndices = a.inputIndexFunctions();
+					List<IndexFunction> inputIndices = a.inputIndexFunctions();
 					for (int j = 0; j < inputs.size(); ++j) {
 						ArrayList<StorageSlot> inputSlots = a.inputSlots(j);
 						if (inputs.get(j).equals(victim)) {
 							inputs.set(j, survivor);
 							survivor.downstream().add(a);
-							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), t));
+							inputIndices.set(j, inputIndices.get(j).andThen(t));
 							if (splitter.push(i) > 0)
 								for (int idx = 0, q = a.translateInputIndex(j, idx); q < drainInfo.size(); ++idx, q = a.translateInputIndex(j, idx)) {
 									inputSlots.add(drainInfo.get(q));
 									drainInfo.set(q, drainInfo.get(q).duplify());
 								}
-							inputIndices.set(j, MethodHandles.filterReturnValue(inputIndices.get(j), Sin));
+							inputIndices.set(j, inputIndices.get(j).andThen(Sin));
 						}
 					}
 				}
 
-				for (Pair<ImmutableList<Object>, MethodHandle> item : victim.initialData())
-					survivor.initialData().add(new Pair<>(item.first, MethodHandles.filterReturnValue(item.second, t)));
+				for (Pair<ImmutableList<Object>, IndexFunction> item : victim.initialData())
+					survivor.initialData().add(new Pair<>(item.first, item.second.andThen(t)));
 				storage.remove(victim);
 			}
 
@@ -500,7 +498,7 @@ public class Compiler2 {
 	 * @param a an actor
 	 * @return transfer functions, or null
 	 */
-	private List<MethodHandle> splitterTransferFunctions(WorkerActor a) {
+	private List<IndexFunction> splitterTransferFunctions(WorkerActor a) {
 		assert REMOVABLE_WORKERS.contains(a.worker().getClass()) : a.worker().getClass();
 		if (a.worker() instanceof RoundrobinSplitter || a.worker() instanceof WeightedRoundrobinSplitter) {
 			int[] weights = new int[a.outputs().size()];
@@ -508,7 +506,7 @@ public class Compiler2 {
 				weights[i] = a.push(i);
 			return roundrobinTransferFunctions(weights);
 		} else if (a.worker() instanceof DuplicateSplitter) {
-			return Collections.nCopies(a.outputs().size(), MethodHandles.identity(int.class));
+			return Collections.nCopies(a.outputs().size(), IndexFunction.identity());
 		} else
 			throw new AssertionError();
 	}
@@ -516,53 +514,47 @@ public class Compiler2 {
 	private void joinerRemoval() {
 		for (WorkerActor joiner : actorsToBeRemoved) {
 			if (!(joiner.worker() instanceof Joiner)) continue;
-			List<MethodHandle> transfers = joinerTransferFunctions(joiner);
+			List<IndexFunction> transfers = joinerTransferFunctions(joiner);
 			Storage survivor = Iterables.getOnlyElement(joiner.outputs());
 			//Remove all instances of joiner, not just the first.
 			survivor.upstream().removeAll(ImmutableList.of(joiner));
-			MethodHandle Jout = Iterables.getOnlyElement(joiner.outputIndexFunctions());
+			IndexFunction Jout = Iterables.getOnlyElement(joiner.outputIndexFunctions());
 			for (int i = 0; i < joiner.inputs().size(); ++i) {
 				Storage victim = joiner.inputs().get(i);
-				MethodHandle t = transfers.get(i);
-				MethodHandle t2 = MethodHandles.filterReturnValue(t, Jout);
+				IndexFunction t = transfers.get(i);
+				IndexFunction t2 = t.andThen(Jout);
 				for (Actor a : victim.upstream()) {
 					List<Storage> outputs = a.outputs();
-					List<MethodHandle> outputIndices = a.outputIndexFunctions();
+					List<IndexFunction> outputIndices = a.outputIndexFunctions();
 					for (int j = 0; j < outputs.size(); ++j)
 						if (outputs.get(j).equals(victim)) {
 							outputs.set(j, survivor);
-							outputIndices.set(j, MethodHandles.filterReturnValue(outputIndices.get(j), t2));
+							outputIndices.set(j, outputIndices.get(j).andThen(t2));
 							survivor.upstream().add(a);
 						}
 				}
 
-				for (Pair<ImmutableList<Object>, MethodHandle> item : victim.initialData())
-					survivor.initialData().add(new Pair<>(item.first, MethodHandles.filterReturnValue(item.second, t2)));
+				for (Pair<ImmutableList<Object>, IndexFunction> item : victim.initialData())
+					survivor.initialData().add(new Pair<>(item.first,item.second.andThen(t2)));
 				storage.remove(victim);
 			}
 
 			//Linearize drain info from the joiner's inputs.
 			int maxIdx = 0;
 			for (int i = 0; i < joiner.inputs().size(); ++i) {
-				MethodHandle t = transfers.get(i);
+				IndexFunction t = transfers.get(i);
 				ArrayList<StorageSlot> inputSlots = joiner.inputSlots(i);
-				for (int idx = 0; idx < inputSlots.size(); ++idx)
-					try {
-						maxIdx = Math.max(maxIdx, (int)t.invokeExact(inputSlots.size()-1));
-					} catch (Throwable ex) {
-						throw new AssertionError("Can't happen! transfer function threw?", ex);
-					}
+				if (inputSlots.size() > 0)
+					maxIdx = Math.max(maxIdx, t.applyAsInt(inputSlots.size()-1));
 			}
-			List<StorageSlot> linearizedInput = new ArrayList<>(Collections.nCopies(maxIdx+1, StorageSlot.hole()));
+			ArrayList<StorageSlot> linearizedInput = new ArrayList<>(Collections.nCopies(maxIdx+1, StorageSlot.hole()));
 			for (int i = 0; i < joiner.inputs().size(); ++i) {
-				MethodHandle t = transfers.get(i);
+				IndexFunction t = transfers.get(i);
 				ArrayList<StorageSlot> inputSlots = joiner.inputSlots(i);
+				int[] bulk = getBulk(inputSlots.size());
+				t.applyBulk(bulk);
 				for (int idx = 0; idx < inputSlots.size(); ++idx)
-					try {
-						linearizedInput.set((int)t.invokeExact(idx), inputSlots.get(idx));
-					} catch (Throwable ex) {
-						throw new AssertionError("Can't happen! transfer function threw?", ex);
-					}
+					linearizedInput.set(bulk[idx], inputSlots.get(idx));
 				inputSlots.clear();
 				inputSlots.trimToSize();
 			}
@@ -572,7 +564,11 @@ public class Compiler2 {
 					for (int j = 0; j < a.inputs().size(); ++j)
 						if (a.inputs().get(j).equals(survivor)) {
 							ArrayList<StorageSlot> inputSlots = a.inputSlots(j);
-							for (int idx = 0, q = a.translateInputIndex(j, idx); q < linearizedInput.size(); ++idx, q = a.translateInputIndex(j, idx)) {
+							IndexFunction idxFxn = a.inputIndexFunctions().get(j);
+							int bulkSize = GeneralBinarySearch.binarySearch(idx -> idxFxn.applyAsInt(idx) < linearizedInput.size(), 0);
+							int[] bulk = getBulk(bulkSize);
+							idxFxn.applyBulk(bulk);
+							for (int q : bulk) {
 								StorageSlot slot = linearizedInput.get(q);
 								inputSlots.add(slot);
 								linearizedInput.set(q, slot.duplify());
@@ -586,7 +582,7 @@ public class Compiler2 {
 		}
 	}
 
-	private List<MethodHandle> joinerTransferFunctions(WorkerActor a) {
+	private List<IndexFunction> joinerTransferFunctions(WorkerActor a) {
 		assert REMOVABLE_WORKERS.contains(a.worker().getClass()) : a.worker().getClass();
 		if (a.worker() instanceof RoundrobinJoiner || a.worker() instanceof WeightedRoundrobinJoiner) {
 			int[] weights = new int[a.inputs().size()];
@@ -597,7 +593,7 @@ public class Compiler2 {
 			throw new AssertionError();
 	}
 
-	private List<MethodHandle> roundrobinTransferFunctions(int[] weights) {
+	private List<IndexFunction> roundrobinTransferFunctions(int[] weights) {
 		int[] weightPrefixSum = new int[weights.length + 1];
 		for (int i = 1; i < weightPrefixSum.length; ++i)
 			weightPrefixSum[i] = weightPrefixSum[i-1] + weights[i-1];
@@ -605,16 +601,36 @@ public class Compiler2 {
 		//t_x(i) = N(i/w[x]) + sum_0_x-1{w} + (i mod w[x])
 		//where the first two terms select a "window" and the third is the
 		//index into that window.
-		ImmutableList.Builder<MethodHandle> transfer = ImmutableList.builder();
-		for (int x = 0; x < weights.length; ++x)
-			transfer.add(MethodHandles.insertArguments(ROUNDROBIN_TRANSFER_FUNCTION, 0, weights[x], weightPrefixSum[x], N));
+		ImmutableList.Builder<IndexFunction> transfer = ImmutableList.builder();
+		for (int x = 0; x < weights.length; ++x) {
+			//don't capture the array in the lambda
+			int weight = weights[x], prefixSum = weightPrefixSum[x];
+			transfer.add(new RoundrobinTransferIndexFunction(weight, prefixSum, N));
+		}
 		return transfer.build();
 	}
-	private final MethodHandle ROUNDROBIN_TRANSFER_FUNCTION = findStatic(LOOKUP, "_roundrobinTransferFunction");
-	//TODO: build this directly out of MethodHandles?
 	private static int _roundrobinTransferFunction(int weight, int prefixSum, int N, int i) {
 		//assumes nonnegative indices
 		return N*(i/weight) + prefixSum + (i % weight);
+	}
+	private static final class RoundrobinTransferIndexFunction implements IndexFunction {
+		private final int weight, prefixSum, N;
+		private RoundrobinTransferIndexFunction(int weight, int prefixSum, int N) {
+			this.weight = weight;
+			this.prefixSum = prefixSum;
+			this.N = N;
+		}
+		@Override
+		public int applyAsInt(int operand) {
+			return _roundrobinTransferFunction(weight, prefixSum, N, operand);
+		}
+		@Override
+		public void applyBulk(int[] bulk) {
+			//TODO: is just a specialization point enough?
+			for (int i = 0; i < bulk.length; ++i)
+//				bulk[i] = applyAsInt(bulk[i]);
+				bulk[i] = _roundrobinTransferFunction(weight, prefixSum, N, bulk[i]);
+		}
 	}
 
 	/**
@@ -866,7 +882,7 @@ public class Compiler2 {
 	}
 
 	private void createInitCode() {
-		ImmutableMap<Actor, ImmutableList<MethodHandle>> indexFxnBackup = adjustOutputIndexFunctions(Storage::initialDataIndices);
+		ImmutableMap<Actor, ImmutableList<IndexFunction>> indexFxnBackup = adjustOutputIndexFunctions(Storage::initialDataIndices);
 
 		this.initStorage = createStorage(false, new PeekPokeStorageFactory(InternalArrayConcreteStorage.initFactory(initSchedule)));
 		initReadInstructions.add(new InitDataReadInstruction(initStorage, initialStateDataMap));
@@ -911,21 +927,35 @@ public class Compiler2 {
 		restoreOutputIndexFunctions(indexFxnBackup);
 	}
 
+	private static final class AdditionIndexFunction implements IndexFunction {
+		private final int addend;
+		private AdditionIndexFunction(int addend) {
+			this.addend = addend;
+		}
+		@Override
+		public int applyAsInt(int operand) {
+			return operand + addend;
+		}
+		@Override
+		public void applyBulk(int[] bulk) {
+			for (int i = 0; i < bulk.length; ++i)
+				bulk[i] += addend;
+		}
+	}
+
 	private void createSteadyStateCode() {
 		for (Actor a : actors) {
 			for (int i = 0; i < a.outputs().size(); ++i) {
 				Storage s = a.outputs().get(i);
 				if (s.isInternal()) continue;
 				int itemsWritten = a.push(i) * initSchedule.get(a.group()) * a.group().schedule().get(a);
-				a.outputIndexFunctions().set(i, MethodHandles.filterArguments(
-						a.outputIndexFunctions().get(i), 0, Combinators.adder(itemsWritten)));
+				a.outputIndexFunctions().set(i, a.outputIndexFunctions().get(i).compose(new AdditionIndexFunction(itemsWritten)));
 			}
 			for (int i = 0; i < a.inputs().size(); ++i) {
 				Storage s = a.inputs().get(i);
 				if (s.isInternal()) continue;
 				int itemsRead = a.pop(i) * initSchedule.get(a.group()) * a.group().schedule().get(a);
-				a.inputIndexFunctions().set(i, MethodHandles.filterArguments(
-						a.inputIndexFunctions().get(i), 0, Combinators.adder(itemsRead)));
+				a.inputIndexFunctions().set(i, a.inputIndexFunctions().get(i).compose(new AdditionIndexFunction(itemsRead)));
 			}
 		}
 
@@ -1003,7 +1033,7 @@ public class Compiler2 {
 	private ReadInstruction makeReadInstruction(TokenActor a, ConcreteStorage cs, int count) {
 		assert a.isInput();
 		Storage s = Iterables.getOnlyElement(a.outputs());
-		MethodHandle idxFxn = Iterables.getOnlyElement(a.outputIndexFunctions());
+		IndexFunction idxFxn = Iterables.getOnlyElement(a.outputIndexFunctions());
 		ReadInstruction retval;
 		if (count == 0)
 			retval = new NopReadInstruction(a.token());
@@ -1023,7 +1053,7 @@ public class Compiler2 {
 	private WriteInstruction makeWriteInstruction(TokenActor a, ConcreteStorage cs, int count) {
 		assert a.isOutput();
 		Storage s = Iterables.getOnlyElement(a.inputs());
-		MethodHandle idxFxn = Iterables.getOnlyElement(a.inputIndexFunctions());
+		IndexFunction idxFxn = Iterables.getOnlyElement(a.inputIndexFunctions());
 		WriteInstruction retval;
 		if (count == 0)
 			retval = new NopWriteInstruction(a.token());
@@ -1038,11 +1068,11 @@ public class Compiler2 {
 		return retval;
 	}
 
-	private boolean contiguouslyIncreasing(MethodHandle idxFxn, int start, int count) {
+	private boolean contiguouslyIncreasing(IndexFunction idxFxn, int start, int count) {
 		try {
-			int prev = (int)idxFxn.invokeExact(start);
+			int prev = idxFxn.applyAsInt(start);
 			for (int i = start+1; i < count; ++i) {
-				int next = (int)idxFxn.invokeExact(i);
+				int next = idxFxn.applyAsInt(i);
 				if (next != (prev + 1))
 					return false;
 				prev = next;
@@ -1064,7 +1094,7 @@ public class Compiler2 {
 				migrationInstructions.add(new PeekMigrationInstruction(
 						s, (PeekableBufferConcreteStorage)steady));
 			else
-				migrationInstructions.add(new MigrationInstruction(s, init, steady));
+				migrationInstructions.add(new MigrationInstruction(s, init, steady, this));
 		}
 	}
 
@@ -1083,13 +1113,15 @@ public class Compiler2 {
 			for (int input = 0; input < a.inputs().size(); ++input) {
 				ConcreteStorage storage = steadyStateStorage.get(a.inputs().get(input));
 				ArrayList<StorageSlot> inputSlots = a.inputSlots(input);
+				int[] bulk = getBulk(inputSlots.size());
+				a.inputIndexFunctions().get(input).applyBulk(bulk);
 				for (int index = 0; index < inputSlots.size(); ++index) {
 					StorageSlot info = inputSlots.get(index);
 					if (info.isDrainable()) {
 						Pair<List<ConcreteStorage>, List<Integer>> dr = drainReads.get(info.token());
 						ConcreteStorage old = dr.first.set(info.index(), storage);
 						assert old == null : "overwriting "+info;
-						dr.second.set(info.index(), a.translateInputIndex(input, index));
+						dr.second.set(info.index(), bulk[index]);
 					}
 				}
 			}
@@ -1125,8 +1157,8 @@ public class Compiler2 {
 	 * index set for the given external storage
 	 * @return the old output index functions, to be restored later
 	 */
-	private ImmutableMap<Actor, ImmutableList<MethodHandle>> adjustOutputIndexFunctions(Function<Storage, Set<Integer>> liveIndexExtractor) {
-		ImmutableMap.Builder<Actor, ImmutableList<MethodHandle>> backup = ImmutableMap.builder();
+	private ImmutableMap<Actor, ImmutableList<IndexFunction>> adjustOutputIndexFunctions(Function<Storage, Set<Integer>> liveIndexExtractor) {
+		ImmutableMap.Builder<Actor, ImmutableList<IndexFunction>> backup = ImmutableMap.builder();
 		for (Actor a : actors) {
 			backup.put(a, ImmutableList.copyOf(a.outputIndexFunctions()));
 			for (int i = 0; i < a.outputs().size(); ++i) {
@@ -1143,7 +1175,8 @@ public class Compiler2 {
 				//alternating hole/not-hole).
 				for (int check = 0; check < 100; ++check)
 					assert !liveIndices.contains(a.translateOutputIndex(i, offset + check)) : check;
-				a.outputIndexFunctions().set(i, Combinators.apply(a.outputIndexFunctions().get(i), Combinators.adder(offset)));
+				final int finalOffset = offset;
+				a.outputIndexFunctions().set(i, a.outputIndexFunctions().get(i).compose(new AdditionIndexFunction(finalOffset)));
 			}
 		}
 		return backup.build();
@@ -1154,9 +1187,9 @@ public class Compiler2 {
 	 * {@link #adjustOutputIndexFunctions(com.google.common.base.Function)}.
 	 * @param backup the backup to restore
 	 */
-	private void restoreOutputIndexFunctions(ImmutableMap<Actor, ImmutableList<MethodHandle>> backup) {
+	private void restoreOutputIndexFunctions(ImmutableMap<Actor, ImmutableList<IndexFunction>> backup) {
 		for (Actor a : actors) {
-			ImmutableList<MethodHandle> oldFxns = backup.get(a);
+			ImmutableList<IndexFunction> oldFxns = backup.get(a);
 			assert oldFxns != null : "no backup for "+a;
 			assert oldFxns.size() == a.outputIndexFunctions().size() : "backup for "+a+" is wrong size";
 			Collections.copy(a.outputIndexFunctions(), oldFxns);
@@ -1196,7 +1229,7 @@ public class Compiler2 {
 	private static final class MigrationInstruction implements Runnable {
 		private final ConcreteStorage init, steady;
 		private final int[] indicesToMigrate;
-		private MigrationInstruction(Storage storage, ConcreteStorage init, ConcreteStorage steady) {
+		private MigrationInstruction(Storage storage, ConcreteStorage init, ConcreteStorage steady, Compiler2 compiler) {
 			this.init = init;
 			this.steady = steady;
 			Set<Integer> builder = new HashSet<>();
@@ -1204,9 +1237,11 @@ public class Compiler2 {
 				for (int i = 0; i < a.inputs().size(); ++i)
 					if (a.inputs().get(i).equals(storage)) {
 						ArrayList<StorageSlot> inputSlots = a.inputSlots(i);
+						int[] bulk = compiler.getBulk(inputSlots.size());
+						a.inputIndexFunctions().get(i).applyBulk(bulk);
 						for (int idx = 0; idx < inputSlots.size(); ++idx)
 							if (inputSlots.get(idx).isLive())
-								builder.add(a.translateInputIndex(i, idx));
+								builder.add(bulk[idx]);
 					}
 			this.indicesToMigrate = Ints.toArray(builder);
 			//TODO: we used to sort here (using ImmutableSortedSet).  Does it matter?
@@ -1345,7 +1380,7 @@ public class Compiler2 {
 	 */
 	private static final class TokenReadInstruction implements ReadInstruction {
 		private final Token token;
-		private final MethodHandle idxFxn;
+		private final IndexFunction idxFxn;
 		private final ConcreteStorage storage;
 		private final int count;
 		private Buffer buffer;
@@ -1375,7 +1410,7 @@ public class Compiler2 {
 			for (int i = 0; i < data.length; ++i) {
 				int idx;
 				try {
-					idx = (int)idxFxn.invokeExact(i);
+					idx = idxFxn.applyAsInt(i);
 				} catch (Throwable ex) {
 					throw new AssertionError("Can't happen! Index functions should not throw", ex);
 				}
@@ -1390,7 +1425,7 @@ public class Compiler2 {
 			for (int i = 0; i < data.length; ++i) {
 				int idx;
 				try {
-					idx = (int)idxFxn.invokeExact(i);
+					idx = idxFxn.applyAsInt(i);
 				} catch (Throwable ex) {
 					throw new AssertionError("Can't happen! Index functions should not throw", ex);
 				}
@@ -1464,7 +1499,7 @@ public class Compiler2 {
 	 */
 	private static final class TokenWriteInstruction implements WriteInstruction {
 		private final Token token;
-		private final MethodHandle idxFxn;
+		private final IndexFunction idxFxn;
 		private final ConcreteStorage storage;
 		private final int count;
 		private Buffer buffer;
@@ -1493,7 +1528,7 @@ public class Compiler2 {
 			for (int i = 0; i < count; ++i) {
 				int idx;
 				try {
-					idx = (int)idxFxn.invokeExact(i);
+					idx = idxFxn.applyAsInt(i);
 				} catch (Throwable ex) {
 					throw new AssertionError("Can't happen! Index functions should not throw", ex);
 				}
@@ -1536,10 +1571,10 @@ public class Compiler2 {
 	 * it should be the first initReadInstruction.
 	 */
 	private static final class InitDataReadInstruction implements ReadInstruction {
-		private final ImmutableMap<ConcreteStorage, ImmutableList<Pair<ImmutableList<Object>, MethodHandle>>> toWrite;
+		private final ImmutableMap<ConcreteStorage, ImmutableList<Pair<ImmutableList<Object>, IndexFunction>>> toWrite;
 		private final ImmutableMap<Token, ImmutableList<Object>> initialStateDataMap;
 		private InitDataReadInstruction(Map<Storage, ConcreteStorage> initStorage, ImmutableMap<Token, ImmutableList<Object>> initialStateDataMap) {
-			ImmutableMap.Builder<ConcreteStorage, ImmutableList<Pair<ImmutableList<Object>, MethodHandle>>> toWriteBuilder = ImmutableMap.builder();
+			ImmutableMap.Builder<ConcreteStorage, ImmutableList<Pair<ImmutableList<Object>, IndexFunction>>> toWriteBuilder = ImmutableMap.builder();
 			for (Map.Entry<Storage, ConcreteStorage> e : initStorage.entrySet()) {
 				Storage s = e.getKey();
 				if (s.isInternal()) continue;
@@ -1558,12 +1593,12 @@ public class Compiler2 {
 		}
 		@Override
 		public boolean load() {
-			for (Map.Entry<ConcreteStorage, ImmutableList<Pair<ImmutableList<Object>, MethodHandle>>> e : toWrite.entrySet())
-				for (Pair<ImmutableList<Object>, MethodHandle> p : e.getValue())
+			for (Map.Entry<ConcreteStorage, ImmutableList<Pair<ImmutableList<Object>, IndexFunction>>> e : toWrite.entrySet())
+				for (Pair<ImmutableList<Object>, IndexFunction> p : e.getValue())
 					for (int i = 0; i < p.first.size(); ++i) {
 						int idx;
 						try {
-							idx = (int)p.second.invokeExact(i);
+							idx = p.second.applyAsInt(i);
 						} catch (Throwable ex) {
 							throw new AssertionError("Can't happen! Index functions should not throw", ex);
 						}
@@ -1650,6 +1685,14 @@ public class Compiler2 {
 				initReadInstructions, initWriteInstructions, migrationInstructions,
 				readInstructions, writeInstructions, drainInstructions,
 				precreatedBuffers);
+	}
+
+	private final Map<Integer, int[]> bulkCache = new HashMap<>();
+	private int[] getBulk(int size) {
+		int[] bulk = bulkCache.computeIfAbsent(size, int[]::new);
+		for (int i = 0; i < bulk.length; ++i)
+			bulk[i] = i;
+		return bulk;
 	}
 
 	public static void main(String[] args) {

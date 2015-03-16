@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,6 @@ import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.common.Workers;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -143,9 +141,8 @@ public final class WorkerActor extends Actor {
 				succ.inputs().add(s);
 		}
 
-		MethodHandle identity = MethodHandles.identity(int.class);
-		inputIndexFunctions().addAll(Collections.nCopies(inputs().size(), identity));
-		outputIndexFunctions().addAll(Collections.nCopies(outputs().size(), identity));
+		inputIndexFunctions().addAll(Collections.nCopies(inputs().size(), IndexFunction.identity()));
+		outputIndexFunctions().addAll(Collections.nCopies(outputs().size(), IndexFunction.identity()));
 	}
 
 	@Override
