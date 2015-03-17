@@ -31,7 +31,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
 import com.google.common.reflect.TypeToken;
 import edu.mit.streamjit.util.ReflectionUtils;
-import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -54,7 +53,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * index (subject to further adjustment if circular buffers are in use).
 	 * One for each input or output of this actor.
 	 */
-	private final ArrayList<MethodHandle> upstreamIndex = new ArrayList<>(),
+	private final ArrayList<IndexFunction> upstreamIndex = new ArrayList<>(),
 			downstreamIndex = new ArrayList<>();
 	/**
 	 * Liveness information for the Storage on the inputs of this actor.  Lazily
@@ -297,15 +296,15 @@ public abstract class Actor implements Comparable<Actor> {
 		return pushes(output, ContiguousSet.create(iterations, DiscreteDomain.integers()));
 	}
 
-	public List<MethodHandle> inputIndexFunctions() {
+	public List<IndexFunction> inputIndexFunctions() {
 		return upstreamIndex;
 	}
 
 	public int translateInputIndex(int input, int logicalIndex) {
 		checkArgument(logicalIndex >= 0);
-		MethodHandle idxFxn = upstreamIndex.get(input);
+		IndexFunction idxFxn = upstreamIndex.get(input);
 		try {
-			return (int)idxFxn.invokeExact(logicalIndex);
+			return idxFxn.applyAsInt(logicalIndex);
 		} catch (Throwable ex) {
 			throw new AssertionError(String.format("index functions should not throw; translateInputIndex(%d, %d)", input, logicalIndex), ex);
 		}
@@ -319,15 +318,15 @@ public abstract class Actor implements Comparable<Actor> {
 		return translateInputIndices(input, ContiguousSet.create(logicalIndices, DiscreteDomain.integers()));
 	}
 
-	public List<MethodHandle> outputIndexFunctions() {
+	public List<IndexFunction> outputIndexFunctions() {
 		return downstreamIndex;
 	}
 
 	public int translateOutputIndex(int output, int logicalIndex) {
 		checkArgument(logicalIndex >= 0);
-		MethodHandle idxFxn = downstreamIndex.get(output);
+		IndexFunction idxFxn = downstreamIndex.get(output);
 		try {
-			return (int)idxFxn.invokeExact(logicalIndex);
+			return idxFxn.applyAsInt(logicalIndex);
 		} catch (Throwable ex) {
 			throw new AssertionError(String.format("index functions should not throw; translateOutputIndex(%d, %d)", output, logicalIndex), ex);
 		}

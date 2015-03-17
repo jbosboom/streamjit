@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 Massachusetts Institute of Technology
+ * Copyright (c) 2013-2015 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,127 +29,48 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
  * @author Jeffrey Bosboom <jbosboom@csail.mit.edu>
  * @since 11/29/2013
  */
-public abstract class StorageSlot {
+public class StorageSlot {
+	private static final StorageSlot HOLE = new StorageSlot(null, -1), DUP = new StorageSlot(null, -2);
+	private final Token token;
+	private final int index;
+	private StorageSlot(Token token, int index) {
+		this.token = token;
+		this.index = index;
+	}
 	public static StorageSlot live(Token token, int index) {
 		assert token != null;
 		assert index >= 0 : index;
-		return new LiveStorageSlot(token, index);
+		return new StorageSlot(token, index);
 	}
 	public static StorageSlot hole() {
-		return HoleStorageSlot.INSTANCE;
+		return StorageSlot.HOLE;
 	}
 
-	public abstract boolean isLive();
-	public abstract boolean isHole();
-	public abstract boolean isDrainable();
-	public abstract StorageSlot duplify();
-	public abstract Token token();
-	public abstract int index();
+	public boolean isLive() {
+		return this != HOLE;
+	}
+	public boolean isHole() {
+		return this == HOLE;
+	}
+	public boolean isDrainable() {
+		//return this != HOLE && this != DUP
+		return token != null;
+	}
+	public StorageSlot duplify() {
+		return DUP;
+	}
+	public Token token() {
+		assert isDrainable();
+		return token;
+	}
+	public int index() {
+		assert isDrainable();
+		return index;
+	}
 	@Override
-	public abstract String toString();
-
-	private static final class HoleStorageSlot extends StorageSlot {
-		private static final HoleStorageSlot INSTANCE = new HoleStorageSlot();
-		private HoleStorageSlot() {}
-		@Override
-		public boolean isLive() {
-			return false;
-		}
-		@Override
-		public boolean isHole() {
-			return true;
-		}
-		@Override
-		public boolean isDrainable() {
-			return false;
-		}
-		@Override
-		public StorageSlot duplify() {
-			return this; //a hole duplicate is just a hole
-		}
-		@Override
-		public Token token() {
-			throw new AssertionError("called token() on a hole");
-		}
-		@Override
-		public int index() {
-			throw new AssertionError("called index() on a hole");
-		}
-		@Override
-		public String toString() {
-			return "(hole)";
-		}
+	public String toString() {
+		if (isHole()) return "(hole)";
+		if (this == DUP) return "(dup)";
+		return String.format("%s[%d]", token(), index());
 	}
-
-	private static class LiveStorageSlot extends StorageSlot {
-		private final Token token;
-		private final int index;
-		protected LiveStorageSlot(Token token, int index) {
-			this.token = token;
-			this.index = index;
-		}
-		@Override
-		public boolean isLive() {
-			return true;
-		}
-		@Override
-		public boolean isHole() {
-			return false;
-		}
-		@Override
-		public boolean isDrainable() {
-			return true;
-		}
-		@Override
-		public StorageSlot duplify() {
-			return DuplicateStorageSlot.INSTANCE;
-		}
-		@Override
-		public Token token() {
-			return token;
-		}
-		@Override
-		public int index() {
-			return index;
-		}
-		@Override
-		public String toString() {
-			return String.format("%s[%d]", token(), index());
-		}
-	}
-
-	private static final class DuplicateStorageSlot extends StorageSlot {
-		private static final DuplicateStorageSlot INSTANCE = new DuplicateStorageSlot();
-		private DuplicateStorageSlot() {}
-		@Override
-		public boolean isLive() {
-			return true;
-		}
-		@Override
-		public boolean isHole() {
-			return false;
-		}
-		@Override
-		public boolean isDrainable() {
-			return false;
-		}
-		@Override
-		public StorageSlot duplify() {
-			return this;
-		}
-		@Override
-		public Token token() {
-			throw new AssertionError("called token() on a duplicate");
-		}
-		@Override
-		public int index() {
-			throw new AssertionError("called index() on a duplicate");
-		}
-		@Override
-		public String toString() {
-			return String.format("(dup)");
-		}
-	}
-
-	protected StorageSlot() {}
 }

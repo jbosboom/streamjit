@@ -294,12 +294,12 @@ public class ActorGroup implements Comparable<ActorGroup> {
 				MethodHandle[] table = new MethodHandle[a.inputs().size()];
 				IntStream.range(0, a.inputs().size()).forEachOrdered(i ->
 					table[i] = MethodHandles.filterArguments(storage.get(a.inputs().get(i)).readHandle(), 0,
-							inputTransformers.get(a, i).transform(a.inputIndexFunctions().get(i), () -> a.peeks(i, iterations)))
+							inputTransformers.get(a, i).transform(a.inputIndexFunctions().get(i).asHandle(), () -> a.peeks(i, iterations)))
 							.asType(readHandleType));
 				read = switchFactory.apply(table, wa);
 			} else
 				read = MethodHandles.filterArguments(storage.get(a.inputs().get(0)).readHandle(), 0,
-						inputTransformers.get(a, 0).transform(a.inputIndexFunctions().get(0), () -> a.peeks(0, iterations)))
+						inputTransformers.get(a, 0).transform(a.inputIndexFunctions().get(0).asHandle(), () -> a.peeks(0, iterations)))
 						.asType(readHandleType);
 
 			assert a.outputs().size() > 0 : a;
@@ -309,12 +309,12 @@ public class ActorGroup implements Comparable<ActorGroup> {
 				MethodHandle[] table = new MethodHandle[a.outputs().size()];
 				IntStream.range(0, a.outputs().size()).forEachOrdered(i ->
 					table[i] = MethodHandles.filterArguments(storage.get(a.outputs().get(i)).writeHandle(), 0,
-							outputTransformers.get(a, i).transform(a.outputIndexFunctions().get(i), () -> a.pushes(i, iterations)))
+							outputTransformers.get(a, i).transform(a.outputIndexFunctions().get(i).asHandle(), () -> a.pushes(i, iterations)))
 							.asType(writeHandleType));
 				write = switchFactory.apply(table, wa);
 			} else
 				write = MethodHandles.filterArguments(storage.get(a.outputs().get(0)).writeHandle(), 0,
-						outputTransformers.get(a, 0).transform(a.outputIndexFunctions().get(0), () -> a.pushes(0, iterations)))
+						outputTransformers.get(a, 0).transform(a.outputIndexFunctions().get(0).asHandle(), () -> a.pushes(0, iterations)))
 						.asType(writeHandleType);
 
 			withRWHandlesBound.put(wa, specialized.bindTo(read).bindTo(write));
