@@ -430,7 +430,7 @@ public class Compiler2 {
 						new Token(Workers.getPredecessors(w).get(index), w);
 			} else
 				token = ((TokenActor)downstream).token();
-			ArrayList<StorageSlot> inputSlots = downstream.inputSlots(index);
+			StorageSlotList inputSlots = downstream.inputSlots(index);
 			inputSlots.ensureCapacity(liveItems);
 			for (int i = 0; i < liveItems; ++i)
 				inputSlots.add(StorageSlot.live(token, i));
@@ -456,7 +456,7 @@ public class Compiler2 {
 			//Remove all instances of splitter, not just the first.
 			survivor.downstream().removeAll(ImmutableList.of(splitter));
 			IndexFunction Sin = Iterables.getOnlyElement(splitter.inputIndexFunctions());
-			List<StorageSlot> drainInfo = splitter.inputSlots(0);
+			StorageSlotList drainInfo = splitter.inputSlots(0);
 			for (int i = 0; i < splitter.outputs().size(); ++i) {
 				Storage victim = splitter.outputs().get(i);
 				IndexFunction t = transfers.get(i);
@@ -464,7 +464,7 @@ public class Compiler2 {
 					List<Storage> inputs = a.inputs();
 					List<IndexFunction> inputIndices = a.inputIndexFunctions();
 					for (int j = 0; j < inputs.size(); ++j) {
-						ArrayList<StorageSlot> inputSlots = a.inputSlots(j);
+						StorageSlotList inputSlots = a.inputSlots(j);
 						if (inputs.get(j).equals(victim)) {
 							inputs.set(j, survivor);
 							survivor.downstream().add(a);
@@ -549,14 +549,14 @@ public class Compiler2 {
 			int maxIdx = 0;
 			for (int i = 0; i < joiner.inputs().size(); ++i) {
 				IndexFunction t = transfers.get(i);
-				ArrayList<StorageSlot> inputSlots = joiner.inputSlots(i);
+				StorageSlotList inputSlots = joiner.inputSlots(i);
 				if (inputSlots.size() > 0)
 					maxIdx = Math.max(maxIdx, t.applyAsInt(inputSlots.size()-1));
 			}
 			ArrayList<StorageSlot> linearizedInput = new ArrayList<>(Collections.nCopies(maxIdx+1, StorageSlot.hole()));
 			for (int i = 0; i < joiner.inputs().size(); ++i) {
 				IndexFunction t = transfers.get(i);
-				ArrayList<StorageSlot> inputSlots = joiner.inputSlots(i);
+				StorageSlotList inputSlots = joiner.inputSlots(i);
 				int[] bulk = getBulk(inputSlots.size());
 				t.applyBulk(bulk);
 				for (int idx = 0; idx < inputSlots.size(); ++idx)
@@ -569,7 +569,7 @@ public class Compiler2 {
 				for (Actor a : survivor.downstream())
 					for (int j = 0; j < a.inputs().size(); ++j)
 						if (a.inputs().get(j).equals(survivor)) {
-							ArrayList<StorageSlot> inputSlots = a.inputSlots(j);
+							StorageSlotList inputSlots = a.inputSlots(j);
 							IndexFunction idxFxn = a.inputIndexFunctions().get(j);
 							int bulkSize = GeneralBinarySearch.binarySearch(idx -> idxFxn.applyAsInt(idx) < linearizedInput.size(), 0);
 							int[] bulk = getBulk(bulkSize);
@@ -1118,7 +1118,7 @@ public class Compiler2 {
 		for (Actor a : actors) {
 			for (int input = 0; input < a.inputs().size(); ++input) {
 				ConcreteStorage storage = steadyStateStorage.get(a.inputs().get(input));
-				ArrayList<StorageSlot> inputSlots = a.inputSlots(input);
+				StorageSlotList inputSlots = a.inputSlots(input);
 				int[] bulk = getBulk(inputSlots.size());
 				a.inputIndexFunctions().get(input).applyBulk(bulk);
 				for (int index = 0; index < inputSlots.size(); ++index) {
@@ -1241,7 +1241,7 @@ public class Compiler2 {
 			for (Actor a : storage.downstream())
 				for (int i = 0; i < a.inputs().size(); ++i)
 					if (a.inputs().get(i).equals(storage)) {
-						ArrayList<StorageSlot> inputSlots = a.inputSlots(i);
+						StorageSlotList inputSlots = a.inputSlots(i);
 						int[] bulk = compiler.getBulk(inputSlots.size());
 						a.inputIndexFunctions().get(i).applyBulk(bulk);
 						for (int idx = 0; idx < inputSlots.size(); ++idx)
