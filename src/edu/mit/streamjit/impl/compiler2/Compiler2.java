@@ -553,7 +553,7 @@ public class Compiler2 {
 				if (inputSlots.size() > 0)
 					maxIdx = Math.max(maxIdx, t.applyAsInt(inputSlots.size()-1));
 			}
-			ArrayList<StorageSlot> linearizedInput = new ArrayList<>(Collections.nCopies(maxIdx+1, StorageSlot.hole()));
+			StorageSlotList linearizedInput = StorageSlotList.ofHoles(maxIdx+1);
 			for (int i = 0; i < joiner.inputs().size(); ++i) {
 				IndexFunction t = transfers.get(i);
 				StorageSlotList inputSlots = joiner.inputSlots(i);

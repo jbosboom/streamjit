@@ -38,25 +38,25 @@ public final class StorageSlotList extends AbstractList<StorageSlot> {
 	/**
 	 * A list of Tokens referred to by StorageSlots in this list.
 	 */
-	private Token[] tokens = new Token[4];
+	private Token[] tokens;
 	/**
 	 * The currently used size of {@link #tokens}.
 	 */
-	private int tokensSize = 0;
+	private int tokensSize;
 	/**
 	 * For the StorageSlot at index i, {@code tokenIdx[i]} is the index of its
 	 * Token in {@link #tokens}, or the special values HOLE and DUP.
 	 */
-	private byte[] tokenIdx = new byte[16];
+	private byte[] tokenIdx;
 	/**
 	 * For the StorageSlot at index i, {@code indices[i]} is its index, or
 	 * Integer.MIN_VALUE for holes and duplicates (mostly for debugging).
 	 */
-	private int[] indices = new int[16];
+	private int[] indices;
 	/**
 	 * The currently used size of {@link #tokenIdx} and {@link #indices}.
 	 */
-	private int size = 0;
+	private int size;
 	/**
 	 * Looks up a token in {@link #tokens}, or inserts it if not already
 	 * present, returning its index.
@@ -84,6 +84,32 @@ public final class StorageSlotList extends AbstractList<StorageSlot> {
 			tokenIdx = Arrays.copyOf(tokenIdx, tokenIdx.length * 2);
 			indices = Arrays.copyOf(indices, indices.length * 2);
 		}
+	}
+
+	private StorageSlotList(Token[] tokens, int tokensSize, byte[] tokenIdx, int[] indices, int size) {
+		this.tokens = tokens;
+		this.tokensSize = tokensSize;
+		this.tokenIdx = tokenIdx;
+		this.indices = indices;
+		this.size = size;
+	}
+
+	public StorageSlotList() {
+		this(new Token[4], 0, new byte[16], new int[16], 0);
+	}
+
+	/**
+	 * Returns a new StorageSlotList initialized to contain {@code size} holes.
+	 * This exists for {@link Compiler2#joinerRemoval()}.
+	 * @param size the desired size of the new list
+	 * @return a new StorageSlotList initialized to contain {@code size} holes.
+	 */
+	public static StorageSlotList ofHoles(int size) {
+		byte[] tokenIdx = new byte[size];
+		Arrays.fill(tokenIdx, HOLE);
+		int[] indices = new int[size];
+		Arrays.fill(indices, Integer.MIN_VALUE);
+		return new StorageSlotList(new Token[4], 0, tokenIdx, indices, size);
 	}
 
 	@Override
