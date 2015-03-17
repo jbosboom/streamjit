@@ -80,10 +80,8 @@ public final class StorageSlotList extends AbstractList<StorageSlot> {
 	 * Resizes {@link #tokenIdx} and {@link #indices} if they're full.
 	 */
 	private void maybeResize() {
-		if (size == tokenIdx.length) {
-			tokenIdx = Arrays.copyOf(tokenIdx, tokenIdx.length * 2);
-			indices = Arrays.copyOf(indices, indices.length * 2);
-		}
+		if (size == tokenIdx.length)
+			ensureCapacity(tokenIdx.length * 2);
 	}
 
 	private StorageSlotList(Token[] tokens, int tokensSize, byte[] tokenIdx, int[] indices, int size) {
@@ -180,9 +178,15 @@ public final class StorageSlotList extends AbstractList<StorageSlot> {
 		tokensSize = size = 0;
 	}
 	public void ensureCapacity(int capacity) {
-		//TODO
+		if (tokenIdx.length < capacity) {
+			tokenIdx = Arrays.copyOf(tokenIdx, capacity);
+			indices = Arrays.copyOf(indices, capacity);
+		}
 	}
 	public void trimToSize() {
-		//TODO
+		//we have to use size 1 so our doubling works (or we can do *2 +1).
+		tokens = new Token[1];
+		tokenIdx = new byte[1];
+		indices = new int[1];
 	}
 }
