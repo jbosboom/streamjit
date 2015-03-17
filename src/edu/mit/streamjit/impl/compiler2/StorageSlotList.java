@@ -116,6 +116,20 @@ public final class StorageSlotList extends AbstractList<StorageSlot> {
 		if (tokenIdx[index] == DUP) return StorageSlot.DUP;
 		return StorageSlot.live(tokens[toUnsignedInt(tokenIdx[index])], indices[index]);
 	}
+	public boolean isLive(int index) {
+		return tokenIdx[index] != HOLE;
+	}
+	public boolean isDrainable(int index) {
+		return tokenIdx[index] != HOLE && tokenIdx[index] != DUP;
+	}
+	public Token getToken(int index) {
+		assert isDrainable(index);
+		return tokens[tokenIdx[index]];
+	}
+	public int getIndex(int index) {
+		assert isDrainable(index);
+		return indices[index];
+	}
 	@Override
 	public boolean add(StorageSlot e) {
 		if (e.isHole()) return addHole();

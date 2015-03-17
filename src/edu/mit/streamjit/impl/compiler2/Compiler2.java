@@ -433,7 +433,7 @@ public class Compiler2 {
 			StorageSlotList inputSlots = downstream.inputSlots(index);
 			inputSlots.ensureCapacity(liveItems);
 			for (int i = 0; i < liveItems; ++i)
-				inputSlots.add(StorageSlot.live(token, i));
+				inputSlots.add(token, i);
 			postInitLivenessBuilder.put(token, liveItems);
 		}
 		this.postInitLiveness = postInitLivenessBuilder.build();
@@ -1122,12 +1122,12 @@ public class Compiler2 {
 				int[] bulk = getBulk(inputSlots.size());
 				a.inputIndexFunctions().get(input).applyBulk(bulk);
 				for (int index = 0; index < inputSlots.size(); ++index) {
-					StorageSlot info = inputSlots.get(index);
-					if (info.isDrainable()) {
-						Pair<List<ConcreteStorage>, List<Integer>> dr = drainReads.get(info.token());
-						ConcreteStorage old = dr.first.set(info.index(), storage);
-						assert old == null : "overwriting "+info;
-						dr.second.set(info.index(), bulk[index]);
+					if (inputSlots.isDrainable(index)) {
+						Pair<List<ConcreteStorage>, List<Integer>> dr = drainReads.get(inputSlots.getToken(index));
+						int slotIndex = inputSlots.getIndex(index);
+						ConcreteStorage old = dr.first.set(slotIndex, storage);
+						assert old == null : "overwriting "+inputSlots.get(index);
+						dr.second.set(slotIndex, bulk[index]);
 					}
 				}
 			}
@@ -1245,7 +1245,7 @@ public class Compiler2 {
 						int[] bulk = compiler.getBulk(inputSlots.size());
 						a.inputIndexFunctions().get(i).applyBulk(bulk);
 						for (int idx = 0; idx < inputSlots.size(); ++idx)
-							if (inputSlots.get(idx).isLive())
+							if (inputSlots.isLive(idx))
 								builder.add(bulk[idx]);
 					}
 			this.indicesToMigrate = Ints.toArray(builder);
