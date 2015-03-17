@@ -477,7 +477,7 @@ public class Compiler2 {
 								inputSlots.ensureCapacity(bulkSize);
 								for (int q : bulk) {
 									inputSlots.add(drainInfo.get(q));
-									drainInfo.set(q, drainInfo.get(q).duplify());
+									drainInfo.setDuplicate(q);
 								}
 							}
 							inputIndices.set(j, inputIndices.get(j).andThen(Sin));
@@ -577,7 +577,7 @@ public class Compiler2 {
 							for (int q : bulk) {
 								StorageSlot slot = linearizedInput.get(q);
 								inputSlots.add(slot);
-								linearizedInput.set(q, slot.duplify());
+								linearizedInput.setDuplicate(q);
 							}
 						}
 			}
