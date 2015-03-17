@@ -273,15 +273,16 @@ public final class Storage implements Comparable<Storage> {
 	 * @see #readIndices(java.util.Map)
 	 */
 	public Range<Integer> readIndexSpan(Map<ActorGroup, Integer> externalSchedule) {
-		Range<Integer> range = null;
-		for (Actor a : downstream())
-			//just the first and last iteration
-			for (int iteration : new int[]{0, a.group().schedule().get(a) * externalSchedule.get(a.group())-1}) {
-				ImmutableSortedSet<Integer> reads = a.reads(this, iteration);
-				Range<Integer> readRange = reads.isEmpty() ? range : Range.closed(reads.first(), reads.last());
-				range = range == null ? readRange : range.span(readRange);
-			}
-		range = (range != null ? range : Range.closedOpen(0, 0));
+		int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
+		for (Actor a : downstream()) {
+			int maxIteration = a.group().schedule().get(a) * externalSchedule.get(a.group())-1;
+			for (int input = 0; input < a.inputs().size(); ++input)
+				if (a.inputs().get(input).equals(this) && (a.peek(input) > 0 || a.pop(input) > 0)) {
+					min = Math.min(min, a.translateInputIndex(input, a.peeks(input, 0).first()));
+					max = Math.max(max, a.translateInputIndex(input, a.peeks(input, maxIteration).last()));
+				}
+		}
+		Range<Integer> range = (min != Integer.MAX_VALUE ? Range.closed(min, max) : Range.closedOpen(0, 0));
 		return range.canonical(DiscreteDomain.integers());
 	}
 
