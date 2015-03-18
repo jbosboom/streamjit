@@ -276,11 +276,12 @@ public final class Storage implements Comparable<Storage> {
 		int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
 		for (Actor a : downstream()) {
 			int maxIteration = a.group().schedule().get(a) * externalSchedule.get(a.group())-1;
-			for (int input = 0; input < a.inputs().size(); ++input)
-				if (a.inputs().get(input).equals(this) && (a.peek(input) > 0 || a.pop(input) > 0)) {
-					min = Math.min(min, a.translateInputIndex(input, a.peeks(input, 0).first()));
-					max = Math.max(max, a.translateInputIndex(input, a.peeks(input, maxIteration).last()));
-				}
+			if (maxIteration >= 0)
+				for (int input = 0; input < a.inputs().size(); ++input)
+					if (a.inputs().get(input).equals(this) && (a.peek(input) > 0 || a.pop(input) > 0)) {
+						min = Math.min(min, a.translateInputIndex(input, a.peeks(input, 0).first()));
+						max = Math.max(max, a.translateInputIndex(input, a.peeks(input, maxIteration).last()));
+					}
 		}
 		Range<Integer> range = (min != Integer.MAX_VALUE ? Range.closed(min, max) : Range.closedOpen(0, 0));
 		return range.canonical(DiscreteDomain.integers());
