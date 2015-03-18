@@ -316,13 +316,16 @@ public final class Storage implements Comparable<Storage> {
 	 */
 	public Range<Integer> writeIndexSpan(Map<ActorGroup, Integer> externalSchedule) {
 		Range<Integer> range = null;
-		for (Actor a : upstream())
+		for (Actor a : upstream()) {
 			//just the first and last iteration
-			for (int iteration : new int[]{0, a.group().schedule().get(a) * externalSchedule.get(a.group())-1}) {
-				ImmutableSortedSet<Integer> writes = a.writes(this, iteration);
-				Range<Integer> writeRange = writes.isEmpty() ? range : Range.closed(writes.first(), writes.last());
-				range = range == null ? writeRange : range.span(writeRange);
-			}
+			int maxIteration = a.group().schedule().get(a) * externalSchedule.get(a.group())-1;
+			if (maxIteration >= 0)
+				for (int iteration : new int[]{0, maxIteration}) {
+					ImmutableSortedSet<Integer> writes = a.writes(this, iteration);
+					Range<Integer> writeRange = writes.isEmpty() ? range : Range.closed(writes.first(), writes.last());
+					range = range == null ? writeRange : range.span(writeRange);
+				}
+		}
 		range = (range != null ? range : Range.closedOpen(0, 0));
 		return range.canonical(DiscreteDomain.integers());
 	}
