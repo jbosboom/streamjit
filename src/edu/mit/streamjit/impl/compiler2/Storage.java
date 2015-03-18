@@ -276,11 +276,12 @@ public final class Storage implements Comparable<Storage> {
 		int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
 		for (Actor a : downstream()) {
 			int maxIteration = a.group().schedule().get(a) * externalSchedule.get(a.group())-1;
-			for (int input = 0; input < a.inputs().size(); ++input)
-				if (a.inputs().get(input).equals(this) && (a.peek(input) > 0 || a.pop(input) > 0)) {
-					min = Math.min(min, a.translateInputIndex(input, a.peeks(input, 0).first()));
-					max = Math.max(max, a.translateInputIndex(input, a.peeks(input, maxIteration).last()));
-				}
+			if (maxIteration >= 0)
+				for (int input = 0; input < a.inputs().size(); ++input)
+					if (a.inputs().get(input).equals(this) && (a.peek(input) > 0 || a.pop(input) > 0)) {
+						min = Math.min(min, a.translateInputIndex(input, a.peeks(input, 0).first()));
+						max = Math.max(max, a.translateInputIndex(input, a.peeks(input, maxIteration).last()));
+					}
 		}
 		Range<Integer> range = (min != Integer.MAX_VALUE ? Range.closed(min, max) : Range.closedOpen(0, 0));
 		return range.canonical(DiscreteDomain.integers());
@@ -316,13 +317,16 @@ public final class Storage implements Comparable<Storage> {
 	 */
 	public Range<Integer> writeIndexSpan(Map<ActorGroup, Integer> externalSchedule) {
 		Range<Integer> range = null;
-		for (Actor a : upstream())
+		for (Actor a : upstream()) {
 			//just the first and last iteration
-			for (int iteration : new int[]{0, a.group().schedule().get(a) * externalSchedule.get(a.group())-1}) {
-				ImmutableSortedSet<Integer> writes = a.writes(this, iteration);
-				Range<Integer> writeRange = writes.isEmpty() ? range : Range.closed(writes.first(), writes.last());
-				range = range == null ? writeRange : range.span(writeRange);
-			}
+			int maxIteration = a.group().schedule().get(a) * externalSchedule.get(a.group())-1;
+			if (maxIteration >= 0)
+				for (int iteration : new int[]{0, maxIteration}) {
+					ImmutableSortedSet<Integer> writes = a.writes(this, iteration);
+					Range<Integer> writeRange = writes.isEmpty() ? range : Range.closed(writes.first(), writes.last());
+					range = range == null ? writeRange : range.span(writeRange);
+				}
+		}
 		range = (range != null ? range : Range.closedOpen(0, 0));
 		return range.canonical(DiscreteDomain.integers());
 	}

@@ -30,7 +30,7 @@ import edu.mit.streamjit.impl.blob.Blob.Token;
  * @since 11/29/2013
  */
 public class StorageSlot {
-	private static final StorageSlot HOLE = new StorageSlot(null, -1), DUP = new StorageSlot(null, -2);
+	static final StorageSlot HOLE = new StorageSlot(null, -1), DUP = new StorageSlot(null, -2);
 	private final Token token;
 	private final int index;
 	private StorageSlot(Token token, int index) {
@@ -46,11 +46,14 @@ public class StorageSlot {
 		return StorageSlot.HOLE;
 	}
 
-	public boolean isLive() {
-		return this != HOLE;
-	}
 	public boolean isHole() {
 		return this == HOLE;
+	}
+	public boolean isDuplicate() {
+		return this == DUP;
+	}
+	public boolean isLive() {
+		return this != HOLE;
 	}
 	public boolean isDrainable() {
 		//return this != HOLE && this != DUP

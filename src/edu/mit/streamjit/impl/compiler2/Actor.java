@@ -59,7 +59,7 @@ public abstract class Actor implements Comparable<Actor> {
 	 * Liveness information for the Storage on the inputs of this actor.  Lazily
 	 * initialized in inputSlots.
 	 */
-	private ArrayList<ArrayList<StorageSlot>> inputSlots;
+	private ArrayList<StorageSlotList> inputSlots;
 	private TypeToken<?> inputType, outputType;
 	protected Actor(TypeToken<?> inputType, TypeToken<?> outputType) {
 		//It would be technically more correct to create fresh type variables
@@ -511,11 +511,11 @@ public abstract class Actor implements Comparable<Actor> {
 		return builder.build();
 	}
 
-	public ArrayList<StorageSlot> inputSlots(int input) {
+	public StorageSlotList inputSlots(int input) {
 		if (inputSlots == null) {
 			inputSlots = new ArrayList<>(inputs().size());
 			for (int i = 0; i < inputs().size(); ++i)
-				inputSlots.add(new ArrayList<StorageSlot>());
+				inputSlots.add(new StorageSlotList());
 		}
 		return inputSlots.get(input);
 	}
