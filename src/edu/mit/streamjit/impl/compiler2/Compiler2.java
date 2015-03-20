@@ -22,9 +22,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.base.Function;
-
 import static com.google.common.base.Preconditions.checkState;
-
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
@@ -41,7 +39,6 @@ import com.google.common.primitives.Ints;
 import com.google.common.primitives.Primitives;
 import com.google.common.reflect.TypeResolver;
 import com.google.common.reflect.TypeToken;
-
 import edu.mit.streamjit.api.DuplicateSplitter;
 import edu.mit.streamjit.api.IllegalStreamGraphException;
 import edu.mit.streamjit.api.Input;
@@ -70,7 +67,6 @@ import edu.mit.streamjit.impl.compiler.Schedule;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.DrainInstruction;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.ReadInstruction;
 import edu.mit.streamjit.impl.compiler2.Compiler2BlobHost.WriteInstruction;
-import edu.mit.streamjit.impl.distributed.common.Options;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.Benchmarker;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
@@ -117,7 +113,7 @@ public class Compiler2 {
 	public static final RemovalStrategy REMOVAL_STRATEGY = new BitsetRemovalStrategy();
 	public static final FusionStrategy FUSION_STRATEGY = new BitsetFusionStrategy();
 	public static final UnboxingStrategy UNBOXING_STRATEGY = new BitsetUnboxingStrategy();
-	public static final AllocationStrategy ALLOCATION_STRATEGY = new SubsetBiasAllocationStrategy(Options.maxNumCores);
+	public static final AllocationStrategy ALLOCATION_STRATEGY = new SubsetBiasAllocationStrategy(8);
 	public static final StorageStrategy INTERNAL_STORAGE_STRATEGY = new TuneInternalStorageStrategy();
 	public static final StorageStrategy EXTERNAL_STORAGE_STRATEGY = new TuneExternalStorageStrategy();
 	public static final SwitchingStrategy SWITCHING_STRATEGY = SwitchingStrategy.tunePerWorker();
