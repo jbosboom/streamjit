@@ -28,17 +28,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.ImmutableSet;
+import static com.google.common.base.Preconditions.*;
 
-import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
 import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
-import edu.mit.streamjit.impl.distributed.ConfigurationManager.AbstractConfigurationManager;
+import edu.mit.streamjit.impl.common.Workers;
+import edu.mit.streamjit.impl.distributed.PartitionManager.AbstractPartitionManager;
 
 /**
  * This class implements one type of search space. Adds "worker to machine"
@@ -58,15 +56,20 @@ import edu.mit.streamjit.impl.distributed.ConfigurationManager.AbstractConfigura
  * @since Jan 16, 2014
  * 
  */
-public final class WorkerMachine extends AbstractConfigurationManager {
+public final class WorkerMachine extends AbstractPartitionManager {
 
-	WorkerMachine(StreamJitApp app) {
+	private final Set<Worker<?, ?>> workerset;
+
+	public WorkerMachine(StreamJitApp app) {
 		super(app);
+		this.workerset = Workers.getAllWorkersInGraph(app.source);
 	}
 
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers,
 			int noOfMachines) {
+		checkArgument(noOfMachines > 0, String.format(
+				"noOfMachines = %d, It must be > 0", noOfMachines));
 		Configuration.Builder builder = Configuration.builder();
 		List<Integer> machinelist = new ArrayList<>(noOfMachines);
 		for (int i = 1; i <= noOfMachines; i++)
@@ -90,49 +93,8 @@ public final class WorkerMachine extends AbstractConfigurationManager {
 		return builder.build();
 	}
 
-	/**
-	 * Builds partitionsMachineMap and {@link BlobGraph} from the new
-	 * Configuration, and verifies for any cycles among blobs. If it is a valid
-	 * configuration, (i.e., no cycles among the blobs), then {@link #app}
-	 * object's member variables {@link StreamJitApp#blobConfiguration},
-	 * {@link StreamJitApp#blobGraph} and
-	 * {@link StreamJitApp#partitionsMachineMap} will be assigned according to
-	 * reflect the new configuration, no changes otherwise.
-	 * 
-	 * @param config
-	 *            New configuration form Opentuer.
-	 * @return true iff no cycles among blobs
-	 */
-	@Override
-	public boolean newConfiguration(Configuration config) {
-
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(
-				config, app.source);
-		try {
-			app.varifyConfiguration(partitionsMachineMap);
-		} catch (StreamCompilationFailedException ex) {
-			return false;
-		}
-		app.blobConfiguration = config;
-		return true;
-	}
-
-	/**
-	 * Reads the configuration and returns a map of nodeID to list of set of
-	 * workers (list of blob workers) which are assigned to the node. Value of
-	 * the returned map is list of worker set where each worker set is an
-	 * individual blob.
-	 * 
-	 * @param config
-	 * @param workerset
-	 * @return map of nodeID to list of set of workers which are assigned to the
-	 *         node.
-	 */
-	private Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
-			Configuration config, Worker<?, ?> source) {
-
-		ImmutableSet<Worker<?, ?>> workerset = Workers
-				.getAllWorkersInGraph(source);
+	public Map<Integer, List<Set<Worker<?, ?>>>> partitionMap(
+			Configuration config) {
 
 		Map<Integer, Set<Worker<?, ?>>> partition = new HashMap<>();
 		for (Worker<?, ?> w : workerset) {

@@ -25,12 +25,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 
 import com.google.common.collect.ImmutableSet;
 
@@ -45,7 +39,6 @@ import edu.mit.streamjit.impl.distributed.DistributedBlobFactory;
 import edu.mit.streamjit.test.Benchmark;
 import edu.mit.streamjit.test.BenchmarkProvider;
 import edu.mit.streamjit.test.apps.fmradio.FMRadio;
-import edu.mit.streamjit.util.json.Jsonifiers;
 
 /**
  * ConfigGenerator generates {@link Configuration} of an application and stores
@@ -53,7 +46,7 @@ import edu.mit.streamjit.util.json.Jsonifiers;
  * In this way, Opentuner can start and stop the StreamJit app for each tuning
  * try so that Opentuner can tune JVM parameters such as heapsize,
  * inlinethreshold, GCpausetime, etc as well.
- *
+ * 
  * @author Sumanan sumanan@mit.edu
  * @since Sep 10, 2013
  */
@@ -61,23 +54,8 @@ import edu.mit.streamjit.util.json.Jsonifiers;
 public class ConfigGenerator {
 
 	/**
-	 * TODO: Need to remove the string "class" from the {@link Configuration}
-	 * jsonifiers. Once it is done, this method can be removed.
-	 *
-	 * @param cfg
-	 * @return
-	 */
-	private String getConfigurationString(Configuration cfg) {
-		String s = Jsonifiers.toJson(cfg).toString();
-		String s1 = s.replaceAll("__class__", "ttttt");
-		String s2 = s1.replaceAll("class", "javaClassPath");
-		String s3 = s2.replaceAll("ttttt", "__class__");
-		return s3;
-	}
-
-	/**
 	 * Generates configuration for the passed provider.
-	 *
+	 * 
 	 * @param provider
 	 *            Only first benchmark is used to generate configuration. i.e.,
 	 *            only first benchmark will be tuned.
@@ -86,16 +64,8 @@ public class ConfigGenerator {
 	public void generate(BenchmarkProvider provider, BlobFactory factory) {
 		checkNotNull(provider);
 
-		sqliteAdapter sqlite;
-		try {
-			sqlite = new sqliteAdapter();
-		} catch (ClassNotFoundException e) {
-			System.err
-					.println("Sqlite3 database not found...couldn't update the database with the configutaion.");
-			e.printStackTrace();
-			return;
-		}
-
+		SqliteAdapter sqlite;
+		sqlite = new SqliteAdapter();
 		String dbPath = "streamjit.db";
 		sqlite.connectDB(dbPath);
 		sqlite.createTable(
@@ -123,7 +93,7 @@ public class ConfigGenerator {
 		Configuration cfg = factory.getDefaultConfiguration(workers);
 
 		String name = app.toString();
-		String confString = getConfigurationString(cfg);
+		String confString = cfg.toJson();
 
 		try {
 			sqlite.executeUpdate(String.format(
@@ -141,78 +111,6 @@ public class ConfigGenerator {
 				File.separator, File.separator);
 
 		// new ProcessBuilder("xterm", "-e", "python", tunerPath).start();
-	}
-
-	public static class sqliteAdapter {
-
-		private Statement statement;
-		private Connection con = null;
-
-		public sqliteAdapter() throws ClassNotFoundException {
-			Class.forName("org.sqlite.JDBC");
-		}
-
-		public void connectDB(String path) {
-			try {
-				con = DriverManager.getConnection(String.format(
-						"jdbc:sqlite:%s", path));
-				statement = con.createStatement();
-				statement.setQueryTimeout(30); // set timeout to 30 sec.
-
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-
-		/**
-		 * Creates table iff it is not exists
-		 *
-		 * @param table
-		 *            Name of the table
-		 * @param signature
-		 *            Column format of the table
-		 * @throws SQLException
-		 */
-		public void createTable(String table, String signature) {
-			checkNotNull(con);
-			DatabaseMetaData dbm;
-			try {
-				dbm = con.getMetaData();
-
-				ResultSet tables = dbm.getTables(null, null, table, null);
-				if (!tables.next()) {
-					// "create table %s ()"
-					statement.executeUpdate(String.format(
-							"create table %s (%s)", table, signature));
-				}
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-
-		public ResultSet executeQuery(String sql) {
-			try {
-				ResultSet rs = statement.executeQuery(sql);
-				// con.commit();
-				return rs;
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
-			return null;
-		}
-
-		public int executeUpdate(String sql) {
-			try {
-				int ret = statement.executeUpdate(sql);
-				// con.commit();
-				return ret;
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
-			return -1;
-		}
 	}
 
 	/**

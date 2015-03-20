@@ -44,8 +44,6 @@ import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.Buffer;
 import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
-import edu.mit.streamjit.impl.common.AbstractDrainer;
-import edu.mit.streamjit.impl.common.AbstractDrainer.BlobGraph;
 import edu.mit.streamjit.impl.common.BlobThread;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
@@ -56,6 +54,9 @@ import edu.mit.streamjit.impl.common.MessageConstraint;
 import edu.mit.streamjit.impl.common.OutputBufferFactory;
 import edu.mit.streamjit.impl.common.Portals;
 import edu.mit.streamjit.impl.common.VerifyStreamGraph;
+import edu.mit.streamjit.impl.common.drainer.AbstractDrainer;
+import edu.mit.streamjit.impl.common.drainer.BlobGraph;
+import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
 import edu.mit.streamjit.impl.interp.ChannelFactory;
 import edu.mit.streamjit.impl.interp.Interpreter;
 import edu.mit.streamjit.partitioner.HorizontalPartitioner;
@@ -63,7 +64,14 @@ import edu.mit.streamjit.partitioner.Partitioner;
 
 /**
  * A stream compiler that partitions a streamgraph into multiple blobs and
- * execute it on multiple threads.
+ * execute them on a single node. This {@link StreamCompiler} can be used for
+ * following purposes
+ * <ol>
+ * <li>Single blob online tuning.
+ * <li>Multiple blobs on a single node. This will simulate
+ * {@link DistributedStreamCompiler} on a single node to find out deadlocks and
+ * other issues.
+ * </ol>
  * 
  * @author Sumanan sumanan@mit.edu
  * @since Apr 8, 2013
@@ -72,9 +80,8 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 	int noOfBlobs;
 
 	/**
-	 * @param Patrions
-	 *            a stream graph up to noOfBlobs many blobs and executes each
-	 *            blob on each thread.
+	 * @param noOfBlobs
+	 *            Maximum number of blobs that can be created.
 	 */
 	public ConcurrentStreamCompiler(int noOfBlobs) {
 		if (noOfBlobs < 1)
@@ -83,15 +90,20 @@ public class ConcurrentStreamCompiler implements StreamCompiler {
 		this.noOfBlobs = noOfBlobs;
 	}
 
-	public ConcurrentStreamCompiler(Configuration cfg) {
+	public ConcurrentStreamCompiler() {
+		this(1);
+	}
 
-		IntParameter threadCount = cfg.getParameter("threadCount",
-				IntParameter.class);
-		this.noOfBlobs = threadCount.getValue();
-		if (noOfBlobs < 1)
-			throw new IllegalArgumentException(
-					"noOfBlobs should be 1 or greater");
-		this.noOfBlobs = noOfBlobs;
+	public ConcurrentStreamCompiler(Configuration cfg) {
+		IntParameter nBlobs = cfg.getParameter("noOfBlobs", IntParameter.class);
+		if (nBlobs == null)
+			this.noOfBlobs = 1;
+		else {
+			this.noOfBlobs = nBlobs.getValue();
+			if (noOfBlobs < 1)
+				throw new IllegalArgumentException(
+						"noOfBlobs should be 1 or greater");
+		}
 	}
 
 	@Override

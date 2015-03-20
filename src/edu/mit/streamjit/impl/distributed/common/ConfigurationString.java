@@ -23,7 +23,7 @@ package edu.mit.streamjit.impl.distributed.common;
 
 import edu.mit.streamjit.impl.blob.DrainData;
 import edu.mit.streamjit.impl.common.Configuration;
-import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationStringProcessor.ConfigType;
+import edu.mit.streamjit.impl.distributed.common.ConfigurationString.ConfigurationProcessor.ConfigType;
 import edu.mit.streamjit.impl.distributed.node.StreamNode;
 import edu.mit.streamjit.impl.distributed.runtimer.Controller;
 
@@ -55,7 +55,7 @@ public class ConfigurationString implements CTRLRMessageElement {
 		visitor.visit(this);
 	}
 
-	public void process(ConfigurationStringProcessor jp) {
+	public void process(ConfigurationProcessor jp) {
 		jp.process(jsonString, type, drainData);
 	}
 
@@ -66,7 +66,7 @@ public class ConfigurationString implements CTRLRMessageElement {
 	 * @author Sumanan sumanan@mit.edu
 	 * @since May 27, 2013
 	 */
-	public interface ConfigurationStringProcessor {
+	public interface ConfigurationProcessor {
 
 		public void process(String cfg, ConfigType type, DrainData drainData);
 

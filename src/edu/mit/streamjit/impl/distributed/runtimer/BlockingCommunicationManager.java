@@ -198,12 +198,12 @@ public class BlockingCommunicationManager implements CommunicationManager {
 	/**
 	 * IO thread that runs a {@link StreamNodeAgent}. Since this is blocking IO
 	 * context, each {@link StreamNodeAgent} agent will be running on individual
-	 * threaed.
+	 * thread.
 	 * 
 	 */
 	private static class SNAgentRunner extends Thread {
-		StreamNodeAgent SNAgent;
-		Connection connection;
+		final StreamNodeAgent SNAgent;
+		final Connection connection;
 
 		private SNAgentRunner(StreamNodeAgent SNAgent, Connection connection) {
 			super(String.format("SNAgentRunner - %d", SNAgent.getNodeID()));
@@ -229,7 +229,8 @@ public class BlockingCommunicationManager implements CommunicationManager {
 		public void close() {
 			try {
 				SNAgent.stopRequest();
-				connection.writeObject(Request.EXIT);
+				if (connection.isStillConnected())
+					connection.writeObject(Request.EXIT);
 				connection.closeConnection();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block

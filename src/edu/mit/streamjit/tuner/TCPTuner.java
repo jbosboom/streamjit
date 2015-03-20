@@ -23,6 +23,7 @@ package edu.mit.streamjit.tuner;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -32,7 +33,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Random;
 
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
+import edu.mit.streamjit.impl.distributed.common.Options;
 
 public final class TCPTuner implements OpenTuner {
 
@@ -69,19 +70,28 @@ public final class TCPTuner implements OpenTuner {
 	}
 
 	@Override
-	public void startTuner(String tunerPath) throws IOException {
+	public void startTuner(String tunerPath, File workingDir)
+			throws IOException {
 		int min = 5000;
 		Random rand = new Random();
 		Integer port = rand.nextInt(65535 - min) + min;
-		if (GlobalConstants.tunerMode == 0) {
-			this.tuner = new ProcessBuilder("xterm", "-e", "python", tunerPath,
-					port.toString()).start();
+		if (Options.tunerStartMode == 0) {
+			ProcessBuilder xtermPB = new ProcessBuilder("xterm", "-hold", "-e",
+					"python", tunerPath, port.toString());
+			ProcessBuilder gnomePB = new ProcessBuilder("gnome-terminal", "-e",
+					String.format("python %s %s", tunerPath, port.toString()));
+			gnomePB.directory(workingDir);
+			this.tuner = gnomePB.start();
+		} else if (Options.tunerStartMode == 1) {
+			ProcessBuilder pb = new ProcessBuilder("python", tunerPath,
+					port.toString());
+			pb.directory(workingDir);
+			this.tuner = pb.start();
 		} else
 			port = 12563;
 		this.connection = new TunerConnection();
 		connection.connect(port);
 	}
-
 	@Override
 	public void stopTuner() throws IOException {
 		if (tuner == null)
@@ -111,7 +121,7 @@ public final class TCPTuner implements OpenTuner {
 	private final class TunerConnection {
 
 		private BufferedReader reader = null;
-		private BufferedWriter writter = null;
+		private BufferedWriter writer = null;
 		private Socket socket = null;
 		private boolean isconnected = false;
 
@@ -126,7 +136,7 @@ public final class TCPTuner implements OpenTuner {
 					InputStream is = socket.getInputStream();
 					OutputStream os = socket.getOutputStream();
 					this.reader = new BufferedReader(new InputStreamReader(is));
-					this.writter = new BufferedWriter(
+					this.writer = new BufferedWriter(
 							new OutputStreamWriter(os));
 					isconnected = true;
 					break;
@@ -150,10 +160,10 @@ public final class TCPTuner implements OpenTuner {
 		public void writeLine(String msg) throws IOException {
 			if (isStillConnected()) {
 				try {
-					writter.write(msg);
+					writer.write(msg);
 					if (msg.toCharArray()[msg.length() - 1] != '\n')
-						writter.write('\n');
-					writter.flush();
+						writer.write('\n');
+					writer.flush();
 				} catch (IOException ix) {
 					isconnected = false;
 					throw ix;
@@ -181,8 +191,8 @@ public final class TCPTuner implements OpenTuner {
 			try {
 				if (reader != null)
 					this.reader.close();
-				if (writter != null)
-					this.writter.close();
+				if (writer != null)
+					this.writer.close();
 				if (socket != null)
 					this.socket.close();
 			} catch (IOException ex) {
@@ -200,7 +210,8 @@ public final class TCPTuner implements OpenTuner {
 
 		OpenTuner tuner = new TCPTuner();
 		try {
-			tuner.startTuner("/lib/opentuner/streamjit/streamjit.py");
+			tuner.startTuner("./lib/opentuner/streamjit/streamjit.py", new File(
+					System.getProperty("user.dir")));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

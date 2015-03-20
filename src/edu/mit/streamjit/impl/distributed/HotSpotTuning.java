@@ -21,6 +21,8 @@
  */
 package edu.mit.streamjit.impl.distributed;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,18 +36,16 @@ import edu.mit.streamjit.api.OneToOneElement;
 import edu.mit.streamjit.api.Pipeline;
 import edu.mit.streamjit.api.Splitjoin;
 import edu.mit.streamjit.api.Splitter;
-import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamVisitor;
 import edu.mit.streamjit.api.Worker;
 import edu.mit.streamjit.impl.common.Configuration;
 import edu.mit.streamjit.impl.common.Configuration.IntParameter;
+import edu.mit.streamjit.impl.common.Configuration.Parameter;
 import edu.mit.streamjit.impl.common.Configuration.SwitchParameter;
 import edu.mit.streamjit.impl.common.Workers;
-import edu.mit.streamjit.impl.common.Configuration.Parameter;
-import edu.mit.streamjit.impl.distributed.ConfigurationManager.AbstractConfigurationManager;
-import edu.mit.streamjit.tuner.OfflineTuner;
+import edu.mit.streamjit.impl.distributed.PartitionManager.AbstractPartitionManager;
 
-public final class HotSpotTuning extends AbstractConfigurationManager {
+public final class HotSpotTuning extends AbstractPartitionManager {
 
 	Map<Integer, List<Worker<?, ?>>> partitionGroup;
 	Map<Splitter<?, ?>, Set<Worker<?, ?>>> skippedSplitters;
@@ -57,36 +57,14 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 	@Override
 	public Configuration getDefaultConfiguration(Set<Worker<?, ?>> workers,
 			int noOfMachines) {
+		checkArgument(noOfMachines > 0, String.format(
+				"noOfMachines = %d, It must be > 0", noOfMachines));
 		PickHotSpots visitor = new PickHotSpots(noOfMachines);
 		app.streamGraph.visit(visitor);
 		return visitor.builder.build();
 	}
 
-	@Override
-	public boolean newConfiguration(Configuration config) {
-
-		for (Parameter p : config.getParametersMap().values()) {
-			if (p instanceof IntParameter) {
-				IntParameter ip = (IntParameter) p;
-				System.out.println(ip.getName() + " - " + ip.getValue());
-			} else if (p instanceof SwitchParameter<?>) {
-				SwitchParameter<?> sp = (SwitchParameter<?>) p;
-				System.out.println(sp.getName() + " - " + sp.getValue());
-			} else
-				System.out.println(p.getName() + " - Unknown type");
-		}
-
-		Map<Integer, List<Set<Worker<?, ?>>>> partitionsMachineMap = getMachineWorkerMap(config);
-		try {
-			app.varifyConfiguration(partitionsMachineMap);
-		} catch (StreamCompilationFailedException ex) {
-			return false;
-		}
-		app.blobConfiguration = config;
-		return true;
-	}
-
-	private Map<Integer, List<Set<Worker<?, ?>>>> getMachineWorkerMap(
+	public Map<Integer, List<Set<Worker<?, ?>>>> partitionMap(
 			Configuration config) {
 		Map<Integer, Set<Worker<?, ?>>> partition = new HashMap<>();
 
@@ -186,11 +164,10 @@ public final class HotSpotTuning extends AbstractConfigurationManager {
 
 		private Joiner<?, ?> skipJoiner;
 
-		private int minSplitjoinSize = 20;
+		private int minSplitjoinSize = 8;
 
 		/**
-		 * Workers those are going to be part {@link OfflineTuner}
-		 * {@link #currentHotSpot}.
+		 * Workers those are going to be part of {@link #currentHotSpot}.
 		 */
 		List<Worker<?, ?>> workerGropups;
 

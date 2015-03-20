@@ -21,8 +21,12 @@
  */
 package edu.mit.streamjit.impl.distributed.node;
 
+import java.util.Set;
+
+import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.CTRLRDrainProcessor;
 import edu.mit.streamjit.impl.distributed.common.Command.CommandProcessor;
+import edu.mit.streamjit.impl.distributed.profiler.StreamNodeProfiler;
 
 /**
  * {@link BlobsManager} is the main dispatcher for all blobs. Received commands
@@ -38,4 +42,18 @@ public interface BlobsManager {
 	public CTRLRDrainProcessor getDrainProcessor();
 
 	public CommandProcessor getCommandProcessor();
+
+	/**
+	 * For all final resource cleanup. Mainly all started threads must be
+	 * stopped safely.
+	 * <p>
+	 * TODO: [2014-03-05] I added this as a quick fix to clean up
+	 * {@link BlobsManagerImpl}#MonitorBuffers thread. Revise this.
+	 */
+	public void stop();
+
+	/**
+	 * @return Set of profilers in this BlobManager.
+	 */
+	public Set<StreamNodeProfiler> profilers();
 }

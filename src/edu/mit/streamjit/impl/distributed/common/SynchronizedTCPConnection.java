@@ -42,7 +42,7 @@ public class SynchronizedTCPConnection extends TCPConnection {
 	 * @param socket
 	 */
 	public SynchronizedTCPConnection(Socket socket) {
-		super(socket, 50);
+		super(socket, 5);
 	}
 
 	@Override

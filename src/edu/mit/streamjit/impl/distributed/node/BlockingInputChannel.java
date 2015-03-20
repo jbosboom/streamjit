@@ -34,10 +34,12 @@ import com.google.common.collect.ImmutableList;
 
 import edu.mit.streamjit.impl.blob.AbstractBuffer;
 import edu.mit.streamjit.impl.blob.Buffer;
+import edu.mit.streamjit.impl.blob.ConcurrentArrayBuffer;
 import edu.mit.streamjit.impl.distributed.common.BoundaryChannel.BoundaryInputChannel;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
 import edu.mit.streamjit.impl.distributed.common.Connection;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionInfo;
-import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProvider;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionInfo;
+import edu.mit.streamjit.impl.distributed.common.Connection.ConnectionProvider;
 
 /**
  * This is {@link BoundaryInputChannel} over TCP. Receive objects from TCP
@@ -53,21 +55,21 @@ import edu.mit.streamjit.impl.distributed.common.TCPConnection.TCPConnectionProv
  * @author Sumanan sumanan@mit.edu
  * @since May 29, 2013
  */
-public class TCPInputChannel implements BoundaryInputChannel {
+public class BlockingInputChannel implements BoundaryInputChannel {
 
 	private final FileWriter writer;
 
-	private final int debugPrint;
+	private final int debugLevel;
 
 	private final Buffer buffer;
 
 	private Buffer extraBuffer;
 
-	private final TCPConnectionProvider conProvider;
+	private final ConnectionProvider conProvider;
 
-	private final TCPConnectionInfo conInfo;
+	private final ConnectionInfo conInfo;
 
-	private Connection tcpConnection;
+	private Connection connection;
 
 	private final AtomicInteger stopType;
 
@@ -81,22 +83,31 @@ public class TCPInputChannel implements BoundaryInputChannel {
 
 	private ImmutableList<Object> unProcessedData;
 
-	public TCPInputChannel(Buffer buffer, TCPConnectionProvider conProvider,
-			TCPConnectionInfo conInfo, String bufferTokenName, int debugPrint) {
+	public BlockingInputChannel(int bufSize, ConnectionProvider conProvider,
+			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
+		this(new ConcurrentArrayBuffer(bufSize), conProvider, conInfo,
+				bufferTokenName, debugLevel);
+	}
+
+	public BlockingInputChannel(Buffer buffer, ConnectionProvider conProvider,
+			ConnectionInfo conInfo, String bufferTokenName, int debugLevel) {
 		this.buffer = buffer;
 		this.conProvider = conProvider;
 		this.conInfo = conInfo;
 		this.name = "TCPInputChannel - " + bufferTokenName;
-		this.debugPrint = debugPrint;
+		this.debugLevel = debugLevel;
 		this.softClosed = false;
 		this.extraBuffer = null;
 		this.unProcessedData = null;
 		this.isClosed = false;
 		this.stopType = new AtomicInteger(0);
 		count = 0;
+		writer = fileWriter();
+	}
 
+	private FileWriter fileWriter() {
 		FileWriter w = null;
-		if (this.debugPrint == 5) {
+		if (this.debugLevel == 5) {
 			try {
 				w = new FileWriter(name, true);
 				w.write("---------------------------------\n");
@@ -105,18 +116,12 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				e.printStackTrace();
 			}
 		}
-		writer = w;
+		return w;
 	}
 
-	@Override
-	public void closeConnection() throws IOException {
+	private void closeConnection() throws IOException {
 		// tcpConnection.closeConnection();
 		this.isClosed = true;
-	}
-
-	@Override
-	public boolean isStillConnected() {
-		return tcpConnection.isStillConnected();
 	}
 
 	@Override
@@ -124,9 +129,9 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		return new Runnable() {
 			@Override
 			public void run() {
-				if (tcpConnection == null || !tcpConnection.isStillConnected()) {
+				if (connection == null || !connection.isStillConnected()) {
 					try {
-						tcpConnection = conProvider.getConnection(conInfo);
+						connection = conProvider.getConnection(conInfo);
 					} catch (IOException e) {
 						// TODO: Need to handle this exception.
 						e.printStackTrace();
@@ -165,10 +170,12 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	public void receiveData() {
 		int bufFullCount = 0;
 		try {
-			Object obj = tcpConnection.readObject();
+			Object obj = connection.readObject();
+			if (obj == null) // [2014-03-15] Sometimes null is received.
+				return;
 			count++;
 
-			if (debugPrint == 3) {
+			if (debugLevel == 3) {
 				System.out.println(Thread.currentThread().getName() + " - "
 						+ obj.toString());
 			}
@@ -179,7 +186,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			}
 
 			while (!this.buffer.write(obj)) {
-				if (debugPrint == 3) {
+				if (debugLevel == 3) {
 					System.out.println(Thread.currentThread().getName()
 							+ " Buffer FULL - " + obj.toString());
 				}
@@ -193,21 +200,20 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				if (stopType.get() > 1 && ++bufFullCount > 5) {
+				if (stopType.get() == 3) {
+					// System.err.println(name + " receiveData:DISCARDING....");
+					break;
+				} else if (stopType.get() > 0 && ++bufFullCount > 20) {
 					this.extraBuffer = new ExtraBuffer();
 					extraBuffer.write(obj);
 					System.err
-							.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-					System.err
 							.println(name
 									+ " receiveData:Writing extra data in to extra buffer");
-					System.err
-							.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 					break;
 				}
 			}
 
-			if (count % 1000 == 0 && debugPrint == 2) {
+			if (count % 1000 == 0 && debugLevel == 2) {
 				System.out.println(Thread.currentThread().getName() + " - "
 						+ count + " no of items have been received");
 			}
@@ -217,8 +223,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			softClosed = true;
 		} catch (EOFException e) {
 			// Other side is closed.
-			System.out
-					.println("receiveData:Closing by EOFExp. Not by softClose");
+			System.out.println(name
+					+ " receiveData:Closing by EOFExp. Not by softClose");
 			stopType.set(2);
 		} catch (IOException e) {
 			// TODO: Verify the program quality. Try to reconnect until it
@@ -248,10 +254,10 @@ public class TCPInputChannel implements BoundaryInputChannel {
 		do {
 			bufFullCount = 0;
 			try {
-				Object obj = tcpConnection.readObject();
+				Object obj = connection.readObject();
 				count++;
 
-				if (debugPrint == 2) {
+				if (debugLevel == 2) {
 					System.out.println(Thread.currentThread().getName()
 							+ " finalReceive - " + obj.toString());
 				}
@@ -264,7 +270,7 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				hasData = true;
 
 				while (!buffer.write(obj)) {
-					if (debugPrint == 3) {
+					if (debugLevel == 3) {
 						System.out.println(Thread.currentThread().getName()
 								+ " finalReceive:Buffer FULL - "
 								+ obj.toString());
@@ -281,23 +287,20 @@ public class TCPInputChannel implements BoundaryInputChannel {
 						e.printStackTrace();
 					}
 
-					if (stopType.get() == 2 && ++bufFullCount > 5) {
+					if (++bufFullCount > 20) {
 						assert buffer != this.extraBuffer : "ExtraBuffer is full. This shouldn't be the case.";
 						assert this.extraBuffer == null : "Extra buffer has already been created.";
 						this.extraBuffer = new ExtraBuffer();
 						extraBuffer.write(obj);
 						buffer = extraBuffer;
 						System.err
-								.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-						System.err
 								.println(name
 										+ " finalReceive:Writing extra data in to extra buffer");
-						System.err
-								.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+						break;
 					}
 				}
 
-				if (count % 1000 == 0 && debugPrint == 2) {
+				if (count % 1000 == 0 && debugLevel == 2) {
 					System.out.println(Thread.currentThread().getName() + " - "
 							+ count + " no of items have been received");
 				}
@@ -309,8 +312,10 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				softClosed = true;
 				hasData = false;
 			} catch (IOException e) {
+				e.printStackTrace();
 				System.out
-						.println("finalReceive:Closing by IOException. Not by softClose.");
+						.println(name
+								+ " finalReceive:Closing by IOException. Not by softClose.");
 				hasData = false;
 			}
 		} while (hasData);
@@ -321,11 +326,11 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	 * care about the data and just tuning a app for performance.
 	 */
 	private void discardAll() {
-		System.out.println("Discarding input data...");
+		// System.out.println(name + " Discarding input data...");
 		boolean hasData;
 		do {
 			try {
-				Object obj = tcpConnection.readObject();
+				Object obj = connection.readObject();
 				hasData = true;
 			} catch (ClassNotFoundException e) {
 				hasData = true;
@@ -335,7 +340,8 @@ public class TCPInputChannel implements BoundaryInputChannel {
 				hasData = false;
 			} catch (IOException e) {
 				System.out
-						.println("finalReceive:Closing by IOException. Not by softClose.");
+						.println(name
+								+ " discardAll:Closing by IOException. Not by softClose.");
 				hasData = false;
 			}
 		} while (hasData);
@@ -344,9 +350,9 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	private void reConnect() {
 		while (stopType.get() == 0) {
 			try {
-				System.out.println("TCPInputChannel : Reconnecting...");
-				this.tcpConnection.closeConnection();
-				tcpConnection = conProvider.getConnection(conInfo);
+				System.out.println(name + " Reconnecting...");
+				this.connection.closeConnection();
+				connection = conProvider.getConnection(conInfo);
 				return;
 			} catch (IOException e) {
 				try {
@@ -359,14 +365,12 @@ public class TCPInputChannel implements BoundaryInputChannel {
 	}
 
 	@Override
-	public int getOtherNodeID() {
-		return 0;
-	}
-
-	@Override
-	public void stop(int type) {
-		assert 0 < type && type < 4 : "Undefined stop type";
-		this.stopType.set(type);
+	public void stop(DrainType type) {
+		if (this.stopType.get() == 0) {
+			stopType.set(type.toint());
+		} else if (debugLevel > 0) {
+			System.err.println(name + " Stop has already been called.");
+		}
 	}
 
 	@Override
@@ -459,5 +463,22 @@ public class TCPInputChannel implements BoundaryInputChannel {
 			fillUnprocessedData();
 
 		return unProcessedData;
+	}
+
+	@Override
+	public Connection getConnection() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public ConnectionInfo getConnectionInfo() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Buffer getBuffer() {
+		return buffer;
 	}
 }
