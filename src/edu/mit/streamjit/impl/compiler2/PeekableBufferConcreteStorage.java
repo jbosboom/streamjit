@@ -22,6 +22,7 @@
 package edu.mit.streamjit.impl.compiler2;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Maps;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.PeekableBuffer;
@@ -111,7 +112,8 @@ public final class PeekableBufferConcreteStorage implements ConcreteStorage {
 			}
 			ImmutableSet<ActorGroup> relevantGroups = ImmutableSet.<ActorGroup>builder()
 					.addAll(storage.upstreamGroups()).addAll(storage.downstreamGroups()).build();
-			int minReadIndex1 = storage.readIndices(Maps.asMap(relevantGroups, i -> 1)).first();
+			ImmutableSortedSet<Integer> readIndices = storage.readIndices(Maps.asMap(relevantGroups, i -> 1));
+			int minReadIndex1 = readIndices.isEmpty() ? Integer.MIN_VALUE : readIndices.first();
 			return new PeekableBufferConcreteStorage(storage.type(), throughput1, minReadIndex1, buffers.get(storage.id()));
 		};
 	}
