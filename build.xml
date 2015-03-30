@@ -105,7 +105,7 @@ xmlns:if="ant:if" xmlns:unless="ant:unless"
 			 dest="lib/sqlitejdbc.jar"
 			 skipexisting="true"/>
 
-		<get src="https://github.com/jbosboom/bytecodelib/releases/download/20150307/bytecodelib.jar"
+		<get src="https://github.com/jbosboom/bytecodelib/releases/download/20150330/bytecodelib.jar"
 			 dest="lib/bytecodelib.jar"
 			 skipexisting="true"/>
 	</target>
