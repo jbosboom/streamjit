@@ -1,7 +1,7 @@
 import deps #fix sys.path
 import random
 import opentuner
-from opentuner.search.manipulator import IntegerParameter, FloatParameter, SwitchParameter, PermutationParameter, ArrayParameter
+from opentuner.search.manipulator import IntegerParameter, FloatParameter, SwitchParameter, PermutationParameter, ParameterArray
 
 class sjIntegerParameter(IntegerParameter):
 	def __init__(self, name, min, max, value, javaClass = None, **kwargs):
@@ -86,7 +86,7 @@ class sjPermutationParameter(PermutationParameter):
 			"universe": self.universe,
 			"class": self.javaClass}
 
-class sjCompositionParameter(ArrayParameter):
+class sjCompositionParameter(ParameterArray):
 	def __init__(self, name, values, javaClass):
 		super(sjCompositionParameter, self).__init__(name, len(values), FloatParameter, 0.0, 1.0)
 		self.values = values

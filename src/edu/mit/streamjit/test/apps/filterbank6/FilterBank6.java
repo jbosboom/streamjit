@@ -75,17 +75,21 @@ public final class FilterBank6 {
 		@Override
 		@SuppressWarnings("unchecked")
 		public OneToOneElement<Object, Object> instantiate() {
-			return (OneToOneElement)new FilterBankPipeline(8);
+			return (OneToOneElement)new FilterBankPipeline(32);
 		}
 	}
 
 	/**
 	 * Top-level filterbank structure.
 	 **/
-	private static final class FilterBankPipeline extends Pipeline<Float, Float> {
+	public static final class FilterBankPipeline extends Pipeline<Float, Float> {
 		private FilterBankPipeline(int M) {
 			add(new FilterBankSplitJoin(M));
 			add(new Adder(M));
+		}
+
+		public FilterBankPipeline() {
+			this(32);
 		}
 	}
 

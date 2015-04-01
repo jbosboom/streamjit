@@ -23,13 +23,14 @@ from jvmparameters import *
 
 class StreamJitMI(MeasurementInterface):
 	''' Measurement Interface for tunning a StreamJit application'''
-	def __init__(self, args, jvmOptions, manipulator, inputmanager, objective):
+	def __init__(self, args, configuration, jvmOptions, manipulator, inputmanager, objective):
 		args.technique = ['StreamJITBandit']
 		super(StreamJitMI, self).__init__(args = args, program_name = args.program, manipulator = manipulator, input_manager = inputmanager, objective = objective)
 		self.trycount = 0
 		self.jvmOptions = jvmOptions
 		self.program = args.program
 		self.StreamNodes = []
+		self.config = configuration
 		try:
 			self.tunedataDB = sqlite3.connect('sj' + args.program + '.db')
 			c = self.tunedataDB.cursor()
@@ -43,42 +44,41 @@ class StreamJitMI(MeasurementInterface):
 			data = raw_input ( "Press Keyboard to exit..." )
 
 	def run(self, desired_result, input, limit):
-		cfg = dict.copy(desired_result.configuration.data)
-		(st, t) = self.runApp(cfg)
+		cfg_data = dict.copy(desired_result.configuration.data)
+		(st, t) = self.runApp(cfg_data)
 		return opentuner.resultsdb.models.Result(state=st, time=t)
 
 
-	def runApp(self, cfg):
+	def runApp(self, cfg_data):
 		self.trycount = self.trycount + 1
 		print '\n**********New Run - %d **********'%self.trycount
-		#self.niceprint(cfg)
+		#self.niceprint(cfg_data)
+
+		for k in self.config.params:
+			self.config.getParameter(k).update_value_for_json(cfg_data)
 
 		#TODO: find a better place for these system-specific constants
 		#the path to the Java executable, or "java" to use system's default
 		javaPath = "java"
-		#the classpath, suitable as the value of the '-cp' java argument
-		javaClassPath = "build/jar/streamjit.jar:lib/asm.jar:lib/bridj.jar:lib/bytecodelib.jar:lib/guava.jar:lib/javax.json.jar:lib/joptsimple.jar:lib/sqlitejdbc.jar"
 
-		args = [javaPath, "-cp", javaClassPath]
 		jvmArgs = []
 		for key in self.jvmOptions.keys():
-			self.jvmOptions.get(key).setValue(cfg[key])
+			self.jvmOptions.get(key).setValue(cfg_data[key])
 			cmd = self.jvmOptions.get(key).getCommand()
 			if len(cmd) > 0:
 				jvmArgs.append(cmd)
-		args.extend(jvmArgs)
-		args.append("edu.mit.streamjit.tuner.RunApp")
+
+		args = self.getArgs1(javaPath, jvmArgs)
 		args.append(str(self.program))
 		args.append(str(self.trycount))
 
 		cur = self.tunedataDB.cursor()
-		query = 'INSERT INTO results VALUES (%d,"%s","%s", "%f")'%(self.trycount, " ".join(jvmArgs), cfg, -1)
+		query = "INSERT INTO results VALUES (%d,'%s','%s', '%f')"%(self.trycount, " ".join(jvmArgs), self.config.toJSON(), -1)
 		cur.execute(query)
 		self.tunedataDB.commit()
-
 		p = subprocess.Popen(args, stderr=subprocess.PIPE)
-		if cfg.get('noOfMachines'):
-			self.startStreamNodes(cfg.get('noOfMachines') - 1, args)
+		if cfg_data.get('noOfMachines'):
+			self.startStreamNodes(cfg_data.get('noOfMachines') - 1, args)
 
 		timeout = 100
 
@@ -102,8 +102,8 @@ class StreamJitMI(MeasurementInterface):
 			print "\033[31;1mException Found\033[0m"
 			self.waitForStreamNodes(True)
 			cur = self.tunedataDB.cursor()
-			str1 = str(commandStr)
-			str2 = str(cfg)
+			str1 = str(jvmArgs)
+			str2 = self.config.toJSON()
 			cur.execute('INSERT INTO exceptions VALUES (?,?,?)', (err, str1, str2))
 			self.tunedataDB.commit()
 			return ('ERROR', float('inf'))
@@ -122,11 +122,27 @@ class StreamJitMI(MeasurementInterface):
 			self.waitForStreamNodes(False)
 			return ('OK',exetime)
 
-	def niceprint(self, cfg):
+	# Return args that is to run a runnable jar file.
+	def getArgs1(self, javaPath, jvmArgs):
+		args = [javaPath]
+		args.extend(jvmArgs)
+		args.append("-jar")
+		args.append("RunApp.jar")
+		return args
+
+	# Return args that is to run from class file.
+	def getArgs2(self, javaPath, jvmArgs):
+		#the classpath, suitable as the value of the '-cp' java argument
+		javaClassPath = "build/jar/streamjit.jar:lib/asm.jar:lib/bridj.jar:lib/bytecodelib.jar:lib/guava.jar:lib/javax.json.jar:lib/joptsimple.jar:lib/sqlitejdbc.jar"
+		args = [javaPath, "-cp", javaClassPath]
+		args.append("edu.mit.streamjit.tuner.RunApp")
+		return args
+
+	def niceprint(self, cfg_data):
 		print "\n--------------------------------------------------"
 		print self.trycount
-		for key in cfg.keys():
-			print "%s - %s"%(key, cfg[key])
+		for key in cfg_data.keys():
+			print "%s - %s"%(key, cfg_data[key])
 
 	def program_name(self):
 		return self.args.program
@@ -136,12 +152,13 @@ class StreamJitMI(MeasurementInterface):
 
 	def save_final_config(self, configuration):
 		'''called at the end of autotuning with the best resultsdb.models.Configuration'''
-		cfg = dict.copy(configuration.data)
+		cfg_data = dict.copy(configuration.data)
+
 		print "\033[32;1mFinal Config...\033[0m"
-		(state, time) = self.runApp(cfg)
+		(state, time) = self.runApp(cfg_data)
 		conn = sqlite3.connect('streamjit.db', 100)
 		cur = conn.cursor()
-		query = 'INSERT INTO FinalResult VALUES ("%s","%s", %d, "%s", "%f")'%(self.program, cfg, self.trycount, state, float(time))
+		query = "INSERT INTO FinalResult VALUES ('%s','%s', %d, '%s', '%f')"%(self.program, self.config.toJSON(), self.trycount, state, float(time))
 		cur.execute(query)
 		conn.commit()
 
@@ -166,13 +183,15 @@ def main(args, cfg, jvmOptions):
 	logging.basicConfig(level=logging.INFO)
 	manipulator = ConfigurationManipulator()
 
-	params = dict(cfg.items() + jvmOptions.items())
+	cfgparams = cfg.getAllParameters()
+
+	params = dict(cfgparams.items() + jvmOptions.items())
 	#print "\nFeature variables...."
 	for key in params.keys():
 		#print "\t", key
   		manipulator.add_parameter(params.get(key))
 	
-	mi = StreamJitMI(args,jvmOptions, manipulator, FixedInputManager(),
+	mi = StreamJitMI(args, cfg, jvmOptions, manipulator, FixedInputManager(),
                     MinimizeTime())
 
 	m = TuningRunMain(mi, args)
@@ -200,7 +219,6 @@ def start(program):
 			sys.exit(1)
 		cfgString = row[0]
 		cfg = configuration.getConfiguration(cfgString)
-		cfgparams = cfg.getAllParameters()
 	except Exception, e:
 		print 'Exception occured'
 		traceback.print_exc()
@@ -244,7 +262,7 @@ def start(program):
 	enabledJvmOptions = [aggressiveOpts, compileThreshold, freqInlineSize, maxInlineSize, maxInlineLevel]
 	jvmOptions = {x.name:x for x in enabledJvmOptions}
 
-	main(args, cfgparams, jvmOptions)
+	main(args, cfg, jvmOptions)
 
 if __name__ == '__main__':
 	prgrms = []

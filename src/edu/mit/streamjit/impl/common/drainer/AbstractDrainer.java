@@ -19,20 +19,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package edu.mit.streamjit.impl.common;
+package edu.mit.streamjit.impl.common.drainer;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -42,23 +39,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Sets;
 
 import edu.mit.streamjit.api.CompiledStream;
 import edu.mit.streamjit.api.Input;
-import edu.mit.streamjit.api.StreamCompilationFailedException;
 import edu.mit.streamjit.api.StreamCompiler;
-import edu.mit.streamjit.api.Worker;
-import edu.mit.streamjit.impl.blob.Blob;
 import edu.mit.streamjit.impl.blob.Blob.Token;
 import edu.mit.streamjit.impl.blob.DrainData;
+import edu.mit.streamjit.impl.common.TimeLogger;
+import edu.mit.streamjit.impl.common.drainer.BlobGraph.BlobNode;
 import edu.mit.streamjit.impl.concurrent.ConcurrentStreamCompiler;
 import edu.mit.streamjit.impl.distributed.DistributedStreamCompiler;
-import edu.mit.streamjit.impl.distributed.common.GlobalConstants;
-import edu.mit.streamjit.impl.distributed.common.SNDrainElement.DrainedData;
-import edu.mit.streamjit.impl.distributed.runtimer.OnlineTuner;
+import edu.mit.streamjit.impl.distributed.StreamJitApp;
+import edu.mit.streamjit.impl.distributed.common.CTRLRDrainElement.DrainType;
+import edu.mit.streamjit.impl.distributed.common.Options;
+import edu.mit.streamjit.impl.distributed.common.SNDrainElement.SNDrainedData;
+import edu.mit.streamjit.impl.distributed.node.StreamNode;
+import edu.mit.streamjit.tuner.OnlineTuner;
 
 /**
  * Abstract drainer is to perform draining on a stream application. Both
@@ -124,16 +122,22 @@ public abstract class AbstractDrainer {
 
 	private AtomicInteger unDrainedNodes;
 
-	private ScheduledExecutorService schExecutorService;
+	ScheduledExecutorService schExecutorService;
 
 	/**
 	 * State of the drainer.
 	 */
-	private DrainerState state;
+	DrainerState state;
 
-	public AbstractDrainer() {
+	private final TimeLogger logger;
+
+	private final StreamJitApp<?, ?> app;
+
+	public AbstractDrainer(StreamJitApp<?, ?> app, TimeLogger logger) {
 		state = DrainerState.NODRAINING;
 		finalLatch = new CountDownLatch(1);
+		this.app = app;
+		this.logger = logger;
 	}
 
 	/**
@@ -158,15 +162,14 @@ public abstract class AbstractDrainer {
 	 * Initiate the draining of the blobgraph. Three type of draining could be
 	 * carried out.
 	 * <ol>
-	 * <li>type 0 - Intermediate draining: In this case, no data from input
-	 * buffer will be consumed and StreamJit app will not be stopped. Rather,
-	 * StreamJit app will be just paused for reconfiguration purpose. This
-	 * draining may be triggered by {@link OnlineTuner}.</li>
-	 * <li>type 1 - Semi final draining: In this case, no data from input buffer
-	 * will be consumed but StreamJit app will be stopped. i.e, StreamJit app
-	 * will be stopped safely without consuming any new input. This draining may
-	 * be triggered by {@link OnlineTuner} after opentuner finish tuning and
-	 * send it's final configuration.</li>
+	 * <li>type 0 - Intermediate draining: In this case, no new data from
+	 * {@link Input} will be consumed and StreamJit app will not be stopped.
+	 * Rather, StreamJit app will be just paused for reconfiguration purpose.
+	 * This draining may be triggered by {@link OnlineTuner}.</li>
+	 * <li>type 1 - Semi final draining: In this case, StreamJit app will be
+	 * stopped safely without consuming any new data from {@link Input}. This
+	 * draining may be triggered by {@link OnlineTuner} after opentuner finish
+	 * tuning and send it's final configuration.</li>
 	 * <li>type 2 - Final draining: At the end of input data. After this
 	 * draining StreamJit app will stop. This draining may be triggered by a
 	 * {@link Input} when it run out of input data.</li>
@@ -180,28 +183,37 @@ public abstract class AbstractDrainer {
 	 */
 	public final boolean startDraining(int type) {
 		if (state == DrainerState.NODRAINING) {
+			boolean isFinal = false;
 			switch (type) {
 				case 0 :
-					this.blobGraph.clearDrainData();
 					this.state = DrainerState.INTERMEDIATE;
-					drainDataLatch = new CountDownLatch(1);
-					intermediateLatch = new CountDownLatch(1);
-					prepareDraining(false);
 					break;
 				case 1 :
 					this.state = DrainerState.FINAL;
-					prepareDraining(false);
 					break;
 				case 2 :
 					this.state = DrainerState.FINAL;
-					prepareDraining(true);
+					isFinal = true;
 					break;
 				default :
 					throw new IllegalArgumentException(
 							"Invalid draining type. type can be 0, 1, or 2.");
 			}
 
-			if (GlobalConstants.needDrainDeadlockHandler)
+			this.blobGraph.clearDrainData();
+			drainDataLatch = new CountDownLatch(1);
+			intermediateLatch = new CountDownLatch(1);
+
+			try {
+				prepareDraining(isFinal);
+			} catch (Exception e) {
+				this.state = DrainerState.NODRAINING;
+				System.err
+						.println("No Drain called. Exception in prepareDraining()");
+				throw e;
+			}
+
+			if (Options.needDrainDeadlockHandler)
 				this.schExecutorService = Executors
 						.newSingleThreadScheduledExecutor();
 
@@ -211,8 +223,73 @@ public abstract class AbstractDrainer {
 		} else if (state == DrainerState.FINAL) {
 			return false;
 		} else {
-			throw new RuntimeException("Drainer is in draing mode.");
+			throw new RuntimeException("Drainer is in draining mode.");
 		}
+	}
+
+	public boolean drainIntermediate() {
+		logger.drainingStarted();
+		boolean state = startDraining(0);
+		if (!state) {
+			String msg = "Final drain has already been called. No more intermediate draining.";
+			System.err.println(msg);
+			logger.drainingFinished(msg);
+			return false;
+		}
+
+		System.err.println("awaitDrainedIntrmdiate");
+		try {
+			awaitDrainedIntrmdiate();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		drainingDone(this.state == DrainerState.FINAL);
+		logger.drainingFinished("Intermediate");
+		logger.drainDataCollectionStarted();
+		try {
+			awaitDrainData();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		logger.drainDataCollectionFinished("");
+		return true;
+	}
+
+	public boolean drainFinal(Boolean isSemeFinal) {
+		int drainType = 2;
+		if (isSemeFinal)
+			drainType = 1;
+		logger.drainingStarted();
+		boolean state = startDraining(drainType);
+		if (!state) {
+			return false;
+		}
+
+		System.err.println("awaitDrainedIntrmdiate");
+		try {
+			awaitDrainedIntrmdiate();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		drainingDone(false);
+		logger.drainingFinished("Intermediate");
+		logger.drainDataCollectionStarted();
+		try {
+			awaitDrainData();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		logger.drainDataCollectionFinished("");
+		// TODO : Even after the final draining, we can clear some more
+		// intermediate data by running an Interpreter blob.
+		// StreamJitApp.minimizeDrainData() does this job. Uncomment the
+		// following lines later.
+		// app.drainData = app.minimizeDrainData(app.drainData);
+		// printDrainDataStats(app.drainData);
+		// dumpDrainData(app.drainData);
+		drainingDone(true);
+		stop();
+		return true;
 	}
 
 	/**
@@ -223,12 +300,22 @@ public abstract class AbstractDrainer {
 		blobGraph.getBlobNode(blobID).drained();
 	}
 
+	/**
+	 * Awaits for {@link DrainData} from all {@link StreamNode}s, combines the
+	 * all received DrainData and set the combined DrainData to
+	 * {@link StreamJitApp#drainData}.
+	 * 
+	 * @throws InterruptedException
+	 */
 	public final void awaitDrainData() throws InterruptedException {
-		drainDataLatch.await();
+		if (Options.useDrainData) {
+			drainDataLatch.await();
+			app.drainData = getDrainData();
+		}
 	}
 
-	public final void newDrainData(DrainedData drainedData) {
-		blobGraph.getBlobNode(drainedData.blobID).setDrainData(drainedData);
+	public final void newSNDrainData(SNDrainedData snDrainedData) {
+		blobGraph.getBlobNode(snDrainedData.blobID).setDrainData(snDrainedData);
 		if (noOfDrainData.decrementAndGet() == 0) {
 			assert state == DrainerState.NODRAINING;
 			drainDataLatch.countDown();
@@ -241,18 +328,20 @@ public abstract class AbstractDrainer {
 	/**
 	 * @return Aggregated DrainData after the draining.
 	 */
-	public final DrainData getDrainData() {
+	private final DrainData getDrainData() {
+		if (!Options.useDrainData)
+			return null;
 		DrainData drainData = null;
 		Map<Token, ImmutableList<Object>> boundaryInputData = new HashMap<>();
 		Map<Token, ImmutableList<Object>> boundaryOutputData = new HashMap<>();
 
 		for (BlobNode node : blobGraph.blobNodes.values()) {
-			boundaryInputData.putAll(node.drainData.inputData);
-			boundaryOutputData.putAll(node.drainData.outputData);
+			boundaryInputData.putAll(node.snDrainData.inputData);
+			boundaryOutputData.putAll(node.snDrainData.outputData);
 			if (drainData == null)
-				drainData = node.drainData.drainData;
+				drainData = node.snDrainData.drainData;
 			else
-				drainData = drainData.merge(node.drainData.drainData);
+				drainData = drainData.merge(node.snDrainData.drainData);
 		}
 
 		ImmutableMap.Builder<Token, ImmutableList<Object>> dataBuilder = ImmutableMap
@@ -260,11 +349,9 @@ public abstract class AbstractDrainer {
 		for (Token t : Sets.union(boundaryInputData.keySet(),
 				boundaryOutputData.keySet())) {
 			ImmutableList<Object> in = boundaryInputData.get(t) != null
-					? boundaryInputData.get(t)
-					: ImmutableList.of();
+					? boundaryInputData.get(t) : ImmutableList.of();
 			ImmutableList<Object> out = boundaryOutputData.get(t) != null
-					? boundaryOutputData.get(t)
-					: ImmutableList.of();
+					? boundaryOutputData.get(t) : ImmutableList.of();
 			dataBuilder.put(t, ImmutableList.builder().addAll(in).addAll(out)
 					.build());
 		}
@@ -272,26 +359,60 @@ public abstract class AbstractDrainer {
 		ImmutableTable<Integer, String, Object> state = ImmutableTable.of();
 		DrainData draindata1 = new DrainData(dataBuilder.build(), state);
 		drainData = drainData.merge(draindata1);
+		updateDrainDataStatistics(drainData);
+		// printDrainDataStats(drainData);
+		// dumpDrainData(drainData);
+		return drainData;
+	}
 
+	private void updateDrainDataStatistics(DrainData drainData) {
 		if (drainDataStatistics == null) {
 			drainDataStatistics = new HashMap<>();
 			for (Token t : drainData.getData().keySet()) {
 				drainDataStatistics.put(t, new ArrayList<Integer>());
 			}
 		}
-
 		for (Token t : drainData.getData().keySet()) {
-			// System.out.print("Aggregated data: " + t.toString() + " - "
-			// + drainData.getData().get(t).size() + " - ");
-			// for (Object o : drainData.getData().get(t)) {
-			// System.out.print(o.toString() + ", ");
-			// }
-			// System.out.print('\n');
+			int size = drainData.getData().get(t).size();
+			drainDataStatistics.get(t).add(size);
 
-			drainDataStatistics.get(t).add(drainData.getData().get(t).size());
 		}
+	}
 
-		return drainData;
+	private void printDrainDataStats(DrainData drainData) {
+		try {
+			String fileName = String.format("%s%sdraindatasize.txt", app.name,
+					File.separator);
+			FileWriter writer = new FileWriter(fileName, true);
+			writer.write("-----------------------------------------------------------\n");
+			System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+
+			for (Token t : drainData.getData().keySet()) {
+				int size = drainData.getData().get(t).size();
+				if (size != 0) {
+					String msg = String.format("%s - %d\n", t.toString(), size);
+					System.out.print(msg);
+					writer.write(msg);
+				}
+			}
+			writer.flush();
+			writer.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void dumpDrainData(DrainData drainData) {
+		try {
+			String fileName = String.format("%s%sDrainData", app.name,
+					File.separator);
+			FileOutputStream fout = new FileOutputStream(fileName);
+			ObjectOutputStream oos = new ObjectOutputStream(fout);
+			oos.writeObject(drainData);
+			oos.close();
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
 	}
 
 	/**
@@ -306,7 +427,9 @@ public abstract class AbstractDrainer {
 			return;
 		}
 
-		FileWriter writer = new FileWriter("DrainDataStatistics.txt");
+		String fileName = String.format("%s%sDrainDataStatistics.txt",
+				app.name, File.separator);
+		FileWriter writer = new FileWriter(fileName);
 		for (Token t : drainDataStatistics.keySet()) {
 			writer.write(t.toString());
 			writer.write(" - ");
@@ -337,9 +460,9 @@ public abstract class AbstractDrainer {
 	public final void awaitDrainedIntrmdiate() throws InterruptedException {
 		intermediateLatch.await();
 
-		// Just for debugging purpose. To make effect of this code snippet
-		// comment the above, intermediateLatch.await(), line. Otherwise no
-		// effect.
+		// The following while loop is added just for debugging purpose. To
+		// activate the following while loop code snippet, comment the above
+		// [intermediateLatch.await()] line.
 		while (intermediateLatch.getCount() != 0) {
 			Thread.sleep(3000);
 			System.out.println("****************************************");
@@ -394,13 +517,8 @@ public abstract class AbstractDrainer {
 	/**
 	 * Once a {@link BlobNode}'s all preconditions are satisfied for draining,
 	 * blob node will call this function drain the blob.
-	 * 
-	 * @param blobID
-	 * @param isFinal
-	 *            : whether the draining is the final draining or intermediate
-	 *            draining. Set to true for semi final case.
 	 */
-	protected abstract void drain(Token blobID, boolean isFinal);
+	protected abstract void drain(Token blobID, DrainType drainType);
 
 	/**
 	 * {@link AbstractDrainer} will call this function after the corresponding
@@ -443,350 +561,25 @@ public abstract class AbstractDrainer {
 	 * 
 	 * @param blobNode
 	 */
-	private void drainingDone(BlobNode blobNode) {
+	void drainingDone(BlobNode blobNode) {
 		assert state != DrainerState.NODRAINING : "Illegal call. Drainer is not in draining mode.";
 		drainingDone(blobNode.blobID, state == DrainerState.FINAL);
 		if (unDrainedNodes.decrementAndGet() == 0) {
-			drainingDone(state == DrainerState.FINAL);
+			intermediateLatch.countDown();
 			if (state == DrainerState.FINAL) {
-				finalLatch.countDown();
 			} else {
 				state = DrainerState.NODRAINING;
-				intermediateLatch.countDown();
 			}
 
-			if (GlobalConstants.needDrainDeadlockHandler)
+			if (Options.needDrainDeadlockHandler)
 				schExecutorService.shutdownNow();
 		}
 	}
 
 	/**
-	 * BlobGraph builds predecessor successor relationship for set of
-	 * partitioned workers, and verifies for cyclic dependencies among the
-	 * partitions. Blob graph doesn't keep blobs. Instead it keeps
-	 * {@link BlobNode} that represents blobs. </p> All BlobNodes in the graph
-	 * can be retrieved and used in coupled with {@link AbstractDrainer} to
-	 * successfully perform draining process.
-	 * 
-	 * @author Sumanan sumanan@mit.edu
-	 * @since Jul 30, 2013
-	 */
-	public static class BlobGraph {
-
-		/**
-		 * All nodes in the graph.
-		 */
-		private final ImmutableMap<Token, BlobNode> blobNodes;
-
-		/**
-		 * The blob which has the overall stream input.
-		 */
-		private final BlobNode sourceBlobNode;
-
-		public BlobGraph(List<Set<Worker<?, ?>>> partitionWorkers) {
-			checkNotNull(partitionWorkers);
-			Set<DummyBlob> blobSet = new HashSet<>();
-			for (Set<Worker<?, ?>> workers : partitionWorkers) {
-				blobSet.add(new DummyBlob(workers));
-			}
-
-			ImmutableMap.Builder<Token, BlobNode> builder = new ImmutableMap.Builder<>();
-			for (DummyBlob b : blobSet) {
-				builder.put(b.id, new BlobNode(b.id));
-			}
-
-			this.blobNodes = builder.build();
-
-			for (DummyBlob cur : blobSet) {
-				for (DummyBlob other : blobSet) {
-					if (cur == other)
-						continue;
-					if (Sets.intersection(cur.outputs, other.inputs).size() != 0) {
-						BlobNode curNode = blobNodes.get(cur.id);
-						BlobNode otherNode = blobNodes.get(other.id);
-
-						curNode.addSuccessor(otherNode);
-						otherNode.addPredecessor(curNode);
-					}
-				}
-			}
-
-			checkCycles(blobNodes.values());
-
-			BlobNode sourceBlob = null;
-			for (BlobNode bn : blobNodes.values()) {
-				if (bn.getDependencyCount() == 0) {
-					assert sourceBlob == null : "Multiple independent blobs found.";
-					sourceBlob = bn;
-				}
-			}
-
-			checkNotNull(sourceBlob);
-			this.sourceBlobNode = sourceBlob;
-		}
-
-		/**
-		 * @return BlobIds of all blobnodes in the blobgraph.
-		 */
-		public ImmutableSet<Token> getBlobIds() {
-			return blobNodes.keySet();
-		}
-
-		public BlobNode getBlobNode(Token blobID) {
-			return blobNodes.get(blobID);
-		}
-
-		/**
-		 * A Drainer can be set to the {@link BlobGraph} to perform draining.
-		 * 
-		 * @param drainer
-		 */
-		public void setDrainer(AbstractDrainer drainer) {
-			for (BlobNode bn : blobNodes.values()) {
-				bn.setDrainer(drainer);
-			}
-		}
-
-		public void clearDrainData() {
-			for (BlobNode node : blobNodes.values()) {
-				node.drainData = null;
-			}
-		}
-
-		/**
-		 * @return the sourceBlobNode
-		 */
-		private BlobNode getSourceBlobNode() {
-			return sourceBlobNode;
-		}
-
-		/**
-		 * Does a depth first traversal to detect cycles in the graph.
-		 * 
-		 * @param blobNodes
-		 */
-		private void checkCycles(Collection<BlobNode> blobNodes) {
-			Map<BlobNode, Color> colorMap = new HashMap<>();
-			for (BlobNode b : blobNodes) {
-				colorMap.put(b, Color.WHITE);
-			}
-			for (BlobNode b : blobNodes) {
-				if (colorMap.get(b) == Color.WHITE)
-					if (DFS(b, colorMap))
-						throw new StreamCompilationFailedException(
-								"Cycles found among blobs");
-			}
-		}
-
-		/**
-		 * A cycle exits in a directed graph if a back edge is detected during a
-		 * DFS traversal. A back edge exists in a directed graph if the
-		 * currently explored vertex has an adjacent vertex that was already
-		 * colored gray
-		 * 
-		 * @param vertex
-		 * @param colorMap
-		 * @return <code>true</code> if cycle found, <code>false</code>
-		 *         otherwise.
-		 */
-		private boolean DFS(BlobNode vertex, Map<BlobNode, Color> colorMap) {
-			colorMap.put(vertex, Color.GRAY);
-			for (BlobNode adj : vertex.getSuccessors()) {
-				if (colorMap.get(adj) == Color.GRAY)
-					return true;
-				if (colorMap.get(adj) == Color.WHITE)
-					if (DFS(adj, colorMap))
-						return true;
-			}
-			colorMap.put(vertex, Color.BLACK);
-			return false;
-		}
-
-		/**
-		 * Just used to build the input and output tokens of a partitioned blob
-		 * workers. imitate a {@link Blob}.
-		 */
-		private final class DummyBlob {
-			private final ImmutableSet<Token> inputs;
-			private final ImmutableSet<Token> outputs;
-			private final Token id;
-
-			private DummyBlob(Set<Worker<?, ?>> workers) {
-				ImmutableSet.Builder<Token> inputBuilder = new ImmutableSet.Builder<>();
-				ImmutableSet.Builder<Token> outputBuilder = new ImmutableSet.Builder<>();
-				for (IOInfo info : IOInfo.externalEdges(workers)) {
-					(info.isInput() ? inputBuilder : outputBuilder).add(info
-							.token());
-				}
-
-				inputs = inputBuilder.build();
-				outputs = outputBuilder.build();
-				id = Collections.min(inputs);
-			}
-		}
-	}
-
-	/**
-	 * BlobNode represents the vertex in the blob graph ({@link BlobGraph}). It
-	 * represents a {@link Blob} and carry the draining process of that blob.
-	 * 
-	 * @author Sumanan
-	 */
-	private static final class BlobNode {
-
-		/**
-		 * Intermediate drain data.
-		 */
-		private DrainedData drainData;
-
-		private AbstractDrainer drainer;
-		/**
-		 * The blob that wrapped by this blob node.
-		 */
-		private final Token blobID;
-		/**
-		 * Predecessor blob nodes of this blob node.
-		 */
-		private List<BlobNode> predecessors;
-		/**
-		 * Successor blob nodes of this blob node.
-		 */
-		private List<BlobNode> successors;
-		/**
-		 * The number of undrained predecessors of this blobs. Everytime, when a
-		 * predecessor finished draining, dependencyCount will be decremented
-		 * and once it reached to 0 this blob will be called for draining.
-		 */
-		private AtomicInteger dependencyCount;
-
-		// TODO: add comments
-		private AtomicInteger drainState;
-
-		private BlobNode(Token blob) {
-			this.blobID = blob;
-			predecessors = new ArrayList<>();
-			successors = new ArrayList<>();
-			dependencyCount = new AtomicInteger(0);
-			drainState = new AtomicInteger(0);
-		}
-
-		/**
-		 * Should be called when the draining of the current blob has been
-		 * finished. This function stops all threads belong to the blob and
-		 * inform its successors as well.
-		 */
-		private void drained() {
-			if (drainState.compareAndSet(1, 3)) {
-				for (BlobNode suc : this.successors) {
-					suc.predecessorDrained(this);
-				}
-				drainer.drainingDone(this);
-			} else if (drainState.compareAndSet(2, 3)) {
-				drainer.drainingDone(this);
-			}
-		}
-
-		/**
-		 * Drain the blob mapped by this blob node.
-		 */
-		private void drain() {
-			checkNotNull(drainer);
-			if (!drainState.compareAndSet(0, 1)) {
-				throw new IllegalStateException(
-						"Drain of this blobNode has already been called");
-			}
-			drainer.drain(blobID, drainer.state == DrainerState.FINAL);
-
-			// TODO: Verify the waiting time is reasonable.
-			if (GlobalConstants.needDrainDeadlockHandler)
-				drainer.schExecutorService.schedule(deadLockHandler(), 6000,
-						TimeUnit.MILLISECONDS);
-		}
-
-		private void setDrainData(DrainedData drainedData) {
-			if (this.drainData == null) {
-				this.drainData = drainedData;
-				drainState.set(4);
-			} else
-				throw new AssertionError(
-						"Multiple drain data has been received.");
-		}
-
-		private ImmutableList<BlobNode> getSuccessors() {
-			return ImmutableList.copyOf(successors);
-		}
-
-		private void addPredecessor(BlobNode pred) {
-			assert !predecessors.contains(pred) : String.format(
-					"The BlobNode %s has already been set as a predecessors",
-					pred);
-			predecessors.add(pred);
-			dependencyCount.set(dependencyCount.get() + 1);
-		}
-
-		private void addSuccessor(BlobNode succ) {
-			assert !successors.contains(succ) : String
-					.format("The BlobNode %s has already been set as a successor",
-							succ);
-			successors.add(succ);
-		}
-
-		private void predecessorDrained(BlobNode pred) {
-			if (!predecessors.contains(pred))
-				throw new IllegalArgumentException("Illegal Predecessor");
-
-			assert dependencyCount.get() > 0 : String
-					.format("Graph mismatch : My predecessors count is %d. But more than %d of BlobNodes claim me as their successor",
-							predecessors.size(), predecessors.size());
-
-			if (dependencyCount.decrementAndGet() == 0) {
-				drain();
-			}
-		}
-
-		/**
-		 * @return The number of undrained predecessors.
-		 */
-		private int getDependencyCount() {
-			return dependencyCount.get();
-		}
-
-		private void setDrainer(AbstractDrainer drainer) {
-			checkNotNull(drainer);
-			this.drainer = drainer;
-		}
-
-		private Runnable deadLockHandler() {
-			Runnable r = new Runnable() {
-
-				@Override
-				public void run() {
-					if (drainState.compareAndSet(1, 2)) {
-						for (BlobNode suc : successors) {
-							suc.predecessorDrained(BlobNode.this);
-						}
-						System.out
-								.println("deadLockHandler: "
-										+ blobID
-										+ " - Deadlock during draining has been handled");
-					}
-				}
-			};
-			return r;
-		}
-	}
-
-	/**
-	 * Color enumerator used by DFS algorithm to find cycles in the blob graph.
-	 */
-	private enum Color {
-		WHITE, GRAY, BLACK
-	}
-
-	/**
 	 * Reflects {@link AbstractDrainer}'s state.
 	 */
-	private enum DrainerState {
+	enum DrainerState {
 		NODRAINING, /**
 		 * Draining in middle of the stream graph's execution. This
 		 * type of draining will be triggered by the open tuner for

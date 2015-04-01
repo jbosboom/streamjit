@@ -17,21 +17,26 @@ from opentuner.search.objective import MinimizeTime
 
 class StreamJitMI(MeasurementInterface):
 	''' Measurement Interface for tunning a StreamJit application'''
-	def __init__(self, args, ss, manipulator, inputmanager, objective):
+	def __init__(self, args, configuration, connection, manipulator, inputmanager, objective):
 		super(StreamJitMI, self).__init__(args = args, program_name = args.program, manipulator = manipulator, input_manager = inputmanager, objective = objective)
-		self.sdk = ss
+		self.connection = connection
 		self.trycount = 0
+		self.config = configuration
 
 	def run(self, desired_result, input, limit):
 		self.trycount = self.trycount + 1
 		print self.trycount
-		cfg = desired_result.configuration.data
-		#self.niceprint(cfg)
-		self.sdk.sendmsg("%s\n"%cfg)
-		msg = self.sdk.recvmsg()
+
+		cfg_data = desired_result.configuration.data
+		#self.niceprint(cfg_data)
+		for k in self.config.params:
+			self.config.getParameter(k).update_value_for_json(cfg_data)
+		self.connection.sendmsg(self.config.toJSON())
+
+		msg = self.connection.recvmsg()
 		if (msg == "exit\n"):
 			#data = raw_input ( "exit cmd received. Press Keyboard to exit..." )
-			self.sdk.close()
+			self.connection.close()
 			sys.exit(1)
 		exetime = float(msg)
 		if exetime < 0:
@@ -55,31 +60,32 @@ class StreamJitMI(MeasurementInterface):
 
 	def save_final_config(self, configuration):
 		'''called at the end of autotuning with the best resultsdb.models.Configuration'''
-		cfg = configuration.data
-		print "Final configuration", cfg
-		self.sdk.sendmsg("Completed")
-		self.sdk.sendmsg("%s\n"%cfg)
-		self.sdk.close()
+		cfg_data = configuration.data
+		print "Final configuration", cfg_data
+		for k in self.config.params:
+			self.config.getParameter(k).update_value_for_json(cfg_data)
+
+		self.connection.sendmsg("Completed")
+		self.connection.sendmsg(self.config.toJSON())
+		self.connection.close()
 		sys.exit(0)
 
 
-def main(args, cfg, ss):
+def main(args, cfg, connection):
 	logging.basicConfig(level=logging.INFO)
 	manipulator = ConfigurationManipulator()
 
-	params = cfg.getAllParameters()
 	#print "\nFeature variables...."
-	for key in params.keys():
-		#print "\t", key
-  		manipulator.add_parameter(cfg.getParameter(key))
+	for p in cfg.getAllParameters().values():
+		manipulator.add_parameter(p)
 	
-	mi = StreamJitMI(args, ss, manipulator, FixedInputManager(),
+	mi = StreamJitMI(args, cfg, connection, manipulator, FixedInputManager(),
                     MinimizeTime())
 
 	m = TuningRunMain(mi, args)
 	m.main()
 
-def start(argv, cfg, ss):
+def start(argv, cfg, connection):
 	log = logging.getLogger(__name__)
 	parser = argparse.ArgumentParser(parents=opentuner.argparsers())
 
@@ -90,4 +96,4 @@ def start(argv, cfg, ss):
 	if not args.database:
     		args.database = 'sqlite:///' + args.program + '.db'
 
-	main(args, cfg, ss)
+	main(args, cfg, connection)

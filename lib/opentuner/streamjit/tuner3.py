@@ -183,7 +183,7 @@ def make_jvm_options():
 if __name__ == '__main__':
 	logging.basicConfig(level=logging.INFO)
 	parser = argparse.ArgumentParser(parents=opentuner.argparsers())
-	parser.add_argument('--program', help='StreamJIT benchmark to tune (with first input)')
+	parser.add_argument('program', help='StreamJIT benchmark to tune (with first input)')
 	parser.add_argument('--timestamp', help='timestamp to use for final config/errors',
 		default=time.strftime('%Y%m%d-%H%M%S'))
 	args = parser.parse_args()

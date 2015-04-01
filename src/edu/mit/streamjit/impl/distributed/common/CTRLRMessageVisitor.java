@@ -21,6 +21,8 @@
  */
 package edu.mit.streamjit.impl.distributed.common;
 
+import edu.mit.streamjit.impl.distributed.profiler.ProfilerCommand;
+
 /**
  * Visitor pattern. We have to have overloaded visit method to all sub type of
  * {@link MessageElement}s. See the {@link MessageElement}.
@@ -39,4 +41,6 @@ public interface CTRLRMessageVisitor {
 	public void visit(CTRLRDrainElement ctrlrDrainElement);
 
 	public void visit(MiscCtrlElements miscCtrlElements);
+
+	public void visit(ProfilerCommand command);
 }
